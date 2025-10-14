@@ -2,7 +2,7 @@
 
 
 # DDM-OS-Reminder
-> A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user notifications for DDM-required macOS updates
+> A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for DDM-required macOS updates
 
 
 <img src="images/ddmOSReminder_Hero.png" alt="DDM-OS-Reminder Hero" width="800"/>
@@ -13,7 +13,7 @@ While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful
 
 <img src="images/ddmOSReminder_Notification.png" alt="Built-in macOS Notication" width="300"/>
 
-**DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki) and LaunchDaemon pair to dynamically deliver a more prominent end-user notification of when the user's Mac needs to be updated to comply with DDM-configured OS version requirements:
+**DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki) and LaunchDaemon pair to dynamically deliver a more prominent end-user message of when the user's Mac needs to be updated to comply with DDM-configured OS version requirements:
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="DDM OS Reminder" width="800"/>

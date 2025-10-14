@@ -14,7 +14,7 @@
 #
 # HISTORY
 #
-# Version 1.0.0, 13-Oct-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.0.0, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - First "official" release (thanks for the testing and feedback, @TechTrekkie!)
 #
 ####################################################################################################
@@ -27,7 +27,7 @@
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
 scriptVersion="1.0.0"
@@ -45,10 +45,10 @@ autoload -Uz is-at-least
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Script Human-readable Name
-humanReadableScriptName="DDM OS Reminder"
+humanReadableScriptName="DDM OS Reminder End-user Message"
 
 # Organization's Script Name
-organizationScriptName="dor"
+organizationScriptName="dorm"
 
 # Organization's Days Before Deadline Blur Screen 
 daysBeforeDeadlineBlurscreen="3"
@@ -92,7 +92,7 @@ function installedOSvsDDMenforcedOS() {
     notice "Installed OS Version: $installedOSVersion"
 
     # DDM-enforced OS Version
-    ddmEnforcedInstallDateRaw=$( grep 'EnforcedInstallDate' /var/log/install.log | tail -n 1 )
+    ddmEnforcedInstallDateRaw=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
     if [[ -n "$ddmEnforcedInstallDateRaw" ]]; then
         
         # DDM-enforced Install Date
@@ -168,18 +168,6 @@ function updateRequiredVariables() {
 
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Logged-in User Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
-    loggedInUserFullname=$( id -F "${loggedInUser}" )
-    loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
-    loggedInUserID=$( id -u "${loggedInUser}" )
-    loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
-
-
-
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # swiftDialog Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -228,7 +216,7 @@ function updateRequiredVariables() {
     # Help Message Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    helpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** ${loggedInUserFullname}<br>- **User Name:** ${loggedInUser}<br>- **User ID:** ${loggedInUserID}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
+    helpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
 
     helpimage="qr=${infobuttonaction}"
 
@@ -268,28 +256,28 @@ function displayDialogWindow() {
     case ${returncode} in
 
         0)  ## Process exit code 0 scenario here
-            notice "${loggedInUser} clicked ${button1text}"
+            notice "User clicked ${button1text}"
             if [[ -n "${action}" ]]; then
-                su - "${loggedInUser}" -c "open \"${action}\""
+                su \- "$(stat -f%Su /dev/console)" -c "open \"${action}\""
             fi
             quitScript "0"
             ;;
 
         2)  ## Process exit code 2 scenario here
-            notice "${loggedInUser} clicked ${button2text}"
+            notice "User clicked ${button2text}"
             quitScript "0"
             ;;
 
         3)  ## Process exit code 3 scenario here
-            notice "${loggedInUser} clicked ${infobuttontext}"
+            notice "User clicked ${infobuttontext}"
             ;;
 
         4)  ## Process exit code 4 scenario here
-            notice "${loggedInUser} allowed timer to expire"
+            notice "User allowed timer to expire"
             ;;
 
         20) ## Process exit code 20 scenario here
-            notice "${loggedInUser} had Do Not Disturb enabled"
+            notice "User had Do Not Disturb enabled"
             quitScript "0"
             ;;
 
@@ -320,7 +308,7 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "So long!"
+    quitOut "Shine on, you crazy diamond!"
 
     exit "${1}"
 
@@ -397,6 +385,21 @@ installedOSvsDDMenforcedOS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
+
+    # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds
+    currentHour=$(( $(date +%H) ))
+    currentMinute=$(( $(date +%M) ))
+
+    if (( currentHour == 8 || currentHour == 16 )) && (( currentMinute == 0 )); then
+        notice "Daily Trigger Pause: Random 0 to 20 minutes"
+        sleepSeconds=$(( RANDOM % 1200 ))
+    else
+        notice "Login Trigger Pause: Random 30 to 90 seconds"
+        sleepSeconds=$(( 30 + RANDOM % 61 ))
+    fi
+
+    info "Pausing for ${sleepSeconds} seconds …"
+    sleep "${sleepSeconds}"
 
     # Initialize Update Required Variables
     updateRequiredVariables

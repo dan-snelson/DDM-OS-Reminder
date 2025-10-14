@@ -50,6 +50,9 @@ humanReadableScriptName="DDM OS Reminder"
 # Organization's Script Name
 organizationScriptName="dor"
 
+# Organization's Days Before Deadline Blur Screen 
+daysBeforeDeadlineBlurscreen="3"
+
 
 
 ####################################################################################################
@@ -107,6 +110,12 @@ function installedOSvsDDMenforcedOS() {
         ddmVersionStringDeadline=${ddmEnforcedInstallDate%%T*}
         deadlineEpoch=$(date -jf "%Y-%m-%d" "$ddmVersionStringDeadline" "+%s" 2>/dev/null)
         ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date "+%s")) / 86400 ))
+
+        if [[ "${ddmVersionStringDaysRemaining}" -le "${daysBeforeDeadlineBlurscreen}" ]]; then
+            blurscreen="--blurscreen"
+        else
+            blurscreen="--noblurscreen"
+        fi
 
     fi
 
@@ -234,6 +243,7 @@ function updateRequiredVariables() {
 function displayDialogWindow() {
 
     notice "Display Dialog Window"
+
     ${dialogBinary} \
         --title "${title}" \
         --message "${message}" \
@@ -248,7 +258,9 @@ function displayDialogWindow() {
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \
         --width 750 \
-        --height 600
+        --height 600 \
+        "${blurscreen}" \
+        --ontop
 
     returncode=$?
     info "Return Code: ${returncode}"

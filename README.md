@@ -5,7 +5,7 @@
 > A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user notifications for DDM-required macOS updates
 
 
-<img src="images/ddmOSReminder_Hero.png" alt="Mac Health Check Hero" width="800"/>
+<img src="images/ddmOSReminder_Hero.png" alt="DDM-OS-Reminder Hero" width="800"/>
 
 ## Overview
 
@@ -18,7 +18,7 @@ While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="DDM OS Reminder" width="800"/>
 
-<img src="images/ddmOSReminder_Hero_2.png" alt="Mac Health Check Hero" width="800"/>
+<img src="images/ddmOSReminder_Hero_2.png" alt="DDM-OS-Reminder Hero Blurscreen" width="800"/>
 
 Configure `daysBeforeDeadlineBlurscreen` to control when the screen blurs.
 

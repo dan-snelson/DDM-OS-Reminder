@@ -14,7 +14,7 @@
 #
 # HISTORY
 #
-# Version 1.0.0, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.0.1, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - First "official" release (thanks for the testing and feedback, @TechTrekkie!)
 #
 ####################################################################################################
@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.0"
+scriptVersion="1.0.1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -241,7 +241,6 @@ function displayDialogWindow() {
         --button1text "${button1text}" \
         --button2text "${button2text}" \
         --infobuttontext "${infobuttontext}" \
-        --infobuttonaction "${infobuttonaction}" \
         --messagefont "size=14" \
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \
@@ -270,6 +269,8 @@ function displayDialogWindow() {
 
         3)  ## Process exit code 3 scenario here
             notice "User clicked ${infobuttontext}"
+            echo "blurscreen: disable" >> /var/tmp/dialog.log
+            open "${infobuttonaction}"
             ;;
 
         4)  ## Process exit code 4 scenario here

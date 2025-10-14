@@ -5,8 +5,8 @@
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user notifications
-# for DDM-required macOS updates
+# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
+# DDM-required macOS updates
 #
 # https://github.com/dan-snelson/DDM-OS-Reminder
 #
@@ -15,7 +15,7 @@
 # HISTORY
 #
 # Version 1.0.1, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - First "official" release (thanks for the testing and feedback, @TechTrekkie!)
+#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
 #
 ####################################################################################################
 
@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1"
+scriptVersion="1.0.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -270,7 +270,7 @@ function displayDialogWindow() {
         3)  ## Process exit code 3 scenario here
             notice "User clicked ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
-            open "${infobuttonaction}"
+            su "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
             ;;
 
         4)  ## Process exit code 4 scenario here

@@ -37,7 +37,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.0"
+scriptVersion="1.0.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -239,8 +239,8 @@ cat <<'ENDOFSCRIPT'
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user notifications
-# for DDM-required macOS updates
+# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
+# DDM-required macOS updates
 #
 # https://github.com/dan-snelson/DDM-OS-Reminder
 #
@@ -248,8 +248,8 @@ cat <<'ENDOFSCRIPT'
 #
 # HISTORY
 #
-# Version 1.0.0, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - First "official" release (thanks for the testing and feedback, @TechTrekkie!)
+# Version 1.0.1, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
+#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
 #
 ####################################################################################################
 
@@ -264,7 +264,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.0"
+scriptVersion="1.0.1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -300,7 +300,7 @@ daysBeforeDeadlineBlurscreen="3"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function updateScriptLog() {
-    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" # | tee -a "${scriptLog}"
+    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" | tee -a "${scriptLog}"
 }
 
 function preFlight()    { updateScriptLog "[PRE-FLIGHT]      ${1}"; }
@@ -475,7 +475,6 @@ function displayDialogWindow() {
         --button1text "${button1text}" \
         --button2text "${button2text}" \
         --infobuttontext "${infobuttontext}" \
-        --infobuttonaction "${infobuttonaction}" \
         --messagefont "size=14" \
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \
@@ -504,6 +503,8 @@ function displayDialogWindow() {
 
         3)  ## Process exit code 3 scenario here
             notice "User clicked ${infobuttontext}"
+            echo "blurscreen: disable" >> /var/tmp/dialog.log
+            su "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
             ;;
 
         4)  ## Process exit code 4 scenario here

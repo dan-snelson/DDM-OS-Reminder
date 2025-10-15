@@ -49,7 +49,7 @@ scriptLog="/var/log/org.churchofjesuschrist.log"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
-resetConfiguration="${4:-"All"}"
+resetConfiguration="${4:-""}"
 
 
 

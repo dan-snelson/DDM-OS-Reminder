@@ -23,6 +23,7 @@
 #
 # Version 1.0.1, 15-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
+#   - Updated `message` to clarify update instructions
 #
 ####################################################################################################
 
@@ -37,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b2"
+scriptVersion="1.0.1b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -264,7 +265,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b2"
+scriptVersion="1.0.1b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -300,7 +301,7 @@ daysBeforeDeadlineBlurscreen="3"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function updateScriptLog() {
-    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" # | tee -a "${scriptLog}"
+    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" | tee -a "${scriptLog}"
 }
 
 function preFlight()    { updateScriptLog "[PRE-FLIGHT]      ${1}"; }
@@ -432,7 +433,7 @@ function updateRequiredVariables() {
     title="macOS Update Required"
     button1text="Open Software Update"
     button2text="Remind Me Later"
-    message="**A required macOS update is now available**<br><br>Please update to **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **Restart Now**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    message="**A required macOS update is now available**<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **Restart Now**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 

@@ -31,7 +31,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b3"
+scriptVersion="1.0.1b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

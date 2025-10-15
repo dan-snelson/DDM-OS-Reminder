@@ -23,7 +23,8 @@
 #
 # Version 1.0.1, 15-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
-#   - Updated `message` to clarify update instructions
+#   - Updated `message` variable to clarify update instructions
+#   - Tweaked `updateScriptLog` function to satisfy my CDO (i.e., the alphabetical version of "OCD")
 #
 ####################################################################################################
 
@@ -38,7 +39,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b3"
+scriptVersion="1.0.1b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -65,7 +66,7 @@ reverseDomainNameNotation="org.churchofjesuschrist"
 humanReadableScriptName="DDM OS Reminder"
 
 # Organization's Script Name
-organizationScriptName="dor "
+organizationScriptName="dor"
 
 # Organization's Directory (i.e., where your client-side scripts reside)
 organizationDirectory="/Library/Management/org.churchofjesuschrist"
@@ -87,7 +88,7 @@ launchDaemonPath="/Library/LaunchDaemons/${launchDaemonName}"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function updateScriptLog() {
-    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" | tee -a "${scriptLog}"
+    echo "${organizationScriptName}  ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" | tee -a "${scriptLog}"
 }
 
 function preFlight()    { updateScriptLog "[PRE-FLIGHT]      ${1}"; }
@@ -265,7 +266,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b3"
+scriptVersion="1.0.1b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

@@ -248,7 +248,7 @@ cat <<'ENDOFSCRIPT'
 #
 # HISTORY
 #
-# Version 1.0.1, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.0.1, 15-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
 #
 ####################################################################################################
@@ -264,7 +264,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1"
+scriptVersion="1.0.1b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -300,7 +300,7 @@ daysBeforeDeadlineBlurscreen="3"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function updateScriptLog() {
-    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" | tee -a "${scriptLog}"
+    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" # | tee -a "${scriptLog}"
 }
 
 function preFlight()    { updateScriptLog "[PRE-FLIGHT]      ${1}"; }
@@ -491,7 +491,7 @@ function displayDialogWindow() {
         0)  ## Process exit code 0 scenario here
             notice "User clicked ${button1text}"
             if [[ -n "${action}" ]]; then
-                su \- "$(stat -f%Su /dev/console)" -c "open \"${action}\""
+                su \- "$(stat -f%Su /dev/console)" -c "open '${action}'"
             fi
             quitScript "0"
             ;;
@@ -504,11 +504,13 @@ function displayDialogWindow() {
         3)  ## Process exit code 3 scenario here
             notice "User clicked ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
-            su "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
+            su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
+            quitScript "0"
             ;;
 
         4)  ## Process exit code 4 scenario here
             notice "User allowed timer to expire"
+            quitScript "0"
             ;;
 
         20) ## Process exit code 20 scenario here
@@ -651,6 +653,7 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 exit 0
+
 
 ENDOFSCRIPT
 ) > "${organizationDirectory}/${organizationScriptName}.zsh"

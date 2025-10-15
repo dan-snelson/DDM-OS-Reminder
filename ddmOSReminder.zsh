@@ -21,8 +21,8 @@
 #
 # HISTORY
 #
-#   Version 1.0.0, 14-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - First "official" release
+# Version 1.0.1, 15-Oct-2025, Dan K. Snelson (@dan-snelson)
+#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
 #
 ####################################################################################################
 
@@ -37,7 +37,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b1"
+scriptVersion="1.0.1b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

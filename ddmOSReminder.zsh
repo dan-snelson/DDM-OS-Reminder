@@ -21,12 +21,9 @@
 #
 # HISTORY
 #
-# Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.2.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - :warning: **Breaking Change** :warning: for users of version `1.0.0`; please see CHANGELOG.md
-#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
-#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
-#   - Updated `message` variable to clarify update instructions
-#   - Tweaked `updateScriptLog` function to satisfy my CDO (i.e., the alphabetical version of "OCD")
+#   - Addressed Issue #3: Use Dynamic icon based on OS Update version (thanks for the suggestion, @ScottEKendall!)
 #
 ####################################################################################################
 
@@ -41,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.1.0b1"
+scriptVersion="1.2.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -53,7 +50,7 @@ scriptLog="/var/log/org.churchofjesuschrist.log"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
-resetConfiguration="${4:-""}"
+resetConfiguration="${4:-"All"}"
 
 
 
@@ -243,19 +240,7 @@ cat <<'ENDOFSCRIPT'
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# A swiftDialog and LaunchDaemon pair for “set-it-and-forget-it” end-user messaging of
-# Apple’s Declarative Device Management-required macOS updates
-#
 # http://snelson.us/ddm-os-reminder
-#
-####################################################################################################
-#
-# HISTORY
-#
-# Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
-#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
-#   - Updated `message` to clarify update instructions
 #
 ####################################################################################################
 
@@ -270,7 +255,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.1.0b1"
+scriptVersion="1.2.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -440,15 +425,40 @@ function updateRequiredVariables() {
     # Organization's Branding Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # Organization's Icon URL
-    organizationIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee"
+    # Organization's Overlayicon URL
+    organizationOverlayiconURL=""
 
-    # Download the icon from ${organizationIconURL}
-    if [[ -n "${organizationIconURL}" ]]; then
-        notice "Downloading icon from '${organizationIconURL}' …"
-        curl -o "/var/tmp/icon.png" "${organizationIconURL}" --silent --show-error --fail
+    # Download the overlayicon from ${organizationOverlayiconURL}
+    if [[ -n "${organizationOverlayiconURL}" ]]; then
+        # echo "Downloading overlayicon from '${organizationOverlayiconURL}' …"
+        curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
         if [[ "$?" -ne 0 ]]; then
-            error "Failed to download the icon from '${organizationIconURL}'."
+            echo "Error: Failed to download the overlayicon from '${brandingImageURL}'."
+            overlayicon="/System/Library/CoreServices/Finder.app"
+        else
+            overlayicon="/var/tmp/overlayicon.png"
+        fi
+    else
+        overlayicon="/System/Library/CoreServices/Finder.app"
+    fi
+
+
+
+    # macOS Installer Icon URL
+    versionPrefix="${ddmVersionString:0:2}"
+    case ${versionPrefix} in
+        14)  macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_01f5557364d5b99ce9b9d33a9bb675771cd85e3d896ad6c7a31cead6902fc233" ;;
+        15)  macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_246988a9f48b9e792f73614a88e2d0ac25bb9e170fa6c258fc8f05cc6789ce02" ;;
+        26)  macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_568c4ee325916fcf903b217d3b7dad179524a8c009713bed3cc66afbc235798f" ;;
+        *)   macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
+    esac
+
+    # Download the icon from ${macOSIconURL}
+    if [[ -n "${macOSIconURL}" ]]; then
+        notice "Downloading icon from '${macOSIconURL}' …"
+        curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail
+        if [[ "$?" -ne 0 ]]; then
+            error "Failed to download the icon from '${macOSIconURL}'."
             icon="/System/Library/CoreServices/Finder.app"
         else
             icon="/var/tmp/icon.png"
@@ -527,6 +537,7 @@ function displayDialogWindow() {
         --message "${message}" \
         --icon "${icon}" \
         --iconsize 250 \
+        --overlayicon "${overlayicon}" \
         --infobox "${infobox}" \
         --button1text "${button1text}" \
         --button2text "${button2text}" \

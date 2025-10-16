@@ -13,10 +13,10 @@
 > 
 > _Sorry for any Dan-induced headaches._
 
+- Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
 - Updated `message` variable to clarify update instructions
 - Tweaked `updateScriptLog` function to satisfy my CDO (i.e., the alphabetical version of "OCD")
-- Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 
 ### Version 1.0.0 (14-Oct-2025)
 - First "official" release (thanks for the testing and feedback, @TechTrekkie!)

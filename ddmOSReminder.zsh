@@ -21,7 +21,9 @@
 #
 # HISTORY
 #
-# Version 1.0.1, 15-Oct-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
+#   - :warning: **Breaking Change** :warning: for users of version `1.0.0`; please see CHANGELOG.md
+#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 #   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
 #   - Updated `message` variable to clarify update instructions
 #   - Tweaked `updateScriptLog` function to satisfy my CDO (i.e., the alphabetical version of "OCD")
@@ -251,9 +253,9 @@ cat <<'ENDOFSCRIPT'
 # HISTORY
 #
 # Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
+#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 #   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
 #   - Updated `message` to clarify update instructions
-#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 #
 ####################################################################################################
 

@@ -15,9 +15,9 @@
 # HISTORY
 #
 # Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
+#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 #   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
 #   - Updated `message` to clarify update instructions
-#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 #
 ####################################################################################################
 

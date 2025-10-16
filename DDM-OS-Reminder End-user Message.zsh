@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0b1"
+scriptVersion="1.2.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -143,37 +143,27 @@ function installedOSvsDDMenforcedOS() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Check User Focus and Display Assertions (thanks, @techtrekkie!)
+# Check User's Display Sleep Assertions (thanks, @techtrekkie!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function checkUserFocusDisplayAssertions() {
+function checkUserDisplaySleepAssertions() {
 
-    notice "Check User Focus and Display Assertions"
+    notice "Check ${loggedInUser}'s Display Sleep Assertions"
 
-    # Check for Focus or Do Not Disturb
-    focusResponse=$( plutil -extract data.0.storeAssertionRecords.0.assertionDetails.assertionDetailsModeIdentifier raw -o - "/Users/${loggedInUser}/Library/DoNotDisturb/DB/Assertions.json" | grep -ic 'com.apple.' )
-    if [[ "${focusResponse}" -gt 0 ]]; then
-        userFocusActive="TRUE"
-    else
-        userFocusActive="FALSE"
-    fi
-    # info "${loggedInUser}'s Focus or Do Not Disturb is ${userFocusActive}."
-
-    # Check for Display Sleep Assertions
     local previousIFS
     previousIFS="${IFS}"; IFS=$'\n'
     local displayAssertionsArray
     displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
     # info "displayAssertionsArray:\n${displayAssertionsArray[*]}"
     if [[ -n "${displayAssertionsArray[*]}" ]]; then
-        userDisplayAssertions="TRUE"
+        userDisplaySleepAssertions="TRUE"
         for displayAssertion in "${displayAssertionsArray[@]}"; do
-            # info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
+            info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
         done
     else
-        userDisplayAssertions="FALSE"
+        userDisplaySleepAssertions="FALSE"
     fi
-    # info "${loggedInUser}'s Display Sleep Assertion is ${userDisplayAssertions}."
+    info "${loggedInUser}'s Display Sleep Assertion is ${userDisplaySleepAssertions}."
     IFS="${previousIFS}"
 
 }
@@ -321,7 +311,7 @@ function displayDialogWindow() {
     case ${returncode} in
 
         0)  ## Process exit code 0 scenario here
-            notice "User clicked ${button1text}"
+            notice "${loggedInUser} clicked ${button1text}"
             if [[ -n "${action}" ]]; then
                 su \- "$(stat -f%Su /dev/console)" -c "open '${action}'"
             fi
@@ -329,12 +319,12 @@ function displayDialogWindow() {
             ;;
 
         2)  ## Process exit code 2 scenario here
-            notice "User clicked ${button2text}"
+            notice "${loggedInUser} clicked ${button2text}"
             quitScript "0"
             ;;
 
         3)  ## Process exit code 3 scenario here
-            notice "User clicked ${infobuttontext}"
+            notice "${loggedInUser} clicked ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
             quitScript "0"
@@ -456,12 +446,18 @@ installedOSvsDDMenforcedOS
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # Confirm the currently logged-in user is "available" to be reminded
-    checkUserFocusDisplayAssertions
-    if [[ "${userFocusActive}" == "TRUE" ]] || [[ "${userDisplayAssertions}" == "TRUE" ]]; then
-        info "User has a Focus mode enabled and / or a Display Assertion is active; exiting."
-        quitScript "0"
+    checkUserDisplaySleepAssertions
+
+    # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
+    if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
+        if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
+            info "User has an active Display Sleep Assertion; exiting."
+            quitScript "0"
+        else
+            info "User is available; proceeding …"
+        fi
     else
-        info "User is 'available.'"
+        info "Deadline is within 24 hours; ignoring any user Display Sleep Assertions."
     fi
 
     # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds

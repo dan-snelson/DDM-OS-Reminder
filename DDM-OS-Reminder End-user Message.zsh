@@ -5,19 +5,7 @@
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# A swiftDialog and LaunchDaemon pair for “set-it-and-forget-it” end-user messaging of
-# Apple’s Declarative Device Management-required macOS updates
-#
 # http://snelson.us/ddm-os-reminder
-#
-####################################################################################################
-#
-# HISTORY
-#
-# Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
-#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
-#   - Updated `message` to clarify update instructions
 #
 ####################################################################################################
 
@@ -32,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.1.0b1"
+scriptVersion="1.1.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

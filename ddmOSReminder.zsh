@@ -39,7 +39,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b4"
+scriptVersion="1.1.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -72,8 +72,8 @@ organizationScriptName="dor"
 organizationDirectory="/Library/Management/org.churchofjesuschrist"
 
 # LaunchDaemon Name & Path
-launchDaemonName="${reverseDomainNameNotation}.${organizationScriptName}.plist"
-launchDaemonPath="/Library/LaunchDaemons/${launchDaemonName}"
+launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
+launchDaemonPath="/Library/LaunchDaemons/${launchDaemonLabel}.plist"
 
 
 
@@ -241,17 +241,19 @@ cat <<'ENDOFSCRIPT'
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
-# DDM-required macOS updates
+# A swiftDialog and LaunchDaemon pair for “set-it-and-forget-it” end-user messaging of
+# Apple’s Declarative Device Management-required macOS updates
 #
-# https://github.com/dan-snelson/DDM-OS-Reminder
+# http://snelson.us/ddm-os-reminder
 #
 ####################################################################################################
 #
 # HISTORY
 #
-# Version 1.0.1, 15-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks. @TechTrekkie!)
+# Version 1.1.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
+#   - Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
+#   - Updated `message` to clarify update instructions
+#   - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Focus modes or Display Sleep Assertions enabled (thanks, @TechTrekkie!)
 #
 ####################################################################################################
 
@@ -266,7 +268,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.0.1b4"
+scriptVersion="1.1.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -288,6 +290,18 @@ organizationScriptName="dorm"
 
 # Organization's Days Before Deadline Blur Screen 
 daysBeforeDeadlineBlurscreen="3"
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Logged-in User Variables
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
+loggedInUserFullname=$( id -F "${loggedInUser}" )
+loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
+loggedInUserID=$( id -u "${loggedInUser}" )
+loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
 
 
 
@@ -377,6 +391,44 @@ function installedOSvsDDMenforcedOS() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Check User Focus and Display Assertions (thanks, @techtrekkie!)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function checkUserFocusDisplayAssertions() {
+
+    notice "Check User Focus and Display Assertions"
+
+    # Check for Focus or Do Not Disturb
+    focusResponse=$( plutil -extract data.0.storeAssertionRecords.0.assertionDetails.assertionDetailsModeIdentifier raw -o - "/Users/${loggedInUser}/Library/DoNotDisturb/DB/Assertions.json" | grep -ic 'com.apple.' )
+    if [[ "${focusResponse}" -gt 0 ]]; then
+        userFocusActive="TRUE"
+    else
+        userFocusActive="FALSE"
+    fi
+    # info "${loggedInUser}'s Focus or Do Not Disturb is ${userFocusActive}."
+
+    # Check for Display Sleep Assertions
+    local previousIFS
+    previousIFS="${IFS}"; IFS=$'\n'
+    local displayAssertionsArray
+    displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
+    # info "displayAssertionsArray:\n${displayAssertionsArray[*]}"
+    if [[ -n "${displayAssertionsArray[*]}" ]]; then
+        userDisplayAssertions="TRUE"
+        for displayAssertion in "${displayAssertionsArray[@]}"; do
+            # info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
+        done
+    else
+        userDisplayAssertions="FALSE"
+    fi
+    # info "${loggedInUser}'s Display Sleep Assertion is ${userDisplayAssertions}."
+    IFS="${previousIFS}"
+
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -434,7 +486,7 @@ function updateRequiredVariables() {
     title="macOS Update Required"
     button1text="Open Software Update"
     button2text="Remind Me Later"
-    message="**A required macOS update is now available**<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **Restart Now**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    message="**A required macOS update is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **Restart Now**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
@@ -582,7 +634,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# https://snelson.us\n####\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm-os-reminder\n####\n"
 preFlight "Initiating …"
 
 
@@ -624,6 +676,15 @@ installedOSvsDDMenforcedOS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
+
+    # Confirm the currently logged-in user is "available" to be reminded
+    checkUserFocusDisplayAssertions
+    if [[ "${userFocusActive}" == "TRUE" ]] || [[ "${userDisplayAssertions}" == "TRUE" ]]; then
+        info "User has a Focus mode enabled and / or a Display Assertion is active; exiting."
+        quitScript "0"
+    else
+        info "User is 'available.'"
+    fi
 
     # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds
     currentHour=$(( $(date +%H) ))
@@ -696,7 +757,7 @@ cat <<ENDOFLAUNCHDAEMON
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>${launchDaemonName}</string>
+    <string>${launchDaemonLabel}</string>
     <key>UserName</key>
     <string>root</string>
     <key>ProgramArguments</key>
@@ -740,7 +801,7 @@ ENDOFLAUNCHDAEMON
     chmod 644 "${launchDaemonPath}"
     chown root:wheel "${launchDaemonPath}"
 
-    logComment "Loading '${launchDaemonName}' …"
+    logComment "Loading '${launchDaemonLabel}' …"
     launchctl bootstrap system "${launchDaemonPath}"
     launchctl start "${launchDaemonPath}"
 
@@ -756,12 +817,12 @@ function launchDaemonStatus() {
 
     notice "LaunchDaemon Status"
     
-    launchDaemonStatus=$( launchctl list | grep "${launchDaemonName}" )
+    launchDaemonStatus=$( launchctl list | grep "${launchDaemonLabel}" )
 
     if [[ -n "${launchDaemonStatus}" ]]; then
         logComment "${launchDaemonStatus}"
     else
-        logComment "${launchDaemonName} is NOT loaded"
+        logComment "${launchDaemonLabel} is NOT loaded"
     fi
 
 }
@@ -796,7 +857,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# https://snelson.us\n#\n# Reset Configuration: ${resetConfiguration}\n###\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm-os-reminder\n#\n# Reset Configuration: ${resetConfiguration}\n###\n"
 preFlight "Initiating …"
 
 
@@ -855,7 +916,7 @@ fi
 # LaunchDaemon Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** VALIDATING LAUNCHAGENT ***"
+notice "*** VALIDATING LAUNCHDAEMON ***"
 
 logComment "Checking for LaunchDaemon '${launchDaemonPath}' …"
 
@@ -867,11 +928,11 @@ if [[ -f "${launchDaemonPath}" ]]; then
 
     if [[ -n "${launchDaemonStatus}" ]]; then
 
-        logComment "${launchDaemonName} IS loaded"
+        logComment "${launchDaemonLabel} IS loaded"
 
     else
 
-        logComment "Loading '${launchDaemonName}' …"
+        logComment "Loading '${launchDaemonLabel}' …"
         launchctl asuser $(id -u) bootstrap gui/$(id -u) "${launchDaemonPath}"
         launchDaemonStatus
 

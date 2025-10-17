@@ -491,7 +491,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         humanReadablePause="${sleepSeconds} second(s)"
     fi
     info "Pausing for ${humanReadablePause} (${sleepSeconds} seconds) …"
-    # sleep "${sleepSeconds}"
+    sleep "${sleepSeconds}"
 
     # Initialize Update Required Variables
     updateRequiredVariables

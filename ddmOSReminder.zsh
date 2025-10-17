@@ -438,9 +438,9 @@ function updateRequiredVariables() {
     # macOS Installer Icon URL
     versionPrefix="${ddmVersionString:0:2}"
     case ${versionPrefix} in
-        14)  macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_01f5557364d5b99ce9b9d33a9bb675771cd85e3d896ad6c7a31cead6902fc233" ;;
-        15)  macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_246988a9f48b9e792f73614a88e2d0ac25bb9e170fa6c258fc8f05cc6789ce02" ;;
-        26)  macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_568c4ee325916fcf903b217d3b7dad179524a8c009713bed3cc66afbc235798f" ;;
+        14)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
+        15)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
+        26)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
         *)   macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
     esac
 

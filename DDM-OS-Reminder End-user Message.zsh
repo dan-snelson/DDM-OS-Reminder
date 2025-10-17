@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0b3"
+scriptVersion="1.2.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -137,8 +137,10 @@ function installedOSvsDDMenforcedOS() {
         majorInstalled="${installedOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "${majorInstalled}" != "${majorDDM}" ]]; then
+            titleUpdateOrUpgrade="Upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
+            titleUpdateOrUpgrade="Update"
             softwareUpdateButtonText="Restart Now"
         fi
     fi
@@ -257,10 +259,10 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    title="macOS Update Required"
+    title="macOS ${titleUpdateOrUpgrade} Required"
     button1text="Open Software Update"
     button2text="Remind Me Later"
-    message="**A required macOS update is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    message="**A required macOS ${titleUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
@@ -307,7 +309,7 @@ function displayDialogWindow() {
         --messagefont "size=14" \
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \
-        --width 750 \
+        --width 800 \
         --height 600 \
         "${blurscreen}" \
         --ontop
@@ -458,13 +460,13 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
     if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
         if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
-            info "User has an active Display Sleep Assertion; exiting."
+            info "${loggedInUser} has an active Display Sleep Assertion; exiting."
             quitScript "0"
         else
-            info "User is available; proceeding …"
+            info "${loggedInUser} is available; proceeding …"
         fi
     else
-        info "Deadline is within 24 hours; ignoring any user Display Sleep Assertions."
+        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."
     fi
 
     # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds
@@ -490,7 +492,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     else
         humanReadablePause="${sleepSeconds} second(s)"
     fi
-    info "Pausing for ${humanReadablePause} (${sleepSeconds} seconds) …"
+    info "Pausing for ${humanReadablePause} …"
     sleep "${sleepSeconds}"
 
     # Initialize Update Required Variables

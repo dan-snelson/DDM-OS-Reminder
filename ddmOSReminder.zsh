@@ -21,10 +21,11 @@
 #
 # HISTORY
 #
-# Version 1.2.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.2.0, 17-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - :warning: **Breaking Change** :warning: for users of version `1.0.0`; please see CHANGELOG.md
 #   - Addressed Issue #3: Use Dynamic icon based on OS Update version (thanks for the suggestion, @ScottEKendall!)
-#   - Addressed Issue #5: Added logic to ignore Display Assertions 24 hours prior to enforcement.
+#   - Addressed Issue #5: Added logic to ignore Display Assertions 24 hours prior to enforcement
+#   - Added `softwareUpdateButtonText` variable, based on a minor-version "update" vs. a major-version "upgrade"
 #
 ####################################################################################################
 
@@ -39,7 +40,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0b2"
+scriptVersion="1.2.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -256,7 +257,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0b2"
+scriptVersion="1.2.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -359,7 +360,7 @@ function installedOSvsDDMenforcedOS() {
 
     # Version Comparison Result
     if [[ -z "$ddmEnforcedInstallDate" ]]; then
-        # No DDM-enforced macOS version found.
+        # No DDM-enforced macOS version found
         versionComparisonResult="Not Found"
     elif is-at-least "${ddmVersionString}" "${installedOSVersion}"; then
         # macOS is up-to-date
@@ -370,6 +371,13 @@ function installedOSvsDDMenforcedOS() {
         versionComparisonResult="Update Required"
         info "DDM-enforced OS Version: $ddmVersionString"
         info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadline"
+        majorInstalled="${installedOSVersion%%.*}"
+        majorDDM="${ddmVersionString%%.*}"
+        if [[ "${majorInstalled}" != "${majorDDM}" ]]; then
+            softwareUpdateButtonText="Upgrade Now"
+        else
+            softwareUpdateButtonText="Restart Now"
+        fi
     fi
 
     notice "$versionComparisonResult"
@@ -421,10 +429,10 @@ function updateRequiredVariables() {
 
     # Download the overlayicon from ${organizationOverlayiconURL}
     if [[ -n "${organizationOverlayiconURL}" ]]; then
-        # echo "Downloading overlayicon from '${organizationOverlayiconURL}' …"
+        # notice "Downloading overlayicon from '${organizationOverlayiconURL}' …"
         curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
         if [[ "$?" -ne 0 ]]; then
-            echo "Error: Failed to download the overlayicon from '${brandingImageURL}'."
+            echo "Error: Failed to download the overlayicon from '${organizationOverlayiconURL}'."
             overlayicon="/System/Library/CoreServices/Finder.app"
         else
             overlayicon="/var/tmp/overlayicon.png"
@@ -436,8 +444,8 @@ function updateRequiredVariables() {
 
 
     # macOS Installer Icon URL
-    versionPrefix="${ddmVersionString:0:2}"
-    case ${versionPrefix} in
+    majorDDM="${ddmVersionString%%.*}"
+    case ${majorDDM} in
         14)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
         15)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
         26)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
@@ -446,7 +454,7 @@ function updateRequiredVariables() {
 
     # Download the icon from ${macOSIconURL}
     if [[ -n "${macOSIconURL}" ]]; then
-        notice "Downloading icon from '${macOSIconURL}' …"
+        # notice "Downloading icon from '${macOSIconURL}' …"
         curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail
         if [[ "$?" -ne 0 ]]; then
             error "Failed to download the icon from '${macOSIconURL}'."
@@ -489,7 +497,7 @@ function updateRequiredVariables() {
     title="macOS Update Required"
     button1text="Open Software Update"
     button2text="Remind Me Later"
-    message="**A required macOS update is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **Restart Now**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    message="**A required macOS update is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
@@ -708,8 +716,19 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         sleepSeconds=$(( 30 + RANDOM % 61 ))
     fi
 
-    info "Pausing for ${sleepSeconds} seconds …"
-    sleep "${sleepSeconds}"
+    if (( sleepSeconds >= 60 )); then
+        (( pauseMinutes = sleepSeconds / 60 ))
+        (( pauseSeconds = sleepSeconds % 60 ))
+        if (( pauseSeconds == 0 )); then
+            humanReadablePause="${pauseMinutes} minute(s)"
+        else
+            humanReadablePause="${pauseMinutes} minute(s), ${pauseSeconds} second(s)"
+        fi
+    else
+        humanReadablePause="${sleepSeconds} second(s)"
+    fi
+    info "Pausing for ${humanReadablePause} (${sleepSeconds} seconds) …"
+    # sleep "${sleepSeconds}"
 
     # Initialize Update Required Variables
     updateRequiredVariables

@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 1.2.0 (16-Oct-2025)
+### Version 1.2.0 (17-Oct-2025)
 
 > :warning: **Breaking Change** :warning:
 >
@@ -16,6 +16,7 @@
 
 - Addressed Issue #3: Use Dynamic icon based on OS Update version (thanks for the suggestion, @ScottEKendall!)
 - Addressed Issue #5: Added logic to ignore Display Assertions 24 hours prior to enforcement (per [Apple's documentation](https://support.apple.com/guide/deployment/install-and-enforce-software-updates-depd30715cbb/1/web/1.0))
+- Added `softwareUpdateButtonText` variable, based on a minor-version "update" vs. a major-version "upgrade"
 
 ### Version 1.1.0 (16-Oct-2025)
 - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Display Sleep Assertions enabled (thanks, @TechTrekkie!)

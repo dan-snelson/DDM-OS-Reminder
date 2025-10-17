@@ -24,7 +24,7 @@
 # Version 1.2.0, 16-Oct-2025, Dan K. Snelson (@dan-snelson)
 #   - :warning: **Breaking Change** :warning: for users of version `1.0.0`; please see CHANGELOG.md
 #   - Addressed Issue #3: Use Dynamic icon based on OS Update version (thanks for the suggestion, @ScottEKendall!)
-#   - Addressed Issue #5: Added logic to ignore Do Not Disturb / Display Assertions 24 hours prior to enforcement.
+#   - Addressed Issue #5: Added logic to ignore Display Assertions 24 hours prior to enforcement.
 #
 ####################################################################################################
 

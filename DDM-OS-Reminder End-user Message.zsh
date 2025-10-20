@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0b4"
+scriptVersion="1.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -137,15 +137,13 @@ function installedOSvsDDMenforcedOS() {
         majorInstalled="${installedOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "${majorInstalled}" != "${majorDDM}" ]]; then
-            titleUpdateOrUpgrade="Upgrade"
+            titleMessageUpdateOrUpgrade="Upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
-            titleUpdateOrUpgrade="Update"
+            titleMessageUpdateOrUpgrade="Update"
             softwareUpdateButtonText="Restart Now"
         fi
     fi
-
-    notice "$versionComparisonResult"
 
 }
 
@@ -259,10 +257,10 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    title="macOS ${titleUpdateOrUpgrade} Required"
+    title="macOS ${titleMessageUpdateOrUpgrade} Required"
     button1text="Open Software Update"
     button2text="Remind Me Later"
-    message="**A required macOS ${titleUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    message="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
@@ -501,12 +499,17 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Create Main Dialog Window
     displayDialogWindow
 
+else
+
+    info "Version Comparison Result: ${versionComparisonResult}"
+
 fi
 
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# No Update Required; Exit
+# Exit
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 exit 0
+zs

@@ -1,8 +1,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-
 # DDM OS Reminder
-> A swiftDialog and LaunchDaemon pair for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-required macOS updates
+> A swiftDialog-enabled script and LaunchDaemon pair for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-required macOS updates
 
 <img src="images/ddmOSReminder_Hero.png" alt="DDM-OS-Reminder Hero" width="800"/>
 
@@ -26,7 +25,7 @@ While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful
 - **Customizable**: Easily customize the swiftDialog message’s title, message, icon, and button text to fit your organization’s needs by editing the provided [`DDM-OS-Reminder End-user Message.zsh`](DDM-OS-Reminder%20End-user%20Message.zsh) script. (See Documentation [Step A](https://snelson.us/2025/10/ddm-os-reminder/#A).)
 - **Set-it-and-forget-it**: Once installed, the LaunchDaemon executes your customized [`ddmOSReminder.zsh`](ddmOSReminder.zsh) script, which automatically checks the installed version of macOS against the DDM-enforced macOS version twice daily and displays your customized message if an update is required. (See Documentation [Step B](https://snelson.us/2025/10/ddm-os-reminder/#B).)
 - **Deadline Awareness**: Each time a DDM-enforced macOS version and deadline is set, the message will dynamically include a countdown to the deadline, creating a sense of urgency for end-users to update their Macs.
-- **Tastefully Intrusive**: The message is designed to be informative without being overly disruptive — first checking for the user's Focus modes and Display Sleep Assertions — allowing users to continue their work while being reminded of the need to update.
+- **Tastefully Intrusive**: The message is designed to be informative without being overly disruptive — first checking for the user's Display Sleep Assertions — allowing users to continue their work while being reminded of the need to update.
 - **Easy Installation**: The script can be easily deployed via MDM solutions, making it simple to roll out across an organization.
 - **Logging**: The script logs its actions to a specified log file, allowing administrators to monitor its activity and troubleshoot if necessary.
 

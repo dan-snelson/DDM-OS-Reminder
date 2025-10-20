@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.1.0"
+scriptVersion="1.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -123,7 +123,7 @@ function installedOSvsDDMenforcedOS() {
 
     # Version Comparison Result
     if [[ -z "$ddmEnforcedInstallDate" ]]; then
-        # No DDM-enforced macOS version found.
+        # No DDM-enforced macOS version found
         versionComparisonResult="Not Found"
     elif is-at-least "${ddmVersionString}" "${installedOSVersion}"; then
         # macOS is up-to-date
@@ -134,46 +134,43 @@ function installedOSvsDDMenforcedOS() {
         versionComparisonResult="Update Required"
         info "DDM-enforced OS Version: $ddmVersionString"
         info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadline"
+        majorInstalled="${installedOSVersion%%.*}"
+        majorDDM="${ddmVersionString%%.*}"
+        if [[ "${majorInstalled}" != "${majorDDM}" ]]; then
+            titleMessageUpdateOrUpgrade="Upgrade"
+            softwareUpdateButtonText="Upgrade Now"
+        else
+            titleMessageUpdateOrUpgrade="Update"
+            softwareUpdateButtonText="Restart Now"
+        fi
     fi
-
-    notice "$versionComparisonResult"
 
 }
 
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Check User Focus and Display Assertions (thanks, @techtrekkie!)
+# Check User's Display Sleep Assertions (thanks, @techtrekkie!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function checkUserFocusDisplayAssertions() {
+function checkUserDisplaySleepAssertions() {
 
-    notice "Check User Focus and Display Assertions"
+    notice "Check ${loggedInUser}'s Display Sleep Assertions"
 
-    # Check for Focus or Do Not Disturb
-    focusResponse=$( plutil -extract data.0.storeAssertionRecords.0.assertionDetails.assertionDetailsModeIdentifier raw -o - "/Users/${loggedInUser}/Library/DoNotDisturb/DB/Assertions.json" | grep -ic 'com.apple.' )
-    if [[ "${focusResponse}" -gt 0 ]]; then
-        userFocusActive="TRUE"
-    else
-        userFocusActive="FALSE"
-    fi
-    # info "${loggedInUser}'s Focus or Do Not Disturb is ${userFocusActive}."
-
-    # Check for Display Sleep Assertions
     local previousIFS
     previousIFS="${IFS}"; IFS=$'\n'
     local displayAssertionsArray
     displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
     # info "displayAssertionsArray:\n${displayAssertionsArray[*]}"
     if [[ -n "${displayAssertionsArray[*]}" ]]; then
-        userDisplayAssertions="TRUE"
+        userDisplaySleepAssertions="TRUE"
         for displayAssertion in "${displayAssertionsArray[@]}"; do
-            # info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
+            info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
         done
     else
-        userDisplayAssertions="FALSE"
+        userDisplaySleepAssertions="FALSE"
     fi
-    # info "${loggedInUser}'s Display Sleep Assertion is ${userDisplayAssertions}."
+    info "${loggedInUser}'s Display Sleep Assertion is ${userDisplaySleepAssertions}."
     IFS="${previousIFS}"
 
 }
@@ -190,15 +187,40 @@ function updateRequiredVariables() {
     # Organization's Branding Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # Organization's Icon URL
-    organizationIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee"
+    # Organization's Overlayicon URL
+    organizationOverlayiconURL=""
 
-    # Download the icon from ${organizationIconURL}
-    if [[ -n "${organizationIconURL}" ]]; then
-        notice "Downloading icon from '${organizationIconURL}' …"
-        curl -o "/var/tmp/icon.png" "${organizationIconURL}" --silent --show-error --fail
+    # Download the overlayicon from ${organizationOverlayiconURL}
+    if [[ -n "${organizationOverlayiconURL}" ]]; then
+        # notice "Downloading overlayicon from '${organizationOverlayiconURL}' …"
+        curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
         if [[ "$?" -ne 0 ]]; then
-            error "Failed to download the icon from '${organizationIconURL}'."
+            echo "Error: Failed to download the overlayicon from '${organizationOverlayiconURL}'."
+            overlayicon="/System/Library/CoreServices/Finder.app"
+        else
+            overlayicon="/var/tmp/overlayicon.png"
+        fi
+    else
+        overlayicon="/System/Library/CoreServices/Finder.app"
+    fi
+
+
+
+    # macOS Installer Icon URL
+    majorDDM="${ddmVersionString%%.*}"
+    case ${majorDDM} in
+        14)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
+        15)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
+        26)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
+        *)   macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
+    esac
+
+    # Download the icon from ${macOSIconURL}
+    if [[ -n "${macOSIconURL}" ]]; then
+        # notice "Downloading icon from '${macOSIconURL}' …"
+        curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail
+        if [[ "$?" -ne 0 ]]; then
+            error "Failed to download the icon from '${macOSIconURL}'."
             icon="/System/Library/CoreServices/Finder.app"
         else
             icon="/var/tmp/icon.png"
@@ -235,10 +257,10 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    title="macOS Update Required"
+    title="macOS ${titleMessageUpdateOrUpgrade} Required"
     button1text="Open Software Update"
     button2text="Remind Me Later"
-    message="**A required macOS update is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the update now, click **${button1text}**, review the on-screen instructions, then click **Restart Now**.<br><br>If you are unable to perform this update now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and update** on **${ddmEnforcedInstallDateHumanReadable}** if you have not updated before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    message="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
@@ -277,6 +299,7 @@ function displayDialogWindow() {
         --message "${message}" \
         --icon "${icon}" \
         --iconsize 250 \
+        --overlayicon "${overlayicon}" \
         --infobox "${infobox}" \
         --button1text "${button1text}" \
         --button2text "${button2text}" \
@@ -284,7 +307,7 @@ function displayDialogWindow() {
         --messagefont "size=14" \
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \
-        --width 750 \
+        --width 800 \
         --height 600 \
         "${blurscreen}" \
         --ontop
@@ -295,7 +318,7 @@ function displayDialogWindow() {
     case ${returncode} in
 
         0)  ## Process exit code 0 scenario here
-            notice "User clicked ${button1text}"
+            notice "${loggedInUser} clicked ${button1text}"
             if [[ -n "${action}" ]]; then
                 su \- "$(stat -f%Su /dev/console)" -c "open '${action}'"
             fi
@@ -303,12 +326,12 @@ function displayDialogWindow() {
             ;;
 
         2)  ## Process exit code 2 scenario here
-            notice "User clicked ${button2text}"
+            notice "${loggedInUser} clicked ${button2text}"
             quitScript "0"
             ;;
 
         3)  ## Process exit code 3 scenario here
-            notice "User clicked ${infobuttontext}"
+            notice "${loggedInUser} clicked ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
             quitScript "0"
@@ -430,12 +453,18 @@ installedOSvsDDMenforcedOS
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # Confirm the currently logged-in user is "available" to be reminded
-    checkUserFocusDisplayAssertions
-    if [[ "${userFocusActive}" == "TRUE" ]] || [[ "${userDisplayAssertions}" == "TRUE" ]]; then
-        info "User has a Focus mode enabled and / or a Display Assertion is active; exiting."
-        quitScript "0"
+    checkUserDisplaySleepAssertions
+
+    # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
+    if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
+        if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
+            info "${loggedInUser} has an active Display Sleep Assertion; exiting."
+            quitScript "0"
+        else
+            info "${loggedInUser} is available; proceeding …"
+        fi
     else
-        info "User is 'available.'"
+        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."
     fi
 
     # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds
@@ -450,7 +479,18 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         sleepSeconds=$(( 30 + RANDOM % 61 ))
     fi
 
-    info "Pausing for ${sleepSeconds} seconds …"
+    if (( sleepSeconds >= 60 )); then
+        (( pauseMinutes = sleepSeconds / 60 ))
+        (( pauseSeconds = sleepSeconds % 60 ))
+        if (( pauseSeconds == 0 )); then
+            humanReadablePause="${pauseMinutes} minute(s)"
+        else
+            humanReadablePause="${pauseMinutes} minute(s), ${pauseSeconds} second(s)"
+        fi
+    else
+        humanReadablePause="${sleepSeconds} second(s)"
+    fi
+    info "Pausing for ${humanReadablePause} …"
     sleep "${sleepSeconds}"
 
     # Initialize Update Required Variables
@@ -459,12 +499,17 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Create Main Dialog Window
     displayDialogWindow
 
+else
+
+    info "Version Comparison Result: ${versionComparisonResult}"
+
 fi
 
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# No Update Required; Exit
+# Exit
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 exit 0
+zs

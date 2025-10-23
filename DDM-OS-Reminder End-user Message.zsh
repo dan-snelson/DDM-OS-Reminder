@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0"
+scriptVersion="1.3.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -105,14 +105,25 @@ function installedOSvsDDMenforcedOS() {
         tmp=${ddmEnforcedInstallDateRaw##*|VersionString:}
         ddmVersionString=${tmp%%|*}
 
-        ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
-        ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ AM/ a.m.}
-        ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ PM/ p.m.}
-
+        # DDM-enforced Deadline
         ddmVersionStringDeadline=${ddmEnforcedInstallDate%%T*}
-        deadlineEpoch=$(date -jf "%Y-%m-%d" "$ddmVersionStringDeadline" "+%s" 2>/dev/null)
-        ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date "+%s")) / 86400 ))
+        deadlineEpoch=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null)
+        ddmVersionStringDeadlineHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+        ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable/ AM/ a.m.}
+        ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable/ PM/ p.m.}
 
+        # DDM-enforced Install Date Human-readable
+        if [[ "${deadlineEpoch}" -le "$(date "+%s")" ]]; then
+            ddmEnforcedInstallDateHumanReadable=$(date -jf "%s" "$(( $(date +%s) + 3600 ))" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ AM/ a.m.}
+            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ PM/ p.m.}
+        else
+            ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ AM/ a.m.}
+            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ PM/ p.m.}
+        fi
+
+        ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date "+%s")) / 86400 ))
         if [[ "${ddmVersionStringDaysRemaining}" -le "${daysBeforeDeadlineBlurscreen}" ]]; then
             blurscreen="--blurscreen"
         else
@@ -270,7 +281,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmEnforcedInstallDateHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    infobox="**Current:** ${installedOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
 
 
 

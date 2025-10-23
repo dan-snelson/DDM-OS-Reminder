@@ -2,6 +2,9 @@
 
 ## Changelog
 
+### Version 1.3.0 (23-Oct-2025)
+- Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
+
 ### Version 1.2.0 (20-Oct-2025)
 
 > :warning: **Breaking Change** :warning:

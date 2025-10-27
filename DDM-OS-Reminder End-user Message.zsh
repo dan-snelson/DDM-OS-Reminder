@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b1"
+scriptVersion="1.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -87,67 +87,57 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 # Installed OS vs. DDM-enforced OS Comparison
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function installedOSvsDDMenforcedOS() {
+installedOSvsDDMenforcedOS() {
 
     # Installed OS Version
     installedOSVersion=$(sw_vers -productVersion)
     notice "Installed OS Version: $installedOSVersion"
 
     # DDM-enforced OS Version
-    ddmEnforcedInstallDateRaw=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
-    if [[ -n "$ddmEnforcedInstallDateRaw" ]]; then
-        
-        # DDM-enforced Install Date
-        tmp=${ddmEnforcedInstallDateRaw##*|EnforcedInstallDate:}
-        ddmEnforcedInstallDate=${tmp%%|*}
-        
-        # DDM-enforced Version
-        tmp=${ddmEnforcedInstallDateRaw##*|VersionString:}
-        ddmVersionString=${tmp%%|*}
-
-        # DDM-enforced Deadline
-        ddmVersionStringDeadline=${ddmEnforcedInstallDate%%T*}
-        deadlineEpoch=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null)
-        ddmVersionStringDeadlineHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
-        ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable/ AM/ a.m.}
-        ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable/ PM/ p.m.}
-
-        # DDM-enforced Install Date Human-readable
-        if [[ "${deadlineEpoch}" -le "$(date "+%s")" ]]; then
-            ddmEnforcedInstallDateHumanReadable=$(date -jf "%s" "$(( $(date +%s) + 3600 ))" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
-            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ AM/ a.m.}
-            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ PM/ p.m.}
-        else
-            ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
-            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ AM/ a.m.}
-            ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ PM/ p.m.}
-        fi
-
-        ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date "+%s")) / 86400 ))
-        if [[ "${ddmVersionStringDaysRemaining}" -le "${daysBeforeDeadlineBlurscreen}" ]]; then
-            blurscreen="--blurscreen"
-        else
-            blurscreen="--noblurscreen"
-        fi
-
+    ddmLogEntry=$(grep EnforcedInstallDate /var/log/install.log | tail -n1)
+    if [[ -z "$ddmLogEntry" ]]; then
+        versionComparisonResult="Not Found"
+        return
     fi
 
+    # Parse enforced date and version
+    ddmEnforcedInstallDate="${${ddmLogEntry##*|EnforcedInstallDate:}%%|*}"
+    ddmVersionString="${${ddmLogEntry##*|VersionString:}%%|*}"
+
+    # DDM-enforced Deadline
+    ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
+    deadlineEpoch=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null)
+    ddmVersionStringDeadlineHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+    ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
+    ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
+
+    # DDM-enforced Install Date (human-readable)
+    if (( deadlineEpoch <= $(date +%s) )); then
+        # If the enforcement deadline has passed, add one hour (Apple's documentation: "… within the next hour …")
+        ddmEnforcedInstallDateHumanReadable=$(date -jf "%s" "$(( $(date +%s) + 3600 ))" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+    else
+        ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
+    fi
+    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
+    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
+
+    # Days Remaining (allow negative values)
+    ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date +%s)) / 86400 ))
+
+    # Blur screen logic
+    blurscreen=$([[ $ddmVersionStringDaysRemaining -le $daysBeforeDeadlineBlurscreen ]] && echo "--blurscreen" || echo "--noblurscreen")
+
     # Version Comparison Result
-    if [[ -z "$ddmEnforcedInstallDate" ]]; then
-        # No DDM-enforced macOS version found
-        versionComparisonResult="Not Found"
-    elif is-at-least "${ddmVersionString}" "${installedOSVersion}"; then
-        # macOS is up-to-date
+    if is-at-least "$ddmVersionString" "$installedOSVersion"; then
         versionComparisonResult="Up-to-date"
         info "DDM-enforced OS Version: $ddmVersionString"
     else
-        # macOS update required
         versionComparisonResult="Update Required"
         info "DDM-enforced OS Version: $ddmVersionString"
-        info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadline"
+        info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
         majorInstalled="${installedOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
-        if [[ "${majorInstalled}" != "${majorDDM}" ]]; then
+        if [[ "$majorInstalled" != "$majorDDM" ]]; then
             titleMessageUpdateOrUpgrade="Upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
@@ -457,7 +447,7 @@ installedOSvsDDMenforcedOS
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # ## # # # # # # # # # # # # # # # # # # # # #
 # If Update Required, Display Dialog Window
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

@@ -44,6 +44,10 @@ tmpScript="${outputScript}.tmp"
 #
 ####################################################################################################
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Display Header
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 echo "🧩 Assembling DDM OS Reminder"
 echo "Resources dir:   ${scriptDir}"
 echo "Base script:     ${baseScript}"
@@ -53,10 +57,18 @@ echo
 
 
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Validate Input Files
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 [[ -f "${baseScript}" ]]    || { echo "❌ Base script not found: ${baseScript}"; exit 1; }
 [[ -f "${messageScript}" ]] || { echo "❌ Message script not found: ${messageScript}"; exit 1; }
 
 
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Insert End-user Message (with updateScriptLog patch)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 echo "🔧 Inserting end-user message …"
 
@@ -98,6 +110,10 @@ rm -f "${patchedMessage}"
 
 
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Verify Output and Permissions
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 if grep -q "ENDOFSCRIPT" "${tmpScript}"; then
     mv "${tmpScript}" "${outputScript}"
     chmod +x "${outputScript}"
@@ -110,6 +126,10 @@ fi
 
 
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Syntax Check
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 if zsh -n "${outputScript}" >/dev/null 2>&1; then
     echo "✅ Syntax check passed."
 else
@@ -117,5 +137,9 @@ else
 fi
 
 
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Exit
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 echo "🏁 Done."

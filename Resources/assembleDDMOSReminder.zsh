@@ -44,10 +44,6 @@ tmpScript="${outputScript}.tmp"
 #
 ####################################################################################################
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Display Header
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 echo "🧩 Assembling DDM OS Reminder"
 echo "Resources dir:   ${scriptDir}"
 echo "Base script:     ${baseScript}"
@@ -57,50 +53,50 @@ echo
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Validate Input Files
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 [[ -f "${baseScript}" ]]    || { echo "❌ Base script not found: ${baseScript}"; exit 1; }
 [[ -f "${messageScript}" ]] || { echo "❌ Message script not found: ${messageScript}"; exit 1; }
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Insert End-user Message (with updateScriptLog patch)
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 echo "🔧 Inserting end-user message …"
 
-# Create a temp copy of the message with logging pipe commented out
 patchedMessage=$(mktemp)
 sed 's/| tee -a "\${scriptLog}"/# | tee -a "\${scriptLog}"/' "${messageScript}" > "${patchedMessage}"
 
+lastMessageLine=$(tail -n 1 "${patchedMessage}")
+lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"
+
 {
     inBlock=false
-    while IFS= read -r line; do
+    prevLine=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line%%$'\r'}"
+        prevTrimmed="${prevLine//[[:space:]]/}"
+
         if [[ $line == "cat <<'ENDOFSCRIPT'"* ]]; then
             echo "$line"
             cat "${patchedMessage}"
             inBlock=true
             continue
         fi
-        if [[ $line == "ENDOFSCRIPT" ]]; then
-            inBlock=false
-        fi
+
         if [[ $inBlock == false ]]; then
             echo "$line"
+        elif [[ $line == "ENDOFSCRIPT" ]]; then
+            if [[ -n "$lastMessageTrimmed" ]]; then
+                echo ""
+            fi
+            printf "%s\n" "$line"
+            inBlock=false
         fi
+
+        prevLine="$line"
     done < "${baseScript}"
 } > "${tmpScript}"
 
 rm -f "${patchedMessage}"
 
 
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Verify Output and Permissions
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if grep -q "ENDOFSCRIPT" "${tmpScript}"; then
     mv "${tmpScript}" "${outputScript}"
@@ -114,10 +110,6 @@ fi
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Syntax Check
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 if zsh -n "${outputScript}" >/dev/null 2>&1; then
     echo "✅ Syntax check passed."
 else
@@ -125,9 +117,5 @@ else
 fi
 
 
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Exit
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 echo "🏁 Done."

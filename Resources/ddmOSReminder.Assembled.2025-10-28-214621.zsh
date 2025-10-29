@@ -747,6 +747,7 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 exit 0
+
 ENDOFSCRIPT
 ) > "${organizationDirectory}/${organizationScriptName}.zsh"
 
@@ -1003,3 +1004,4 @@ launchDaemonStatus
 # Exit
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+exit 0

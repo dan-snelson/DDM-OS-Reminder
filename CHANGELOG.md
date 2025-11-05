@@ -2,9 +2,10 @@
 
 ## Changelog
 
-### Version 1.3.0 (27-Oct-2025)
+### Version 1.3.0 (05-Nov-2025)
 
 - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
+- Refactored logged-in user detection
 
 ### Version 1.2.0 (20-Oct-2025)
 

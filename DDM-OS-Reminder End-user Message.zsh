@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b2"
+scriptVersion="1.3.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -42,18 +42,6 @@ organizationScriptName="dorm"
 
 # Organization's Days Before Deadline Blur Screen 
 daysBeforeDeadlineBlurscreen="3"
-
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Logged-in User Variables
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
-loggedInUserFullname=$( id -F "${loggedInUser}" )
-loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
-loggedInUserID=$( id -u "${loggedInUser}" )
-loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
 
 
 
@@ -84,6 +72,17 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Current Logged-in User
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function currentLoggedInUser() {
+    loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
+    preFlight "Current Logged-in User: ${loggedInUser}"
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Installed OS vs. DDM-enforced OS Comparison
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -94,7 +93,7 @@ installedOSvsDDMenforcedOS() {
     notice "Installed OS Version: $installedOSVersion"
 
     # DDM-enforced OS Version
-    ddmLogEntry=$(grep EnforcedInstallDate /var/log/install.log | tail -n1)
+    ddmLogEntry=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
     if [[ -z "$ddmLogEntry" ]]; then
         versionComparisonResult="Not Found"
         return
@@ -106,15 +105,20 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
-    deadlineEpoch=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null)
-    ddmVersionStringDeadlineHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+    deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null)
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
 
     # DDM-enforced Install Date (human-readable)
     if (( deadlineEpoch <= $(date +%s) )); then
-        # If the enforcement deadline has passed, add one hour (Apple's documentation: "… within the next hour …")
-        ddmEnforcedInstallDateHumanReadable=$(date -jf "%s" "$(( $(date +%s) + 3600 ))" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
+        # Enforcement deadline passed; set human-readable enforcement date to 61 minutes after last boot time
+        bootEpoch=$( sysctl -n kern.boottime | awk -F'[=,]' '{print $2}' | tr -d ' ' )
+        [[ -z "${bootEpoch}" ]] && bootEpoch=$( date +%s )
+        targetEpoch=$(( bootEpoch + 3660 ))  # 61 minutes after boot
+        ddmEnforcedInstallDateHumanReadable=$(
+            date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null
+        )
     else
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
     fi
@@ -422,6 +426,32 @@ preFlight "Initiating …"
 if [[ $(id -u) -ne 0 ]]; then
     fatal "This script must be run as root; exiting."
 fi
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Pre-flight Check: Validate Logged-in System Accounts
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+preFlight "Check for Logged-in System Accounts …"
+currentLoggedInUser
+
+counter="1"
+
+until { [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]] || [[ "${counter}" -gt "30" ]]; } ; do
+
+    preFlight "Logged-in User Counter: ${counter}"
+    currentLoggedInUser
+    sleep 2
+    ((counter++))
+
+done
+
+loggedInUserFullname=$( id -F "${loggedInUser}" )
+loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
+loggedInUserID=$( id -u "${loggedInUser}" )
+preFlight "Current Logged-in User First Name: ${loggedInUserFirstname}"
+preFlight "Current Logged-in User ID: ${loggedInUserID}"
 
 
 

@@ -327,6 +327,18 @@ function displayDialogWindow() {
             if [[ -n "${action}" ]]; then
                 su \- "$(stat -f%Su /dev/console)" -c "open '${action}'"
             fi
+            
+            # Wait until System Settings is running
+            info "Checking to see if System Settings is open"
+            until pgrep -x "System Settings" >/dev/null; do
+                notice "Pending System Settings launch... Sleep for 0.5"
+                sleep 0.5
+            done
+            
+            # Bring to front
+            info "Telling System Settings to make a guest appearance"
+            osascript -e 'tell application "System Settings" to activate'
+            
             quitScript "0"
             ;;
 

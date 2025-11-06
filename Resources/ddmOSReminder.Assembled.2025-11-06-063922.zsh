@@ -21,9 +21,10 @@
 #
 # HISTORY
 #
-# Version 1.3.0, 05-Nov-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.3.0, 06-Nov-2025, Dan K. Snelson (@dan-snelson)
 #   - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
 #   - Refactored logged-in user detection
+#   - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
 #
 ####################################################################################################
 
@@ -38,7 +39,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b3"
+scriptVersion="1.3.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -255,7 +256,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b3"
+scriptVersion="1.3.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -557,13 +558,34 @@ function displayDialogWindow() {
 
     case ${returncode} in
 
-        0)  ## Process exit code 0 scenario here
-            notice "${loggedInUser} clicked ${button1text}"
-            if [[ -n "${action}" ]]; then
-                su \- "$(stat -f%Su /dev/console)" -c "open '${action}'"
-            fi
-            quitScript "0"
-            ;;
+    0)  ## Process exit code 0 scenario here
+        notice "${loggedInUser} clicked ${button1text}"
+        if [[ "${action}" == *"systempreferences"* ]]; then
+            su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
+            notice "Checking if System Settings is open …"
+            until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
+                info "Pending System Settings launch …"
+                sleep 0.5
+            done
+            info "System Settings is open; Telling System Settings to make a guest appearance …"
+            su - "$(stat -f%Su /dev/console)" -c '
+            timeout=10
+            while ((timeout > 0)); do
+                if osascript -e "application \"System Settings\" is running" >/dev/null 2>&1; then
+                    if osascript -e "tell application \"System Settings\" to activate" >/dev/null 2>&1; then
+                        exit 0
+                    fi
+                fi
+                sleep 0.5
+                ((timeout--))
+            done
+            exit 1
+            '
+        else
+            su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
+        fi
+        quitScript "0"
+        ;;
 
         2)  ## Process exit code 2 scenario here
             notice "${loggedInUser} clicked ${button2text}"
@@ -712,7 +734,7 @@ installedOSvsDDMenforcedOS
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # ## # # # # # # # # # # # # # # # # # # # # #
 # If Update Required, Display Dialog Window
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

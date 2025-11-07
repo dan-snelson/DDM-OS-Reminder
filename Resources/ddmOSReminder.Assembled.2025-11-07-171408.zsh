@@ -21,10 +21,12 @@
 #
 # HISTORY
 #
-# Version 1.3.0, 06-Nov-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.3.0, 07-Nov-2025, Dan K. Snelson (@dan-snelson)
 #   - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
 #   - Refactored logged-in user detection
 #   - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
+#   - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @Jonathan!)
+#   - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
 #
 ####################################################################################################
 
@@ -39,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b4"
+scriptVersion="1.3.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -112,14 +114,10 @@ function resetConfiguration() {
     notice "Reset Configuration: ${1}"
 
     # Ensure the directory exists
-    mkdir -p "${organizationDirectory}/${reverseDomainNameNotation}"
+    mkdir -p "${organizationDirectory}"
 
     # Secure ownership
     chown -R root:wheel "${organizationDirectory}"
-
-    # Remove any ACLs that could leave it effectively writable
-    chmod -N "${organizationDirectory}" 2>/dev/null || true
-    chmod -N "${organizationDirectory}/${reverseDomainNameNotation}" 2>/dev/null || true
 
     # Secure directory permissions (no world-writable bits)
     chmod 755 "${organizationDirectory}"
@@ -194,6 +192,28 @@ function resetConfiguration() {
             rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
             logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
 
+            # Remove legacy nested directory if it exists and is empty (pre-v1.3.0 cleanup)
+            if [[ -d "${organizationDirectory}/${reverseDomainNameNotation}" ]]; then
+                if [[ -z "$(ls -A "${organizationDirectory}/${reverseDomainNameNotation}")" ]]; then
+                    logComment "Removing legacy nested directory: ${organizationDirectory}/${reverseDomainNameNotation}"
+                    rmdir "${organizationDirectory}/${reverseDomainNameNotation}"
+                    logComment "Removed legacy nested directory"
+                else
+                    logComment "Legacy nested directory not empty; leaving intact: ${organizationDirectory}/${reverseDomainNameNotation}"
+                fi
+            fi
+
+            # Remove organization directory if empty
+            if [[ -d "${organizationDirectory}" ]]; then
+                if [[ -z "$(ls -A "${organizationDirectory}")" ]]; then
+                    logComment "Removing empty organization directory: ${organizationDirectory}"
+                    rmdir "${organizationDirectory}"
+                    logComment "Removed empty organization directory"
+                else
+                    logComment "Organization directory not empty; other management files may still exist — leaving intact: ${organizationDirectory}"
+                fi
+            fi
+
             # Exit
             logComment "Uninstalled all ${humanReadableScriptName} configuration files"
             notice "Thanks for trying ${humanReadableScriptName}!"
@@ -256,7 +276,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b4"
+scriptVersion="1.3.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -352,9 +372,7 @@ installedOSvsDDMenforcedOS() {
         bootEpoch=$( sysctl -n kern.boottime | awk -F'[=,]' '{print $2}' | tr -d ' ' )
         [[ -z "${bootEpoch}" ]] && bootEpoch=$( date +%s )
         targetEpoch=$(( bootEpoch + 3660 ))  # 61 minutes after boot
-        ddmEnforcedInstallDateHumanReadable=$(
-            date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null
-        )
+        ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
     else
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
     fi

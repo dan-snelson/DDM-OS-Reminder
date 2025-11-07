@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b4"
+scriptVersion="1.3.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -116,9 +116,7 @@ installedOSvsDDMenforcedOS() {
         bootEpoch=$( sysctl -n kern.boottime | awk -F'[=,]' '{print $2}' | tr -d ' ' )
         [[ -z "${bootEpoch}" ]] && bootEpoch=$( date +%s )
         targetEpoch=$(( bootEpoch + 3660 ))  # 61 minutes after boot
-        ddmEnforcedInstallDateHumanReadable=$(
-            date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null
-        )
+        ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
     else
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
     fi

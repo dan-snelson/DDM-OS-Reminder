@@ -2,13 +2,7 @@
 
 ## Changelog
 
-### Version 1.3.0 (06-Nov-2025)
-- Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
-- Refactored logged-in user detection
-- Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
-
-### Version 1.2.0 (20-Oct-2025)
-
+### Version 1.3.0 (07-Nov-2025)
 > :warning: **Breaking Change** :warning:
 >
 > For users of version `1.0.0` _only_, please first uninstall version `1.0.0` **before** installing any later version via:
@@ -19,6 +13,13 @@
 > 
 > _Sorry for any Dan-induced headaches._
 
+- Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
+- Refactored logged-in user detection
+- Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
+- Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @Jonathan!)
+- Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
+
+### Version 1.2.0 (20-Oct-2025)
 - Addressed Issue #3: Use Dynamic icon based on OS Update version (thanks for the suggestion, @ScottEKendall!)
 - Addressed Issue #5: Added logic to ignore Display Assertions 24 hours prior to enforcement (per [Apple's documentation](https://support.apple.com/guide/deployment/install-and-enforce-software-updates-depd30715cbb/1/web/1.0))
 - Added `softwareUpdateButtonText` variable, based on a minor-version "update" vs. a major-version "upgrade"

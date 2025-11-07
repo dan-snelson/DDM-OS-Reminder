@@ -16,7 +16,7 @@
 - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
 - Refactored logged-in user detection
 - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
-- Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @Jonathan!)
+- Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @jonathanchan!)
 - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
 
 ### Version 1.2.0 (20-Oct-2025)

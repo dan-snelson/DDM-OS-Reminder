@@ -21,12 +21,12 @@
 #
 # HISTORY
 #
-# Version 1.2.0, 20-Oct-2025, Dan K. Snelson (@dan-snelson)
-#   - :warning: **Breaking Change** :warning: for users of version `1.0.0`; please see CHANGELOG.md
-#   - Addressed Issue #3: Use Dynamic icon based on OS Update version (thanks for the suggestion, @ScottEKendall!)
-#   - Addressed Issue #5: Added logic to ignore Display Assertions 24 hours prior to enforcement
-#   - Added `softwareUpdateButtonText` variable, based on a minor-version "update" vs. a major-version "upgrade"
-#   - Added `titleMessageUpdateOrUpgrade` variable for dynamic dialog title and message content
+# Version 1.3.0, 09-Nov-2025, Dan K. Snelson (@dan-snelson)
+#   - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
+#   - Refactored logged-in user detection
+#   - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
+#   - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @jonathanchan!)
+#   - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
 #
 ####################################################################################################
 
@@ -41,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0"
+scriptVersion="1.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -114,14 +114,10 @@ function resetConfiguration() {
     notice "Reset Configuration: ${1}"
 
     # Ensure the directory exists
-    mkdir -p "${organizationDirectory}/${reverseDomainNameNotation}"
+    mkdir -p "${organizationDirectory}"
 
     # Secure ownership
     chown -R root:wheel "${organizationDirectory}"
-
-    # Remove any ACLs that could leave it effectively writable
-    chmod -N "${organizationDirectory}" 2>/dev/null || true
-    chmod -N "${organizationDirectory}/${reverseDomainNameNotation}" 2>/dev/null || true
 
     # Secure directory permissions (no world-writable bits)
     chmod 755 "${organizationDirectory}"
@@ -196,6 +192,28 @@ function resetConfiguration() {
             rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
             logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
 
+            # Remove legacy nested directory if it exists and is empty (pre-v1.3.0 cleanup)
+            if [[ -d "${organizationDirectory}/${reverseDomainNameNotation}" ]]; then
+                if [[ -z "$(ls -A "${organizationDirectory}/${reverseDomainNameNotation}")" ]]; then
+                    logComment "Removing legacy nested directory: ${organizationDirectory}/${reverseDomainNameNotation}"
+                    rmdir "${organizationDirectory}/${reverseDomainNameNotation}"
+                    logComment "Removed legacy nested directory"
+                else
+                    logComment "Legacy nested directory not empty; leaving intact: ${organizationDirectory}/${reverseDomainNameNotation}"
+                fi
+            fi
+
+            # Remove organization directory if empty
+            if [[ -d "${organizationDirectory}" ]]; then
+                if [[ -z "$(ls -A "${organizationDirectory}")" ]]; then
+                    logComment "Removing empty organization directory: ${organizationDirectory}"
+                    rmdir "${organizationDirectory}"
+                    logComment "Removed empty organization directory"
+                else
+                    logComment "Organization directory not empty; other management files may still exist — leaving intact: ${organizationDirectory}"
+                fi
+            fi
+
             # Exit
             logComment "Uninstalled all ${humanReadableScriptName} configuration files"
             notice "Thanks for trying ${humanReadableScriptName}!"
@@ -220,13 +238,18 @@ function resetConfiguration() {
 #   The following function creates the client-side DDM OS Reminder script, which dynamically
 #   generates the end-user message.
 #
-#   Copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh" script between
-#   the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below, making sure to leave a full return
-#   at the end of the content before the "ENDOFSCRIPT" line.
+#   Either copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh"
+#   script between the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below — making sure to leave
+#   a full return at the end of the content before the "ENDOFSCRIPT" line — or use the new
+#   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your organization's
+#   customized script:
 #
-#   NOTE: You'll most likely want to modify the `updateScriptLog` function in the copied script to
-#   comment out (or remove) the "| tee -a "${scriptLog}" portion of the line to avoid duplicate
-#   entries in the log file.
+#       cd Resources
+#       zsh assembleDDMOSReminder.zsh
+#
+#   NOTE: With manual assembly, you'll most likely want to modify the `updateScriptLog` function
+#   in the copied script to comment out (or remove) the "| tee -a "${scriptLog}" portion of the line
+#   to avoid duplicate entries in the log file.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -258,7 +281,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.2.0"
+scriptVersion="1.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -280,18 +303,6 @@ organizationScriptName="dorm"
 
 # Organization's Days Before Deadline Blur Screen 
 daysBeforeDeadlineBlurscreen="3"
-
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Logged-in User Variables
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
-loggedInUserFullname=$( id -F "${loggedInUser}" )
-loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
-loggedInUserID=$( id -u "${loggedInUser}" )
-loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
 
 
 
@@ -322,59 +333,74 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Current Logged-in User
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function currentLoggedInUser() {
+    loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
+    preFlight "Current Logged-in User: ${loggedInUser}"
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Installed OS vs. DDM-enforced OS Comparison
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function installedOSvsDDMenforcedOS() {
+installedOSvsDDMenforcedOS() {
 
     # Installed OS Version
     installedOSVersion=$(sw_vers -productVersion)
     notice "Installed OS Version: $installedOSVersion"
 
     # DDM-enforced OS Version
-    ddmEnforcedInstallDateRaw=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
-    if [[ -n "$ddmEnforcedInstallDateRaw" ]]; then
-        
-        # DDM-enforced Install Date
-        tmp=${ddmEnforcedInstallDateRaw##*|EnforcedInstallDate:}
-        ddmEnforcedInstallDate=${tmp%%|*}
-        
-        # DDM-enforced Version
-        tmp=${ddmEnforcedInstallDateRaw##*|VersionString:}
-        ddmVersionString=${tmp%%|*}
-
-        ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l %p" 2>/dev/null)
-        ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ AM/ a.m.}
-        ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable/ PM/ p.m.}
-
-        ddmVersionStringDeadline=${ddmEnforcedInstallDate%%T*}
-        deadlineEpoch=$(date -jf "%Y-%m-%d" "$ddmVersionStringDeadline" "+%s" 2>/dev/null)
-        ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date "+%s")) / 86400 ))
-
-        if [[ "${ddmVersionStringDaysRemaining}" -le "${daysBeforeDeadlineBlurscreen}" ]]; then
-            blurscreen="--blurscreen"
-        else
-            blurscreen="--noblurscreen"
-        fi
-
+    ddmLogEntry=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
+    if [[ -z "$ddmLogEntry" ]]; then
+        versionComparisonResult="Not Found"
+        return
     fi
 
+    # Parse enforced date and version
+    ddmEnforcedInstallDate="${${ddmLogEntry##*|EnforcedInstallDate:}%%|*}"
+    ddmVersionString="${${ddmLogEntry##*|VersionString:}%%|*}"
+
+    # DDM-enforced Deadline
+    ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
+    deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null)
+    ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
+    ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
+
+    # DDM-enforced Install Date (human-readable)
+    if (( deadlineEpoch <= $(date +%s) )); then
+        # Enforcement deadline passed; set human-readable enforcement date to 61 minutes after last boot time
+        bootEpoch=$( sysctl -n kern.boottime | awk -F'[=,]' '{print $2}' | tr -d ' ' )
+        [[ -z "${bootEpoch}" ]] && bootEpoch=$( date +%s )
+        targetEpoch=$(( bootEpoch + 3660 ))  # 61 minutes after boot
+        ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+    else
+        ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
+    fi
+    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
+    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
+
+    # Days Remaining (allow negative values)
+    ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date +%s)) / 86400 ))
+
+    # Blur screen logic
+    blurscreen=$([[ $ddmVersionStringDaysRemaining -le $daysBeforeDeadlineBlurscreen ]] && echo "--blurscreen" || echo "--noblurscreen")
+
     # Version Comparison Result
-    if [[ -z "$ddmEnforcedInstallDate" ]]; then
-        # No DDM-enforced macOS version found
-        versionComparisonResult="Not Found"
-    elif is-at-least "${ddmVersionString}" "${installedOSVersion}"; then
-        # macOS is up-to-date
+    if is-at-least "$ddmVersionString" "$installedOSVersion"; then
         versionComparisonResult="Up-to-date"
         info "DDM-enforced OS Version: $ddmVersionString"
     else
-        # macOS update required
         versionComparisonResult="Update Required"
         info "DDM-enforced OS Version: $ddmVersionString"
-        info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadline"
+        info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
         majorInstalled="${installedOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
-        if [[ "${majorInstalled}" != "${majorDDM}" ]]; then
+        if [[ "$majorInstalled" != "$majorDDM" ]]; then
             titleMessageUpdateOrUpgrade="Upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
@@ -508,7 +534,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmEnforcedInstallDateHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    infobox="**Current:** ${installedOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
 
 
 
@@ -555,13 +581,34 @@ function displayDialogWindow() {
 
     case ${returncode} in
 
-        0)  ## Process exit code 0 scenario here
-            notice "${loggedInUser} clicked ${button1text}"
-            if [[ -n "${action}" ]]; then
-                su \- "$(stat -f%Su /dev/console)" -c "open '${action}'"
-            fi
-            quitScript "0"
-            ;;
+    0)  ## Process exit code 0 scenario here
+        notice "${loggedInUser} clicked ${button1text}"
+        if [[ "${action}" == *"systempreferences"* ]]; then
+            su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
+            notice "Checking if System Settings is open …"
+            until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
+                info "Pending System Settings launch …"
+                sleep 0.5
+            done
+            info "System Settings is open; Telling System Settings to make a guest appearance …"
+            su - "$(stat -f%Su /dev/console)" -c '
+            timeout=10
+            while ((timeout > 0)); do
+                if osascript -e "application \"System Settings\" is running" >/dev/null 2>&1; then
+                    if osascript -e "tell application \"System Settings\" to activate" >/dev/null 2>&1; then
+                        exit 0
+                    fi
+                fi
+                sleep 0.5
+                ((timeout--))
+            done
+            exit 1
+            '
+        else
+            su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
+        fi
+        quitScript "0"
+        ;;
 
         2)  ## Process exit code 2 scenario here
             notice "${loggedInUser} clicked ${button2text}"
@@ -659,6 +706,32 @@ preFlight "Initiating …"
 if [[ $(id -u) -ne 0 ]]; then
     fatal "This script must be run as root; exiting."
 fi
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Pre-flight Check: Validate Logged-in System Accounts
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+preFlight "Check for Logged-in System Accounts …"
+currentLoggedInUser
+
+counter="1"
+
+until { [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]] || [[ "${counter}" -gt "30" ]]; } ; do
+
+    preFlight "Logged-in User Counter: ${counter}"
+    currentLoggedInUser
+    sleep 2
+    ((counter++))
+
+done
+
+loggedInUserFullname=$( id -F "${loggedInUser}" )
+loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
+loggedInUserID=$( id -u "${loggedInUser}" )
+preFlight "Current Logged-in User First Name: ${loggedInUserFirstname}"
+preFlight "Current Logged-in User ID: ${loggedInUserID}"
 
 
 

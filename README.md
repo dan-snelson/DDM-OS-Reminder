@@ -1,9 +1,9 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
 # DDM OS Reminder
-> A swiftDialog-enabled script and LaunchDaemon pair for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-required macOS updates
+> Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s Declarative Device Management-enforced macOS update deadlines
 
-<img src="images/ddmOSReminder_Hero.png" alt="DDM-OS-Reminder Hero" width="800"/>
+<img src="images/ddmOSReminder_Hero.png" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
 ## Overview
 
@@ -13,12 +13,12 @@ While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful
 
 **DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki)-enabled script  and LaunchDaemon pair to dynamically deliver a more prominent end-user message of when the user's Mac needs to be updated to comply with DDM-configured OS version requirements:
 
-<img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder" width="800"/>
-<img src="images/ddmOSReminder_swiftDialog_2.png" alt="DDM OS Reminder" width="800"/>
+<img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`" width="800"/>
+<img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
 
 ## Features
 
-<img src="images/ddmOSReminder_Hero_2.png" alt="DDM-OS-Reminder Hero Blurscreen" width="800"/>
+<img src="images/ddmOSReminder_Hero_2.png" alt="Mac Admins can configure `daysBeforeDeadlineBlurscreen` to control how many days before the DDM-specified deadline the screen blurs when displaying your customized message" width="800"/>
 
 > Mac Admins can configure `daysBeforeDeadlineBlurscreen` to control how many days before the DDM-specified deadline the screen blurs when displaying your customized message:
 

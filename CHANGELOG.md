@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 1.3.0 (07-Nov-2025)
+### Version 1.3.0 (09-Nov-2025)
 > :warning: **Breaking Change** :warning:
 >
 > For users of version `1.0.0` _only_, please first uninstall version `1.0.0` **before** installing any later version via:

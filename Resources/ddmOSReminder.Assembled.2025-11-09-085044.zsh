@@ -21,11 +21,11 @@
 #
 # HISTORY
 #
-# Version 1.3.0, 07-Nov-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.3.0, 09-Nov-2025, Dan K. Snelson (@dan-snelson)
 #   - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
 #   - Refactored logged-in user detection
 #   - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
-#   - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @Jonathan!)
+#   - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @jonathanchan!)
 #   - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
 #
 ####################################################################################################
@@ -41,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b5"
+scriptVersion="1.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -238,13 +238,18 @@ function resetConfiguration() {
 #   The following function creates the client-side DDM OS Reminder script, which dynamically
 #   generates the end-user message.
 #
-#   Copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh" script between
-#   the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below, making sure to leave a full return
-#   at the end of the content before the "ENDOFSCRIPT" line.
+#   Either copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh"
+#   script between the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below — making sure to leave
+#   a full return at the end of the content before the "ENDOFSCRIPT" line — or use the new
+#   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your organization's
+#   customized script.
 #
-#   NOTE: You'll most likely want to modify the `updateScriptLog` function in the copied script to
-#   comment out (or remove) the "| tee -a "${scriptLog}" portion of the line to avoid duplicate
-#   entries in the log file.
+#       cd Resources
+#       zsh assembleDDMOSReminder.zsh
+#
+#   NOTE: With manual assembly, you'll most likely want to modify the `updateScriptLog` function
+#   in the copied script to comment out (or remove) the "| tee -a "${scriptLog}" portion of the line
+#   to avoid duplicate entries in the log file.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -276,7 +281,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0b5"
+scriptVersion="1.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -752,7 +757,7 @@ installedOSvsDDMenforcedOS
 
 
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # ## # # # # # # # # # # # # # # # # # # # # #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # If Update Required, Display Dialog Window
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 

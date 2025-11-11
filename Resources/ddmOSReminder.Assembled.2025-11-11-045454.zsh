@@ -21,12 +21,9 @@
 #
 # HISTORY
 #
-# Version 1.3.0, 09-Nov-2025, Dan K. Snelson (@dan-snelson)
-#   - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
-#   - Refactored logged-in user detection
-#   - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
-#   - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @jonathanchan!)
-#   - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
+# Version 1.4.0, 11-Nov-2025, Dan K. Snelson (@dan-snelson)
+#   - (Reluctantly) added swiftDialog installation detection
+#   - Added `meetingDelay` variable to pause reminder until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
 #
 ####################################################################################################
 
@@ -41,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0"
+scriptVersion="1.4.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -242,7 +239,7 @@ function resetConfiguration() {
 #   script between the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below — making sure to leave
 #   a full return at the end of the content before the "ENDOFSCRIPT" line — or use the new
 #   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your organization's
-#   customized script.
+#   customized script:
 #
 #       cd Resources
 #       zsh assembleDDMOSReminder.zsh
@@ -281,7 +278,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0"
+scriptVersion="1.4.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -303,6 +300,9 @@ organizationScriptName="dorm"
 
 # Organization's Days Before Deadline Blur Screen 
 daysBeforeDeadlineBlurscreen="3"
+
+# Organization's Meeting Delay (in minutes) 
+meetingDelay="75"
 
 
 
@@ -421,22 +421,39 @@ function checkUserDisplaySleepAssertions() {
 
     notice "Check ${loggedInUser}'s Display Sleep Assertions"
 
-    local previousIFS
-    previousIFS="${IFS}"; IFS=$'\n'
-    local displayAssertionsArray
-    displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
-    # info "displayAssertionsArray:\n${displayAssertionsArray[*]}"
-    if [[ -n "${displayAssertionsArray[*]}" ]]; then
-        userDisplaySleepAssertions="TRUE"
-        for displayAssertion in "${displayAssertionsArray[@]}"; do
-            info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
-        done
-    else
-        userDisplaySleepAssertions="FALSE"
-    fi
-    info "${loggedInUser}'s Display Sleep Assertion is ${userDisplaySleepAssertions}."
-    IFS="${previousIFS}"
+    local intervalSeconds=300  # Default: 300 seconds (i.e., 5 minutes)
+    local intervalMinutes=$(( intervalSeconds / 60 ))
+    local maxChecks=$(( meetingDelay * 60 / intervalSeconds ))
+    local checkCount=0
 
+    while (( checkCount < maxChecks )); do
+        local previousIFS="${IFS}"
+        IFS=$'\n'
+
+        local displayAssertionsArray
+        displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
+
+        if [[ -n "${displayAssertionsArray[*]}" ]]; then
+            userDisplaySleepAssertions="TRUE"
+            ((checkCount++))
+            for displayAssertion in "${displayAssertionsArray[@]}"; do
+                info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
+            done
+            info "Check ${checkCount} of ${maxChecks}: Display Sleep Assertion still active; pausing reminder. (Will check again in ${intervalMinutes} minute(s).)"
+            IFS="${previousIFS}"
+            sleep "${intervalSeconds}"
+        else
+            userDisplaySleepAssertions="FALSE"
+            info "${loggedInUser}'s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
+            IFS="${previousIFS}"
+            return 0  # Presentation ended early
+        fi
+    done
+
+    if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
+        info "Presentation delay limit (${meetingDelay} min) reached after ${maxChecks} checks. Proceeding with reminder."
+        return 1  # Presentation still active after full delay
+    fi
 }
 
 
@@ -764,15 +781,13 @@ installedOSvsDDMenforcedOS
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # Confirm the currently logged-in user is "available" to be reminded
-    checkUserDisplaySleepAssertions
-
     # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
     if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
-        if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
-            info "${loggedInUser} has an active Display Sleep Assertion; exiting."
-            quitScript "0"
+        if checkUserDisplaySleepAssertions; then
+            notice "Presentation ended early; proceeding with reminder."
         else
-            info "${loggedInUser} is available; proceeding …"
+            notice "Presentation still active after ${meetingDelay} minutes; exiting."
+            quitScript "0"
         fi
     else
         info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."
@@ -988,6 +1003,82 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Pre-flight Check: Validate / install swiftDialog (Thanks big bunches, @acodega!)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function dialogInstall() {
+
+    # Get the URL of the latest PKG From the Dialog GitHub repo
+    dialogURL=$(curl -L --silent --fail "https://api.github.com/repos/swiftDialog/swiftDialog/releases/latest" | awk -F '"' "/browser_download_url/ && /pkg\"/ { print \$4; exit }")
+
+    # Expected Team ID of the downloaded PKG
+    expectedDialogTeamID="PWA5E9TQ59"
+
+    preFlight "Installing swiftDialog..."
+
+    # Create temporary working directory
+    workDirectory=$( basename "$0" )
+    tempDirectory=$( mktemp -d "/private/tmp/$workDirectory.XXXXXX" )
+
+    # Download the installer package
+    curl --location --silent "$dialogURL" -o "$tempDirectory/Dialog.pkg"
+
+    # Verify the download
+    teamID=$(spctl -a -vv -t install "$tempDirectory/Dialog.pkg" 2>&1 | awk '/origin=/ {print $NF }' | tr -d '()')
+
+    # Install the package if Team ID validates
+    if [[ "$expectedDialogTeamID" == "$teamID" ]]; then
+
+        installer -pkg "$tempDirectory/Dialog.pkg" -target /
+        sleep 2
+        dialogVersion=$( /usr/local/bin/dialog --version )
+        preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
+
+    else
+
+        # Display a so-called "simple" dialog if Team ID fails to validate
+        osascript -e 'display dialog "Please advise your Support Representative of the following error:• Dialog Team ID verification failed" with title "Mac Health Check Error" buttons {"Close"} with icon caution'
+        completionActionOption="Quit"
+        exitCode="1"
+        quitScript
+
+    fi
+
+    # Remove the temporary working directory when done
+    rm -Rf "$tempDirectory"
+
+}
+
+
+
+function dialogCheck() {
+
+    # Check for Dialog and install if not found
+    if [ ! -x "/Library/Application Support/Dialog/Dialog.app" ]; then
+
+        preFlight "swiftDialog not found. Installing..."
+        dialogInstall
+
+    else
+
+        dialogVersion=$(/usr/local/bin/dialog --version)
+        if [[ "${dialogVersion}" < "${swiftDialogMinimumRequiredVersion}" ]]; then
+            
+            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating..."
+            dialogInstall
+            
+        else
+
+        preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+
+        fi
+    
+    fi
+
+}
+
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Pre-flight Check: Complete
@@ -1004,6 +1095,14 @@ preFlight "Complete!"
 ####################################################################################################
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Validate / install swiftDialog
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+dialogCheck
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Reset Configuration
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -1015,7 +1114,7 @@ resetConfiguration "${resetConfiguration}"
 # Script Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** VALIDATING SCRIPT ***"
+notice "Validating Script"
 
 if [[ -f "${organizationDirectory}/${organizationScriptName}.zsh" ]]; then
 
@@ -1033,7 +1132,7 @@ fi
 # LaunchDaemon Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** VALIDATING LAUNCHDAEMON ***"
+notice "Validating LaunchDaemon"
 
 logComment "Checking for LaunchDaemon '${launchDaemonPath}' …"
 
@@ -1067,7 +1166,7 @@ fi
 # Status Checks
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** STATUS CHECKS ***"
+notice "Status Checks"
 
 logComment "I/O pause …"
 sleep 1.3

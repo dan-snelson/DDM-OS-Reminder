@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0"
+scriptVersion="1.4.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -42,6 +42,9 @@ organizationScriptName="dorm"
 
 # Organization's Days Before Deadline Blur Screen 
 daysBeforeDeadlineBlurscreen="3"
+
+# Organization's Meeting Delay (in minutes) 
+meetingDelay="75"
 
 
 
@@ -160,22 +163,39 @@ function checkUserDisplaySleepAssertions() {
 
     notice "Check ${loggedInUser}'s Display Sleep Assertions"
 
-    local previousIFS
-    previousIFS="${IFS}"; IFS=$'\n'
-    local displayAssertionsArray
-    displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
-    # info "displayAssertionsArray:\n${displayAssertionsArray[*]}"
-    if [[ -n "${displayAssertionsArray[*]}" ]]; then
-        userDisplaySleepAssertions="TRUE"
-        for displayAssertion in "${displayAssertionsArray[@]}"; do
-            info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
-        done
-    else
-        userDisplaySleepAssertions="FALSE"
-    fi
-    info "${loggedInUser}'s Display Sleep Assertion is ${userDisplaySleepAssertions}."
-    IFS="${previousIFS}"
+    local intervalSeconds=300  # Default: 300 seconds (i.e., 5 minutes)
+    local intervalMinutes=$(( intervalSeconds / 60 ))
+    local maxChecks=$(( meetingDelay * 60 / intervalSeconds ))
+    local checkCount=0
 
+    while (( checkCount < maxChecks )); do
+        local previousIFS="${IFS}"
+        IFS=$'\n'
+
+        local displayAssertionsArray
+        displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
+
+        if [[ -n "${displayAssertionsArray[*]}" ]]; then
+            userDisplaySleepAssertions="TRUE"
+            ((checkCount++))
+            for displayAssertion in "${displayAssertionsArray[@]}"; do
+                info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
+            done
+            info "Check ${checkCount} of ${maxChecks}: Display Sleep Assertion still active; pausing reminder. (Will check again in ${intervalMinutes} minute(s).)"
+            IFS="${previousIFS}"
+            sleep "${intervalSeconds}"
+        else
+            userDisplaySleepAssertions="FALSE"
+            info "${loggedInUser}'s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
+            IFS="${previousIFS}"
+            return 0  # Presentation ended early
+        fi
+    done
+
+    if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
+        info "Presentation delay limit (${meetingDelay} min) reached after ${maxChecks} checks. Proceeding with reminder."
+        return 1  # Presentation still active after full delay
+    fi
 }
 
 
@@ -503,15 +523,13 @@ installedOSvsDDMenforcedOS
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # Confirm the currently logged-in user is "available" to be reminded
-    checkUserDisplaySleepAssertions
-
     # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
     if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
-        if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
-            info "${loggedInUser} has an active Display Sleep Assertion; exiting."
-            quitScript "0"
+        if checkUserDisplaySleepAssertions; then
+            notice "Presentation ended early; proceeding with reminder."
         else
-            info "${loggedInUser} is available; proceeding …"
+            notice "Presentation still active after ${meetingDelay} minutes; exiting."
+            quitScript "0"
         fi
     else
         info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."

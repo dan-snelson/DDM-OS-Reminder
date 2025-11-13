@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0b3"
+scriptVersion="1.4.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -216,7 +216,7 @@ function checkUserDisplaySleepAssertions() {
             userDisplaySleepAssertions="FALSE"
             info "${loggedInUser}'s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
             IFS="${previousIFS}"
-            return 0  # Presentation ended early
+            return 0  # No active Display Sleep Assertions found
         fi
     done
 
@@ -224,6 +224,7 @@ function checkUserDisplaySleepAssertions() {
         info "Presentation delay limit (${meetingDelay} min) reached after ${maxChecks} checks. Proceeding with reminder."
         return 1  # Presentation still active after full delay
     fi
+
 }
 
 
@@ -561,7 +562,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
     if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
         if checkUserDisplaySleepAssertions; then
-            notice "Presentation ended early; proceeding with reminder."
+            notice "No active Display Sleep Assertions detected; proceeding with reminder."
         else
             notice "Presentation still active after ${meetingDelay} minutes; exiting quietly."
             quitScript "0"

@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 1.4.0, 11-Nov-2025, Dan K. Snelson (@dan-snelson)
+# Version 1.4.0, 13-Nov-2025, Dan K. Snelson (@dan-snelson)
 #   - (Reluctantly) added swiftDialog installation detection
 #   - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
 #   - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
@@ -42,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0b2"
+scriptVersion="1.4.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

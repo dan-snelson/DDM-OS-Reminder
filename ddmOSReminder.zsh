@@ -4,7 +4,7 @@
 ####################################################################################################
 #
 # DDM OS Reminder
-# https://snelson.us/ddm-os-reminder
+# https://snelson.us/ddm
 #
 # A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
 # DDM-required macOS updates
@@ -26,6 +26,7 @@
 #   - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
 #   - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
 #   - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
+#   - Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
 #
 ####################################################################################################
 
@@ -40,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0b1"
+scriptVersion="1.4.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -265,7 +266,7 @@ cat <<'ENDOFSCRIPT'
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# http://snelson.us/ddm-os-reminder
+# http://snelson.us/ddm
 #
 ####################################################################################################
 
@@ -280,7 +281,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0b1"
+scriptVersion="1.4.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -351,12 +352,12 @@ function currentLoggedInUser() {
 
 installedOSvsDDMenforcedOS() {
 
-    # Installed OS Version
-    installedOSVersion=$(sw_vers -productVersion)
-    notice "Installed OS Version: $installedOSVersion"
+    # Installed macOS Version
+    installedmacOSVersion=$( sw_vers -productVersion )
+    notice "Installed macOS Version: $installedmacOSVersion"
 
-    # DDM-enforced OS Version
-    ddmLogEntry=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
+    # DDM-enforced macOS Version
+    ddmLogEntry=$( grep "EnforcedInstallDate" /var/log/install.log | tail -n 1 )
     if [[ -z "$ddmLogEntry" ]]; then
         versionComparisonResult="Not Found"
         return
@@ -369,20 +370,45 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
-    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null)
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
 
-    # DDM-enforced Install Date (human-readable)
+    # DDM-enforced Install Date
     if (( deadlineEpoch <= $(date +%s) )); then
-        # Enforcement deadline passed; set human-readable enforcement date to 61 minutes after last boot time
-        bootEpoch=$( sysctl -n kern.boottime | awk -F'[=,]' '{print $2}' | tr -d ' ' )
-        [[ -z "${bootEpoch}" ]] && bootEpoch=$( date +%s )
-        targetEpoch=$(( bootEpoch + 3660 ))  # 61 minutes after boot
-        ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+
+        # Enforcement deadline passed
+        notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
+
+        # Read Apple's internal padded enforcement date from install.log
+        pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
+        if [[ -n "$pastDueDeadline" ]]; then
+            paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
+            paddedEpoch=$( date -jf "%a %b %d %H:%M:%S %Y" "$paddedDateRaw" "+%s" 2>/dev/null )
+            info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
+
+            if [[ -n "$paddedEpoch" ]]; then
+                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
+            else
+                warning "Unable to parse padded enforcement date from install.log"
+                ddmEnforcedInstallDateHumanReadable="Unavailable"
+            fi
+        else
+            warning "No setPastDuePaddedEnforcementDate found in install.log"
+            ddmEnforcedInstallDateHumanReadable="Unavailable"
+        fi
+
+        info "Effective enforcement source: setPastDuePaddedEnforcementDate"
+
     else
+
+        # Deadline still in the future
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
+
     fi
+
+    # Normalize AM/PM formatting
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
 
@@ -393,14 +419,14 @@ installedOSvsDDMenforcedOS() {
     blurscreen=$([[ $ddmVersionStringDaysRemaining -le $daysBeforeDeadlineBlurscreen ]] && echo "--blurscreen" || echo "--noblurscreen")
 
     # Version Comparison Result
-    if is-at-least "$ddmVersionString" "$installedOSVersion"; then
+    if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
         versionComparisonResult="Up-to-date"
         info "DDM-enforced OS Version: $ddmVersionString"
     else
         versionComparisonResult="Update Required"
         info "DDM-enforced OS Version: $ddmVersionString"
         info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
-        majorInstalled="${installedOSVersion%%.*}"
+        majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
             titleMessageUpdateOrUpgrade="Upgrade"
@@ -553,7 +579,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    infobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
 
 
 
@@ -713,7 +739,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm-os-reminder\n####\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n####\n"
 preFlight "Initiating …"
 
 
@@ -981,7 +1007,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm-os-reminder\n#\n# Reset Configuration: ${resetConfiguration}\n###\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n#\n# Reset Configuration: ${resetConfiguration}\n###\n"
 preFlight "Initiating …"
 
 

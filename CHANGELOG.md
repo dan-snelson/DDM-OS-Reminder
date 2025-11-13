@@ -1,11 +1,12 @@
 # DDM OS Reminder
 
 ## Changelog
-### Version 1.4.0 (11-Nov-2025)
+### Version 1.4.0 (13-Nov-2025)
 - (Reluctantly) added swiftDialog installation detection
 - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
 - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
 - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
+- Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
 
 ### Version 1.3.0 (09-Nov-2025)
 - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)

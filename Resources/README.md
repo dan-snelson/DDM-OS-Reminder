@@ -67,3 +67,8 @@ While the following Extension Attributes were created for and tested on Jamf Pro
 ```
 26.1
 ```
+
+**3.4.** [JamfEA-DDM_Executed_OS_Update_Date.zsh](JamfEA-DDM_Executed_OS_Update_Date.zsh): Reports the date when the DDM-enforced macOS update was executed.
+```
+Thu Nov 13 08:59:56 2025
+```

@@ -27,6 +27,7 @@
 #   - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
 #   - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
 #   - Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
+#   - Added `daysBeforeDeadlineDisplayReminder` variable to better align with — or supersede — Apple's behavior of when reminders begin displaying before DDM-enforced deadline (thanks for the suggestion, @kristian!)
 #
 ####################################################################################################
 
@@ -281,7 +282,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0b2"
+scriptVersion="1.4.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -301,7 +302,10 @@ humanReadableScriptName="DDM OS Reminder End-user Message"
 # Organization's Script Name
 organizationScriptName="dorm"
 
-# Organization's Days Before Deadline Blur Screen 
+# Organization's number of days before deadline to starting displaying reminders
+daysBeforeDeadlineDisplayReminder="14"
+
+# Organization's number of days before deadline to enable swiftDialog's blurscreen
 daysBeforeDeadlineBlurscreen="3"
 
 # Organization's Meeting Delay (in minutes) 
@@ -359,7 +363,7 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced macOS Version
     ddmLogEntry=$( grep "EnforcedInstallDate" /var/log/install.log | tail -n 1 )
     if [[ -z "$ddmLogEntry" ]]; then
-        versionComparisonResult="Not Found"
+        versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
         return
     fi
 
@@ -596,12 +600,12 @@ function updateRequiredVariables() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Display Dialog Window
+# Display Reminder Dialog
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function displayDialogWindow() {
+function displayReminderDialog() {
 
-    notice "Display Dialog Window"
+    notice "Display Reminder Dialog to ${loggedInUser}"
 
     ${dialogBinary} \
         --title "${title}" \
@@ -775,8 +779,7 @@ done
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
-preFlight "Current Logged-in User First Name: ${loggedInUserFirstname}"
-preFlight "Current Logged-in User ID: ${loggedInUserID}"
+preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
 
 
 
@@ -803,10 +806,18 @@ installedOSvsDDMenforcedOS
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# If Update Required, Display Dialog Window
+# If Update Required, Display Dialog Window (respecting Display Reminder threshold)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
+
+    # Skip notifications if we're outside the display reminder window (thanks for the suggestion, @kristian!)
+    if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
+        notice "Deadline still ${ddmVersionStringDaysRemaining} days away; skipping reminder until within ${daysBeforeDeadlineDisplayReminder}-day window."
+        quitScript "0"
+    else
+        notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding with reminder."
+    fi
 
     # Confirm the currently logged-in user is "available" to be reminded
     # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
@@ -814,14 +825,14 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         if checkUserDisplaySleepAssertions; then
             notice "Presentation ended early; proceeding with reminder."
         else
-            notice "Presentation still active after ${meetingDelay} minutes; exiting."
+            notice "Presentation still active after ${meetingDelay} minutes; exiting quietly."
             quitScript "0"
         fi
     else
         info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."
     fi
 
-    # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds
+    # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30 to 90 seconds
     currentHour=$(( $(date +%H) ))
     currentMinute=$(( $(date +%M) ))
 
@@ -847,11 +858,11 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     info "Pausing for ${humanReadablePause} …"
     sleep "${sleepSeconds}"
 
-    # Initialize Update Required Variables
+    # Update Required Variables
     updateRequiredVariables
 
-    # Create Main Dialog Window
-    displayDialogWindow
+    # Display reminder dialog (with blurscreen, depending on proximity to deadline)
+    displayReminderDialog
 
 else
 

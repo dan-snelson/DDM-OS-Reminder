@@ -4,7 +4,7 @@
 ####################################################################################################
 #
 # DDM OS Reminder
-# https://snelson.us/ddm-os-reminder
+# https://snelson.us/ddm
 #
 # A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
 # DDM-required macOS updates
@@ -21,12 +21,14 @@
 #
 # HISTORY
 #
-# Version 1.3.0, 09-Nov-2025, Dan K. Snelson (@dan-snelson)
-#   - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
-#   - Refactored logged-in user detection
-#   - Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
-#   - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @jonathanchan!)
-#   - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
+# Version 1.4.0, 18-Nov-2025, Dan K. Snelson (@dan-snelson)
+#   - (Reluctantly) added swiftDialog installation detection
+#   - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
+#   - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
+#   - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
+#   - Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
+#   - Added `daysBeforeDeadlineDisplayReminder` variable to better align with — or supersede — Apple's behavior of when reminders begin displaying before DDM-enforced deadline (thanks for the suggestion, @kristian!)
+#   - Removed placeholder `DDM-OS-Reminder End-user Message.zsh` from `ddmOSReminder.zsh`; use `Resources/assembleDDMOSReminder.zsh` to assemble your organization's customized script instead
 #
 ####################################################################################################
 
@@ -41,7 +43,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0"
+scriptVersion="1.4.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -229,30 +231,6 @@ function resetConfiguration() {
 
 }
 
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#
-# CREATE DDM OS REMINDER SCRIPT
-#
-#   The following function creates the client-side DDM OS Reminder script, which dynamically
-#   generates the end-user message.
-#
-#   Either copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh"
-#   script between the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below — making sure to leave
-#   a full return at the end of the content before the "ENDOFSCRIPT" line — or use the new
-#   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your organization's
-#   customized script.
-#
-#       cd Resources
-#       zsh assembleDDMOSReminder.zsh
-#
-#   NOTE: With manual assembly, you'll most likely want to modify the `updateScriptLog` function
-#   in the copied script to comment out (or remove) the "| tee -a "${scriptLog}" portion of the line
-#   to avoid duplicate entries in the log file.
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 function createDDMOSReminderScript() {
 
     notice "Create '${humanReadableScriptName}' script: ${organizationDirectory}/${organizationScriptName}.zsh"
@@ -266,7 +244,7 @@ cat <<'ENDOFSCRIPT'
 #
 # Declarative Device Management macOS Reminder: End-user Message
 #
-# http://snelson.us/ddm-os-reminder
+# http://snelson.us/ddm
 #
 ####################################################################################################
 
@@ -281,7 +259,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.3.0"
+scriptVersion="1.4.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -301,8 +279,14 @@ humanReadableScriptName="DDM OS Reminder End-user Message"
 # Organization's Script Name
 organizationScriptName="dorm"
 
-# Organization's Days Before Deadline Blur Screen 
+# Organization's number of days before deadline to starting displaying reminders
+daysBeforeDeadlineDisplayReminder="14"
+
+# Organization's number of days before deadline to enable swiftDialog's blurscreen
 daysBeforeDeadlineBlurscreen="3"
+
+# Organization's Meeting Delay (in minutes) 
+meetingDelay="75"
 
 
 
@@ -349,14 +333,14 @@ function currentLoggedInUser() {
 
 installedOSvsDDMenforcedOS() {
 
-    # Installed OS Version
-    installedOSVersion=$(sw_vers -productVersion)
-    notice "Installed OS Version: $installedOSVersion"
+    # Installed macOS Version
+    installedmacOSVersion=$( sw_vers -productVersion )
+    notice "Installed macOS Version: $installedmacOSVersion"
 
-    # DDM-enforced OS Version
-    ddmLogEntry=$( grep EnforcedInstallDate /var/log/install.log | tail -n 1 )
+    # DDM-enforced macOS Version
+    ddmLogEntry=$( grep "EnforcedInstallDate" /var/log/install.log | tail -n 1 )
     if [[ -z "$ddmLogEntry" ]]; then
-        versionComparisonResult="Not Found"
+        versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
         return
     fi
 
@@ -367,20 +351,45 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
-    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null)
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
 
-    # DDM-enforced Install Date (human-readable)
+    # DDM-enforced Install Date
     if (( deadlineEpoch <= $(date +%s) )); then
-        # Enforcement deadline passed; set human-readable enforcement date to 61 minutes after last boot time
-        bootEpoch=$( sysctl -n kern.boottime | awk -F'[=,]' '{print $2}' | tr -d ' ' )
-        [[ -z "${bootEpoch}" ]] && bootEpoch=$( date +%s )
-        targetEpoch=$(( bootEpoch + 3660 ))  # 61 minutes after boot
-        ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+
+        # Enforcement deadline passed
+        notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
+
+        # Read Apple's internal padded enforcement date from install.log
+        pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
+        if [[ -n "$pastDueDeadline" ]]; then
+            paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
+            paddedEpoch=$( date -jf "%a %b %d %H:%M:%S %Y" "$paddedDateRaw" "+%s" 2>/dev/null )
+            info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
+
+            if [[ -n "$paddedEpoch" ]]; then
+                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
+            else
+                warning "Unable to parse padded enforcement date from install.log"
+                ddmEnforcedInstallDateHumanReadable="Unavailable"
+            fi
+        else
+            warning "No setPastDuePaddedEnforcementDate found in install.log"
+            ddmEnforcedInstallDateHumanReadable="Unavailable"
+        fi
+
+        info "Effective enforcement source: setPastDuePaddedEnforcementDate"
+
     else
+
+        # Deadline still in the future
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
+
     fi
+
+    # Normalize AM/PM formatting
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
 
@@ -391,14 +400,14 @@ installedOSvsDDMenforcedOS() {
     blurscreen=$([[ $ddmVersionStringDaysRemaining -le $daysBeforeDeadlineBlurscreen ]] && echo "--blurscreen" || echo "--noblurscreen")
 
     # Version Comparison Result
-    if is-at-least "$ddmVersionString" "$installedOSVersion"; then
+    if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
         versionComparisonResult="Up-to-date"
         info "DDM-enforced OS Version: $ddmVersionString"
     else
         versionComparisonResult="Update Required"
         info "DDM-enforced OS Version: $ddmVersionString"
         info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
-        majorInstalled="${installedOSVersion%%.*}"
+        majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
             titleMessageUpdateOrUpgrade="Upgrade"
@@ -421,21 +430,39 @@ function checkUserDisplaySleepAssertions() {
 
     notice "Check ${loggedInUser}'s Display Sleep Assertions"
 
-    local previousIFS
-    previousIFS="${IFS}"; IFS=$'\n'
-    local displayAssertionsArray
-    displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
-    # info "displayAssertionsArray:\n${displayAssertionsArray[*]}"
-    if [[ -n "${displayAssertionsArray[*]}" ]]; then
-        userDisplaySleepAssertions="TRUE"
-        for displayAssertion in "${displayAssertionsArray[@]}"; do
-            info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
-        done
-    else
-        userDisplaySleepAssertions="FALSE"
+    local intervalSeconds=300  # Default: 300 seconds (i.e., 5 minutes)
+    local intervalMinutes=$(( intervalSeconds / 60 ))
+    local maxChecks=$(( meetingDelay * 60 / intervalSeconds ))
+    local checkCount=0
+
+    while (( checkCount < maxChecks )); do
+        local previousIFS="${IFS}"
+        IFS=$'\n'
+
+        local displayAssertionsArray
+        displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
+
+        if [[ -n "${displayAssertionsArray[*]}" ]]; then
+            userDisplaySleepAssertions="TRUE"
+            ((checkCount++))
+            for displayAssertion in "${displayAssertionsArray[@]}"; do
+                info "Found the following Display Sleep Assertion(s): $(echo "${displayAssertion}" | awk -F ':' '{print $1;}')"
+            done
+            info "Check ${checkCount} of ${maxChecks}: Display Sleep Assertion still active; pausing reminder. (Will check again in ${intervalMinutes} minute(s).)"
+            IFS="${previousIFS}"
+            sleep "${intervalSeconds}"
+        else
+            userDisplaySleepAssertions="FALSE"
+            info "${loggedInUser}'s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
+            IFS="${previousIFS}"
+            return 0  # No active Display Sleep Assertions found
+        fi
+    done
+
+    if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
+        info "Presentation delay limit (${meetingDelay} min) reached after ${maxChecks} checks. Proceeding with reminder."
+        return 1  # Presentation still active after full delay
     fi
-    info "${loggedInUser}'s Display Sleep Assertion is ${userDisplaySleepAssertions}."
-    IFS="${previousIFS}"
 
 }
 
@@ -534,7 +561,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    infobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
 
 
 
@@ -551,12 +578,12 @@ function updateRequiredVariables() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Display Dialog Window
+# Display Reminder Dialog
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function displayDialogWindow() {
+function displayReminderDialog() {
 
-    notice "Display Dialog Window"
+    notice "Display Reminder Dialog to ${loggedInUser}"
 
     ${dialogBinary} \
         --title "${title}" \
@@ -694,7 +721,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm-os-reminder\n####\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n####\n"
 preFlight "Initiating …"
 
 
@@ -730,8 +757,7 @@ done
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
-preFlight "Current Logged-in User First Name: ${loggedInUserFirstname}"
-preFlight "Current Logged-in User ID: ${loggedInUserID}"
+preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
 
 
 
@@ -758,27 +784,33 @@ installedOSvsDDMenforcedOS
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# If Update Required, Display Dialog Window
+# If Update Required, Display Dialog Window (respecting Display Reminder threshold)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
-    # Confirm the currently logged-in user is "available" to be reminded
-    checkUserDisplaySleepAssertions
+    # Skip notifications if we're outside the display reminder window (thanks for the suggestion, @kristian!)
+    if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
+        notice "Deadline still ${ddmVersionStringDaysRemaining} days away; skipping reminder until within ${daysBeforeDeadlineDisplayReminder}-day window."
+        quitScript "0"
+    else
+        notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding with reminder."
+    fi
 
+    # Confirm the currently logged-in user is "available" to be reminded
     # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
     if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
-        if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
-            info "${loggedInUser} has an active Display Sleep Assertion; exiting."
-            quitScript "0"
+        if checkUserDisplaySleepAssertions; then
+            notice "No active Display Sleep Assertions detected; proceeding with reminder."
         else
-            info "${loggedInUser} is available; proceeding …"
+            notice "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+            quitScript "0"
         fi
     else
         info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."
     fi
 
-    # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30-90 seconds
+    # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30 to 90 seconds
     currentHour=$(( $(date +%H) ))
     currentMinute=$(( $(date +%M) ))
 
@@ -804,11 +836,11 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     info "Pausing for ${humanReadablePause} …"
     sleep "${sleepSeconds}"
 
-    # Initialize Update Required Variables
+    # Update Required Variables
     updateRequiredVariables
 
-    # Create Main Dialog Window
-    displayDialogWindow
+    # Display reminder dialog (with blurscreen, depending on proximity to deadline)
+    displayReminderDialog
 
 else
 
@@ -970,7 +1002,7 @@ preFlight "
 
 ###
 # $humanReadableScriptName (${scriptVersion})
-# http://snelson.us/ddm-os-reminder
+# http://snelson.us/ddm
 #
 # Reset Configuration: ${resetConfiguration}
 ###
@@ -986,6 +1018,82 @@ preFlight "Initiating …"
 if [[ $(id -u) -ne 0 ]]; then
     fatal "This script must be run as root; exiting."
 fi
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Pre-flight Check: Validate / install swiftDialog (Thanks big bunches, @acodega!)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function dialogInstall() {
+
+    # Get the URL of the latest PKG From the Dialog GitHub repo
+    dialogURL=$(curl -L --silent --fail "https://api.github.com/repos/swiftDialog/swiftDialog/releases/latest" | awk -F '"' "/browser_download_url/ && /pkg\"/ { print \$4; exit }")
+
+    # Expected Team ID of the downloaded PKG
+    expectedDialogTeamID="PWA5E9TQ59"
+
+    preFlight "Installing swiftDialog..."
+
+    # Create temporary working directory
+    workDirectory=$( basename "$0" )
+    tempDirectory=$( mktemp -d "/private/tmp/$workDirectory.XXXXXX" )
+
+    # Download the installer package
+    curl --location --silent "$dialogURL" -o "$tempDirectory/Dialog.pkg"
+
+    # Verify the download
+    teamID=$(spctl -a -vv -t install "$tempDirectory/Dialog.pkg" 2>&1 | awk '/origin=/ {print $NF }' | tr -d '()')
+
+    # Install the package if Team ID validates
+    if [[ "$expectedDialogTeamID" == "$teamID" ]]; then
+
+        installer -pkg "$tempDirectory/Dialog.pkg" -target /
+        sleep 2
+        dialogVersion=$( /usr/local/bin/dialog --version )
+        preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
+
+    else
+
+        # Display a so-called "simple" dialog if Team ID fails to validate
+        osascript -e 'display dialog "Please advise your Support Representative of the following error:• Dialog Team ID verification failed" with title "Mac Health Check Error" buttons {"Close"} with icon caution'
+        completionActionOption="Quit"
+        exitCode="1"
+        quitScript
+
+    fi
+
+    # Remove the temporary working directory when done
+    rm -Rf "$tempDirectory"
+
+}
+
+
+
+function dialogCheck() {
+
+    # Check for Dialog and install if not found
+    if [ ! -x "/Library/Application Support/Dialog/Dialog.app" ]; then
+
+        preFlight "swiftDialog not found. Installing..."
+        dialogInstall
+
+    else
+
+        dialogVersion=$(/usr/local/bin/dialog --version)
+        if [[ "${dialogVersion}" < "${swiftDialogMinimumRequiredVersion}" ]]; then
+            
+            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating..."
+            dialogInstall
+            
+        else
+
+        preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+
+        fi
+    
+    fi
+
+}
 
 
 
@@ -1004,6 +1112,14 @@ preFlight "Complete!"
 ####################################################################################################
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Validate / install swiftDialog
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+dialogCheck
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Reset Configuration
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -1015,7 +1131,7 @@ resetConfiguration "${resetConfiguration}"
 # Script Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** VALIDATING SCRIPT ***"
+notice "Validating Script"
 
 if [[ -f "${organizationDirectory}/${organizationScriptName}.zsh" ]]; then
 
@@ -1033,7 +1149,7 @@ fi
 # LaunchDaemon Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** VALIDATING LAUNCHDAEMON ***"
+notice "Validating LaunchDaemon"
 
 logComment "Checking for LaunchDaemon '${launchDaemonPath}' …"
 
@@ -1067,7 +1183,7 @@ fi
 # Status Checks
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "*** STATUS CHECKS ***"
+notice "Status Checks"
 
 logComment "I/O pause …"
 sleep 1.3

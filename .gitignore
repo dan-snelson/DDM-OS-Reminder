@@ -416,3 +416,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local deployment helper
+.deployDDMOSReminder.zsh
+VERSION.txt

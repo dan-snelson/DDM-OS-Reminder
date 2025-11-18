@@ -17,4 +17,4 @@ When submitting a Pull Request, please submit against the `development` branch a
 ## Feature Requests and Bug Reports
 Please use the [Issues](https://github.com/dan-snelson/DDM-OS-Reminder/issues) section to report bugs or request new features.
 
-When reporting a bug, include as much detail as possible, including steps to reproduce the issue, expected behavior, and any relevant logs or screenshots.
+When reporting a bug, include as much detail as possible, including steps to reproduce the issue, expected behavior, and any relevant logs and screenshots.

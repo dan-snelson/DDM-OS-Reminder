@@ -1,7 +1,7 @@
 # DDM OS Reminder
 
 ## Changelog
-### Version 1.4.0 (13-Nov-2025)
+### Version 1.4.0 (18-Nov-2025)
 - (Reluctantly) added swiftDialog installation detection
 - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
 - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script

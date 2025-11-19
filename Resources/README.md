@@ -38,11 +38,14 @@ After [assembling the script](#1-assemble-ddm-os-reminder), create a self-extrac
 ```zsh
 cd DDM-OS-Reminder/Resources
 ```
+
 **2.2.** Then, execute the self-extracting creation script (which will automatically encode the most recently created assembled script):
 ```zsh
 zsh createSelfExtracting.zsh
 ```
+
 **2.3.** You'll deploy the resulting `ddmOSReminder.Assembled.YYYY-MM-DD-HHMMSS.zsh_self-extracting-YYYY-MM-DD-HHMMSS.sh` script to your Macs via your MDM of choice.
+
 ---
 
 ### 3. Extension Attributes

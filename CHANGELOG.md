@@ -1,6 +1,10 @@
 # DDM OS Reminder
 
 ## Changelog
+
+### Version 2.0.0 (21-Nov-2025)
+- Reorganized script structure for (hopefully) improved clarity
+
 ### Version 1.4.0 (18-Nov-2025)
 - (Reluctantly) added swiftDialog installation detection
 - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)

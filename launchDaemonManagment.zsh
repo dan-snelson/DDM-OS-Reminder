@@ -6,16 +6,16 @@
 # DDM OS Reminder
 # https://snelson.us/ddm
 #
-# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
-# DDM-required macOS updates
+# Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s
+# Declarative Device Management-enforced macOS update deadlines.
 #
 # While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful method to enforce
 # macOS updates, its built-in notification tends to be too subtle for most Mac Admins.
 #
-# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`,
-# then leverages a swiftDialog and LaunchDaemon pair to dynamically deliver a more prominent
-# end-user message of when the user's Mac needs to be updated to comply with DDM-configured OS
-# version requirements.
+# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate`
+# entries in `/var/log/install.log`, then leverages a swiftDialog-enabled script and LaunchDaemon pair
+# to dynamically deliver a more prominent end-user message of when the user’s Mac needs to be updated
+# to comply with DDM-enforced macOS update deadlines.
 #
 ####################################################################################################
 #

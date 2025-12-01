@@ -21,8 +21,9 @@
 #
 # HISTORY
 #
-# Version 2.0.0, 21-Nov-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.0.0, 01-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Reorganized script structure for (hopefully) improved clarity
+#   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
 #
 ####################################################################################################
 
@@ -37,10 +38,13 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b1"
+scriptVersion="2.0.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
+
+# Minimum Required Version of swiftDialog
+swiftDialogMinimumRequiredVersion="2.5.6.4805"
 
 
 
@@ -474,7 +478,7 @@ function dialogCheck() {
             
         else
 
-        preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+            preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
 
         fi
     

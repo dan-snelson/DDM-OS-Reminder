@@ -2,8 +2,9 @@
 
 ## Changelog
 
-### Version 2.0.0 (21-Nov-2025)
+### Version 2.0.0 (01-Dec-2025)
 - Reorganized script structure for (hopefully) improved clarity
+- Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
 
 ### Version 1.4.0 (18-Nov-2025)
 - (Reluctantly) added swiftDialog installation detection

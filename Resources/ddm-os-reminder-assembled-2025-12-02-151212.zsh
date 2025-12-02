@@ -477,7 +477,7 @@ function updateRequiredVariables() {
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     # Organization's Overlayicon URL
-    organizationOverlayiconURL=""
+    organizationOverlayiconURL="https://acnemdmbranding.blob.core.windows.net/mdmbrandingcontainer/AcneLogoSquircle.png"
 
     # Download the overlayicon from ${organizationOverlayiconURL}
     if [[ -n "${organizationOverlayiconURL}" ]]; then
@@ -531,7 +531,7 @@ function updateRequiredVariables() {
     # IT Support Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    supportTeamName="IT Support"
+    supportTeamName="Acne Studios IT Support"
     supportTeamPhone="+1 (801) 555-1212"
     supportTeamEmail="rescue@domain.org"
     supportTeamWebsite="https://support.domain.org"
@@ -546,11 +546,10 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    title="macOS ${titleMessageUpdateOrUpgrade} Required"
+    title="Acne Studios IT"
     button1text="Open Software Update"
-    button2text="Remind Me Later"
-    message="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
-    infobuttontext="${supportKB}"
+    button2text="Defer"
+    message="**macOS Update Required**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to keep your Mac secure and compliant.<br><br>Click **${button1text}** and follow the steps, then select **${softwareUpdateButtonText}**.<br><br>If you can’t ${titleMessageUpdateOrUpgrade:l} now, click **Defer**.<br><br>Your Mac **will auto-restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For help, contact **${supportTeamName}** using the (?) button."    infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
 
@@ -559,7 +558,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    infobox="**Current macOS Version:** ${installedmacOSVersion}<br><br>**Required macOS Version:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
 
 
 

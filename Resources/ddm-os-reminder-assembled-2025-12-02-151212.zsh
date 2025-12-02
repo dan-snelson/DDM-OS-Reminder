@@ -476,25 +476,6 @@ function updateRequiredVariables() {
     # Organization's Branding Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # Organization's Overlayicon URL
-    organizationOverlayiconURL="https://acnemdmbranding.blob.core.windows.net/mdmbrandingcontainer/AcneLogoSquircle.png"
-
-    # Download the overlayicon from ${organizationOverlayiconURL}
-    if [[ -n "${organizationOverlayiconURL}" ]]; then
-        # notice "Downloading overlayicon from '${organizationOverlayiconURL}' …"
-        curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
-        if [[ "$?" -ne 0 ]]; then
-            echo "Error: Failed to download the overlayicon from '${organizationOverlayiconURL}'."
-            overlayicon="/System/Library/CoreServices/Finder.app"
-        else
-            overlayicon="/var/tmp/overlayicon.png"
-        fi
-    else
-        overlayicon="/System/Library/CoreServices/Finder.app"
-    fi
-
-
-
     # macOS Installer Icon URL
     majorDDM="${ddmVersionString%%.*}"
     case ${majorDDM} in
@@ -514,6 +495,25 @@ function updateRequiredVariables() {
         else
             icon="/var/tmp/icon.png"
         fi
+    fi
+
+
+
+    # Organization's Overlayicon URL
+    organizationOverlayiconURL="https://acnemdmbranding.blob.core.windows.net/mdmbrandingcontainer/ASIcon.png"
+
+    # Download the overlayicon from ${organizationOverlayiconURL}
+    if [[ -n "${organizationOverlayiconURL}" ]]; then
+        # notice "Downloading overlayicon from '${organizationOverlayiconURL}' …"
+        curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
+        if [[ "$?" -ne 0 ]]; then
+            echo "Error: Failed to download the overlayicon from '${organizationOverlayiconURL}'."
+            overlayicon="/System/Library/CoreServices/Finder.app"
+        else
+            overlayicon="/var/tmp/overlayicon.png"
+        fi
+    else
+        overlayicon="/System/Library/CoreServices/Finder.app"
     fi
 
 

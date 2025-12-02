@@ -349,9 +349,7 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
-    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
-    ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
-    ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %H:%M" 2>/dev/null )
 
     # DDM-enforced Install Date
     if (( deadlineEpoch <= $(date +%s) )); then
@@ -367,7 +365,7 @@ installedOSvsDDMenforcedOS() {
             info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
 
             if [[ -n "$paddedEpoch" ]]; then
-                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %H:%M" 2>/dev/null )
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
             else
                 warning "Unable to parse padded enforcement date from install.log"
@@ -386,10 +384,6 @@ installedOSvsDDMenforcedOS() {
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
 
     fi
-
-    # Normalize AM/PM formatting
-    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
-    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
 
     # Days Remaining (allow negative values)
     ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date +%s)) / 86400 ))
@@ -476,44 +470,42 @@ function updateRequiredVariables() {
     # Organization's Branding Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # macOS Installer Icon URL
-    majorDDM="${ddmVersionString%%.*}"
-    case ${majorDDM} in
-        14)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
-        15)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
-        26)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
-        *)   macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
-    esac
+    # Organization's Icon URL
+    organizationIconURL="https://acnemdmbranding.blob.core.windows.net/mdmbrandingcontainer/ASIcon.png"
 
-    # Download the icon from ${macOSIconURL}
-    if [[ -n "${macOSIconURL}" ]]; then
-        # notice "Downloading icon from '${macOSIconURL}' …"
-        curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail
+    # Download the icon from ${organizationIconURL}
+    if [[ -n "${organizationIconURL}" ]]; then
+        # notice "Downloading icon from '${organizationIconURL}' …"
+        curl -o "/var/tmp/icon.png" "${organizationIconURL}" --silent --show-error --fail
         if [[ "$?" -ne 0 ]]; then
-            error "Failed to download the icon from '${macOSIconURL}'."
+            error "Failed to download the icon from '${organizationIconURL}'."
             icon="/System/Library/CoreServices/Finder.app"
         else
             icon="/var/tmp/icon.png"
         fi
+    else
+        icon="/System/Library/CoreServices/Finder.app"
     fi
 
+    # macOS Installer Overlayicon URL
+    majorDDM="${ddmVersionString%%.*}"
+    case ${majorDDM} in
+        14)  macOSOverlayiconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
+        15)  macOSOverlayiconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
+        26)  macOSOverlayiconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
+        *)   macOSOverlayiconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
+    esac
 
-
-    # Organization's Overlayicon URL
-    organizationOverlayiconURL="https://acnemdmbranding.blob.core.windows.net/mdmbrandingcontainer/ASIcon.png"
-
-    # Download the overlayicon from ${organizationOverlayiconURL}
-    if [[ -n "${organizationOverlayiconURL}" ]]; then
-        # notice "Downloading overlayicon from '${organizationOverlayiconURL}' …"
-        curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
+    # Download the overlayicon from ${macOSOverlayiconURL}
+    if [[ -n "${macOSOverlayiconURL}" ]]; then
+        # notice "Downloading overlayicon from '${macOSOverlayiconURL}' …"
+        curl -o "/var/tmp/overlayicon.png" "${macOSOverlayiconURL}" --silent --show-error --fail
         if [[ "$?" -ne 0 ]]; then
-            echo "Error: Failed to download the overlayicon from '${organizationOverlayiconURL}'."
+            echo "Error: Failed to download the overlayicon from '${macOSOverlayiconURL}'."
             overlayicon="/System/Library/CoreServices/Finder.app"
         else
             overlayicon="/var/tmp/overlayicon.png"
         fi
-    else
-        overlayicon="/System/Library/CoreServices/Finder.app"
     fi
 
 
@@ -531,7 +523,7 @@ function updateRequiredVariables() {
     # IT Support Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    supportTeamName="Acne Studios IT Support"
+    supportTeamName="Acne Studios IT"
     supportTeamPhone="+1 (801) 555-1212"
     supportTeamEmail="rescue@domain.org"
     supportTeamWebsite="https://support.domain.org"
@@ -549,7 +541,7 @@ function updateRequiredVariables() {
     title="Acne Studios IT"
     button1text="Open Software Update"
     button2text="Defer"
-    message="**macOS Update Required**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please update to macOS **${ddmVersionString}** to keep your Mac secure and compliant.<br><br>Click **${button1text}** and follow the steps, then select **${softwareUpdateButtonText}**.<br><br>If you can’t ${titleMessageUpdateOrUpgrade:l} now, click **Defer**.<br><br>Your Mac **will auto-restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For help, contact **${supportTeamName}** using the (?) button."    infobuttontext="${supportKB}"
+    message="**macOS Update Required**<br>---<br>Please update to macOS **${ddmVersionString}** to keep your Mac secure and compliant.<br><br>Click **${button1text}** and follow the steps, then select **${softwareUpdateButtonText}**.If you can’t ${titleMessageUpdateOrUpgrade:l} now, click **Defer**.<br><br>Your Mac **will auto-restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For help, contact **${supportTeamName}** using the (?) button."    infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
 

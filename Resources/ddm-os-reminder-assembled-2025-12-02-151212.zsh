@@ -406,7 +406,7 @@ installedOSvsDDMenforcedOS() {
             softwareUpdateButtonText="Upgrade Now"
         else
             titleMessageUpdateOrUpgrade="Update"
-            softwareUpdateButtonText="Restart Now"
+            softwareUpdateButtonText="Update Now"
         fi
     fi
 
@@ -541,7 +541,8 @@ function updateRequiredVariables() {
     title="Acne Studios IT"
     button1text="Open Software Update"
     button2text="Defer"
-    message="**macOS Update Required**<br>---<br>Please update to macOS **${ddmVersionString}** to keep your Mac secure and compliant.<br><br>Click **${button1text}** and follow the steps, then select **${softwareUpdateButtonText}**.If you can’t ${titleMessageUpdateOrUpgrade:l} now, click **Defer**.<br><br>Your Mac **will auto-restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For help, contact **${supportTeamName}** using the (?) button."    infobuttontext="${supportKB}"
+    message="**macOS Update Required**<br>---<br>Please update to macOS **${ddmVersionString}** to keep your Mac secure and compliant.<br><br>Click **${button1text}**, follow the steps, and then press **${softwareUpdateButtonText}**. If you can’t update now, press **Defer**.<br><br>At the deadline (**${ddmEnforcedInstallDateHumanReadable}**), your Mac **will automatically restart and update**, and any unsaved work **will be lost**.<br><br>For help, contact **${supportTeamName}** using the (?) button."
+    infobuttontext="${supportKB}"
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
 
 

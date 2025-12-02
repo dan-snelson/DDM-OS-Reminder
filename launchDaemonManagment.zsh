@@ -21,8 +21,9 @@
 #
 # HISTORY
 #
-# Version 2.0.0, 21-Nov-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.0.0, 01-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Reorganized script structure for (hopefully) improved clarity
+#   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
 #
 ####################################################################################################
 
@@ -474,7 +475,7 @@ function dialogCheck() {
             
         else
 
-        preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+            preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
 
         fi
     

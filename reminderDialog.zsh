@@ -20,10 +20,10 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b1"
+scriptVersion="2.0.0b1-a1"
 
 # Client-side Log
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/private/var/log/MDMLogs/DDMOSReminder.log"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least

@@ -37,10 +37,10 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b1"
+scriptVersion="2.0.0b1-a1"
 
 # Client-side Log
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/private/var/log/MDMLogs/DDMOSReminder.log"
 
 
 
@@ -58,7 +58,7 @@ resetConfiguration="${4:-"All"}"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Organization's Reverse Domain Name Notation (i.e., com.company.division)
-reverseDomainNameNotation="org.churchofjesuschrist"
+reverseDomainNameNotation="com.acnestudios.it"
 
 # Script Human-readabale Name
 humanReadableScriptName="DDM OS Reminder"
@@ -67,7 +67,7 @@ humanReadableScriptName="DDM OS Reminder"
 organizationScriptName="dor"
 
 # Organization's Directory (i.e., where your client-side scripts reside)
-organizationDirectory="/Library/Management/org.churchofjesuschrist"
+organizationDirectory="/Library/Management"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"

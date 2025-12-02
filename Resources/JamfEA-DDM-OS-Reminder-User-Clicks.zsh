@@ -20,7 +20,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 scriptVersion="0.0.1"
 
 # Client-side Log (must match value set in "ddmOSReminder.zsh" script)
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/private/var/log/MDMLogs/DDMOSReminder.log"
 
 # Organization's Script Name (must match value set in "ddmOSReminder.zsh" script)
 organizationScriptName="dorm"

@@ -38,11 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-<<<<<<<< HEAD:Resources/ddm-os-reminder-assembled-2025-12-02-151212.zsh
 scriptVersion="2.0.0b1-a1"
-========
-scriptVersion="2.0.0b2"
->>>>>>>> 584537d219a174dc9fcb94ca9c3ec89862f650a2:Resources/ddm-os-reminder-assembled-2025-12-01-125918.zsh
 
 # Client-side Log
 scriptLog="/private/var/log/MDMLogs/DDMOSReminder.log"

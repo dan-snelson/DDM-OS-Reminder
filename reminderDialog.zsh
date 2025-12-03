@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b3"
+scriptVersion="2.0.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -44,7 +44,7 @@ organizationScriptName="dorm"
 daysBeforeDeadlineDisplayReminder="14"
 
 # Organization's number of days before deadline to enable swiftDialog's blurscreen
-daysBeforeDeadlineBlurscreen="3"
+daysBeforeDeadlineBlurscreen="9"
 
 # Organization's Meeting Delay (in minutes) 
 meetingDelay="75"
@@ -154,11 +154,16 @@ installedOSvsDDMenforcedOS() {
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
 
-    # Days Remaining (allow negative values)
-    ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date +%s)) / 86400 ))
-
-    # Blur screen logic
-    blurscreen=$([[ $ddmVersionStringDaysRemaining -le $daysBeforeDeadlineBlurscreen ]] && echo "--blurscreen" || echo "--noblurscreen")
+    # Blurscreen logic (based on precise timestamp comparison)
+    nowEpoch=$(date +%s)
+    secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))
+    blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
+    ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
+    if (( secondsUntilDeadline <= blurThresholdSeconds )); then
+        blurscreen="--blurscreen"
+    else
+        blurscreen="--noblurscreen"
+    fi
 
     # Version Comparison Result
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
@@ -344,7 +349,9 @@ function updateRequiredVariables() {
 
 function displayReminderDialog() {
 
-    notice "Display Reminder Dialog to ${loggedInUser}"
+    additionalDialogOptions=("$@")
+
+    notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
 
     ${dialogBinary} \
         --title "${title}" \
@@ -356,14 +363,13 @@ function displayReminderDialog() {
         --button1text "${button1text}" \
         --button2text "${button2text}" \
         --infobuttontext "${infobuttontext}" \
-        --infobuttonaction "${infobuttonaction}" \
         --messagefont "size=14" \
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \
         --width 800 \
         --height 600 \
         "${blurscreen}" \
-        --ontop
+        "${additionalDialogOptions[@]}"
 
     returncode=$?
     info "Return Code: ${returncode}"
@@ -406,9 +412,13 @@ function displayReminderDialog() {
 
         3)  ## Process exit code 3 scenario here
             notice "${loggedInUser} clicked ${infobuttontext}"
+            info "Disabling blurscreen, hiding dialog and opening KB article: ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
+            echo "hide:" >> /var/tmp/dialog.log
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
-            quitScript "0"
+            info "Waiting 61 seconds before re-showing dialog …"
+            sleep 61
+            displayReminderDialog --ontop --moveable
             ;;
 
         4)  ## Process exit code 4 scenario here
@@ -448,7 +458,7 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "Shine on, you crazy diamond!"
+    quitOut "Keep them movin' blades sharp!"
 
     exit "${1}"
 
@@ -602,7 +612,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     updateRequiredVariables
 
     # Display reminder dialog (with blurscreen, depending on proximity to deadline)
-    displayReminderDialog
+    displayReminderDialog --ontop
 
 else
 

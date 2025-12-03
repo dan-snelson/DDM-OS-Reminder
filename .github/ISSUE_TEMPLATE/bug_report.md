@@ -14,6 +14,8 @@ assignees: ''
 > If the issue persists, please complete the rest of this template to help us troubleshoot.
 > 
 > Also, please review the [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues) to help determine the source of the issue.
+> 
+> You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
 
 ---
 

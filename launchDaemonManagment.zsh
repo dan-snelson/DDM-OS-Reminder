@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.0.0, 01-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.0.0, 03-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Reorganized script structure for (hopefully) improved clarity
 #   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
 #
@@ -38,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b2"
+scriptVersion="2.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

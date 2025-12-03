@@ -356,6 +356,7 @@ function displayReminderDialog() {
         --button1text "${button1text}" \
         --button2text "${button2text}" \
         --infobuttontext "${infobuttontext}" \
+        --infobuttonaction "${infobuttonaction}" \
         --messagefont "size=14" \
         --helpmessage "${helpmessage}" \
         --helpimage "${helpimage}" \

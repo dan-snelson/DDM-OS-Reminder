@@ -420,3 +420,5 @@ FodyWeavers.xsd
 # Local deployment helper
 .deployDDMOSReminder.zsh
 VERSION.txt
+aap.zsh
+org.churchofjesuschrist.ddmosreminder.plist

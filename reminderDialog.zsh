@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b6"
+scriptVersion="2.0.0b6-a1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -39,6 +39,14 @@ humanReadableScriptName="DDM OS Reminder End-user Message"
 
 # Organization's Script Name
 organizationScriptName="dorm"
+
+# Organization's reverse domain (used for plist domains)
+reverseDomainNameNotation="org.churchofjesuschrist"
+
+# Preference plist domains
+preferenceDomain="${reverseDomainNameNotation}.ddmosreminder"
+managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
+localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
 # Organization's number of days before deadline to starting displaying reminders
 daysBeforeDeadlineDisplayReminder="14"
@@ -74,6 +82,132 @@ function error()        { updateScriptLog "[ERROR]           ${1}"; let errorCou
 function warning()      { updateScriptLog "[WARNING]         ${1}"; let errorCount++; }
 function fatal()        { updateScriptLog "[FATAL ERROR]     ${1}"; exit 1; }
 function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Preference Helpers
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function setPreferenceValue() {
+
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local localValue="${3}"
+    local defaultValue="${4}"
+    local chosenValue=""
+
+    if [[ -n "${managedValue}" ]]; then
+        chosenValue="${managedValue}"
+    elif [[ -n "${localValue}" ]]; then
+        chosenValue="${localValue}"
+    else
+        chosenValue="${defaultValue}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${chosenValue}"
+
+}
+
+function setNumericPreferenceValue() {
+
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local localValue="${3}"
+    local defaultValue="${4}"
+    local candidate=""
+
+    if [[ -n "${managedValue}" && "${managedValue}" == <-> ]]; then
+        candidate="${managedValue}"
+    elif [[ -n "${localValue}" && "${localValue}" == <-> ]]; then
+        candidate="${localValue}"
+    else
+        candidate="${defaultValue}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${candidate}"
+
+}
+
+function replacePlaceholders() {
+
+    local targetVariable="${1}"
+    local value="${(P)targetVariable}"
+
+    value=${value//\{weekday\}/$( date +'%A' )}
+    value=${value//\{userfirstname\}/${loggedInUserFirstname}}
+    value=${value//\{ddmVersionString\}/${ddmVersionString}}
+    value=${value//\{ddmEnforcedInstallDateHumanReadable\}/${ddmEnforcedInstallDateHumanReadable}}
+    value=${value//\{installedmacOSVersion\}/${installedmacOSVersion}}
+    value=${value//\{ddmVersionStringDeadlineHumanReadable\}/${ddmVersionStringDeadlineHumanReadable}}
+    value=${value//\{ddmVersionStringDaysRemaining\}/${ddmVersionStringDaysRemaining}}
+    value=${value//\{supportTeamName\}/${supportTeamName}}
+    value=${value//\{supportTeamPhone\}/${supportTeamPhone}}
+    value=${value//\{supportTeamEmail\}/${supportTeamEmail}}
+    value=${value//\{supportTeamWebsite\}/${supportTeamWebsite}}
+    value=${value//\{supportKBURL\}/${supportKBURL}}
+    value=${value//\{supportKB\}/${supportKB}}
+    value=${value//\{dialogVersion\}/$(/usr/local/bin/dialog -v 2>/dev/null)}
+    value=${value//\{scriptVersion\}/${scriptVersion}}
+
+    printf -v "${targetVariable}" '%s' "${value}"
+
+}
+
+function loadPreferenceOverrides() {
+
+    if [[ -f ${managedPreferencesPlist}.plist ]]; then
+        scriptLog_managed=$(defaults read "${managedPreferencesPlist}" ScriptLog 2> /dev/null)
+        daysBeforeDeadlineDisplayReminder_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
+        daysBeforeDeadlineBlurscreen_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
+        meetingDelay_managed=$(defaults read "${managedPreferencesPlist}" MeetingDelay 2> /dev/null)
+        organizationOverlayiconURL_managed=$(defaults read "${managedPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
+        supportTeamName_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamName 2> /dev/null)
+        supportTeamPhone_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamPhone 2> /dev/null)
+        supportTeamEmail_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamEmail 2> /dev/null)
+        supportTeamWebsite_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamWebsite 2> /dev/null)
+        supportKB_managed=$(defaults read "${managedPreferencesPlist}" SupportKB 2> /dev/null)
+        infobuttonaction_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonAction 2> /dev/null)
+        supportKBURL_managed=$(defaults read "${managedPreferencesPlist}" SupportKBURL 2> /dev/null)
+        title_managed=$(defaults read "${managedPreferencesPlist}" Title 2> /dev/null)
+        button1text_managed=$(defaults read "${managedPreferencesPlist}" Button1Text 2> /dev/null)
+        button2text_managed=$(defaults read "${managedPreferencesPlist}" Button2Text 2> /dev/null)
+        message_managed=$(defaults read "${managedPreferencesPlist}" Message 2> /dev/null)
+        infobuttontext_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonText 2> /dev/null)
+        infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
+        helpmessage_managed=$(defaults read "${managedPreferencesPlist}" HelpMessage 2> /dev/null)
+        helpimage_managed=$(defaults read "${managedPreferencesPlist}" HelpImage 2> /dev/null)
+    fi
+
+    if [[ -f ${localPreferencesPlist}.plist ]]; then
+        scriptLog_local=$(defaults read "${localPreferencesPlist}" ScriptLog 2> /dev/null)
+        daysBeforeDeadlineDisplayReminder_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
+        daysBeforeDeadlineBlurscreen_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
+        meetingDelay_local=$(defaults read "${localPreferencesPlist}" MeetingDelay 2> /dev/null)
+        organizationOverlayiconURL_local=$(defaults read "${localPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
+        supportTeamName_local=$(defaults read "${localPreferencesPlist}" SupportTeamName 2> /dev/null)
+        supportTeamPhone_local=$(defaults read "${localPreferencesPlist}" SupportTeamPhone 2> /dev/null)
+        supportTeamEmail_local=$(defaults read "${localPreferencesPlist}" SupportTeamEmail 2> /dev/null)
+        supportTeamWebsite_local=$(defaults read "${localPreferencesPlist}" SupportTeamWebsite 2> /dev/null)
+        supportKB_local=$(defaults read "${localPreferencesPlist}" SupportKB 2> /dev/null)
+        infobuttonaction_local=$(defaults read "${localPreferencesPlist}" InfoButtonAction 2> /dev/null)
+        supportKBURL_local=$(defaults read "${localPreferencesPlist}" SupportKBURL 2> /dev/null)
+        title_local=$(defaults read "${localPreferencesPlist}" Title 2> /dev/null)
+        button1text_local=$(defaults read "${localPreferencesPlist}" Button1Text 2> /dev/null)
+        button2text_local=$(defaults read "${localPreferencesPlist}" Button2Text 2> /dev/null)
+        message_local=$(defaults read "${localPreferencesPlist}" Message 2> /dev/null)
+        infobuttontext_local=$(defaults read "${localPreferencesPlist}" InfoButtonText 2> /dev/null)
+        infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
+        helpmessage_local=$(defaults read "${localPreferencesPlist}" HelpMessage 2> /dev/null)
+        helpimage_local=$(defaults read "${localPreferencesPlist}" HelpImage 2> /dev/null)
+    fi
+
+    setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
+    setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
+    setNumericPreferenceValue "daysBeforeDeadlineBlurscreen" "${daysBeforeDeadlineBlurscreen_managed}" "${daysBeforeDeadlineBlurscreen_local}" "${daysBeforeDeadlineBlurscreen}"
+    setNumericPreferenceValue "meetingDelay" "${meetingDelay_managed}" "${meetingDelay_local}" "${meetingDelay}"
+
+}
 
 
 
@@ -245,7 +379,8 @@ function updateRequiredVariables() {
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     # Organization's Overlayicon URL
-    organizationOverlayiconURL=""
+    local defaultOverlayiconURL="${organizationOverlayiconURL:-""}"
+    setPreferenceValue "organizationOverlayiconURL" "${organizationOverlayiconURL_managed}" "${organizationOverlayiconURL_local}" "${defaultOverlayiconURL}"
 
     # Download the overlayicon from ${organizationOverlayiconURL}
     if [[ -n "${organizationOverlayiconURL}" ]]; then
@@ -299,14 +434,26 @@ function updateRequiredVariables() {
     # IT Support Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    supportTeamName="IT Support"
-    supportTeamPhone="+1 (801) 555-1212"
-    supportTeamEmail="rescue@domain.org"
-    supportTeamWebsite="https://support.domain.org"
-    supportTeamHyperlink="[${supportTeamWebsite}](${supportTeamWebsite})"
-    supportKB="KB8675309"
-    infobuttonaction="https://servicenow.domain.org/support?id=kb_article_view&sysparm_article=${supportKB}"
-    supportKBURL="[${supportKB}](${infobuttonaction})"
+    local defaultSupportTeamName="${supportTeamName:-"IT Support"}"
+    setPreferenceValue "supportTeamName" "${supportTeamName_managed}" "${supportTeamName_local}" "${defaultSupportTeamName}"
+
+    local defaultSupportTeamPhone="${supportTeamPhone:-"+1 (801) 555-1212"}"
+    setPreferenceValue "supportTeamPhone" "${supportTeamPhone_managed}" "${supportTeamPhone_local}" "${defaultSupportTeamPhone}"
+
+    local defaultSupportTeamEmail="${supportTeamEmail:-"rescue@domain.org"}"
+    setPreferenceValue "supportTeamEmail" "${supportTeamEmail_managed}" "${supportTeamEmail_local}" "${defaultSupportTeamEmail}"
+
+    local defaultSupportTeamWebsite="${supportTeamWebsite:-"https://support.domain.org"}"
+    setPreferenceValue "supportTeamWebsite" "${supportTeamWebsite_managed}" "${supportTeamWebsite_local}" "${defaultSupportTeamWebsite}"
+
+    local defaultSupportKB="${supportKB:-"KB8675309"}"
+    setPreferenceValue "supportKB" "${supportKB_managed}" "${supportKB_local}" "${defaultSupportKB}"
+
+    local defaultInfobuttonaction="https://servicenow.domain.org/support?id=kb_article_view&sysparm_article=${supportKB}"
+    setPreferenceValue "infobuttonaction" "${infobuttonaction_managed}" "${infobuttonaction_local}" "${defaultInfobuttonaction}"
+
+    local defaultSupportKBURL="[${supportKB}](${infobuttonaction})"
+    setPreferenceValue "supportKBURL" "${supportKBURL_managed}" "${supportKBURL_local}" "${defaultSupportKBURL}"
 
 
 
@@ -314,12 +461,25 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    title="macOS ${titleMessageUpdateOrUpgrade} Required"
-    button1text="Open Software Update"
-    button2text="Remind Me Later"
-    message="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
-    infobuttontext="${supportKB}"
-    action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
+    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} Required"
+    setPreferenceValue "title" "${title_managed}" "${title_local}" "${defaultTitle}"
+    replacePlaceholders "title"
+
+    local defaultButton1text="${button1text:-"Open Software Update"}"
+    setPreferenceValue "button1text" "${button1text_managed}" "${button1text_local}" "${defaultButton1text}"
+
+    local defaultButton2text="${button2text:-"Remind Me Later"}"
+    setPreferenceValue "button2text" "${button2text_managed}" "${button2text_local}" "${defaultButton2text}"
+
+    local defaultInfobuttontext="${infobuttontext:-${supportKB}}"
+    setPreferenceValue "infobuttontext" "${infobuttontext_managed}" "${infobuttontext_local}" "${defaultInfobuttontext}"
+
+    local defaultAction="${action:-"x-apple.systempreferences:com.apple.preferences.softwareupdate"}"
+    printf -v "action" '%s' "${defaultAction}"
+
+    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
+    replacePlaceholders "message"
 
 
 
@@ -327,7 +487,9 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
+    replacePlaceholders "infobox"
 
 
 
@@ -335,9 +497,13 @@ function updateRequiredVariables() {
     # Help Message Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    helpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
+    local defaultHelpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
+    setPreferenceValue "helpmessage" "${helpmessage_managed}" "${helpmessage_local}" "${defaultHelpmessage}"
+    replacePlaceholders "helpmessage"
 
-    helpimage="qr=${infobuttonaction}"
+    local defaultHelpimage="qr=${infobuttonaction}"
+    setPreferenceValue "helpimage" "${helpimage_managed}" "${helpimage_local}" "${defaultHelpimage}"
+    replacePlaceholders "helpimage"
 
 }
 
@@ -463,6 +629,16 @@ function quitScript() {
     exit "${1}"
 
 }
+
+
+
+####################################################################################################
+#
+# Apply Preference Overrides
+#
+####################################################################################################
+
+loadPreferenceOverrides
 
 
 

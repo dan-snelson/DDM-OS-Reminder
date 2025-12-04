@@ -57,6 +57,9 @@ daysBeforeDeadlineBlurscreen="3"
 # Organization's Meeting Delay (in minutes) 
 meetingDelay="75"
 
+# Date format for deadlines (used with date -jf)
+dateFormatDeadlineHumanReadable="+%a, %d-%b-%Y, %-l:%M %p"
+
 # Swap main icon and overlay icon (YES enable)
 swapOverlayAndLogo=NO
 
@@ -180,6 +183,7 @@ function loadPreferenceOverrides() {
         meetingDelay_managed=$(defaults read "${managedPreferencesPlist}" MeetingDelay 2> /dev/null)
         organizationOverlayiconURL_managed=$(defaults read "${managedPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
         swapOverlayAndLogo_managed=$(defaults read "${managedPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
+        dateFormatDeadlineHumanReadable_managed=$(defaults read "${managedPreferencesPlist}" DateFormatDeadlineHumanReadable 2> /dev/null)
         supportTeamName_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamName 2> /dev/null)
         supportTeamPhone_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamPhone 2> /dev/null)
         supportTeamEmail_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamEmail 2> /dev/null)
@@ -204,6 +208,7 @@ function loadPreferenceOverrides() {
         meetingDelay_local=$(defaults read "${localPreferencesPlist}" MeetingDelay 2> /dev/null)
         organizationOverlayiconURL_local=$(defaults read "${localPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
         swapOverlayAndLogo_local=$(defaults read "${localPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
+        dateFormatDeadlineHumanReadable_local=$(defaults read "${localPreferencesPlist}" DateFormatDeadlineHumanReadable 2> /dev/null)
         supportTeamName_local=$(defaults read "${localPreferencesPlist}" SupportTeamName 2> /dev/null)
         supportTeamPhone_local=$(defaults read "${localPreferencesPlist}" SupportTeamPhone 2> /dev/null)
         supportTeamEmail_local=$(defaults read "${localPreferencesPlist}" SupportTeamEmail 2> /dev/null)
@@ -226,6 +231,9 @@ function loadPreferenceOverrides() {
     setNumericPreferenceValue "daysBeforeDeadlineBlurscreen" "${daysBeforeDeadlineBlurscreen_managed}" "${daysBeforeDeadlineBlurscreen_local}" "${daysBeforeDeadlineBlurscreen}"
     setNumericPreferenceValue "meetingDelay" "${meetingDelay_managed}" "${meetingDelay_local}" "${meetingDelay}"
     setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
+    setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
+    # Ensure date format starts with '+' as required by `date`
+    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
 
 }
 
@@ -266,7 +274,11 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
-    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
+    # Fallback to default if format fails
+    if [[ -z "${ddmVersionStringDeadlineHumanReadable}" ]]; then
+        ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+    fi
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
 
@@ -284,7 +296,10 @@ installedOSvsDDMenforcedOS() {
             info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
 
             if [[ -n "$paddedEpoch" ]]; then
-                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
+                if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
+                    ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                fi
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
             else
                 warning "Unable to parse padded enforcement date from install.log"
@@ -777,7 +792,10 @@ if [[ "${1}" == "demo" ]]; then
     ddmEnforcedInstallDate=$(date -v${offsetString} +"%Y-%m-%d")
 
     ddmVersionStringDeadline="${ddmEnforcedInstallDate}T18:00:00" # add time to satisfy parsing
-    ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "+%a, %d-%b-%Y, %-l:%M %p")
+    ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "${dateFormatDeadlineHumanReadable}")
+    if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
+        ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "+%a, %d-%b-%Y, %-l:%M %p")
+    fi
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
     ddmVersionStringDaysRemaining="${demoDeadlineOffsetDays}"

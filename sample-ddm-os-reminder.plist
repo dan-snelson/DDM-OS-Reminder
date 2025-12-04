@@ -21,6 +21,8 @@
 	<false/>
 	<key>DateFormatDeadlineHumanReadable</key>
 	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
+	<key>DateFormatDeadlineHumanReadable</key>
+	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
 
 	<!-- Support block -->
 	<key>SupportTeamName</key>

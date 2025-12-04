@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b4"
+scriptVersion="2.0.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -546,6 +546,64 @@ preFlight "Complete"
 # Program
 #
 ####################################################################################################
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Demo Mode (i.e., zsh ~/Downloads/reminderDialog.zsh demo)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+if [[ "${1}" == "demo" ]]; then
+
+    notice "Demo mode enabled"
+
+    # Installed vs Required Version
+    installedmacOSVersion=$( sw_vers -productVersion )
+    demoMajorVersion="${installedmacOSVersion%%.*}"
+    ddmVersionString="${demoMajorVersion}.99"
+
+    # Days from today to simulate deadline (can be + or -)
+    demoDeadlineOffsetDays=-3   # positive → future deadline; negative → past due
+    if (( demoDeadlineOffsetDays < 0 )); then       # Normalize the offset so “-3” becomes "-3d" and “7” becomes "+7d"
+        offsetString="${demoDeadlineOffsetDays}d"   # → "-3d"
+        blurscreen="--blurscreen"
+    else
+        offsetString="+${demoDeadlineOffsetDays}d"  # → "+7d"
+        blurscreen="--noblurscreen"
+    fi
+    ddmEnforcedInstallDate=$(date -v${offsetString} +"%Y-%m-%d")
+
+    ddmVersionStringDeadline="${ddmEnforcedInstallDate}T17:00:00" # add time to satisfy parsing
+    ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%d" "${ddmEnforcedInstallDate}" "+%a, %d-%b-%Y")
+    ddmVersionStringDaysRemaining="${demoDeadlineOffsetDays}"
+    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
+
+    # Title / update-or-upgrade logic
+    # If required major != installed major → upgrade, else update
+    if [[ "${demoMajorVersion}" != "${installedmacOSVersion%%.*}" ]]; then
+        titleMessageUpdateOrUpgrade="Upgrade"
+        softwareUpdateButtonText="Upgrade Now"
+    else
+        titleMessageUpdateOrUpgrade="Update"
+        softwareUpdateButtonText="Restart Now"
+    fi
+
+    # Other variables normally generated in installedOSvsDDMenforcedOS
+    versionComparisonResult="Update Required"
+
+    # Logged-in user (normally populated earlier)
+    loggedInUserFirstname="${loggedInUserFirstname:-Demo}"
+    loggedInUser="${loggedInUser:-demo}"
+
+    # Now populate dialog strings using your standard function
+    updateRequiredVariables
+
+    # Display reminder dialog
+    displayReminderDialog --ontop
+
+    exit 0
+
+fi
+
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Installed OS vs. DDM-enforced OS Comparison

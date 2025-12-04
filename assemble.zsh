@@ -65,8 +65,53 @@ echo
 echo "🔧 Inserting end-user message …"
 
 patchedMessage=$(mktemp)
-# Comment out any lines that append to ${scriptLog}
-sed 's/| tee -a "\${scriptLog}"/# | tee -a "\${scriptLog}"/' "${messageScript}" > "${patchedMessage}"
+
+# First: comment out any lines that append to ${scriptLog}
+sed 's/| tee -a "\${scriptLog}"/# | tee -a "\${scriptLog}"/' "${messageScript}" \
+    > "${patchedMessage}.stage1"
+
+# Second: remove the Demo Mode block, including its leading separator
+# and trailing blank lines, using awk (BSD-safe)
+awk '
+{
+    line[NR] = $0
+}
+END {
+    n = NR
+    start = end = 0
+
+    for (i = 1; i <= n; i++) {
+        # Look for the separator line immediately before the Demo Mode header
+        if (line[i] ~ /^# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #$/ &&
+            line[i+1] ~ /^# Demo Mode \(i.e., zsh .* demo\)/) {
+
+            start = i    # start removal at the separator
+
+            # now find the closing "fi" for the demo block
+            for (j = i+1; j <= n; j++) {
+                if (line[j] ~ /^fi$/) {
+                    end = j
+                    # consume any trailing blank lines after fi
+                    while (end + 1 <= n && line[end + 1] ~ /^[[:space:]]*$/) {
+                        end++
+                    }
+                    break
+                }
+            }
+            break
+        }
+    }
+
+    for (i = 1; i <= n; i++) {
+        if (start && end && i >= start && i <= end) {
+            # skip demo block and its separator / trailing blanks
+            continue
+        }
+        print line[i]
+    }
+}' "${patchedMessage}.stage1" > "${patchedMessage}"
+
+rm -f "${patchedMessage}.stage1"
 
 lastMessageLine=$(tail -n 1 "${patchedMessage}")
 lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"

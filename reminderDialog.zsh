@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b5"
+scriptVersion="2.0.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -561,7 +561,7 @@ if [[ "${1}" == "demo" ]]; then
     ddmVersionString="${demoMajorVersion}.99"
 
     # Days from today to simulate deadline (can be + or -)
-    demoDeadlineOffsetDays=-3   # positive → future deadline; negative → past due
+    demoDeadlineOffsetDays=7   # positive → future deadline; negative → past due
     if (( demoDeadlineOffsetDays < 0 )); then       # Normalize the offset so “-3” becomes "-3d" and “7” becomes "+7d"
         offsetString="${demoDeadlineOffsetDays}d"   # → "-3d"
         blurscreen="--blurscreen"
@@ -571,8 +571,10 @@ if [[ "${1}" == "demo" ]]; then
     fi
     ddmEnforcedInstallDate=$(date -v${offsetString} +"%Y-%m-%d")
 
-    ddmVersionStringDeadline="${ddmEnforcedInstallDate}T17:00:00" # add time to satisfy parsing
-    ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%d" "${ddmEnforcedInstallDate}" "+%a, %d-%b-%Y")
+    ddmVersionStringDeadline="${ddmEnforcedInstallDate}T18:00:00" # add time to satisfy parsing
+    ddmEnforcedInstallDateHumanReadable=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "+%a, %d-%b-%Y, %-l:%M %p")
+    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
+    ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
     ddmVersionStringDaysRemaining="${demoDeadlineOffsetDays}"
     ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
 

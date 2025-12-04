@@ -1,7 +1,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
 # DDM OS Reminder
-> A (hopefully) clarifying update to Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s Declarative Device Management-enforced macOS update deadlines
+> A (hopefully) clarifying update to Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s Declarative Device Management-enforced macOS update deadlines — now with "demo" mode for easy reminder dialog testing
 
 <img src="images/ddmOSReminder_Hero.png" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -28,6 +28,10 @@ While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful
 - **Tastefully Intrusive**: The message is designed to be informative without being overly disruptive — first checking for the user’s Display Sleep Assertions — allowing users to continue their work while being reminded of the need to update.
 - **Easy Installation**: A new [`assembleDDMOSReminder.zsh`](Resources/assembleDDMOSReminder.zsh) script makes it easy to deploy via any MDM solution so you can quickly roll out across your entire organization.
 - **Logging**: The script logs its actions to a specified log file, allowing administrators to monitor its activity and troubleshoot if necessary.
+- **Demonstration Mode**: A built-in `demo` mode allows administrators to easily test the reminder’s appearance and functionality.
+`zsh reminderDialog.zsh demo`
+
+<img src="images/ddmOSReminder_Demo.png" alt="A built-in 'demo' mode allows administrators to easily test the reminder’s appearance and functionality." width="500"/>
 
 ## Support
 

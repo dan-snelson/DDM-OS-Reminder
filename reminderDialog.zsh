@@ -154,6 +154,20 @@ function replacePlaceholders() {
 
 }
 
+function applyHideRules() {
+
+    # Hide info button explicitly
+    if [[ "${infobuttontext}" == "hide" ]]; then
+        infobuttontext=""
+    fi
+
+    # Hide help image (QR) if requested
+    if [[ "${helpimage}" == "hide" ]]; then
+        helpimage=""
+    fi
+
+}
+
 function loadPreferenceOverrides() {
 
     if [[ -f ${managedPreferencesPlist}.plist ]]; then
@@ -500,10 +514,11 @@ function updateRequiredVariables() {
     local defaultHelpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
     setPreferenceValue "helpmessage" "${helpmessage_managed}" "${helpmessage_local}" "${defaultHelpmessage}"
     replacePlaceholders "helpmessage"
-
     local defaultHelpimage="qr=${infobuttonaction}"
     setPreferenceValue "helpimage" "${helpimage_managed}" "${helpimage_local}" "${defaultHelpimage}"
     replacePlaceholders "helpimage"
+
+    applyHideRules
 
 }
 
@@ -519,23 +534,27 @@ function displayReminderDialog() {
 
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
 
-    ${dialogBinary} \
-        --title "${title}" \
-        --message "${message}" \
-        --icon "${icon}" \
-        --iconsize 250 \
-        --overlayicon "${overlayicon}" \
-        --infobox "${infobox}" \
-        --button1text "${button1text}" \
-        --button2text "${button2text}" \
-        --infobuttontext "${infobuttontext}" \
-        --messagefont "size=14" \
-        --helpmessage "${helpmessage}" \
-        --helpimage "${helpimage}" \
-        --width 800 \
-        --height 600 \
-        "${blurscreen}" \
+    dialogArgs=(
+        --title "${title}"
+        --message "${message}"
+        --icon "${icon}"
+        --iconsize 250
+        --overlayicon "${overlayicon}"
+        --infobox "${infobox}"
+        --button1text "${button1text}"
+        --button2text "${button2text}"
+        --messagefont "size=14"
+        --width 800
+        --height 600
+        "${blurscreen}"
         "${additionalDialogOptions[@]}"
+    )
+
+    [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
+    [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
+    [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
+
+    ${dialogBinary} "${dialogArgs[@]}"
 
     returncode=$?
     info "Return Code: ${returncode}"

@@ -17,6 +17,10 @@
 	<!-- Branding -->
 	<key>OrganizationOverlayIconURL</key>
 	<string></string>
+	<key>SwapOverlayAndLogo</key>
+	<false/>
+	<key>DateFormatDeadlineHumanReadable</key>
+	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
 
 	<!-- Support block -->
 	<key>SupportTeamName</key>

@@ -420,7 +420,4 @@ FodyWeavers.xsd
 # Local deployment helper
 .deployDDMOSReminder.zsh
 VERSION.txt
-com.acnestudios.dor.plist
 .DS_Store
-org.churchofjesuschrist.dorm.plist
-com.acnestudios.dorm.plist

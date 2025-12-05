@@ -21,12 +21,13 @@
 #
 # HISTORY
 #
-# Version 2.0.0, 04-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.0.0, 05-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Reorganized script structure for (hopefully) improved clarity
 #   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
 #   - Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by Pull Request: #20; thanks, @TazNZ!)
 #   - Refactored `daysBeforeDeadlineBlurscreen` logic to use seconds (instead of days) for more precise control (thanks for the suggestion, @Ancaeus!)
-#   - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, @Max S!)
+#   - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, Max S!)
+#   - Added ability to read variables from `.plist` (Pull Request #22; thanks, @maxsundellacne!)
 #
 ####################################################################################################
 
@@ -41,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b6"
+scriptVersion="2.0.0b7"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

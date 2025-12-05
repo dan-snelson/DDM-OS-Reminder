@@ -44,7 +44,7 @@ organizationScriptName="dorm"
 reverseDomainNameNotation="org.churchofjesuschrist"
 
 # Preference plist domains
-preferenceDomain="${reverseDomainNameNotation}.ddmosreminder"
+preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 

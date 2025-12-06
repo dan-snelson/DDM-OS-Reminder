@@ -1,9 +1,9 @@
 ---
 name: Bug Report
 about: Submit a bug report for DDM OS Reminder (after using the snippet below and having reviewed open swiftDialog issues)
-title: ''
+title: 'Bug Report: [short description]'
 labels: bug
-assignees: ''
+assignees: 'dan-snelson'
 
 ---
 

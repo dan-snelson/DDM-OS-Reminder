@@ -1,6 +1,7 @@
 ---
 name: Feature Request
 about: Suggest an idea for DDM OS Reminder
+title: 'Feature Request: [short description]'
 labels: enhancement
 assignees: dan-snelson
 

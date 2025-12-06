@@ -1,17 +1,17 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
 # DDM OS Reminder
-> A (hopefully) clarifying update to Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s Declarative Device Management-enforced macOS update deadlines — now with Configuration Profile support and a "demo" mode for easy reminder dialog testing
+> A major update to Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user reminder for Apple’s Declarative Device Management-enforced macOS update deadlines — now with **Configuration Profile** support and a `demo` mode for easy reminder dialog testing
 
 <img src="images/ddmOSReminder_Hero.png" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
 ## Overview
 
-While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful method to _enforce_ macOS updates, its built-in notification _tends to be too subtle_ for most Mac Admins:
+While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful method to _enforce_ macOS updates, its built-in notification tends to be _too subtle_ for most Mac Admins:
 
 <img src="images/ddmOSReminder_Notification.png" alt="Built-in macOS Notication" width="300"/>
 
-**DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate` entries in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki)-enabled script  and LaunchDaemon pair to dynamically deliver a more prominent end-user message of when the user's Mac needs to be updated to comply with DDM-configured OS version requirements:
+**DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate` entries in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki)-enabled script  and LaunchDaemon pair to dynamically deliver a more prominent end-user reminder dialog of when the user's Mac needs to be updated to comply with DDM-enforced macOS update deadlines:
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
@@ -20,15 +20,15 @@ While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful
 
 <img src="images/ddmOSReminder_Hero_2.png" alt="Mac Admins can configure `daysBeforeDeadlineBlurscreen` to control how many days before the DDM-specified deadline the screen blurs when displaying your customized message" width="800"/>
 
-> Mac Admins can configure `daysBeforeDeadlineBlurscreen` to control how many days before the DDM-specified deadline the screen blurs when displaying your customized message:
+> Mac Admins can configure `daysBeforeDeadlineBlurscreen` to control how many days before the DDM-specified deadline the screen blurs when displaying your customized reminder dialog
 
-- **Customizable**: Easily customize the reminder's title, message, icon, and button text to fit your organization’s needs by editing the provided [`org.churchofjesuschrist.dorm.plist`](org.churchofjesuschrist.dorm.plist) and distributing as a Configuration Profile via your MDM solution.
-- **Easy Installation**: A new [`assemble.zsh`](assemble.zsh) script makes it easy to deploy via any MDM solution so you can quickly roll out across your entire organization.
-- **Set-it-and-forget-it**: Once installed, the LaunchDaemon executes your customized [`launchDaemonManagment.zsh`](launchDaemonManagment.zsh) script, which automatically checks the installed version of macOS against the DDM-enforced macOS version twice daily and displays your customized message if an update is required.
-- **Deadline Awareness**: Each time a DDM-enforced macOS version and deadline is updated via your MDM solution, the message will dynamically include an updated countdown to the deadline, creating a sense of urgency for end-users to update their Macs.
-- **Tastefully Intrusive**: The message is designed to be informative without being overly disruptive — first checking for the user’s Display Sleep Assertions — allowing users to continue their work while being reminded of the need to update.
-- **Logging**: The script logs its actions to a specified log file, allowing administrators to monitor its activity and troubleshoot if necessary.
-- **Demonstration Mode**: A built-in `demo` mode allows administrators to easily test the reminder’s appearance and functionality.
+- **Customizable**: Easily customize the reminder dialog's title, message, icon, and button text to fit your organization’s requirements by editing the included [`org.churchofjesuschrist.dorm.plist`](org.churchofjesuschrist.dorm.plist) and distributing as a Configuration Profile via your MDM solution.
+- **Easy Installation**: The [`assemble.zsh`](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution so you can quickly roll out DDM OS Reminder across your entire organization.
+- **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — which automatically checks the installed version of macOS against the DDM-required macOS version — to remind your users if an update is required.
+- **Deadline Awareness**: Each time a DDM-enforced macOS version and deadline is updated via your MDM solution, the reminder dialog will dynamically include an updated countdown to the deadline with the required version of macOS, creating a sense of urgency for end-users to update their Macs.
+- **Intelligently Intrusive**: The reminder dialog is designed to be informative without being overly disruptive — first checking if the user is in an online meeting — allowing users to continue their work while being reminded of the need to update.
+- **Logging**: The script logs its actions to a specified log file, allowing administrators to monitor its activity and troubleshoot as necessary.
+- **Demonstration Mode**: A built-in `demo` mode allows administrators to easily test the reminder dialog’s appearance and functionality.
 `zsh reminderDialog.zsh demo`
 
 <img src="images/ddmOSReminder_Demo.png" alt="A built-in 'demo' mode allows administrators to easily test the reminder’s appearance and functionality." width="500"/>

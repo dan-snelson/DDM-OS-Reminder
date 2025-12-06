@@ -40,7 +40,7 @@
 
 	<!-- Dialog text -->
 	<key>Title</key>
-	<string>macOS {titleMessageUpdateOrUpgrade} Required</string>
+	<string>macOS {titleMessageUpdateOrUpgrade} required</string>
 	<key>Button1Text</key>
 	<string>Open Software Update</string>
 	<key>Button2Text</key>

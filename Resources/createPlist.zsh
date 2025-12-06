@@ -2,6 +2,7 @@
 # shellcheck shell=bash
 #
 # createPlist.zsh — Generate default plist from reminderDialog.zsh
+# Version 2.0.0
 
 set -euo pipefail
 

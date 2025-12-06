@@ -2,13 +2,13 @@
 
 ## Changelog
 
-### Version 2.0.0 (05-Dec-2025)
+### Version 2.0.0 (06-Dec-2025)
 - Reorganized script structure for (hopefully) improved clarity
 - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
 - Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by Pull Request: #20; thanks, @TazNZ!)
 - Refactored `daysBeforeDeadlineBlurscreen` logic to use seconds (instead of days) for more precise control (thanks for the suggestion, @Ancaeus!)
 - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, Max S!)
-- Added ability to read variables from `.plist` (Pull Request #22; thanks, @maxsundellacne!)
+- Added ability to read variables from `.plist` (Pull Request #22; thanks, Obi-@maxsundellacne!)
 
 ### Version 1.4.0 (18-Nov-2025)
 - (Reluctantly) added swiftDialog installation detection

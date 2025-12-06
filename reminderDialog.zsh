@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b8"
+scriptVersion="2.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -373,10 +373,10 @@ installedOSvsDDMenforcedOS() {
         majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
-            titleMessageUpdateOrUpgrade="Upgrade"
+            titleMessageUpdateOrUpgrade="upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
-            titleMessageUpdateOrUpgrade="Update"
+            titleMessageUpdateOrUpgrade="update"
             softwareUpdateButtonText="Restart Now"
         fi
     fi
@@ -528,7 +528,7 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} Required"
+    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} required"
     setPreferenceValue "title" "${title_managed}" "${title_local}" "${defaultTitle}"
     replacePlaceholders "title"
 

@@ -11,34 +11,25 @@
 
 ### 1. Assemble
 
-The [`assemble.zsh`](assemble.zsh) script creates a **combined, deployable version** of your customized scripts:
-1. `reminderDialog.zsh`
-1. `launchDaemonManagement.zsh`
+The [`assemble.zsh`](../assemble.zsh) script creates a **combined, deployable version** of your customized scripts:
+- `reminderDialog.zsh`
+- `launchDaemonManagement.zsh`
 
-```zsh
-Resources/ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS.zsh
-```
-
-**1.1.** Change to the **DDM-OS-Reminder > Resources** directory:
-
-```zsh
-cd DDM-OS-Reminder/Resources
-```
-
-**1.2.** Execute the assembly script:
+**1.1.** Execute the assembly script
 
 ```zsh
 zsh assemble.zsh
 ```
 
-**1.3.** The resulting assembled file will be created as:
+The output file will be saved as:
 
-```
-ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS.zsh
+```zsh
+Resources/ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS.zsh
 ```
 
-You can deploy this file directly to your Macs using your MDM of choice,  
-or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
+**1.2.** Deploy the assembled script
+
+You can deploy the assembled script directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
 
 ---
 
@@ -46,7 +37,7 @@ or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-scrip
 
 With some MDMs, it’s easier to deploy a **single self-extracting script** instead of multiple components.
 
-After [assembling the script](#1-assemble-ddm-os-reminder), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
+After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
 
 **2.1.** Change to the **DDM-OS-Reminder > Resources** directory:
 
@@ -54,7 +45,7 @@ After [assembling the script](#1-assemble-ddm-os-reminder), run the provided [`c
 cd DDM-OS-Reminder/Resources
 ```
 
-**2.2.** Execute the script (it automatically uses the most recent assembled file):
+**2.2.** Execute the script (it automatically uses the most recently assembled script):
 
 ```zsh
 zsh createSelfExtracting.zsh
@@ -63,11 +54,12 @@ zsh createSelfExtracting.zsh
 **2.3.** The resulting self-extracting script will be created as:
 
 ```
-ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
+Resources/ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
 ```
 
-You can deploy this file to your Macs using your MDM of choice.  
-When executed, it extracts the assembled payload to `/var/tmp` and runs it automatically.
+**2.4.** Deploy the assembled, self-extracting script
+
+You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload to `/var/tmp` and executes it automatically.
 
 ---
 
@@ -75,7 +67,7 @@ When executed, it extracts the assembled payload to `/var/tmp` and runs it autom
 
 A sample `.plist` — [`org.churchofjesuschrist.dorm.plist`](../org.churchofjesuschrist.dorm.plist) — is provided in the main **DDM-OS-Reminder** directory, which you can directly edit in your preferred code editor.
 
-If you modified `reminderDialog.zsh` and want to reflect those changes in a new `.plist`, run the provided [`createPlist.zsh`](createPlist.zsh) script.
+However, if you modified `reminderDialog.zsh` and want to reflect those changes in a new `.plist`, run the provided [`createPlist.zsh`](createPlist.zsh) script.
 
 ```zsh
 zsh Resources/createPlist.zsh
@@ -117,11 +109,11 @@ or open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).)
 Reports the user’s button clicks from the DDM OS Reminder message.
 
 ```
-2025-10-23 02:53:37 dan clicked Remind Me Later
-2025-10-23 02:55:28 dan clicked Open Software Update
-2025-10-23 03:01:11 dan clicked Remind Me Later
-2025-10-23 03:11:32 dan clicked Remind Me Later
-2025-10-23 03:48:27 dan clicked KB0054571
+2025-12-05 02:53:37 dan clicked Remind Me Later
+2025-12-05 02:55:28 dan clicked Open Software Update
+2025-12-05 03:01:11 dan clicked Remind Me Later
+2025-12-05 03:11:32 dan clicked Remind Me Later
+2025-12-05 03:48:27 dan clicked KB0054571
 ```
 
 **4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  

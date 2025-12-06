@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0b7"
+scriptVersion="2.0.0b8"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -37,11 +37,11 @@ autoload -Uz is-at-least
 # Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
-# Organization's Script Name
-organizationScriptName="dorm"
-
 # Organization's reverse domain (used for plist domains)
 reverseDomainNameNotation="org.churchofjesuschrist"
+
+# Organization's Script Name
+organizationScriptName="dorm"
 
 # Preference plist domains
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -60,8 +60,8 @@ meetingDelay="75"
 # Date format for deadlines (used with date -jf)
 dateFormatDeadlineHumanReadable="+%a, %d-%b-%Y, %-l:%M %p"
 
-# Swap main icon and overlay icon (YES enable)
-swapOverlayAndLogo=NO
+# Swap main icon and overlay icon (set to YES, true, or 1 to enable)
+swapOverlayAndLogo="NO"
 
 
 
@@ -140,21 +140,49 @@ function replacePlaceholders() {
     local targetVariable="${1}"
     local value="${(P)targetVariable}"
 
+    # Handle both {placeholder} from plist and \{placeholder\} from inline defaults
     value=${value//\{weekday\}/$( date +'%A' )}
+    value=${value//'{weekday}'/$( date +'%A' )}
     value=${value//\{userfirstname\}/${loggedInUserFirstname}}
+    value=${value//'{userfirstname}'/${loggedInUserFirstname}}
+    value=${value//\{loggedInUserFirstname\}/${loggedInUserFirstname}}
+    value=${value//'{loggedInUserFirstname}'/${loggedInUserFirstname}}
     value=${value//\{ddmVersionString\}/${ddmVersionString}}
+    value=${value//'{ddmVersionString}'/${ddmVersionString}}
     value=${value//\{ddmEnforcedInstallDateHumanReadable\}/${ddmEnforcedInstallDateHumanReadable}}
+    value=${value//'{ddmEnforcedInstallDateHumanReadable}'/${ddmEnforcedInstallDateHumanReadable}}
     value=${value//\{installedmacOSVersion\}/${installedmacOSVersion}}
+    value=${value//'{installedmacOSVersion}'/${installedmacOSVersion}}
     value=${value//\{ddmVersionStringDeadlineHumanReadable\}/${ddmVersionStringDeadlineHumanReadable}}
+    value=${value//'{ddmVersionStringDeadlineHumanReadable}'/${ddmVersionStringDeadlineHumanReadable}}
     value=${value//\{ddmVersionStringDaysRemaining\}/${ddmVersionStringDaysRemaining}}
+    value=${value//'{ddmVersionStringDaysRemaining}'/${ddmVersionStringDaysRemaining}}
+    value=${value//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
+    value=${value//'{titleMessageUpdateOrUpgrade}'/${titleMessageUpdateOrUpgrade}}
+    value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
+    value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
+    value=${value//\{button1text\}/${button1text}}
+    value=${value//'{button1text}'/${button1text}}
+    value=${value//\{button2text\}/${button2text}}
+    value=${value//'{button2text}'/${button2text}}
     value=${value//\{supportTeamName\}/${supportTeamName}}
+    value=${value//'{supportTeamName}'/${supportTeamName}}
     value=${value//\{supportTeamPhone\}/${supportTeamPhone}}
+    value=${value//'{supportTeamPhone}'/${supportTeamPhone}}
     value=${value//\{supportTeamEmail\}/${supportTeamEmail}}
+    value=${value//'{supportTeamEmail}'/${supportTeamEmail}}
     value=${value//\{supportTeamWebsite\}/${supportTeamWebsite}}
+    value=${value//'{supportTeamWebsite}'/${supportTeamWebsite}}
     value=${value//\{supportKBURL\}/${supportKBURL}}
+    value=${value//'{supportKBURL}'/${supportKBURL}}
     value=${value//\{supportKB\}/${supportKB}}
+    value=${value//'{supportKB}'/${supportKB}}
+    value=${value//\{infobuttonaction\}/${infobuttonaction}}
+    value=${value//'{infobuttonaction}'/${infobuttonaction}}
     value=${value//\{dialogVersion\}/$(/usr/local/bin/dialog -v 2>/dev/null)}
+    value=${value//'{dialogVersion}'/$(/usr/local/bin/dialog -v 2>/dev/null)}
     value=${value//\{scriptVersion\}/${scriptVersion}}
+    value=${value//'{scriptVersion}'/${scriptVersion}}
 
     printf -v "${targetVariable}" '%s' "${value}"
 
@@ -414,7 +442,7 @@ function updateRequiredVariables() {
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     # Organization's Overlayicon URL
-    local defaultOverlayiconURL="${organizationOverlayiconURL:-""}"
+    local defaultOverlayiconURL="${organizationOverlayiconURL:-"https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"}"
     setPreferenceValue "organizationOverlayiconURL" "${organizationOverlayiconURL_managed}" "${organizationOverlayiconURL_local}" "${defaultOverlayiconURL}"
 
     # Download the overlayicon from ${organizationOverlayiconURL}
@@ -781,7 +809,7 @@ if [[ "${1}" == "demo" ]]; then
     ddmVersionString="${demoMajorVersion}.99"
 
     # Days from today to simulate deadline (can be + or -)
-    demoDeadlineOffsetDays=7   # positive → future deadline; negative → past due
+    demoDeadlineOffsetDays=-3   # positive → future deadline; negative → past due
     if (( demoDeadlineOffsetDays < 0 )); then       # Normalize the offset so “-3” becomes "-3d" and “7” becomes "+7d"
         offsetString="${demoDeadlineOffsetDays}d"   # → "-3d"
         blurscreen="--blurscreen"

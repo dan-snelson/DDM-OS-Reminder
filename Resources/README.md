@@ -2,17 +2,21 @@
 
 ## Resources
 
-1. [Assemble DDM OS Reminder](#1-assemble-ddm-os-reminder)
+1. [Assemble](#1-assemble)
 2. [Create Self-extracting Script](#2-create-self-extracting-script)
-3. [Extension Attributes](#3-extension-attributes)
+3. [Create `.plist`](#3-create-plist)
+4. [Extension Attributes](#4-extension-attributes)
 
 ---
 
-### 1. Assemble DDM OS Reminder
+### 1. Assemble
 
-The [`assemble.zsh`](assemble.zsh) script creates a **combined, deployable version** of your customized scripts as:
+The [`assemble.zsh`](assemble.zsh) script creates a **combined, deployable version** of your customized scripts:
+1. `reminderDialog.zsh`
+1. `launchDaemonManagement.zsh`
+
 ```zsh
-Resources/ddm-os-reminder-assembled-2025-11-21-074422.zs
+Resources/ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS.zsh
 ```
 
 **1.1.** Change to the **DDM-OS-Reminder > Resources** directory:
@@ -67,13 +71,49 @@ When executed, it extracts the assembled payload to `/var/tmp` and runs it autom
 
 ---
 
-### 3. Extension Attributes
+### 3. Create `.plist` 
+
+A sample `.plist` — [`org.churchofjesuschrist.dorm.plist`](../org.churchofjesuschrist.dorm.plist) — is provided in the main **DDM-OS-Reminder** directory, which you can directly edit in your preferred code editor.
+
+If you modified `reminderDialog.zsh` and want to reflect those changes in a new `.plist`, run the provided [`createPlist.zsh`](createPlist.zsh) script.
+
+```zsh
+zsh Resources/createPlist.zsh
+```
+
+The resulting `.plist` file will be created as:
+
+```
+Resources/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.plist"
+```
+
+Upload the resulting `.plist` to your MDM of choice, ensuring you specify the same preference domain as configured in `reminderDialog.zsh`.
+
+Using the following example …
+
+```zsh
+# Organization's reverse domain (used for plist domains)
+reverseDomainNameNotation="org.churchofjesuschrist"
+
+# Organization's Script Name
+organizationScriptName="dorm"
+```
+
+… the preference domain would be:
+
+```
+org.churchofjesuschrist.dorm
+```
+
+---
+
+### 4. Extension Attributes
 
 While the following Extension Attributes were created for and tested on **Jamf Pro**, they can likely be adapted for other MDMs.  
 (For adaptation help, visit the [Mac Admins Slack](https://www.macadmins.org/) `#ddm-os-reminders` channel  
 or open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).)
 
-**3.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
+**4.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
 Reports the user’s button clicks from the DDM OS Reminder message.
 
 ```
@@ -84,21 +124,21 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 2025-10-23 03:48:27 dan clicked KB0054571
 ```
 
-**3.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
+**4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
 Reports the date of a pending DDM-enforced macOS update.
 
 ```
-2025-10-28 12:00:00
+2025-12-16 12:00:00
 ```
 
-**3.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
+**4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
 Reports the version of a pending DDM-enforced macOS update.
 
 ```
-26.1
+26.2
 ```
 
-**3.4.** [`JamfEA-DDM_Executed_OS_Update_Date.zsh`](JamfEA-DDM_Executed_OS_Update_Date.zsh)  
+**4.4.** [`JamfEA-DDM_Executed_OS_Update_Date.zsh`](JamfEA-DDM_Executed_OS_Update_Date.zsh)  
 Reports the date when the DDM-enforced macOS update was executed.
 
 ```

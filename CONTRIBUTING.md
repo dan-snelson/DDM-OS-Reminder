@@ -1,12 +1,12 @@
 # Contributing to DDM OS Reminder
 
-First, thank you for your interest in contributing to DDM OS Reminder!
+First, thank you for your interest in contributing to **DDM OS Reminder**! Community contributions have already greatly improved this project.
 
-Community contributions have already improved and expanded this project.
+You're invited to discuss your contributionsvia the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
 
 ## Pull Requests
 
-When submitting a Pull Request, please submit against the `development` branch and ensure your changes are well-documented and tested. Include a clear description of the changes made and the purpose of the contribution.
+When submitting a Pull Request, please submit against the `development` branch (unless requested otherwise) and ensure your changes are well-documented and tested. Include a clear description of the changes made and the purpose of the contribution.
 
 ### Branching Strategy
 - `main`: The default branch for the latest production release.

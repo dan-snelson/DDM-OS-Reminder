@@ -1,12 +1,15 @@
 ---
 name: Feature Request
 about: Suggest an idea for DDM OS Reminder
+title: 'Feature Request: [short description]'
 labels: enhancement
 assignees: dan-snelson
 
 ---
 
 > **Note:** While all requests are welcome, finding available cycles to custom-code a feature we won't use in our production environment is always challenging.
+> 
+> You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
 
 **Is your feature request related to a problem? Please describe.**
 A clear, concise description of the problem. (i.e., I'm frustrated when ...)

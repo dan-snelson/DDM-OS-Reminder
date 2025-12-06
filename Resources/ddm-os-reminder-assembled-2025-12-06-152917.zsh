@@ -6,29 +6,28 @@
 # DDM OS Reminder
 # https://snelson.us/ddm
 #
-# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
-# DDM-required macOS updates
+# Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s
+# Declarative Device Management-enforced macOS update deadlines.
 #
 # While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful method to enforce
 # macOS updates, its built-in notification tends to be too subtle for most Mac Admins.
 #
-# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`,
-# then leverages a swiftDialog and LaunchDaemon pair to dynamically deliver a more prominent
-# end-user message of when the user's Mac needs to be updated to comply with DDM-configured OS
-# version requirements.
+# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate`
+# entries in `/var/log/install.log`, then leverages a swiftDialog-enabled script and LaunchDaemon pair
+# to dynamically deliver a more prominent end-user message of when the user’s Mac needs to be updated
+# to comply with DDM-enforced macOS update deadlines.
 #
 ####################################################################################################
 #
 # HISTORY
 #
-# Version 1.4.0, 18-Nov-2025, Dan K. Snelson (@dan-snelson)
-#   - (Reluctantly) added swiftDialog installation detection
-#   - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
-#   - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
-#   - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
-#   - Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
-#   - Added `daysBeforeDeadlineDisplayReminder` variable to better align with — or supersede — Apple's behavior of when reminders begin displaying before DDM-enforced deadline (thanks for the suggestion, @kristian!)
-#   - Removed placeholder `DDM-OS-Reminder End-user Message.zsh` from `ddmOSReminder.zsh`; use `Resources/assembleDDMOSReminder.zsh` to assemble your organization's customized script instead
+# Version 2.0.0, 06-Dec-2025, Dan K. Snelson (@dan-snelson)
+#   - Reorganized script structure for (hopefully) improved clarity
+#   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
+#   - Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by Pull Request: #20; thanks, @TazNZ!)
+#   - Refactored `daysBeforeDeadlineBlurscreen` logic to use seconds (instead of days) for more precise control (thanks for the suggestion, @Ancaeus!)
+#   - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, Max S!)
+#   - Added ability to read variables from `.plist` (Pull Request #22; thanks, Obi-@maxsundellacne!)
 #
 ####################################################################################################
 
@@ -43,15 +42,18 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0"
+scriptVersion="2.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
+# Minimum Required Version of swiftDialog
+swiftDialogMinimumRequiredVersion="2.5.6.4805"
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Jamf Pro Script Parameters
+# MDM Script Parameters
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
@@ -259,7 +261,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0"
+scriptVersion="2.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -276,8 +278,16 @@ autoload -Uz is-at-least
 # Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
+# Organization's reverse domain (used for plist domains)
+reverseDomainNameNotation="org.churchofjesuschrist"
+
 # Organization's Script Name
 organizationScriptName="dorm"
+
+# Preference plist domains
+preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
+managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
+localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
 # Organization's number of days before deadline to starting displaying reminders
 daysBeforeDeadlineDisplayReminder="14"
@@ -287,6 +297,12 @@ daysBeforeDeadlineBlurscreen="3"
 
 # Organization's Meeting Delay (in minutes) 
 meetingDelay="75"
+
+# Date format for deadlines (used with date -jf)
+dateFormatDeadlineHumanReadable="+%a, %d-%b-%Y, %-l:%M %p"
+
+# Swap main icon and overlay icon (set to YES, true, or 1 to enable)
+swapOverlayAndLogo="NO"
 
 
 
@@ -313,6 +329,182 @@ function error()        { updateScriptLog "[ERROR]           ${1}"; let errorCou
 function warning()      { updateScriptLog "[WARNING]         ${1}"; let errorCount++; }
 function fatal()        { updateScriptLog "[FATAL ERROR]     ${1}"; exit 1; }
 function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Preference Helpers
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function setPreferenceValue() {
+
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local localValue="${3}"
+    local defaultValue="${4}"
+    local chosenValue=""
+
+    if [[ -n "${managedValue}" ]]; then
+        chosenValue="${managedValue}"
+    elif [[ -n "${localValue}" ]]; then
+        chosenValue="${localValue}"
+    else
+        chosenValue="${defaultValue}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${chosenValue}"
+
+}
+
+function setNumericPreferenceValue() {
+
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local localValue="${3}"
+    local defaultValue="${4}"
+    local candidate=""
+
+    if [[ -n "${managedValue}" && "${managedValue}" == <-> ]]; then
+        candidate="${managedValue}"
+    elif [[ -n "${localValue}" && "${localValue}" == <-> ]]; then
+        candidate="${localValue}"
+    else
+        candidate="${defaultValue}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${candidate}"
+
+}
+
+function replacePlaceholders() {
+
+    local targetVariable="${1}"
+    local value="${(P)targetVariable}"
+
+    # Handle both {placeholder} from plist and \{placeholder\} from inline defaults
+    value=${value//\{weekday\}/$( date +'%A' )}
+    value=${value//'{weekday}'/$( date +'%A' )}
+    value=${value//\{userfirstname\}/${loggedInUserFirstname}}
+    value=${value//'{userfirstname}'/${loggedInUserFirstname}}
+    value=${value//\{loggedInUserFirstname\}/${loggedInUserFirstname}}
+    value=${value//'{loggedInUserFirstname}'/${loggedInUserFirstname}}
+    value=${value//\{ddmVersionString\}/${ddmVersionString}}
+    value=${value//'{ddmVersionString}'/${ddmVersionString}}
+    value=${value//\{ddmEnforcedInstallDateHumanReadable\}/${ddmEnforcedInstallDateHumanReadable}}
+    value=${value//'{ddmEnforcedInstallDateHumanReadable}'/${ddmEnforcedInstallDateHumanReadable}}
+    value=${value//\{installedmacOSVersion\}/${installedmacOSVersion}}
+    value=${value//'{installedmacOSVersion}'/${installedmacOSVersion}}
+    value=${value//\{ddmVersionStringDeadlineHumanReadable\}/${ddmVersionStringDeadlineHumanReadable}}
+    value=${value//'{ddmVersionStringDeadlineHumanReadable}'/${ddmVersionStringDeadlineHumanReadable}}
+    value=${value//\{ddmVersionStringDaysRemaining\}/${ddmVersionStringDaysRemaining}}
+    value=${value//'{ddmVersionStringDaysRemaining}'/${ddmVersionStringDaysRemaining}}
+    value=${value//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
+    value=${value//'{titleMessageUpdateOrUpgrade}'/${titleMessageUpdateOrUpgrade}}
+    value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
+    value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
+    value=${value//\{button1text\}/${button1text}}
+    value=${value//'{button1text}'/${button1text}}
+    value=${value//\{button2text\}/${button2text}}
+    value=${value//'{button2text}'/${button2text}}
+    value=${value//\{supportTeamName\}/${supportTeamName}}
+    value=${value//'{supportTeamName}'/${supportTeamName}}
+    value=${value//\{supportTeamPhone\}/${supportTeamPhone}}
+    value=${value//'{supportTeamPhone}'/${supportTeamPhone}}
+    value=${value//\{supportTeamEmail\}/${supportTeamEmail}}
+    value=${value//'{supportTeamEmail}'/${supportTeamEmail}}
+    value=${value//\{supportTeamWebsite\}/${supportTeamWebsite}}
+    value=${value//'{supportTeamWebsite}'/${supportTeamWebsite}}
+    value=${value//\{supportKBURL\}/${supportKBURL}}
+    value=${value//'{supportKBURL}'/${supportKBURL}}
+    value=${value//\{supportKB\}/${supportKB}}
+    value=${value//'{supportKB}'/${supportKB}}
+    value=${value//\{infobuttonaction\}/${infobuttonaction}}
+    value=${value//'{infobuttonaction}'/${infobuttonaction}}
+    value=${value//\{dialogVersion\}/$(/usr/local/bin/dialog -v 2>/dev/null)}
+    value=${value//'{dialogVersion}'/$(/usr/local/bin/dialog -v 2>/dev/null)}
+    value=${value//\{scriptVersion\}/${scriptVersion}}
+    value=${value//'{scriptVersion}'/${scriptVersion}}
+
+    printf -v "${targetVariable}" '%s' "${value}"
+
+}
+
+function applyHideRules() {
+
+    # Hide info button explicitly
+    if [[ "${infobuttontext}" == "hide" ]]; then
+        infobuttontext=""
+    fi
+
+    # Hide help image (QR) if requested
+    if [[ "${helpimage}" == "hide" ]]; then
+        helpimage=""
+    fi
+
+}
+
+function loadPreferenceOverrides() {
+
+    if [[ -f ${managedPreferencesPlist}.plist ]]; then
+        scriptLog_managed=$(defaults read "${managedPreferencesPlist}" ScriptLog 2> /dev/null)
+        daysBeforeDeadlineDisplayReminder_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
+        daysBeforeDeadlineBlurscreen_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
+        meetingDelay_managed=$(defaults read "${managedPreferencesPlist}" MeetingDelay 2> /dev/null)
+        organizationOverlayiconURL_managed=$(defaults read "${managedPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
+        swapOverlayAndLogo_managed=$(defaults read "${managedPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
+        dateFormatDeadlineHumanReadable_managed=$(defaults read "${managedPreferencesPlist}" DateFormatDeadlineHumanReadable 2> /dev/null)
+        supportTeamName_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamName 2> /dev/null)
+        supportTeamPhone_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamPhone 2> /dev/null)
+        supportTeamEmail_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamEmail 2> /dev/null)
+        supportTeamWebsite_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamWebsite 2> /dev/null)
+        supportKB_managed=$(defaults read "${managedPreferencesPlist}" SupportKB 2> /dev/null)
+        infobuttonaction_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonAction 2> /dev/null)
+        supportKBURL_managed=$(defaults read "${managedPreferencesPlist}" SupportKBURL 2> /dev/null)
+        title_managed=$(defaults read "${managedPreferencesPlist}" Title 2> /dev/null)
+        button1text_managed=$(defaults read "${managedPreferencesPlist}" Button1Text 2> /dev/null)
+        button2text_managed=$(defaults read "${managedPreferencesPlist}" Button2Text 2> /dev/null)
+        message_managed=$(defaults read "${managedPreferencesPlist}" Message 2> /dev/null)
+        infobuttontext_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonText 2> /dev/null)
+        infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
+        helpmessage_managed=$(defaults read "${managedPreferencesPlist}" HelpMessage 2> /dev/null)
+        helpimage_managed=$(defaults read "${managedPreferencesPlist}" HelpImage 2> /dev/null)
+    fi
+
+    if [[ -f ${localPreferencesPlist}.plist ]]; then
+        scriptLog_local=$(defaults read "${localPreferencesPlist}" ScriptLog 2> /dev/null)
+        daysBeforeDeadlineDisplayReminder_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
+        daysBeforeDeadlineBlurscreen_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
+        meetingDelay_local=$(defaults read "${localPreferencesPlist}" MeetingDelay 2> /dev/null)
+        organizationOverlayiconURL_local=$(defaults read "${localPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
+        swapOverlayAndLogo_local=$(defaults read "${localPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
+        dateFormatDeadlineHumanReadable_local=$(defaults read "${localPreferencesPlist}" DateFormatDeadlineHumanReadable 2> /dev/null)
+        supportTeamName_local=$(defaults read "${localPreferencesPlist}" SupportTeamName 2> /dev/null)
+        supportTeamPhone_local=$(defaults read "${localPreferencesPlist}" SupportTeamPhone 2> /dev/null)
+        supportTeamEmail_local=$(defaults read "${localPreferencesPlist}" SupportTeamEmail 2> /dev/null)
+        supportTeamWebsite_local=$(defaults read "${localPreferencesPlist}" SupportTeamWebsite 2> /dev/null)
+        supportKB_local=$(defaults read "${localPreferencesPlist}" SupportKB 2> /dev/null)
+        infobuttonaction_local=$(defaults read "${localPreferencesPlist}" InfoButtonAction 2> /dev/null)
+        supportKBURL_local=$(defaults read "${localPreferencesPlist}" SupportKBURL 2> /dev/null)
+        title_local=$(defaults read "${localPreferencesPlist}" Title 2> /dev/null)
+        button1text_local=$(defaults read "${localPreferencesPlist}" Button1Text 2> /dev/null)
+        button2text_local=$(defaults read "${localPreferencesPlist}" Button2Text 2> /dev/null)
+        message_local=$(defaults read "${localPreferencesPlist}" Message 2> /dev/null)
+        infobuttontext_local=$(defaults read "${localPreferencesPlist}" InfoButtonText 2> /dev/null)
+        infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
+        helpmessage_local=$(defaults read "${localPreferencesPlist}" HelpMessage 2> /dev/null)
+        helpimage_local=$(defaults read "${localPreferencesPlist}" HelpImage 2> /dev/null)
+    fi
+
+    setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
+    setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
+    setNumericPreferenceValue "daysBeforeDeadlineBlurscreen" "${daysBeforeDeadlineBlurscreen_managed}" "${daysBeforeDeadlineBlurscreen_local}" "${daysBeforeDeadlineBlurscreen}"
+    setNumericPreferenceValue "meetingDelay" "${meetingDelay_managed}" "${meetingDelay_local}" "${meetingDelay}"
+    setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
+    setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
+    # Ensure date format starts with '+' as required by `date`
+    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+
+}
 
 
 
@@ -351,7 +543,11 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
-    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
+    # Fallback to default if format fails
+    if [[ -z "${ddmVersionStringDeadlineHumanReadable}" ]]; then
+        ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+    fi
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
 
@@ -369,7 +565,10 @@ installedOSvsDDMenforcedOS() {
             info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
 
             if [[ -n "$paddedEpoch" ]]; then
-                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
+                if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
+                    ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
+                fi
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
             else
                 warning "Unable to parse padded enforcement date from install.log"
@@ -393,11 +592,16 @@ installedOSvsDDMenforcedOS() {
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
 
-    # Days Remaining (allow negative values)
-    ddmVersionStringDaysRemaining=$(( (deadlineEpoch - $(date +%s)) / 86400 ))
-
-    # Blur screen logic
-    blurscreen=$([[ $ddmVersionStringDaysRemaining -le $daysBeforeDeadlineBlurscreen ]] && echo "--blurscreen" || echo "--noblurscreen")
+    # Blurscreen logic (based on precise timestamp comparison)
+    nowEpoch=$(date +%s)
+    secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))
+    blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
+    ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
+    if (( secondsUntilDeadline <= blurThresholdSeconds )); then
+        blurscreen="--blurscreen"
+    else
+        blurscreen="--noblurscreen"
+    fi
 
     # Version Comparison Result
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
@@ -410,10 +614,10 @@ installedOSvsDDMenforcedOS() {
         majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
-            titleMessageUpdateOrUpgrade="Upgrade"
+            titleMessageUpdateOrUpgrade="upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
-            titleMessageUpdateOrUpgrade="Update"
+            titleMessageUpdateOrUpgrade="update"
             softwareUpdateButtonText="Restart Now"
         fi
     fi
@@ -479,7 +683,8 @@ function updateRequiredVariables() {
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     # Organization's Overlayicon URL
-    organizationOverlayiconURL=""
+    local defaultOverlayiconURL="${organizationOverlayiconURL:-"https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"}"
+    setPreferenceValue "organizationOverlayiconURL" "${organizationOverlayiconURL_managed}" "${organizationOverlayiconURL_local}" "${defaultOverlayiconURL}"
 
     # Download the overlayicon from ${organizationOverlayiconURL}
     if [[ -n "${organizationOverlayiconURL}" ]]; then
@@ -518,7 +723,11 @@ function updateRequiredVariables() {
         fi
     fi
 
-
+    if [[ "${swapOverlayAndLogo}" == "1" || "${swapOverlayAndLogo:l}" == "true" || "${swapOverlayAndLogo:l}" == "yes" ]]; then
+        tmp="$icon"
+        icon="$overlayicon"
+        overlayicon="$tmp"
+    fi
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # swiftDialog Variables
@@ -533,14 +742,26 @@ function updateRequiredVariables() {
     # IT Support Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    supportTeamName="IT Support"
-    supportTeamPhone="+1 (801) 555-1212"
-    supportTeamEmail="rescue@domain.org"
-    supportTeamWebsite="https://support.domain.org"
-    supportTeamHyperlink="[${supportTeamWebsite}](${supportTeamWebsite})"
-    supportKB="KB8675309"
-    infobuttonaction="https://servicenow.domain.org/support?id=kb_article_view&sysparm_article=${supportKB}"
-    supportKBURL="[${supportKB}](${infobuttonaction})"
+    local defaultSupportTeamName="${supportTeamName:-"IT Support"}"
+    setPreferenceValue "supportTeamName" "${supportTeamName_managed}" "${supportTeamName_local}" "${defaultSupportTeamName}"
+
+    local defaultSupportTeamPhone="${supportTeamPhone:-"+1 (801) 555-1212"}"
+    setPreferenceValue "supportTeamPhone" "${supportTeamPhone_managed}" "${supportTeamPhone_local}" "${defaultSupportTeamPhone}"
+
+    local defaultSupportTeamEmail="${supportTeamEmail:-"rescue@domain.org"}"
+    setPreferenceValue "supportTeamEmail" "${supportTeamEmail_managed}" "${supportTeamEmail_local}" "${defaultSupportTeamEmail}"
+
+    local defaultSupportTeamWebsite="${supportTeamWebsite:-"https://support.domain.org"}"
+    setPreferenceValue "supportTeamWebsite" "${supportTeamWebsite_managed}" "${supportTeamWebsite_local}" "${defaultSupportTeamWebsite}"
+
+    local defaultSupportKB="${supportKB:-"KB8675309"}"
+    setPreferenceValue "supportKB" "${supportKB_managed}" "${supportKB_local}" "${defaultSupportKB}"
+
+    local defaultInfobuttonaction="https://servicenow.domain.org/support?id=kb_article_view&sysparm_article=${supportKB}"
+    setPreferenceValue "infobuttonaction" "${infobuttonaction_managed}" "${infobuttonaction_local}" "${defaultInfobuttonaction}"
+
+    local defaultSupportKBURL="[${supportKB}](${infobuttonaction})"
+    setPreferenceValue "supportKBURL" "${supportKBURL_managed}" "${supportKBURL_local}" "${defaultSupportKBURL}"
 
 
 
@@ -548,12 +769,25 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    title="macOS ${titleMessageUpdateOrUpgrade} Required"
-    button1text="Open Software Update"
-    button2text="Remind Me Later"
-    message="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
-    infobuttontext="${supportKB}"
-    action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
+    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} required"
+    setPreferenceValue "title" "${title_managed}" "${title_local}" "${defaultTitle}"
+    replacePlaceholders "title"
+
+    local defaultButton1text="${button1text:-"Open Software Update"}"
+    setPreferenceValue "button1text" "${button1text_managed}" "${button1text_local}" "${defaultButton1text}"
+
+    local defaultButton2text="${button2text:-"Remind Me Later"}"
+    setPreferenceValue "button2text" "${button2text_managed}" "${button2text_local}" "${defaultButton2text}"
+
+    local defaultInfobuttontext="${infobuttontext:-${supportKB}}"
+    setPreferenceValue "infobuttontext" "${infobuttontext_managed}" "${infobuttontext_local}" "${defaultInfobuttontext}"
+
+    local defaultAction="${action:-"x-apple.systempreferences:com.apple.preferences.softwareupdate"}"
+    printf -v "action" '%s' "${defaultAction}"
+
+    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
+    replacePlaceholders "message"
 
 
 
@@ -561,7 +795,9 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    infobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
+    replacePlaceholders "infobox"
 
 
 
@@ -569,9 +805,14 @@ function updateRequiredVariables() {
     # Help Message Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    helpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
+    local defaultHelpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
+    setPreferenceValue "helpmessage" "${helpmessage_managed}" "${helpmessage_local}" "${defaultHelpmessage}"
+    replacePlaceholders "helpmessage"
+    local defaultHelpimage="qr=${infobuttonaction}"
+    setPreferenceValue "helpimage" "${helpimage_managed}" "${helpimage_local}" "${defaultHelpimage}"
+    replacePlaceholders "helpimage"
 
-    helpimage="qr=${infobuttonaction}"
+    applyHideRules
 
 }
 
@@ -583,25 +824,31 @@ function updateRequiredVariables() {
 
 function displayReminderDialog() {
 
-    notice "Display Reminder Dialog to ${loggedInUser}"
+    additionalDialogOptions=("$@")
 
-    ${dialogBinary} \
-        --title "${title}" \
-        --message "${message}" \
-        --icon "${icon}" \
-        --iconsize 250 \
-        --overlayicon "${overlayicon}" \
-        --infobox "${infobox}" \
-        --button1text "${button1text}" \
-        --button2text "${button2text}" \
-        --infobuttontext "${infobuttontext}" \
-        --messagefont "size=14" \
-        --helpmessage "${helpmessage}" \
-        --helpimage "${helpimage}" \
-        --width 800 \
-        --height 600 \
-        "${blurscreen}" \
-        --ontop
+    notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
+
+    dialogArgs=(
+        --title "${title}"
+        --message "${message}"
+        --icon "${icon}"
+        --iconsize 250
+        --overlayicon "${overlayicon}"
+        --infobox "${infobox}"
+        --button1text "${button1text}"
+        --button2text "${button2text}"
+        --messagefont "size=14"
+        --width 800
+        --height 600
+        "${blurscreen}"
+        "${additionalDialogOptions[@]}"
+    )
+
+    [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
+    [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
+    [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
+
+    ${dialogBinary} "${dialogArgs[@]}"
 
     returncode=$?
     info "Return Code: ${returncode}"
@@ -644,9 +891,13 @@ function displayReminderDialog() {
 
         3)  ## Process exit code 3 scenario here
             notice "${loggedInUser} clicked ${infobuttontext}"
+            info "Disabling blurscreen, hiding dialog and opening KB article: ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
+            echo "hide:" >> /var/tmp/dialog.log
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
-            quitScript "0"
+            info "Waiting 61 seconds before re-showing dialog …"
+            sleep 61
+            displayReminderDialog --ontop --moveable
             ;;
 
         4)  ## Process exit code 4 scenario here
@@ -686,11 +937,21 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "Shine on, you crazy diamond!"
+    quitOut "Keep them movin' blades sharp!"
 
     exit "${1}"
 
 }
+
+
+
+####################################################################################################
+#
+# Apply Preference Overrides
+#
+####################################################################################################
+
+loadPreferenceOverrides
 
 
 
@@ -840,7 +1101,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     updateRequiredVariables
 
     # Display reminder dialog (with blurscreen, depending on proximity to deadline)
-    displayReminderDialog
+    displayReminderDialog --ontop
 
 else
 
@@ -1087,7 +1348,7 @@ function dialogCheck() {
             
         else
 
-        preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+            preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
 
         fi
     

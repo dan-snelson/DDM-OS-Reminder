@@ -6,29 +6,28 @@
 # DDM OS Reminder
 # https://snelson.us/ddm
 #
-# A swiftDialog and LaunchDaemon pair for "set-it-and-forget-it" end-user messaging for
-# DDM-required macOS updates
+# Mac Admins’ new favorite, MDM-agnostic, “set-it-and-forget-it” end-user messaging for Apple’s
+# Declarative Device Management-enforced macOS update deadlines.
 #
 # While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful method to enforce
 # macOS updates, its built-in notification tends to be too subtle for most Mac Admins.
 #
-# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`,
-# then leverages a swiftDialog and LaunchDaemon pair to dynamically deliver a more prominent
-# end-user message of when the user's Mac needs to be updated to comply with DDM-configured OS
-# version requirements.
+# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate`
+# entries in `/var/log/install.log`, then leverages a swiftDialog-enabled script and LaunchDaemon pair
+# to dynamically deliver a more prominent end-user message of when the user’s Mac needs to be updated
+# to comply with DDM-enforced macOS update deadlines.
 #
 ####################################################################################################
 #
 # HISTORY
 #
-# Version 1.4.0, 18-Nov-2025, Dan K. Snelson (@dan-snelson)
-#   - (Reluctantly) added swiftDialog installation detection
-#   - Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
-#   - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
-#   - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
-#   - Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
-#   - Added `daysBeforeDeadlineDisplayReminder` variable to better align with — or supersede — Apple's behavior of when reminders begin displaying before DDM-enforced deadline (thanks for the suggestion, @kristian!)
-#   - Removed placeholder `DDM-OS-Reminder End-user Message.zsh` from `ddmOSReminder.zsh`; use `Resources/assembleDDMOSReminder.zsh` to assemble your organization's customized script instead
+# Version 2.0.0, 06-Dec-2025, Dan K. Snelson (@dan-snelson)
+#   - Reorganized script structure for (hopefully) improved clarity
+#   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
+#   - Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by Pull Request: #20; thanks, @TazNZ!)
+#   - Refactored `daysBeforeDeadlineBlurscreen` logic to use seconds (instead of days) for more precise control (thanks for the suggestion, @Ancaeus!)
+#   - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, Max S!)
+#   - Added ability to read variables from `.plist` (Pull Request #22; thanks, Obi-@maxsundellacne!)
 #
 ####################################################################################################
 
@@ -43,15 +42,18 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="1.4.0"
+scriptVersion="2.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
+# Minimum Required Version of swiftDialog
+swiftDialogMinimumRequiredVersion="2.5.6.4805"
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Jamf Pro Script Parameters
+# MDM Script Parameters
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
@@ -480,7 +482,7 @@ function dialogCheck() {
             
         else
 
-        preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+            preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
 
         fi
     

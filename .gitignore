@@ -420,3 +420,4 @@ FodyWeavers.xsd
 # Local deployment helper
 .deployDDMOSReminder.zsh
 VERSION.txt
+.DS_Store

@@ -4,14 +4,14 @@
 ####################################################################################################
 #
 # Automatically assemble the final DDM OS Reminder script by embedding the
-# customized end-user message (reminderDialog.zsh) into launchDaemonManagment.zsh by executing:
+# customized end-user message (reminderDialog.zsh) into launchDaemonManagement.zsh by executing:
 #
 # zsh assemble.zsh
 #
 # Expected directory layout:
 #   DDM-OS-Reminder/
 #     assemble.zsh
-#     launchDaemonManagment.zsh
+#     launchDaemonManagement.zsh
 #     reminderDialog.zsh
 #     Resources/
 #
@@ -30,7 +30,7 @@ set -euo pipefail
 
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
-baseScript="${projectDir}/launchDaemonManagment.zsh"
+baseScript="${projectDir}/launchDaemonManagement.zsh"
 messageScript="${projectDir}/reminderDialog.zsh"
 timestamp="$(date '+%Y-%m-%d-%H%M%S')"
 outputScript="${resourcesDir}/ddm-os-reminder-assembled-${timestamp}.zsh"

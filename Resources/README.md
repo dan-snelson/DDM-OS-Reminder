@@ -102,8 +102,7 @@ org.churchofjesuschrist.dorm
 ### 4. Extension Attributes
 
 While the following Extension Attributes were created for and tested on **Jamf Pro**, they can likely be adapted for other MDMs.  
-(For adaptation help, visit the [Mac Admins Slack](https://www.macadmins.org/) `#ddm-os-reminders` channel  
-or open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).)
+(For adaptation help, visit the [Mac Admins Slack](https://www.macadmins.org/) `#ddm-os-reminders` channel or open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).)
 
 **4.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
 Reports the user’s button clicks from the DDM OS Reminder message.

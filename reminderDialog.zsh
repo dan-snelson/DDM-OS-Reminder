@@ -159,6 +159,8 @@ function replacePlaceholders() {
     value=${value//'{ddmVersionStringDaysRemaining}'/${ddmVersionStringDaysRemaining}}
     value=${value//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
     value=${value//'{titleMessageUpdateOrUpgrade}'/${titleMessageUpdateOrUpgrade}}
+    value=${value//\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
+    value=${value//'{titleMessageUpdateOrUpgrade:l}'/${titleMessageUpdateOrUpgrade:l}}
     value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
     value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
     value=${value//\{button1text\}/${button1text}}
@@ -193,6 +195,11 @@ function applyHideRules() {
     # Hide info button explicitly
     if [[ "${infobuttontext}" == "hide" ]]; then
         infobuttontext=""
+    fi
+
+    # Hide secondary button if requested
+    if [[ "${button2text}" == "hide" ]]; then
+        button2text=""
     fi
 
     # Hide help image (QR) if requested
@@ -595,7 +602,6 @@ function displayReminderDialog() {
         --overlayicon "${overlayicon}"
         --infobox "${infobox}"
         --button1text "${button1text}"
-        --button2text "${button2text}"
         --messagefont "size=14"
         --width 800
         --height 600
@@ -603,6 +609,7 @@ function displayReminderDialog() {
         "${additionalDialogOptions[@]}"
     )
 
+    [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")

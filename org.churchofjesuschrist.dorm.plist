@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Version: 2.1.0 -->
+
 	<!-- Logging -->
 	<key>ScriptLog</key>
 	<string>/var/log/org.churchofjesuschrist.log</string>
@@ -40,7 +42,7 @@
 
 	<!-- Dialog text -->
 	<key>Title</key>
-	<string>macOS {titleMessageUpdateOrUpgrade} required</string>
+	<string>macOS {titleMessageUpdateOrUpgrade} Required</string>
 	<key>Button1Text</key>
 	<string>Open Software Update</string>
 	<key>Button2Text</key>
@@ -48,7 +50,7 @@
 	<key>InfoButtonText</key>
 	<string>KB8675309</string>
 	<key>Message</key>
-	<string>**A required macOS {titleMessageUpdateOrUpgrade} is now available**&lt;br&gt;---&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade} now, click **{button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade}d before the deadline.&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+	<string>**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;---&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
 
 	<!-- Infobox -->
 	<key>InfoBox</key>

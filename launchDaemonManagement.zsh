@@ -21,8 +21,9 @@
 #
 # HISTORY
 #
-# Version 2.1.0, 08-Dec-2025, Dan K. Snelson (@dan-snelson)
-#   - Added ability to hide `button2` and use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
+# Version 2.1.0b2, 08-Dec-2025, Dan K. Snelson (@dan-snelson)
+#   - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
+#   - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
 #
 ####################################################################################################
 
@@ -37,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0b1"
+scriptVersion="2.1.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

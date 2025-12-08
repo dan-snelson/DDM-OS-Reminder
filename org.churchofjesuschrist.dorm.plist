@@ -13,6 +13,8 @@
 	<integer>14</integer>
 	<key>DaysBeforeDeadlineBlurscreen</key>
 	<integer>3</integer>
+	<key>DaysBeforeDeadlineHidingButton2</key>
+	<integer>1/integer>
 	<key>MeetingDelay</key>
 	<integer>75</integer>
 

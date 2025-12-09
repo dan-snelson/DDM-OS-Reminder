@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 #
 # createPlist.zsh — Generate default plist from reminderDialog.zsh
-# Version 2.1.0b3
+# Version 2.1.0b4
 
 set -euo pipefail
 
@@ -156,7 +156,9 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
 <plist version="1.0">
 <dict>
 
+    <!-- Preferences Domain: ${reverseDomainNameNotation}.${organizationScriptName} -->
     <!-- Version: ${scriptVersion} -->
+    <!-- Generated on: ${datestamp} -->
 
     <!-- Logging -->
     <key>ScriptLog</key>

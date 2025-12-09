@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 #
 # createPlist.zsh — Generate default plist from reminderDialog.zsh
-# Version 2.1.0b2
+# Version 2.1.0b3
 
 set -euo pipefail
 
@@ -15,9 +15,17 @@ reverseDomainNameNotation=$(awk -F'"' '/^reverseDomainNameNotation=/{print $2}' 
 organizationScriptName=$(awk -F'"' '/^organizationScriptName=/{print $2}' "$SOURCE_SCRIPT")
 
 datestamp=$(date '+%Y-%m-%d-%H%M%S')
-OUTPUT_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.plist"
 
-echo "Generating default plist → $OUTPUT_FILE"
+# Target Output Files
+OUTPUT_PLIST_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.plist"
+# OUTPUT_MOBILECONFIG_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.mobileconfig"
+OUTPUT_MOBILECONFIG_FILE="${SCRIPT_DIR}/DDM OS Reminder-${datestamp}-unsigned.mobileconfig"
+
+# Generate UUIDs for the profile and the ManagedClient payload
+PROFILE_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
+MANAGEDCLIENT_PAYLOAD_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
+
+echo "Generating default plist → $OUTPUT_PLIST_FILE"
 
 # ─────────────────────────────────────────────────────────────
 # Extract default value
@@ -142,76 +150,188 @@ dateFormat_xml=$(echo "$dateFormatDeadlineHumanReadable" | xml_escape)
 # ─────────────────────────────────────────────────────────────
 # Generate plist
 # ─────────────────────────────────────────────────────────────
-cat > "$OUTPUT_FILE" <<EOF
+cat > "$OUTPUT_PLIST_FILE" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 
-	<!-- Version: ${scriptVersion} -->
+    <!-- Version: ${scriptVersion} -->
 
-	<!-- Logging -->
-	<key>ScriptLog</key>
-	<string>${scriptLog_xml}</string>
+    <!-- Logging -->
+    <key>ScriptLog</key>
+    <string>${scriptLog_xml}</string>
 
-	<!-- Reminder timing -->
-	<key>DaysBeforeDeadlineDisplayReminder</key>
-	<integer>${daysBeforeDeadlineDisplayReminder}</integer>
-	<key>DaysBeforeDeadlineBlurscreen</key>
-	<integer>${daysBeforeDeadlineBlurscreen}</integer>
-	<key>DaysBeforeDeadlineHidingButton2</key>
-	<integer>${daysBeforeDeadlineHidingButton2}</integer>
-	<key>MeetingDelay</key>
-	<integer>${meetingDelay}</integer>
+    <!-- Reminder timing -->
+    <key>DaysBeforeDeadlineDisplayReminder</key>
+    <integer>${daysBeforeDeadlineDisplayReminder}</integer>
+    <key>DaysBeforeDeadlineBlurscreen</key>
+    <integer>${daysBeforeDeadlineBlurscreen}</integer>
+    <key>DaysBeforeDeadlineHidingButton2</key>
+    <integer>${daysBeforeDeadlineHidingButton2}</integer>
+    <key>MeetingDelay</key>
+    <integer>${meetingDelay}</integer>
 
-	<!-- Branding -->
-	<key>OrganizationOverlayIconURL</key>
-	<string>${overlayicon_xml}</string>
-	<key>SwapOverlayAndLogo</key>
-	${swapOverlayAndLogo_xml}
-	<key>DateFormatDeadlineHumanReadable</key>
-	<string>${dateFormat_xml}</string>
+    <!-- Branding -->
+    <key>OrganizationOverlayIconURL</key>
+    <string>${overlayicon_xml}</string>
+    <key>SwapOverlayAndLogo</key>
+    ${swapOverlayAndLogo_xml}
+    <key>DateFormatDeadlineHumanReadable</key>
+    <string>${dateFormat_xml}</string>
 
-	<!-- Support block -->
-	<key>SupportTeamName</key>
-	<string>${supportTeamName_xml}</string>
-	<key>SupportTeamPhone</key>
-	<string>${supportTeamPhone_xml}</string>
-	<key>SupportTeamEmail</key>
-	<string>${supportTeamEmail_xml}</string>
-	<key>SupportTeamWebsite</key>
-	<string>${supportTeamWebsite_xml}</string>
-	<key>SupportKB</key>
-	<string>${supportKB_xml}</string>
-	<key>InfoButtonAction</key>
-	<string>${infobuttonaction_xml}</string>
-	<key>SupportKBURL</key>
-	<string>${supportKBURL_xml}</string>
+    <!-- Support block -->
+    <key>SupportTeamName</key>
+    <string>${supportTeamName_xml}</string>
+    <key>SupportTeamPhone</key>
+    <string>${supportTeamPhone_xml}</string>
+    <key>SupportTeamEmail</key>
+    <string>${supportTeamEmail_xml}</string>
+    <key>SupportTeamWebsite</key>
+    <string>${supportTeamWebsite_xml}</string>
+    <key>SupportKB</key>
+    <string>${supportKB_xml}</string>
+    <key>InfoButtonAction</key>
+    <string>${infobuttonaction_xml}</string>
+    <key>SupportKBURL</key>
+    <string>${supportKBURL_xml}</string>
 
-	<!-- Dialog text -->
-	<key>Title</key>
-	<string>${title_xml}</string>
-	<key>Button1Text</key>
-	<string>${button1text_xml}</string>
-	<key>Button2Text</key>
-	<string>${button2text_xml}</string>
-	<key>InfoButtonText</key>
-	<string>${infobuttontext_xml}</string>
-	<key>Message</key>
-	<string>${message_xml}</string>
+    <!-- Dialog text -->
+    <key>Title</key>
+    <string>${title_xml}</string>
+    <key>Button1Text</key>
+    <string>${button1text_xml}</string>
+    <key>Button2Text</key>
+    <string>${button2text_xml}</string>
+    <key>InfoButtonText</key>
+    <string>${infobuttontext_xml}</string>
+    <key>Message</key>
+    <string>${message_xml}</string>
 
-	<!-- Infobox -->
-	<key>InfoBox</key>
-	<string>${infobox_xml}</string>
+    <!-- Infobox -->
+    <key>InfoBox</key>
+    <string>${infobox_xml}</string>
 
-	<!-- Help section -->
-	<key>HelpMessage</key>
-	<string>${helpmessage_xml}</string>
-	<key>HelpImage</key>
-	<string>${helpimage_xml}</string>
+    <!-- Help section -->
+    <key>HelpMessage</key>
+    <string>${helpmessage_xml}</string>
+    <key>HelpImage</key>
+    <string>${helpimage_xml}</string>
 </dict>
 </plist>
 EOF
 
 echo "SUCCESS! plist generated:"
-echo "   → $OUTPUT_FILE"
+echo "   → $OUTPUT_PLIST_FILE"
+
+# ─────────────────────────────────────────────────────────────
+# Generate mobileconfig
+# ─────────────────────────────────────────────────────────────
+cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadContent</key>
+            <dict>
+                <key>${reverseDomainNameNotation}</key>
+                <dict>
+                    <key>Forced</key>
+                    <array>
+                        <dict>
+                            <key>mcx_preference_settings</key>
+                            <dict>
+                                <key>ScriptLog</key>
+                                <string>${scriptLog_xml}</string>
+                                <key>DaysBeforeDeadlineDisplayReminder</key>
+                                <integer>${daysBeforeDeadlineDisplayReminder}</integer>
+                                <key>DaysBeforeDeadlineBlurscreen</key>
+                                <integer>${daysBeforeDeadlineBlurscreen}</integer>
+                                <key>DaysBeforeDeadlineHidingButton2</key>
+                                <integer>${daysBeforeDeadlineHidingButton2}</integer>
+                                <key>MeetingDelay</key>
+                                <integer>${meetingDelay}</integer>
+                                <key>OrganizationOverlayIconURL</key>
+                                <string>${overlayicon_xml}</string>
+                                <key>SwapOverlayAndLogo</key>
+                                ${swapOverlayAndLogo_xml}
+                                <key>DateFormatDeadlineHumanReadable</key>
+                                <string>${dateFormat_xml}</string>
+                                <key>SupportTeamName</key>
+                                <string>${supportTeamName_xml}</string>
+                                <key>SupportTeamPhone</key>
+                                <string>${supportTeamPhone_xml}</string>
+                                <key>SupportTeamEmail</key>
+                                <string>${supportTeamEmail_xml}</string>
+                                <key>SupportTeamWebsite</key>
+                                <string>${supportTeamWebsite_xml}</string>
+                                <key>SupportKB</key>
+                                <string>${supportKB_xml}</string>
+                                <key>InfoButtonAction</key>
+                                <string>${infobuttonaction_xml}</string>
+                                <key>SupportKBURL</key>
+                                <string>${supportKBURL_xml}</string>
+                                <key>Title</key>
+                                <string>${title_xml}</string>
+                                <key>Button1Text</key>
+                                <string>${button1text_xml}</string>
+                                <key>Button2Text</key>
+                                <string>${button2text_xml}</string>
+                                <key>InfoButtonText</key>
+                                <string>${infobuttontext_xml}</string>
+                                <key>Message</key>
+                                <string>${message_xml}</string>
+                                <key>InfoBox</key>
+                                <string>${infobox_xml}</string>
+                                <key>HelpMessage</key>
+                                <string>${helpmessage_xml}</string>
+                                <key>HelpImage</key>
+                                <string>${helpimage_xml}</string>
+                            </dict>
+                        </dict>
+                    </array>
+                </dict>
+            </dict>
+            <key>PayloadDisplayName</key>
+            <string>Custom Settings</string>
+            <key>PayloadIdentifier</key>
+            <string>${MANAGEDCLIENT_PAYLOAD_UUID}</string>
+            <key>PayloadOrganization</key>
+            <string>${organizationScriptName}</string>
+            <key>PayloadType</key>
+            <string>com.apple.ManagedClient.preferences</string>
+            <key>PayloadUUID</key>
+            <string>${MANAGEDCLIENT_PAYLOAD_UUID}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>DDM OS Reminder default configuration</string>
+    <key>PayloadDisplayName</key>
+    <string>DDM OS Reminder (${scriptVersion})</string>
+    <key>PayloadEnabled</key>
+    <true/>
+    <key>PayloadIdentifier</key>
+    <string>${PROFILE_UUID}</string>
+    <key>PayloadOrganization</key>
+    <string>${organizationScriptName}</string>
+    <key>PayloadRemovalDisallowed</key>
+    <true/>
+    <key>PayloadScope</key>
+    <string>System</string>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>${PROFILE_UUID}</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>
+EOF
+
+echo "SUCCESS! mobileconfig generated:"
+echo "   → ${OUTPUT_MOBILECONFIG_FILE}"

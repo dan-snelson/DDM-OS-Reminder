@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 #
 # createPlist.zsh — Generate default plist from reminderDialog.zsh
-# Version 2.0.0
+# Version 2.1.0
 
 set -euo pipefail
 
@@ -52,9 +52,6 @@ normalize_placeholders() {
         # $(/usr/local/bin/dialog -v) -> {dialogVersion}
         s/\$\(\/usr\/local\/bin\/dialog\s+-[^\s]+[^\)]*\)/{dialogVersion}/g;
 
-        # ${titleMessageUpdateOrUpgrade:l} -> {titleMessageUpdateOrUpgrade}
-        s/\$\{titleMessageUpdateOrUpgrade:l\}/{titleMessageUpdateOrUpgrade}/g;
-
         # ${var} -> {var}
         s/\$\{([^}]+)\}/{${1}}/g;
     '
@@ -73,9 +70,11 @@ process() { echo "$1" | normalize_placeholders | xml_escape; }
 # ─────────────────────────────────────────────────────────────
 # Extract globals
 # ─────────────────────────────────────────────────────────────
+scriptVersion=$(awk -F'"' '/^scriptVersion=/{print $2}' "$SOURCE_SCRIPT")
 scriptLog=$(awk -F'"' '/^scriptLog=/{print $2}' "$SOURCE_SCRIPT")
 daysBeforeDeadlineDisplayReminder=$(awk -F'"' '/^daysBeforeDeadlineDisplayReminder=/{print $2}' "$SOURCE_SCRIPT")
 daysBeforeDeadlineBlurscreen=$(awk -F'"' '/^daysBeforeDeadlineBlurscreen=/{print $2}' "$SOURCE_SCRIPT")
+daysBeforeDeadlineHidingButton2=$(awk -F'"' '/^daysBeforeDeadlineHidingButton2=/{print $2}' "$SOURCE_SCRIPT")
 meetingDelay=$(awk -F'"' '/^meetingDelay=/{print $2}' "$SOURCE_SCRIPT")
 dateFormatDeadlineHumanReadable=$(awk -F'"' '/^dateFormatDeadlineHumanReadable=/{print $2}' "$SOURCE_SCRIPT")
 swapOverlayAndLogo_raw=$(awk -F'"' '/^swapOverlayAndLogo=/{print $2}' "$SOURCE_SCRIPT")
@@ -148,6 +147,9 @@ cat > "$OUTPUT_FILE" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+
+	<!-- Version: ${scriptVersion} -->
+
 	<!-- Logging -->
 	<key>ScriptLog</key>
 	<string>${scriptLog_xml}</string>
@@ -157,6 +159,8 @@ cat > "$OUTPUT_FILE" <<EOF
 	<integer>${daysBeforeDeadlineDisplayReminder}</integer>
 	<key>DaysBeforeDeadlineBlurscreen</key>
 	<integer>${daysBeforeDeadlineBlurscreen}</integer>
+	<key>DaysBeforeDeadlineHidingButton2</key>
+	<integer>${daysBeforeDeadlineHidingButton2}</integer>
 	<key>MeetingDelay</key>
 	<integer>${meetingDelay}</integer>
 

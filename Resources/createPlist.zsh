@@ -83,6 +83,7 @@ scriptLog=$(awk -F'"' '/^scriptLog=/{print $2}' "$SOURCE_SCRIPT")
 daysBeforeDeadlineDisplayReminder=$(awk -F'"' '/^daysBeforeDeadlineDisplayReminder=/{print $2}' "$SOURCE_SCRIPT")
 daysBeforeDeadlineBlurscreen=$(awk -F'"' '/^daysBeforeDeadlineBlurscreen=/{print $2}' "$SOURCE_SCRIPT")
 daysBeforeDeadlineHidingButton2=$(awk -F'"' '/^daysBeforeDeadlineHidingButton2=/{print $2}' "$SOURCE_SCRIPT")
+daysOfExcessiveUptimeWarning=$(awk -F'"' '/^daysOfExcessiveUptimeWarning=/{print $2}' "$SOURCE_SCRIPT")
 meetingDelay=$(awk -F'"' '/^meetingDelay=/{print $2}' "$SOURCE_SCRIPT")
 dateFormatDeadlineHumanReadable=$(awk -F'"' '/^dateFormatDeadlineHumanReadable=/{print $2}' "$SOURCE_SCRIPT")
 swapOverlayAndLogo_raw=$(awk -F'"' '/^swapOverlayAndLogo=/{print $2}' "$SOURCE_SCRIPT")
@@ -96,6 +97,7 @@ esac
 # Extract all defaults
 # ─────────────────────────────────────────────────────────────
 defaultTitle=$(extract_default defaultTitle)
+defaultExcessiveUptimeWarningMessage=$(extract_default defaultExcessiveUptimeWarningMessage)
 defaultMessage=$(extract_default defaultMessage)
 defaultInfobox=$(extract_default defaultInfobox)
 defaultHelpmessage=$(extract_default defaultHelpmessage)
@@ -124,6 +126,7 @@ resolvedInfobuttontext="$defaultSupportKB"
 # Process strings
 # ---------------------------------------------------------------------
 title_xml=$(process "$defaultTitle")
+excessiveUptimeWarningMessage_xml=$(process "$defaultExcessiveUptimeWarningMessage")
 message_xml=$(process "$defaultMessage")
 infobox_xml=$(process "$defaultInfobox")
 helpmessage_xml=$(process "$defaultHelpmessage")
@@ -171,6 +174,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysBeforeDeadlineBlurscreen}</integer>
     <key>DaysBeforeDeadlineHidingButton2</key>
     <integer>${daysBeforeDeadlineHidingButton2}</integer>
+    <key>DaysOfExcessiveUptimeWarning</key>
+    <integer>${daysOfExcessiveUptimeWarning}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
 
@@ -207,6 +212,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${button2text_xml}</string>
     <key>InfoButtonText</key>
     <string>${infobuttontext_xml}</string>
+    <key>ExcessiveUptimeWarningMessage</key>
+    <string>${excessiveUptimeWarningMessage_xml}</string>
     <key>Message</key>
     <string>${message_xml}</string>
 
@@ -254,6 +261,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysBeforeDeadlineBlurscreen}</integer>
                                 <key>DaysBeforeDeadlineHidingButton2</key>
                                 <integer>${daysBeforeDeadlineHidingButton2}</integer>
+                                <key>DaysOfExcessiveUptimeWarning</key>
+                                <integer>${daysOfExcessiveUptimeWarning}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
                                 <key>OrganizationOverlayIconURL</key>
@@ -284,6 +293,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${button2text_xml}</string>
                                 <key>InfoButtonText</key>
                                 <string>${infobuttontext_xml}</string>
+                                <key>ExcessiveUptimeWarningMessage</key>
+                                <string>${excessiveUptimeWarningMessage_xml}</string>
                                 <key>Message</key>
                                 <string>${message_xml}</string>
                                 <key>InfoBox</key>

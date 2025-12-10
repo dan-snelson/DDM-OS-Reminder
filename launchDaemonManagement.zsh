@@ -21,12 +21,13 @@
 #
 # HISTORY
 #
-# Version 2.1.0b6, 10-Dec-2025, Dan K. Snelson (@dan-snelson)
-#   - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
-#   - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
-#   - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
-#   - Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; #28)
-#   - Added logic for when the reminder dialog is re-displayed after clicking the `infobutton` (based on if we're already hiding the secondary button; #31)
+# Version 2.0.0, 06-Dec-2025, Dan K. Snelson (@dan-snelson)
+#   - Reorganized script structure for (hopefully) improved clarity
+#   - Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
+#   - Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by Pull Request: #20; thanks, @TazNZ!)
+#   - Refactored `daysBeforeDeadlineBlurscreen` logic to use seconds (instead of days) for more precise control (thanks for the suggestion, @Ancaeus!)
+#   - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, Max S!)
+#   - Added ability to read variables from `.plist` (Pull Request #22; thanks, Obi-@maxsundellacne!)
 #
 ####################################################################################################
 
@@ -41,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0b6"
+scriptVersion="2.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -123,8 +124,8 @@ function resetConfiguration() {
     chown -R root:wheel "${organizationDirectory}"
 
     # Secure directory permissions (no world-writable bits)
-    [[ -d "${organizationDirectory}" ]] && chmod 755 "${organizationDirectory}"
-    [[ -d "${organizationDirectory}/${reverseDomainNameNotation}" ]] && chmod 755 "${organizationDirectory}/${reverseDomainNameNotation}"
+    chmod 755 "${organizationDirectory}"
+    chmod 755 "${organizationDirectory}/${reverseDomainNameNotation}"
 
     case ${1} in
 

@@ -22,7 +22,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins a powerf
 
 > Mac Admins can configure `daysBeforeDeadlineBlurscreen` to control how many days before the DDM-specified deadline the screen blurs when displaying your customized reminder dialog
 
-- **Customizable**: Easily customize the reminder dialog’s title, message, icons and button text to fit your organization’s requirements by editing the included [`.plist`](org.churchofjesuschrist.dorm.plist) and distributing as part of a Configuration Profile via any MDM solution.
+- **Customizable**: Easily customize the reminder dialog’s title, message, icons and button text to fit your organization’s requirements by editing the included [`.plist`](Resources/sample.plist) and distributing as part of a Configuration Profile via any MDM solution.
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, so you can quickly roll out DDM OS Reminder across your entire organization.
 - **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — which automatically checks the installed version of macOS against the DDM-required macOS version — to remind your users if an update is required.
 - **Deadline Awareness**: Each time a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to the deadline and required macOS version, creating a sense of urgency for end users to update their Macs.

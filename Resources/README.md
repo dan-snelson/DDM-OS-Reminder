@@ -65,7 +65,7 @@ You can deploy the assembled, self-extracting script to your Macs using your MDM
 
 ### 3. Create `.plist` 
 
-A sample `.plist` — [`org.churchofjesuschrist.dorm.plist`](../org.churchofjesuschrist.dorm.plist) — is provided in the main **DDM-OS-Reminder** directory, which you can directly edit in your preferred code editor.
+A sample `.plist` — [`sample.plist`](sample.plist) — is provided in the main **DDM-OS-Reminder** directory, which you can directly edit in your preferred code editor.
 
 However, if you modified `reminderDialog.zsh` and want to reflect those changes in a new `.plist`, run the provided [`createPlist.zsh`](createPlist.zsh) script.
 

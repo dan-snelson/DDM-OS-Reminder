@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.0.0"
+scriptVersion="2.1.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -54,14 +54,50 @@ daysBeforeDeadlineDisplayReminder="14"
 # Organization's number of days before deadline to enable swiftDialog's blurscreen
 daysBeforeDeadlineBlurscreen="3"
 
+# Organization's number of days before deadline to hide the secondary button
+daysBeforeDeadlineHidingButton2="1"
+
+# Organization's number of days of excessive uptime before warning the user
+daysOfExcessiveUptimeWarning="7"
+
 # Organization's Meeting Delay (in minutes) 
 meetingDelay="75"
+
+# Track whether the secondary button should be hidden (computed at runtime)
+hideSecondaryButton="NO"
 
 # Date format for deadlines (used with date -jf)
 dateFormatDeadlineHumanReadable="+%a, %d-%b-%Y, %-l:%M %p"
 
 # Swap main icon and overlay icon (set to YES, true, or 1 to enable)
 swapOverlayAndLogo="NO"
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Uptime Variables
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+lastBootTime=$( sysctl kern.boottime | awk -F'[ |,]' '{print $5}' )
+currentTime=$( date +"%s" )
+upTimeRaw=$((currentTime-lastBootTime))
+upTimeMin=$((upTimeRaw/60))
+upTimeHours=$((upTimeMin/60))
+uptimeOutput=$(uptime)
+uptimeDays=$( printf '%s\n' "${uptimeOutput}" | awk '{ print $4 }' | sed 's/,//g' )
+uptimeNumber=$( printf '%s\n' "${uptimeOutput}" | awk '{ print $3 }' | sed 's/,//g' )
+
+if [[ "${uptimeDays}" = "day"* ]]; then
+    if [[ "${uptimeNumber}" -gt 1 ]]; then
+        uptimeHumanReadable="${uptimeNumber} days"
+    else
+        uptimeHumanReadable="${uptimeNumber} day"
+    fi
+elif [[ "${uptimeDays}" == "mins"* ]]; then
+    uptimeHumanReadable="${uptimeNumber} mins"
+else
+    uptimeHumanReadable="${uptimeNumber} (HH:MM)"
+fi
 
 
 
@@ -159,6 +195,12 @@ function replacePlaceholders() {
     value=${value//'{ddmVersionStringDaysRemaining}'/${ddmVersionStringDaysRemaining}}
     value=${value//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
     value=${value//'{titleMessageUpdateOrUpgrade}'/${titleMessageUpdateOrUpgrade}}
+    value=${value//\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
+    value=${value//'{titleMessageUpdateOrUpgrade:l}'/${titleMessageUpdateOrUpgrade:l}}
+    value=${value//\{uptimeHumanReadable\}/${uptimeHumanReadable}}
+    value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
+    value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
+    value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
     value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
     value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
     value=${value//\{button1text\}/${button1text}}
@@ -200,6 +242,11 @@ function applyHideRules() {
         helpimage=""
     fi
 
+    # Hide secondary button based on computed deadline window flag
+    if [[ "${hideSecondaryButton}" == "YES" ]]; then
+        button2text=""
+    fi
+
 }
 
 function loadPreferenceOverrides() {
@@ -208,6 +255,8 @@ function loadPreferenceOverrides() {
         scriptLog_managed=$(defaults read "${managedPreferencesPlist}" ScriptLog 2> /dev/null)
         daysBeforeDeadlineDisplayReminder_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
         daysBeforeDeadlineBlurscreen_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
+        daysBeforeDeadlineHidingButton2_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineHidingButton2 2> /dev/null)
+        daysOfExcessiveUptimeWarning_managed=$(defaults read "${managedPreferencesPlist}" DaysOfExcessiveUptimeWarning 2> /dev/null)
         meetingDelay_managed=$(defaults read "${managedPreferencesPlist}" MeetingDelay 2> /dev/null)
         organizationOverlayiconURL_managed=$(defaults read "${managedPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
         swapOverlayAndLogo_managed=$(defaults read "${managedPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
@@ -222,6 +271,7 @@ function loadPreferenceOverrides() {
         title_managed=$(defaults read "${managedPreferencesPlist}" Title 2> /dev/null)
         button1text_managed=$(defaults read "${managedPreferencesPlist}" Button1Text 2> /dev/null)
         button2text_managed=$(defaults read "${managedPreferencesPlist}" Button2Text 2> /dev/null)
+        excessiveUptimeWarningMessage_managed=$(defaults read "${managedPreferencesPlist}" ExcessiveUptimeWarningMessage 2> /dev/null)
         message_managed=$(defaults read "${managedPreferencesPlist}" Message 2> /dev/null)
         infobuttontext_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonText 2> /dev/null)
         infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
@@ -233,6 +283,8 @@ function loadPreferenceOverrides() {
         scriptLog_local=$(defaults read "${localPreferencesPlist}" ScriptLog 2> /dev/null)
         daysBeforeDeadlineDisplayReminder_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
         daysBeforeDeadlineBlurscreen_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
+        daysBeforeDeadlineHidingButton2_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineHidingButton2 2> /dev/null)
+        daysOfExcessiveUptimeWarning_local=$(defaults read "${localPreferencesPlist}" DaysOfExcessiveUptimeWarning 2> /dev/null)
         meetingDelay_local=$(defaults read "${localPreferencesPlist}" MeetingDelay 2> /dev/null)
         organizationOverlayiconURL_local=$(defaults read "${localPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
         swapOverlayAndLogo_local=$(defaults read "${localPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
@@ -247,6 +299,7 @@ function loadPreferenceOverrides() {
         title_local=$(defaults read "${localPreferencesPlist}" Title 2> /dev/null)
         button1text_local=$(defaults read "${localPreferencesPlist}" Button1Text 2> /dev/null)
         button2text_local=$(defaults read "${localPreferencesPlist}" Button2Text 2> /dev/null)
+        excessiveUptimeWarningMessage_local=$(defaults read "${localPreferencesPlist}" ExcessiveUptimeWarningMessage 2> /dev/null)
         message_local=$(defaults read "${localPreferencesPlist}" Message 2> /dev/null)
         infobuttontext_local=$(defaults read "${localPreferencesPlist}" InfoButtonText 2> /dev/null)
         infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
@@ -257,6 +310,8 @@ function loadPreferenceOverrides() {
     setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
     setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
     setNumericPreferenceValue "daysBeforeDeadlineBlurscreen" "${daysBeforeDeadlineBlurscreen_managed}" "${daysBeforeDeadlineBlurscreen_local}" "${daysBeforeDeadlineBlurscreen}"
+    setNumericPreferenceValue "daysBeforeDeadlineHidingButton2" "${daysBeforeDeadlineHidingButton2_managed}" "${daysBeforeDeadlineHidingButton2_local}" "${daysBeforeDeadlineHidingButton2}"
+    setNumericPreferenceValue "daysOfExcessiveUptimeWarning" "${daysOfExcessiveUptimeWarning_managed}" "${daysOfExcessiveUptimeWarning_local}" "${daysOfExcessiveUptimeWarning}"
     setNumericPreferenceValue "meetingDelay" "${meetingDelay_managed}" "${meetingDelay_local}" "${meetingDelay}"
     setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
     setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
@@ -351,15 +406,21 @@ installedOSvsDDMenforcedOS() {
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
 
-    # Blurscreen logic (based on precise timestamp comparison)
+    # Blurscreen logic and secondary button hiding (based on precise timestamp comparison)
     nowEpoch=$(date +%s)
     secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))
     blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
+    hideButton2ThresholdSeconds=$(( daysBeforeDeadlineHidingButton2 * 86400 ))
     ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
     if (( secondsUntilDeadline <= blurThresholdSeconds )); then
         blurscreen="--blurscreen"
     else
         blurscreen="--noblurscreen"
+    fi
+    if (( secondsUntilDeadline <= hideButton2ThresholdSeconds )); then
+        hideSecondaryButton="YES"
+    else
+        hideSecondaryButton="NO"
     fi
 
     # Version Comparison Result
@@ -373,10 +434,10 @@ installedOSvsDDMenforcedOS() {
         majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
-            titleMessageUpdateOrUpgrade="upgrade"
+            titleMessageUpdateOrUpgrade="Upgrade"
             softwareUpdateButtonText="Upgrade Now"
         else
-            titleMessageUpdateOrUpgrade="update"
+            titleMessageUpdateOrUpgrade="Update"
             softwareUpdateButtonText="Restart Now"
         fi
     fi
@@ -513,10 +574,10 @@ function updateRequiredVariables() {
     local defaultSupportTeamWebsite="${supportTeamWebsite:-"https://support.domain.org"}"
     setPreferenceValue "supportTeamWebsite" "${supportTeamWebsite_managed}" "${supportTeamWebsite_local}" "${defaultSupportTeamWebsite}"
 
-    local defaultSupportKB="${supportKB:-"KB8675309"}"
+    local defaultSupportKB="${supportKB:-"108382"}"
     setPreferenceValue "supportKB" "${supportKB_managed}" "${supportKB_local}" "${defaultSupportKB}"
 
-    local defaultInfobuttonaction="https://servicenow.domain.org/support?id=kb_article_view&sysparm_article=${supportKB}"
+    local defaultInfobuttonaction="https://support.apple.com/${supportKB}"
     setPreferenceValue "infobuttonaction" "${infobuttonaction_managed}" "${infobuttonaction_local}" "${defaultInfobuttonaction}"
 
     local defaultSupportKBURL="[${supportKB}](${infobuttonaction})"
@@ -528,7 +589,7 @@ function updateRequiredVariables() {
     # Title, Message and  Button Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} required"
+    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} Required"
     setPreferenceValue "title" "${title_managed}" "${title_local}" "${defaultTitle}"
     replacePlaceholders "title"
 
@@ -544,7 +605,16 @@ function updateRequiredVariables() {
     local defaultAction="${action:-"x-apple.systempreferences:com.apple.preferences.softwareupdate"}"
     printf -v "action" '%s' "${defaultAction}"
 
-    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br>---<br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    local defaultExcessiveUptimeWarningMessage="${excessiveUptimeWarningMessage:-"<br><br>**Note:** Your Mac has been powered-on for **${uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."}"
+    setPreferenceValue "excessiveUptimeWarningMessage" "${excessiveUptimeWarningMessage_managed}" "${excessiveUptimeWarningMessage_local}" "${defaultExcessiveUptimeWarningMessage}"
+    replacePlaceholders "excessiveUptimeWarningMessage"
+
+    local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
+    if (( upTimeMin < allowedUptimeMinutes )); then
+        unset "excessiveUptimeWarningMessage"
+    fi
+
+    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
     replacePlaceholders "message"
 
@@ -554,7 +624,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}"
+    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}"
     setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
     replacePlaceholders "infobox"
 
@@ -595,7 +665,6 @@ function displayReminderDialog() {
         --overlayicon "${overlayicon}"
         --infobox "${infobox}"
         --button1text "${button1text}"
-        --button2text "${button2text}"
         --messagefont "size=14"
         --width 800
         --height 600
@@ -603,6 +672,7 @@ function displayReminderDialog() {
         "${additionalDialogOptions[@]}"
     )
 
+    [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
@@ -654,9 +724,15 @@ function displayReminderDialog() {
             echo "blurscreen: disable" >> /var/tmp/dialog.log
             echo "hide:" >> /var/tmp/dialog.log
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
-            info "Waiting 61 seconds before re-showing dialog …"
-            sleep 61
-            displayReminderDialog --ontop --moveable
+
+            # Only re-display the reminder dialog when we are within the "hide secondary button" window (i.e., close to the deadline)
+            if [[ "${hideSecondaryButton}" == "YES" ]]; then
+                info "Within ${daysBeforeDeadlineHidingButton2} day(s) of deadline; waiting 61 seconds before re-showing dialog …"
+                sleep 61
+                displayReminderDialog --ontop --moveable
+            else
+                info "Deadline is more than ${daysBeforeDeadlineHidingButton2} day(s) away; not re-showing dialog after ${loggedInUser} clicked ${infobuttontext}."
+            fi
             ;;
 
         4)  ## Process exit code 4 scenario here
@@ -826,7 +902,22 @@ if [[ "${1}" == "demo" ]]; then
     fi
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
-    ddmVersionStringDaysRemaining="${demoDeadlineOffsetDays}"
+    deadlineEpoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "+%s" 2>/dev/null)
+    nowEpoch=$(date +%s)
+    secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))
+    blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
+    hideButton2ThresholdSeconds=$(( daysBeforeDeadlineHidingButton2 * 86400 ))
+    ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
+    if (( secondsUntilDeadline <= blurThresholdSeconds )); then
+        blurscreen="--blurscreen"
+    else
+        blurscreen="--noblurscreen"
+    fi
+    if (( secondsUntilDeadline <= hideButton2ThresholdSeconds )); then
+        hideSecondaryButton="YES"
+    else
+        hideSecondaryButton="NO"
+    fi
     ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
 
     # Title / update-or-upgrade logic

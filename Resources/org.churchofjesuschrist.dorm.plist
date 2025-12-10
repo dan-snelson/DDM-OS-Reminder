@@ -460,7 +460,7 @@
 			<key>pfm_description</key>
 			<string>Markdown-formatted text displayed in the dialog.</string>
 			<key>pfm_default</key>
-			<string><br><br>**Note:** Your Mac has been powered-on for **${uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
+			<string>&lt;br&gt;&lt;br&gt;**Note:** Your Mac has been powered-on for **${uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
 		</dict>
 
 		<!-- Message -->
@@ -474,7 +474,7 @@
 			<key>pfm_description</key>
 			<string>Markdown-formatted message body displayed in the dialog.</string>
 			<key>pfm_default</key>
-			<string>**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+			<string>**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Happy $( date +'%A' ), ${loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
 		</dict>
 
 		<!-- InfoBox -->

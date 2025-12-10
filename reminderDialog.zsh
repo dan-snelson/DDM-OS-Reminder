@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0b5"
+scriptVersion="2.1.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -724,9 +724,15 @@ function displayReminderDialog() {
             echo "blurscreen: disable" >> /var/tmp/dialog.log
             echo "hide:" >> /var/tmp/dialog.log
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
-            info "Waiting 61 seconds before re-showing dialog …"
-            sleep 61
-            displayReminderDialog --ontop --moveable
+
+            # Only re-display the reminder dialog when we are within the "hide secondary button" window (i.e., close to the deadline)
+            if [[ "${hideSecondaryButton}" == "YES" ]]; then
+                info "Within ${daysBeforeDeadlineHidingButton2} day(s) of deadline; waiting 61 seconds before re-showing dialog …"
+                sleep 61
+                displayReminderDialog --ontop --moveable
+            else
+                info "Deadline is more than ${daysBeforeDeadlineHidingButton2} day(s) away; not re-showing dialog after ${loggedInUser} clicked ${infobuttontext}."
+            fi
             ;;
 
         4)  ## Process exit code 4 scenario here

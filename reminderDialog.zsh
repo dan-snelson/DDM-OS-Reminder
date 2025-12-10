@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0b4"
+scriptVersion="2.1.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -199,6 +199,8 @@ function replacePlaceholders() {
     value=${value//'{titleMessageUpdateOrUpgrade:l}'/${titleMessageUpdateOrUpgrade:l}}
     value=${value//\{uptimeHumanReadable\}/${uptimeHumanReadable}}
     value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
+    value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
+    value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
     value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
     value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
     value=${value//\{button1text\}/${button1text}}
@@ -605,6 +607,7 @@ function updateRequiredVariables() {
 
     local defaultExcessiveUptimeWarningMessage="${excessiveUptimeWarningMessage:-"<br><br>**Note:** Your Mac has been powered-on for **${uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."}"
     setPreferenceValue "excessiveUptimeWarningMessage" "${excessiveUptimeWarningMessage_managed}" "${excessiveUptimeWarningMessage_local}" "${defaultExcessiveUptimeWarningMessage}"
+    replacePlaceholders "excessiveUptimeWarningMessage"
 
     local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
     if (( upTimeMin < allowedUptimeMinutes )); then

@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 2.1.0b7 (11-Dec-2025)
+### Version 2.1.0b8 (11-Dec-2025)
 - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
 - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
 - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
@@ -10,6 +10,7 @@
 - Added logic for when the reminder dialog is re-displayed after clicking the `infobutton` (based on if we're already hiding the secondary button; #31)
 - Moved and renamed [`sample.plist`](Resources/sample.plist)
 - Streamline Deployment & Documentation (Feature Request #35)
+- Addressed Bugs #34 (thanks, @TechTrekkie!) and #36 (I. Blame. AI.)
 
 ### Version 2.0.0 (06-Dec-2025)
 - Reorganized script structure for (hopefully) improved clarity

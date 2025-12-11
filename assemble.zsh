@@ -22,12 +22,14 @@
 #
 ####################################################################################################
 
+
+
+####################################################################################################
+# Global Variables
+####################################################################################################
+
 set -euo pipefail
-
-####################################################################################################
-# Variables
-####################################################################################################
-
+scriptVersion="2.1.0b7"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 baseScript="${projectDir}/launchDaemonManagement.zsh"
@@ -36,19 +38,32 @@ timestamp="$(date '+%Y-%m-%d-%H%M%S')"
 outputScript="${resourcesDir}/ddm-os-reminder-assembled-${timestamp}.zsh"
 tmpScript="${outputScript}.tmp"
 
+# RDNN / org script name (will be discovered and possibly overridden)
+currentRDNN=""
+currentOrgScriptName=""
+newRDNN=""
+newOrgScriptName=""
+
+
+
 ####################################################################################################
 # Header
 ####################################################################################################
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🧩 Assembling DDM-OS-Reminder"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Working dir:     ${projectDir}"
-echo "Resources dir:   ${resourcesDir}"
-echo "Base script:     ${baseScript}"
-echo "Message script:  ${messageScript}"
-echo "Output script:   ${outputScript}"
 echo
+echo "==============================================================="
+echo "🧩 Assemble DDM OS Reminder (${scriptVersion})"
+echo "==============================================================="
+echo
+echo "Full Paths:"
+echo
+echo "        Reminder Dialog: ${messageScript}"
+echo "LaunchDaemon Management: ${baseScript}"
+echo "      Working Directory: ${projectDir}"
+echo "    Resources Directory: ${resourcesDir}"
+echo
+
+
 
 ####################################################################################################
 # Validate Input Files
@@ -58,11 +73,107 @@ echo
 [[ -f "${messageScript}" ]] || { echo "❌ Message script not found: ${messageScript}"; exit 1; }
 [[ -d "${resourcesDir}" ]]  || { echo "⚠️  Resources directory missing — creating it."; mkdir -p "${resourcesDir}"; }
 
+
+
 ####################################################################################################
-# Insert End-user Message (with updateScriptLog patch)
+# RDNN Harmonization (no organizationScriptName prompting)
 ####################################################################################################
 
-echo "🔧 Inserting end-user message …"
+echo "🔍 Checking Reverse Domain Name Notation …"
+
+currentRDNN_reminder="$(grep -E '^reverseDomainNameNotation=' "${messageScript}" 2>/dev/null | sed -E 's/^[^=]+="//; s/"$//')"
+currentOrgScriptName_reminder="$(grep -E '^organizationScriptName=' "${messageScript}" 2>/dev/null | sed -E 's/^[^=]+="//; s/"$//')"
+
+currentRDNN_base="$(grep -E '^reverseDomainNameNotation=' "${baseScript}" 2>/dev/null | sed -E 's/^[^=]+="//; s/"$//')"
+currentOrgScriptName_base="$(grep -E '^organizationScriptName=' "${baseScript}" 2>/dev/null | sed -E 's/^[^=]+="//; s/"$//')"
+
+echo
+echo "    Reminder Dialog (reminderDialog.zsh):"
+echo "        reverseDomainNameNotation = ${currentRDNN_reminder:-<not found>}"
+echo "        organizationScriptName    = ${currentOrgScriptName_reminder:-<not found>}"
+echo
+echo "    LaunchDaemon Management (launchDaemonManagement.zsh):"
+echo "        reverseDomainNameNotation = ${currentRDNN_base:-<not found>}"
+echo "        organizationScriptName    = ${currentOrgScriptName_base:-<not found>}"
+echo
+
+# --- Reverse Domain Name Notation consistency handling ---
+if [[ -z "${currentRDNN_reminder}" || -z "${currentRDNN_base}" ]]; then
+  echo "⚠️  Could not detect reverseDomainNameNotation in one or both files."
+  echo "    You will be prompted to enter a value manually."
+  currentRDNN=""
+elif [[ "${currentRDNN_reminder}" != "${currentRDNN_base}" ]]; then
+  echo "⚠️  reverseDomainNameNotation values differ."
+  echo "    Choose which value to use as the default:"
+  echo "      1) ${currentRDNN_reminder}  (from reminderDialog.zsh)"
+  echo "      2) ${currentRDNN_base}      (from launchDaemonManagement.zsh)"
+  echo "      3) Enter custom value"
+  printf "Selection [1/2/3]: "
+  read -r choice
+
+  case "${choice}" in
+    1) currentRDNN="${currentRDNN_reminder}" ;;
+    2) currentRDNN="${currentRDNN_base}" ;;
+    3) currentRDNN="" ;;
+    *)
+      echo "❌ Invalid selection. Exiting."
+      exit 1
+      ;;
+  esac
+else
+  currentRDNN="${currentRDNN_reminder}"
+fi
+
+echo
+
+# Optional command-line override: allow "zsh assemble.zsh newRDNN"
+if [[ -n "${1:-}" ]]; then
+  echo "📥 RDNN provided via command-line argument: '${1}'"
+  newRDNN="${1}"
+  skipRDNNPrompt=true
+else
+  skipRDNNPrompt=false
+fi
+
+# Prompt ONLY if not provided via argument
+if [[ "${skipRDNNPrompt}" == false ]]; then
+  if [[ -n "${currentRDNN}" ]]; then
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or 'X' to exit): " userRDNN
+
+    # Allow 'X' to exit
+    if [[ "${userRDNN}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+
+    newRDNN="${userRDNN:-${currentRDNN}}"
+  else
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or 'X' to exit): " newRDNN
+
+    # Allow 'X' to exit
+    if [[ "${newRDNN}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+  fi
+fi
+
+# Preserve the original organizationScriptName from reminderDialog for plist naming
+newOrgScriptName="${currentOrgScriptName_reminder}"
+
+echo
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo
+
+
+
+####################################################################################################
+# Insert End-user Message
+####################################################################################################
+
+echo "🔧 Inserting ${messageScript##*/} into ${baseScript##*/}  …"
 
 patchedMessage=$(mktemp)
 
@@ -146,6 +257,8 @@ lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"
 
 rm -f "${patchedMessage}"
 
+
+
 ####################################################################################################
 # Verify Output and Permissions
 ####################################################################################################
@@ -153,25 +266,93 @@ rm -f "${patchedMessage}"
 if grep -q "ENDOFSCRIPT" "${tmpScript}"; then
   mv "${tmpScript}" "${outputScript}"
   chmod +x "${outputScript}"
+  echo
   echo "✅ Assembly complete [${timestamp}]"
-  echo "   → ${outputScript}"
+  echo "   → ${outputScript#$projectDir/}"
 else
   echo "❌ Assembly failed — missing ENDOFSCRIPT markers."
   exit 1
 fi
 
+
+
+####################################################################################################
+# Update RDNN in Assembled Script
+####################################################################################################
+
+echo
+echo "🔁 Updating reverseDomainNameNotation to '${newRDNN}' in assembled script …"
+
+sed -i.bak \
+  -e "s|^reverseDomainNameNotation=\"[^\"]*\"|reverseDomainNameNotation=\"${newRDNN}\"|" \
+  "${outputScript}"
+
+rm -f "${outputScript}.bak" 2>/dev/null || true
+
+
+
 ####################################################################################################
 # Syntax Check
 ####################################################################################################
 
+echo
+echo "🔍 Performing syntax check on '${outputScript#$projectDir/}' …"
 if zsh -n "${outputScript}" >/dev/null 2>&1; then
-  echo "✅ Syntax check passed."
+  echo "    ✅ Syntax check passed."
 else
-  echo "⚠️  Warning: syntax check failed!"
+  echo "    ⚠️  Warning: syntax check failed!"
 fi
+
+
+
+####################################################################################################
+# Generate Plist Output
+####################################################################################################
+
+echo
+echo "🗂  Generating LaunchDaemon plist …"
+if [[ -f "${resourcesDir}/sample.plist" ]]; then
+  plistOutput="${resourcesDir}/${newRDNN}.${newOrgScriptName}-${timestamp}.plist"
+  echo "    🗂  Creating ${newRDNN}.${newOrgScriptName} plist from Resources/sample.plist …"
+  cp "${resourcesDir}/sample.plist" "${plistOutput}"
+
+  echo
+  echo "    🔧 Updating internal plist content (replacing 'sample' with 'assembled') …"
+  sed -i.bak 's/sample/assembled/gI' "${plistOutput}"
+  rm -f "${plistOutput}.bak" 2>/dev/null || true
+
+  echo "   → ${plistOutput#$projectDir/}"
+else
+  echo "    ⚠️  Resources/sample.plist not found; skipping plist generation."
+fi
+
+
+
+####################################################################################################
+# Rename Assembled Script to Include RDNN
+####################################################################################################
+
+echo
+echo "🔁 Renaming assembled script …"
+newOutputScript="${resourcesDir}/ddm-os-reminder-${newRDNN}-${timestamp}.zsh"
+mv "${outputScript}" "${newOutputScript}"
+
+# Update variable so subsequent steps (syntax check, etc.) target renamed file
+outputScript="${newOutputScript}"
+
+
 
 ####################################################################################################
 # Exit
 ####################################################################################################
 
+echo
 echo "🏁 Done."
+echo
+echo "Files to be deployed:"
+echo "        Assembled Script: ${newOutputScript#$projectDir/}"
+echo "    Organizational Plist: ${plistOutput#$projectDir/}"
+echo
+echo "==============================================================="
+echo
+exit 0

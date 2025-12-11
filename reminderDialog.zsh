@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0b7"
+scriptVersion="2.1.0b8"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -83,9 +83,8 @@ currentTime=$( date +"%s" )
 upTimeRaw=$((currentTime-lastBootTime))
 upTimeMin=$((upTimeRaw/60))
 upTimeHours=$((upTimeMin/60))
-uptimeOutput=$(uptime)
-uptimeDays=$( printf '%s\n' "${uptimeOutput}" | awk '{ print $4 }' | sed 's/,//g' )
-uptimeNumber=$( printf '%s\n' "${uptimeOutput}" | awk '{ print $3 }' | sed 's/,//g' )
+uptimeDays=$( uptime | awk '{ print $4 }' | sed 's/,//g' )
+uptimeNumber=$( uptime | awk '{ print $3 }' | sed 's/,//g' )
 
 if [[ "${uptimeDays}" = "day"* ]]; then
     if [[ "${uptimeNumber}" -gt 1 ]]; then

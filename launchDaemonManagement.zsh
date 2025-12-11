@@ -452,9 +452,7 @@ function dialogInstall() {
 
         # Display a so-called "simple" dialog if Team ID fails to validate
         osascript -e 'display dialog "Please advise your Support Representative of the following error:\r\r• Dialog Team ID verification failed\r\r" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution'
-        completionActionOption="Quit"
-        exitCode="1"
-        quitScript
+        exit "1"
 
     fi
 

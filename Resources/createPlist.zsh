@@ -1,11 +1,11 @@
 #!/bin/zsh --no-rcs
 # shellcheck shell=bash
 #
-# createPlist.zsh — Generate default plist from reminderDialog.zsh
-# Version 2.1.0b4
+# createPlist.zsh — Generate default .plist and .mobileconfig from a customized reminderDialog.zsh
 
 set -euo pipefail
 
+scriptVersion="2.1.0b9"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -13,8 +13,15 @@ SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
 reverseDomainNameNotation=$(awk -F'"' '/^reverseDomainNameNotation=/{print $2}' "$SOURCE_SCRIPT")
 organizationScriptName=$(awk -F'"' '/^organizationScriptName=/{print $2}' "$SOURCE_SCRIPT")
-
 datestamp=$(date '+%Y-%m-%d-%H%M%S')
+
+# ─────────────────────────────────────────────────────────────
+# Safety check for default reverseDomainNameNotation
+# ─────────────────────────────────────────────────────────────
+if [[ "$reverseDomainNameNotation" == "org.churchofjesuschrist" ]]; then
+    echo "ERROR: Please customize both 'reminderDialog.zsh' and 'launchDaemonManagement.zsh' before executing this script; exiting."
+    exit 1
+fi
 
 # Target Output Files
 OUTPUT_PLIST_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.plist"

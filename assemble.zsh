@@ -29,7 +29,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.1.0b7"
+scriptVersion="2.1.0b9"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 baseScript="${projectDir}/launchDaemonManagement.zsh"
@@ -158,6 +158,11 @@ if [[ "${skipRDNNPrompt}" == false ]]; then
   fi
 fi
 
+if ! [[ "${newRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  echo "❌ Invalid RDNN format."
+  exit 1
+fi
+
 # Preserve the original organizationScriptName from reminderDialog for plist naming
 newOrgScriptName="${currentOrgScriptName_reminder}"
 
@@ -175,7 +180,8 @@ echo
 
 echo "🔧 Inserting ${messageScript##*/} into ${baseScript##*/}  …"
 
-patchedMessage=$(mktemp)
+# patchedMessage=$(mktemp)
+patchedMessage=$(mktemp -t patchedMessage)
 
 # First: comment out any lines that append to ${scriptLog}
 sed 's/| tee -a "\${scriptLog}"/# | tee -a "\${scriptLog}"/' "${messageScript}" \
@@ -313,17 +319,149 @@ echo
 echo "🗂  Generating LaunchDaemon plist …"
 if [[ -f "${resourcesDir}/sample.plist" ]]; then
   plistOutput="${resourcesDir}/${newRDNN}.${newOrgScriptName}-${timestamp}.plist"
+
   echo "    🗂  Creating ${newRDNN}.${newOrgScriptName} plist from Resources/sample.plist …"
   cp "${resourcesDir}/sample.plist" "${plistOutput}"
 
   echo
-  echo "    🔧 Updating internal plist content (replacing 'sample' with 'assembled') …"
+  echo "    🔧 Updating internal plist content …"
+
+  # Replace "sample" → "assembled" globally
   sed -i.bak 's/sample/assembled/gI' "${plistOutput}"
+
+  # Update XML comments
+  sed -i '' \
+    -e "s|<!-- Preferences Domain: .* -->|<!-- Preferences Domain: ${newRDNN}.${newOrgScriptName} -->|" \
+    -e "s|<!-- Version: .* -->|<!-- Version: ${scriptVersion} -->|" \
+    -e "s|<!-- Generated on: .* -->|<!-- Generated on: ${timestamp} -->|" \
+    "${plistOutput}"
+
+  # Update scriptLog
+  sed -i '' -e '/<key>ScriptLog<\/key>/{
+    N
+    s|<key>ScriptLog</key>.*<string>/var/log/org\.churchofjesuschrist\.log</string>|<key>ScriptLog</key>\
+    <string>/var/log/'${newRDNN}'.log</string>|
+}' "$plistOutput"
+
+  # Cleanup
   rm -f "${plistOutput}.bak" 2>/dev/null || true
 
   echo "   → ${plistOutput#$projectDir/}"
+
 else
   echo "    ⚠️  Resources/sample.plist not found; skipping plist generation."
+fi
+
+
+
+####################################################################################################
+# Generate mobileconfig from plist (no comments, no blank lines)
+####################################################################################################
+
+echo
+echo "🧩 Generating Configuration Profile (.mobileconfig) …"
+
+# Extract ONLY the inner <dict>…</dict> content
+innerDict=$(
+  sed -n '/<dict>/,/<\/dict>/p' "${plistOutput}" | sed '1d;$d'
+)
+
+# Remove XML comments and ALL blank/whitespace-only lines
+innerDictCleaned=$(
+  printf "%s\n" "$innerDict" \
+    | sed 's/<!--.*-->//g' \
+    | sed '/^[[:space:]]*$/d'
+)
+
+# Indent for embedding
+indentedInnerDict=$(
+  printf "%s\n" "$innerDictCleaned" \
+    | sed 's/^/                                /'
+)
+
+# Generate UUIDs
+payloadUUID=$(uuidgen)
+profileUUID=$(uuidgen)
+
+# Output filename
+mobileconfigOutput="${resourcesDir}/${newRDNN}.${newOrgScriptName}-${timestamp}-unsigned.mobileconfig"
+
+cat > "${mobileconfigOutput}" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadContent</key>
+            <dict>
+                <key>${newRDNN}</key>
+                <dict>
+                    <key>Forced</key>
+                    <array>
+                        <dict>
+                            <key>mcx_preference_settings</key>
+                            <dict>
+${indentedInnerDict}
+                            </dict>
+                        </dict>
+                    </array>
+                </dict>
+            </dict>
+            <key>PayloadDisplayName</key>
+            <string>Custom Settings</string>
+            <key>PayloadIdentifier</key>
+            <string>${payloadUUID}</string>
+            <key>PayloadOrganization</key>
+            <string>${newOrgScriptName}</string>
+            <key>PayloadType</key>
+            <string>com.apple.ManagedClient.preferences</string>
+            <key>PayloadUUID</key>
+            <string>${payloadUUID}</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+
+    <key>PayloadDescription</key>
+    <string>Configures DDM OS Reminder (${scriptVersion}) to ${newRDNN} standards. Created: ${timestamp}</string>
+    <key>PayloadDisplayName</key>
+    <string>DDM OS Reminder: ${newRDNN}</string>
+    <key>PayloadEnabled</key>
+    <true/>
+    <key>PayloadIdentifier</key>
+    <string>${profileUUID}</string>
+    <key>PayloadOrganization</key>
+    <string>${newOrgScriptName}</string>
+    <key>PayloadRemovalDisallowed</key>
+    <true/>
+    <key>PayloadScope</key>
+    <string>System</string>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>${profileUUID}</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>
+EOF
+
+echo "   → ${mobileconfigOutput#$projectDir/}"
+
+
+
+####################################################################################################
+# Mobileconfig Syntax Check
+####################################################################################################
+
+echo
+echo "🔍 Performing syntax check on '${mobileconfigOutput#$projectDir/}' …"
+if /usr/bin/plutil -lint "${mobileconfigOutput}" >/dev/null 2>&1; then
+  echo "    ✅ Profile syntax check passed."
+else
+  echo "    ⚠️  Warning: profile syntax check failed!"
 fi
 
 
@@ -335,7 +473,10 @@ fi
 echo
 echo "🔁 Renaming assembled script …"
 newOutputScript="${resourcesDir}/ddm-os-reminder-${newRDNN}-${timestamp}.zsh"
-mv "${outputScript}" "${newOutputScript}"
+mv "${outputScript}" "${newOutputScript}" || {
+  echo "❌ Failed to rename assembled script."
+  exit 1
+}
 
 # Update variable so subsequent steps (syntax check, etc.) target renamed file
 outputScript="${newOutputScript}"
@@ -349,9 +490,10 @@ outputScript="${newOutputScript}"
 echo
 echo "🏁 Done."
 echo
-echo "Files to be deployed:"
+echo "Deployment Artifacts:"
 echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
+echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
 echo
 echo "==============================================================="
 echo

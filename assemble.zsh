@@ -29,7 +29,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.1.0b9"
+scriptVersion="2.1.0b10"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 baseScript="${projectDir}/launchDaemonManagement.zsh"
@@ -480,6 +480,25 @@ mv "${outputScript}" "${newOutputScript}" || {
 
 # Update variable so subsequent steps (syntax check, etc.) target renamed file
 outputScript="${newOutputScript}"
+
+
+
+####################################################################################################
+# Update scriptLog Based on RDNN (only change requested)
+####################################################################################################
+
+echo
+echo "🔁 Updating scriptLog path based on RDNN …"
+
+# Extract the first two components of the RDNN
+topTwoRDNN="$(printf '%s' "${newRDNN}" | cut -d'.' -f1-2)"
+
+# Replace only the Client-side Log definition
+sed -i.bak \
+  -e "s|^scriptLog=\"/var/log/.*\"|scriptLog=\"/var/log/${topTwoRDNN}.log\"|" \
+  "${outputScript}"
+
+rm -f "${outputScript}.bak" 2>/dev/null || true
 
 
 

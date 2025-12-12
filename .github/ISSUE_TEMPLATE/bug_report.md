@@ -7,7 +7,7 @@ assignees: 'dan-snelson'
 
 ---
 
-> Before submitting a bug report, please [download a fresh copy of the `main` branch](https://github.com/dan-snelson/DDM-OS-Reminder/archive/main.zip) and confirm you can replicate the unexpected behavior.
+> Before submitting a bug report, please [download a fresh copy of the `main` branch](https://github.com/dan-snelson/DDM-OS-Reminder/archive/main.zip) and confirm you can replicate the unexpected behavior. (You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/), [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).)
 > 
 > If you're able to replicate the unexpected behavior on-demand, please complete the remainder of this template to help us troubleshoot:
 > 
@@ -17,11 +17,13 @@ zsh -c 'PS4=" → "; zsh -x "$1"' -- /Library/Management/org.churchofjesuschrist
 ```
 > 2. After the script has completed and the failure has occurred, while still in Terminal, select: **Shell > Export Text As…** to save the output to a text file
 > 3. Attach the sanitized output file to your issue report
+> 4. Please also provide the output of the following command, substituting your organization's **Reverse Domain Name Notation**:
+```zsh
+plutil -p /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+```
 > 
 > 
-> Also, please review the [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues) to help determine the source of the issue.
-> 
-> You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
+> Finally, please review the [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues) to help determine the source of the issue.
 
 ---
 

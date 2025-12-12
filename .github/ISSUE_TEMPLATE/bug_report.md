@@ -11,9 +11,9 @@ assignees: 'dan-snelson'
 > 
 > If you're able to replicate the unexpected behavior on-demand, please complete the remainder of this template to help us troubleshoot:
 > 
-> 1. In new, _elevated_ Terminal window, please execute the following command, substituting your organization's **Reverse Domain Name Notation**:
+> 1. In **new**, _elevated_ Terminal window, execute the following command, substituting your organization's **Reverse Domain Name Notation**:
 ```zsh
-PS4='+%3l:%I → ' zsh -x /Library/Management/org.churchofjesuschrist/dor.zsh 2>&1
+zsh -c 'PS4=" → "; zsh -x "$1"' -- /Library/Management/org.churchofjesuschrist/dor.zsh
 ```
 > 2. After the script has completed and the failure has occurred, while still in Terminal, select: **Shell > Export Text As…** to save the output to a text file
 > 3. Attach the sanitized output file to your issue report

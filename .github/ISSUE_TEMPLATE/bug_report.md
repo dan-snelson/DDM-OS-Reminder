@@ -7,11 +7,17 @@ assignees: 'dan-snelson'
 
 ---
 
-> Before submitting a bug report, please use the following snippet to download a fresh, time-stamped version of `ddmOSReminder.zsh` and ensure you can replicate the unexpected behavior:
->
-> `timestamp=$( date '+%Y-%m-%d-%H%M%S' ) ; curl -o ~/Downloads/ddmOSReminder-$timestamp.zsh https://raw.githubusercontent.com/dan-snelson/DDM-OS-Reminder/main/ddmOSReminder.zsh ; sudo zsh ~/Downloads/ddmOSReminder-$timestamp.zsh`
+> Before submitting a bug report, please [download a fresh copy of the `main` branch](https://github.com/dan-snelson/DDM-OS-Reminder/archive/main.zip) and confirm you can replicate the unexpected behavior.
 > 
-> If the issue persists, please complete the rest of this template to help us troubleshoot.
+> If you're able to replicate the unexpected behavior on-demand, please complete the remainder of this template to help us troubleshoot:
+> 
+> 1. In new, _elevated_ Terminal window, please execute the following command, substituting your organization's **Reverse Domain Name Notation**:
+```zsh
+PS4='+%3l:%I → ' zsh -x /Library/Management/org.churchofjesuschrist/dor.zsh 2>&1
+```
+> 2. After the script has completed and the failure has occurred, while still in Terminal, select: **Shell > Export Text As…** to save the output to a text file
+> 3. Attach the sanitized output file to your issue report
+> 
 > 
 > Also, please review the [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues) to help determine the source of the issue.
 > 
@@ -36,9 +42,9 @@ Please supply the full command used, and if applicable, add full output from Ter
 If applicable, add screenshots to help explain your problem.
 
 **Environment (please complete the following information):**
- - OS version (i.e., 26.1)
- - swiftDialog version (i.e., 3.0.1)
- - Script version (i.e., 1.0.1) - please upgrade to the latest version before submitting a bug report.
+ - OS version (i.e., 26.2)
+ - swiftDialog version (i.e., 3.0.0)
+ - Script version (i.e., 2.0.0) - please upgrade to the latest version before submitting a bug report.
 
 **Additional context**
 Add any other context about the problem here.

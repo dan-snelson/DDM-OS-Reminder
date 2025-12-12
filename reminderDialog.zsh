@@ -221,6 +221,8 @@ function replacePlaceholders() {
     value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
     value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
     value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
+    value=${value//\{diskSpaceHumanReadable\}/${diskSpaceHumanReadable}}
+    value=${value//'{diskSpaceHumanReadable}'/${diskSpaceHumanReadable}}
     value=${value//\{diskSpaceWarningMessage\}/${diskSpaceWarningMessage}}
     value=${value//'{diskSpaceWarningMessage}'/${diskSpaceWarningMessage}}
     value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}

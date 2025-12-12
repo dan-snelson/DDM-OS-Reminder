@@ -396,7 +396,7 @@ cat > "${mobileconfigOutput}" <<EOF
         <dict>
             <key>PayloadContent</key>
             <dict>
-                <key>${newRDNN}</key>
+                <key>${newRDNN}.${newOrgScriptName}</key>
                 <dict>
                     <key>Forced</key>
                     <array>

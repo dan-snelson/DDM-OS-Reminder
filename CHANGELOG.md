@@ -12,6 +12,8 @@
 - Streamline Deployment & Documentation (Feature Request #35)
 - Addressed Bugs #34 (thanks, @TechTrekkie!) and #36 (I. Blame. AI.)
 - Refactored `assemble.zsh` (thanks for the feedback, @Andrew!)
+- Added warning for low disk space (configurable via `minimumDiskFreePercentage` variable; Feature Request #39. (Thanks for the suggestion, @prgsenright!)
+
 
 ### Version 2.0.0 (06-Dec-2025)
 - Reorganized script structure for (hopefully) improved clarity

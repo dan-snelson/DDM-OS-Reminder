@@ -49,16 +49,19 @@ managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
 # Organization's number of days before deadline to starting displaying reminders
-daysBeforeDeadlineDisplayReminder="14"
+daysBeforeDeadlineDisplayReminder="60"
 
 # Organization's number of days before deadline to enable swiftDialog's blurscreen
-daysBeforeDeadlineBlurscreen="3"
+daysBeforeDeadlineBlurscreen="45"
 
 # Organization's number of days before deadline to hide the secondary button
-daysBeforeDeadlineHidingButton2="1"
+daysBeforeDeadlineHidingButton2="21"
 
 # Organization's number of days of excessive uptime before warning the user
-daysOfExcessiveUptimeWarning="7"
+daysOfExcessiveUptimeWarning="0"
+
+# Organization's minimum percentage of free disk space required for update
+minimumDiskFreePercentage="99"
 
 # Organization's Meeting Delay (in minutes) 
 meetingDelay="75"
@@ -97,6 +100,24 @@ elif [[ "${uptimeDays}" == "mins"* ]]; then
 else
     uptimeHumanReadable="${uptimeNumber} (HH:MM)"
 fi
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Free Disk Space Variables (inspired by Mac Health Check)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+freeSpace=$(diskutil info / | awk -F ': ' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk -F '(' '{print $1}' | xargs)
+diskBytes=$(diskutil info / | awk -F '[()]' '/Total Space/ {print $2}' | awk '{print $1}')
+freeBytes=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk '{print $1}')
+
+if [[ -n "${diskBytes}" && -n "${freeBytes}" ]]; then
+    freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
+else
+    freePercentage=""  # fallback
+fi
+
+diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"
 
 
 
@@ -200,6 +221,8 @@ function replacePlaceholders() {
     value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
     value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
     value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
+    value=${value//\{diskSpaceHumanReadable\}/${diskSpaceHumanReadable}}
+    value=${value//'{diskSpaceHumanReadable}'/${diskSpaceHumanReadable}}
     value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
     value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
     value=${value//\{button1text\}/${button1text}}
@@ -249,7 +272,6 @@ function applyHideRules() {
 }
 
 function loadPreferenceOverrides() {
-
     if [[ -f ${managedPreferencesPlist}.plist ]]; then
         scriptLog_managed=$(defaults read "${managedPreferencesPlist}" ScriptLog 2> /dev/null)
         daysBeforeDeadlineDisplayReminder_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
@@ -271,6 +293,8 @@ function loadPreferenceOverrides() {
         button1text_managed=$(defaults read "${managedPreferencesPlist}" Button1Text 2> /dev/null)
         button2text_managed=$(defaults read "${managedPreferencesPlist}" Button2Text 2> /dev/null)
         excessiveUptimeWarningMessage_managed=$(defaults read "${managedPreferencesPlist}" ExcessiveUptimeWarningMessage 2> /dev/null)
+        minimumDiskFreePercentage_managed=$(defaults read "${managedPreferencesPlist}" MinimumDiskFreePercentage 2> /dev/null)
+        diskSpaceWarningMessage_managed=$(defaults read "${managedPreferencesPlist}" DiskSpaceWarningMessage 2> /dev/null)
         message_managed=$(defaults read "${managedPreferencesPlist}" Message 2> /dev/null)
         infobuttontext_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonText 2> /dev/null)
         infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
@@ -299,24 +323,25 @@ function loadPreferenceOverrides() {
         button1text_local=$(defaults read "${localPreferencesPlist}" Button1Text 2> /dev/null)
         button2text_local=$(defaults read "${localPreferencesPlist}" Button2Text 2> /dev/null)
         excessiveUptimeWarningMessage_local=$(defaults read "${localPreferencesPlist}" ExcessiveUptimeWarningMessage 2> /dev/null)
+        minimumDiskFreePercentage_local=$(defaults read "${localPreferencesPlist}" MinimumDiskFreePercentage 2> /dev/null)
+        diskSpaceWarningMessage_local=$(defaults read "${localPreferencesPlist}" DiskSpaceWarningMessage 2> /dev/null)
         message_local=$(defaults read "${localPreferencesPlist}" Message 2> /dev/null)
         infobuttontext_local=$(defaults read "${localPreferencesPlist}" InfoButtonText 2> /dev/null)
         infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
         helpmessage_local=$(defaults read "${localPreferencesPlist}" HelpMessage 2> /dev/null)
         helpimage_local=$(defaults read "${localPreferencesPlist}" HelpImage 2> /dev/null)
     fi
-
     setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
     setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
     setNumericPreferenceValue "daysBeforeDeadlineBlurscreen" "${daysBeforeDeadlineBlurscreen_managed}" "${daysBeforeDeadlineBlurscreen_local}" "${daysBeforeDeadlineBlurscreen}"
     setNumericPreferenceValue "daysBeforeDeadlineHidingButton2" "${daysBeforeDeadlineHidingButton2_managed}" "${daysBeforeDeadlineHidingButton2_local}" "${daysBeforeDeadlineHidingButton2}"
     setNumericPreferenceValue "daysOfExcessiveUptimeWarning" "${daysOfExcessiveUptimeWarning_managed}" "${daysOfExcessiveUptimeWarning_local}" "${daysOfExcessiveUptimeWarning}"
     setNumericPreferenceValue "meetingDelay" "${meetingDelay_managed}" "${meetingDelay_local}" "${meetingDelay}"
+    setNumericPreferenceValue "minimumDiskFreePercentage" "${minimumDiskFreePercentage_managed}" "${minimumDiskFreePercentage_local}" "${minimumDiskFreePercentage}"
+    setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${diskSpaceWarningMessage}"
     setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
     setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
-    # Ensure date format starts with '+' as required by `date`
     [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
-
 }
 
 
@@ -604,6 +629,7 @@ function updateRequiredVariables() {
     local defaultAction="${action:-"x-apple.systempreferences:com.apple.preferences.softwareupdate"}"
     printf -v "action" '%s' "${defaultAction}"
 
+    # Excessive Uptime Warning
     local defaultExcessiveUptimeWarningMessage="${excessiveUptimeWarningMessage:-"<br><br>**Note:** Your Mac has been powered-on for **${uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."}"
     setPreferenceValue "excessiveUptimeWarningMessage" "${excessiveUptimeWarningMessage_managed}" "${excessiveUptimeWarningMessage_local}" "${defaultExcessiveUptimeWarningMessage}"
     replacePlaceholders "excessiveUptimeWarningMessage"
@@ -613,7 +639,18 @@ function updateRequiredVariables() {
         unset "excessiveUptimeWarningMessage"
     fi
 
-    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    # Disk Space Warning
+    if [[ -n "${freePercentage}" ]]; then
+        belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
+        if [[ "${belowThreshold}" -eq 1 ]]; then
+            diskSpaceWarningMessage="<br><br>**Note:** Your Mac has only **${diskSpaceHumanReadable}**, which may prevent this macOS ${titleMessageUpdateOrUpgrade:l}."
+        else
+            unset "diskSpaceWarningMessage"
+        fi
+    fi
+
+
+    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
     replacePlaceholders "message"
 
@@ -623,7 +660,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}"
+    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}<br><br>**Free Disk Space:** ${diskSpaceHumanReadable}"
     setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
     replacePlaceholders "infobox"
 

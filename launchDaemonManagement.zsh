@@ -25,11 +25,12 @@
 #   - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
 #   - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
 #   - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
-#   - Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; #28)
+#   - Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; Feature Request #28)
 #   - Added logic for when the reminder dialog is re-displayed after clicking the `infobutton` (based on if we're already hiding the secondary button; #31)
 #   - Streamline Deployment & Documentation (Feature Request #35)
 #   - Addressed Bugs #34 (thanks, @TechTrekkie!) and #36 (I. Blame. AI.)
 #   - Refactored `assemble.zsh` (thanks for the feedback, @Andrew!)
+#   - Added warning for low disk space (configurable via `minimumDiskFreePercentage` variable; Feature Request #39. (Thanks for the suggestion, @prgsenright!)
 #
 ####################################################################################################
 

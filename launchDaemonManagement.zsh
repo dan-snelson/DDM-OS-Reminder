@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.1.0b11, 12-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.1.0b12, 12-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
 #   - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
 #   - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
@@ -45,7 +45,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0b11"
+scriptVersion="2.1.0b12"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

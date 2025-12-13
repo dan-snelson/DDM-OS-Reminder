@@ -6,7 +6,8 @@
 #
 # Updated by: Dan K. Snelson
 # For DDM OS Reminder v2.0.0+
-# Date: 06-Dec-2025
+# Version: 2.1.0b11
+# Date: 12-Dec-2025
 #
 # Creates a self-extracting, base64-encoded shell script from
 # the newest "ddm-os-reminder-assembled-*.zsh" file found in
@@ -22,7 +23,7 @@ datestamp=$(date '+%Y-%m-%d-%H%M%S')
 echo "🔍 Searching for the newest ddm-os-reminder-assembled-*.zsh file..."
 
 # Find the newest assembled file in the current directory
-latest_file=$(ls -t ddm-os-reminder-assembled-*.zsh 2>/dev/null | head -n 1)
+latest_file=$(ls -t ddm-os-reminder-*.zsh(N) | head -n 1)
 
 # Validate presence
 if [[ -z "$latest_file" ]]; then

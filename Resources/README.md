@@ -11,7 +11,7 @@
 
 ### 1. Assemble
 
-The [`assemble.zsh`](../assemble.zsh) script creates a **combined, deployable version** of your customized scripts:
+The [`assemble.zsh`](../assemble.zsh) script creates **combined, deployable** artifacts of your customized scripts:
 - `reminderDialog.zsh`
 - `launchDaemonManagement.zsh`
 
@@ -21,15 +21,78 @@ The [`assemble.zsh`](../assemble.zsh) script creates a **combined, deployable ve
 zsh assemble.zsh
 ```
 
-The output file will be saved as:
+The artifacts will be saved as shown below:
 
-```zsh
-Resources/ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS.zsh
+```
+❯ zsh assemble.zsh
+
+===============================================================
+🧩 Assemble DDM OS Reminder (2.1.0)
+===============================================================
+
+Full Paths:
+
+        Reminder Dialog: ~/DDM-OS-Reminder/reminderDialog.zsh
+LaunchDaemon Management: ~/DDM-OS-Reminder/launchDaemonManagement.zsh
+      Working Directory: ~/DDM-OS-Reminder
+    Resources Directory: ~/DDM-OS-Reminder/Resources
+
+🔍 Checking Reverse Domain Name Notation …
+
+    Reminder Dialog (reminderDialog.zsh):
+        reverseDomainNameNotation = org.churchofjesuschrist
+        organizationScriptName    = dorm
+
+    LaunchDaemon Management (launchDaemonManagement.zsh):
+        reverseDomainNameNotation = org.churchofjesuschrist
+        organizationScriptName    = dor
+
+
+Enter Your Organization’s Reverse Domain Name Notation [org.churchofjesuschrist] (or 'X' to exit): us.snelson
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Using 'us.snelson' as the Reverse Domain Name Notation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 Inserting reminderDialog.zsh into launchDaemonManagement.zsh  …
+
+✅ Assembly complete [2025-12-13-054323]
+   → Resources/ddm-os-reminder-assembled-2025-12-13-054323.zsh
+
+🔁 Updating reverseDomainNameNotation to 'us.snelson' in assembled script …
+
+🔍 Performing syntax check on 'Resources/ddm-os-reminder-assembled-2025-12-13-054323.zsh' …
+    ✅ Syntax check passed.
+
+🗂  Generating LaunchDaemon plist …
+    🗂  Creating us.snelson.dorm plist from Resources/sample.plist …
+
+    🔧 Updating internal plist content …
+   → Resources/us.snelson.dorm-2025-12-13-054323.plist
+
+🧩 Generating Configuration Profile (.mobileconfig) …
+   → Resources/us.snelson.dorm-2025-12-13-054323-unsigned.mobileconfig
+
+🔍 Performing syntax check on 'Resources/us.snelson.dorm-2025-12-13-054323-unsigned.mobileconfig' …
+    ✅ Profile syntax check passed.
+
+🔁 Renaming assembled script …
+
+🔁 Updating scriptLog path based on RDNN …
+
+🏁 Done.
+
+Deployment Artifacts:
+        Assembled Script: Resources/ddm-os-reminder-us.snelson-2025-12-13-054323.zsh
+    Organizational Plist: Resources/us.snelson.dorm-2025-12-13-054323.plist
+   Configuration Profile: Resources/us.snelson.dorm-2025-12-13-054323-unsigned.mobileconfig
+
+===============================================================
 ```
 
-**1.2.** Deploy the assembled script
+**1.2.** Deploy the appropriate artifacts
 
-You can deploy the assembled script directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
+After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
 
 ---
 
@@ -39,25 +102,31 @@ With some MDMs, it’s easier to deploy a **single self-extracting script** inst
 
 After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
 
-**2.1.** Change to the **DDM-OS-Reminder > Resources** directory:
+**2.1.** Execute the script (it automatically uses the most recently assembled script):
 
 ```zsh
-cd DDM-OS-Reminder/Resources
+zsh Resources/createSelfExtracting.zsh
 ```
 
-**2.2.** Execute the script (it automatically uses the most recently assembled script):
+```
+❯ zsh Resources/createSelfExtracting.zsh
+🔍 Searching for the newest ddm-os-reminder-assembled-*.zsh file...
+📦 Found: ddm-os-reminder-us.snelson-2025-12-13-054323.zsh
+⚙️  Encoding 'ddm-os-reminder-us.snelson-2025-12-13-054323.zsh' ...
 
-```zsh
-zsh createSelfExtracting.zsh
+✅ Self-extracting script created successfully!
+   ./ddm-os-reminder-us.snelson-2025-12-13-054323_self-extracting-2025-12-13-054810.sh
+
+When run, it will extract to /var/tmp/ddm-os-reminder-us.snelson-2025-12-13-054323.zsh and execute automatically.
 ```
 
-**2.3.** The resulting self-extracting script will be created as:
+**2.2.** The resulting self-extracting script will be created as:
 
 ```
-Resources/ddm-os-reminder-assembled-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
+Resources/ddm-os-reminder-RDNN-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
 ```
 
-**2.4.** Deploy the assembled, self-extracting script
+**2.3.** Deploy the assembled, self-extracting script
 
 You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload to `/var/tmp` and executes it automatically.
 
@@ -65,37 +134,22 @@ You can deploy the assembled, self-extracting script to your Macs using your MDM
 
 ### 3. Create `.plist` 
 
-A sample `.plist` — [`sample.plist`](sample.plist) — is provided in the main **DDM-OS-Reminder** directory, which you can directly edit in your preferred code editor.
-
-However, if you modified `reminderDialog.zsh` and want to reflect those changes in a new `.plist`, run the provided [`createPlist.zsh`](createPlist.zsh) script.
+If you have modified **both** `reminderDialog.zsh` and `launchDaemonManagement.zsh`, then want to reflect those changes in a new `.plist` and `.mobileconfig`, run the provided [`createPlist.zsh`](createPlist.zsh) script.
 
 ```zsh
 zsh Resources/createPlist.zsh
 ```
 
-The resulting `.plist` file will be created as:
-
 ```
-Resources/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.plist"
-```
-
-Upload the resulting `.plist` to your MDM of choice, ensuring you specify the same preference domain as configured in `reminderDialog.zsh`.
-
-Using the following example …
-
-```zsh
-# Organization's reverse domain (used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
-
-# Organization's Script Name
-organizationScriptName="dorm"
+❯ zsh Resources/createPlist.zsh
+Generating default plist → ~/DDM-OS-Reminder/Resources/us.snelson.dorm-2025-12-13-055622.plist
+SUCCESS! plist generated:
+   → ~/DDM-OS-Reminder/Resources/us.snelson.dorm-2025-12-13-055622.plist
+SUCCESS! mobileconfig generated:
+   → ~/DDM-OS-Reminder/Resources/DDM OS Reminder-2025-12-13-055622-unsigned.mobileconfig
 ```
 
-… the preference domain would be:
-
-```
-org.churchofjesuschrist.dorm
-```
+Upload the resulting `.plist` or `.mobileconfig` to your MDM of choice.
 
 ---
 

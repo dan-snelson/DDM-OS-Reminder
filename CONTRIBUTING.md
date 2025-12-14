@@ -2,7 +2,7 @@
 
 First, thank you for your interest in contributing to **DDM OS Reminder**! Community contributions have already greatly improved this project.
 
-You're invited to discuss your contributionsvia the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
+You're invited to discuss your contributions via the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
 
 ## Pull Requests
 

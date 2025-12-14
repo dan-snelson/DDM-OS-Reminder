@@ -1,6 +1,6 @@
 # DDM OS Reminder
 
-## Resources
+## Scripts
 
 1. [Assemble](#1-assemble)
 2. [Create Self-extracting Script](#2-create-self-extracting-script)
@@ -98,9 +98,7 @@ After carefully reviewing and customizing either the `.plist` or `.mobileconfig`
 
 ### 2. Create Self-extracting Script
 
-With some MDMs, it’s easier to deploy a **single self-extracting script** instead of multiple components.
-
-After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
+With some MDMs, it’s easier to deploy a **self-extracting script**. After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
 
 **2.1.** Execute the script (it automatically uses the most recently assembled script):
 

@@ -96,7 +96,7 @@ After carefully reviewing and customizing either the `.plist` or `.mobileconfig`
 
 ---
 
-### 2. Create Self-extracting Script
+### 2. Create Self-extracting
 
 With some MDMs, it’s easier to deploy a **self-extracting script**. After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
 

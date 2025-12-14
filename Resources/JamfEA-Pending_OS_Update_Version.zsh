@@ -4,7 +4,8 @@
 # Created by: @robjschroeder 10.10.2025
 # Inspired by: @dan-snelson DDM-OS-Reminder
 
-set -euo pipefail
+# Safety: don't use -e or pipefail in Jamf EA context
+set -u
 
 DAYS_LOOKBACK="${DAYS_LOOKBACK:-30}"   # change if you want a different window
 

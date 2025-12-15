@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b1"
+scriptVersion="2.2.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1030,6 +1030,18 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         notice "Daily Trigger Pause: Random 0 to 20 minutes"
         sleepSeconds=$(( RANDOM % 1200 ))
     else
+        # Skip if reminder dialog has been shown within last 60 minutes
+        lastDialog=$( grep "Display Reminder Dialog" "${scriptLog}" | tail -1 | awk '{print $3" "$4}' )
+        if [[ -n "${lastDialog}" ]]; then
+            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
+            delta=$(( nowEpoch - lastEpoch ))
+            if (( delta < 3600 )); then
+                minutesAgo=$(( delta / 60 ))
+                quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; skipping."
+                exit 0
+            fi
+        fi
+        # Reminder dialog hasn't been shown within last 60 minutes; proceed with login pause
         notice "Login Trigger Pause: Random 30 to 90 seconds"
         sleepSeconds=$(( 30 + RANDOM % 61 ))
     fi

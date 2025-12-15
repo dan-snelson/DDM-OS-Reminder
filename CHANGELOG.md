@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 2.2.0b1 (15-Dec-2025)
+- Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
+- Added instructions for monitoring the client-side log
+
 ### Version 2.1.0 (13-Dec-2025)
 - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
 - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)

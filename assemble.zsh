@@ -29,7 +29,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.1.0"
+scriptVersion="2.2.0b1"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 baseScript="${projectDir}/launchDaemonManagement.zsh"

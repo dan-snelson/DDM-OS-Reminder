@@ -94,6 +94,7 @@ daysOfExcessiveUptimeWarning=$(awk -F'"' '/^daysOfExcessiveUptimeWarning=/{print
 meetingDelay=$(awk -F'"' '/^meetingDelay=/{print $2}' "$SOURCE_SCRIPT")
 dateFormatDeadlineHumanReadable=$(awk -F'"' '/^dateFormatDeadlineHumanReadable=/{print $2}' "$SOURCE_SCRIPT")
 swapOverlayAndLogo_raw=$(awk -F'"' '/^swapOverlayAndLogo=/{print $2}' "$SOURCE_SCRIPT")
+minimumDiskFreePercentage=$(awk -F'"' '/^minimumDiskFreePercentage=/{print $2}' "$SOURCE_SCRIPT")
 
 case "${swapOverlayAndLogo_raw:u}" in
     YES|TRUE|1) swapOverlayAndLogo_xml="<true/>" ;;
@@ -185,6 +186,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysOfExcessiveUptimeWarning}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
+    <key>MinimumDiskFreePercentage</key>
+    <integer>${minimumDiskFreePercentage}</integer>
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>
@@ -272,7 +275,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
-                                <key>OrganizationOverlayIconURL</key>
+                                <key>MinimumDiskFreePercentage</key>
+                                <integer>${minimumDiskFreePercentage}</integer>                                <key>OrganizationOverlayIconURL</key>
                                 <string>${overlayicon_xml}</string>
                                 <key>SwapOverlayAndLogo</key>
                                 ${swapOverlayAndLogo_xml}

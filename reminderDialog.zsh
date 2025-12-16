@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b2"
+scriptVersion="2.2.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1001,28 +1001,61 @@ installedOSvsDDMenforcedOS
 
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
-    # Skip notifications if we're outside the display reminder window (thanks for the suggestion, @kristian!)
+    # -------------------------------------------------------------------------
+    # Skip reminder dialog if we're outside the defined window (thanks for the suggestion, @kristian!)
+    # -------------------------------------------------------------------------
+
     if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
-        notice "Deadline still ${ddmVersionStringDaysRemaining} days away; skipping reminder until within ${daysBeforeDeadlineDisplayReminder}-day window."
+        quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away; skipping reminder until within ${daysBeforeDeadlineDisplayReminder}-day window."
         quitScript "0"
     else
-        notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding with reminder."
+        notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding …"
     fi
 
-    # Confirm the currently logged-in user is "available" to be reminded
-    # If the deadline is more than 24 hours away, and the user has an active Display Assertion, exit the script
-    if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
-        if checkUserDisplaySleepAssertions; then
-            notice "No active Display Sleep Assertions detected; proceeding with reminder."
-        else
-            notice "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+
+
+    # -------------------------------------------------------------------------
+    # Quiet period: skip dialog if shown recently
+    # -------------------------------------------------------------------------
+
+    quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
+
+    lastDialog=$( grep "Display Reminder Dialog" "${scriptLog}" | tail -1 | awk '{print $3" "$4}' )
+
+    if [[ -n "${lastDialog}" ]]; then
+        lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
+        delta=$(( nowEpoch - lastEpoch ))
+        if (( delta < quietPeriodSeconds )); then
+            minutesAgo=$(( delta / 60 ))
+            quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
             quitScript "0"
         fi
     else
-        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions."
+        notice "Reminder dialog hasn't been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
     fi
 
-    # Randomly pause script during its launch hours of 8 a.m. and 4 p.m.; Login pause of 30 to 90 seconds
+
+
+    # -------------------------------------------------------------------------
+    # Confirm the currently logged-in user is “available” to be reminded
+    # -------------------------------------------------------------------------
+
+    if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
+        if checkUserDisplaySleepAssertions; then
+            notice "No active Display Sleep Assertions detected; proceeding …"
+        else
+            quitOut "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+            quitScript "0"
+        fi
+    else
+        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+    fi
+
+
+    # -------------------------------------------------------------------------
+    # Random pause depending on launch context (hourly vs login)
+    # -------------------------------------------------------------------------
+
     currentHour=$(( $(date +%H) ))
     currentMinute=$(( $(date +%M) ))
 
@@ -1030,18 +1063,6 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         notice "Daily Trigger Pause: Random 0 to 20 minutes"
         sleepSeconds=$(( RANDOM % 1200 ))
     else
-        # Skip if reminder dialog has been shown within last 60 minutes
-        lastDialog=$( grep "Display Reminder Dialog" "${scriptLog}" | tail -1 | awk '{print $3" "$4}' )
-        if [[ -n "${lastDialog}" ]]; then
-            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
-            delta=$(( nowEpoch - lastEpoch ))
-            if (( delta < 3600 )); then
-                minutesAgo=$(( delta / 60 ))
-                quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; skipping."
-                exit 0
-            fi
-        fi
-        # Reminder dialog hasn't been shown within last 60 minutes; proceed with login pause
         notice "Login Trigger Pause: Random 30 to 90 seconds"
         sleepSeconds=$(( 30 + RANDOM % 61 ))
     fi
@@ -1057,18 +1078,22 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     else
         humanReadablePause="${sleepSeconds} second(s)"
     fi
+
     info "Pausing for ${humanReadablePause} …"
     sleep "${sleepSeconds}"
 
-    # Update Required Variables
-    updateRequiredVariables
 
-    # Display reminder dialog (with blurscreen, depending on proximity to deadline)
+
+    # -------------------------------------------------------------------------
+    # Continue with normal processing
+    # -------------------------------------------------------------------------
+
+    updateRequiredVariables
     displayReminderDialog --ontop
 
 else
 
-    info "Version Comparison Result: ${versionComparisonResult}"
+    notice "Version Comparison Result: ${versionComparisonResult}"
 
 fi
 
@@ -1078,4 +1103,4 @@ fi
 # Exit
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-exit 0
+quitScript "0"

@@ -16,7 +16,7 @@
 #     Resources/
 #
 # Output:
-#     Resources/ddm-os-reminder-assembled-<timestamp>.zsh
+#     Artifacts/ddm-os-reminder-<reverseDomainNameNotation>-<timestamp>.zsh
 #
 # http://snelson.us/ddm
 #
@@ -29,13 +29,15 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.2.0b2"
+scriptVersion="2.2.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
+artifactsDir="${projectDir}/Artifacts"
 baseScript="${projectDir}/launchDaemonManagement.zsh"
 messageScript="${projectDir}/reminderDialog.zsh"
+plistSample="${resourcesDir}/sample.plist"
 timestamp="$(date '+%Y-%m-%d-%H%M%S')"
-outputScript="${resourcesDir}/ddm-os-reminder-assembled-${timestamp}.zsh"
+outputScript="${artifactsDir}/ddm-os-reminder-assembled-${timestamp}.zsh"
 tmpScript="${outputScript}.tmp"
 
 # RDNN / org script name (will be discovered and possibly overridden)
@@ -71,7 +73,8 @@ echo
 
 [[ -f "${baseScript}" ]]    || { echo "❌ Base script not found: ${baseScript}"; exit 1; }
 [[ -f "${messageScript}" ]] || { echo "❌ Message script not found: ${messageScript}"; exit 1; }
-[[ -d "${resourcesDir}" ]]  || { echo "⚠️  Resources directory missing — creating it."; mkdir -p "${resourcesDir}"; }
+[[ -f "${plistSample}" ]]   || { echo "❌ Sample .plist not found: ${plistSample}"; exit 1; }
+[[ -d "${artifactsDir}" ]]  || { echo "⚠️ Artifacts directory missing — creating it."; mkdir -p "${artifactsDir}"; }
 
 
 
@@ -317,12 +320,11 @@ fi
 
 echo
 echo "🗂  Generating LaunchDaemon plist …"
-if [[ -f "${resourcesDir}/sample.plist" ]]; then
-  plistOutput="${resourcesDir}/${newRDNN}.${newOrgScriptName}-${timestamp}.plist"
+if [[ -f "${plistSample}" ]]; then
+  plistOutput="${artifactsDir}/${newRDNN}.${newOrgScriptName}-${timestamp}.plist"
 
-  echo "    🗂  Creating ${newRDNN}.${newOrgScriptName} plist from Resources/sample.plist …"
-  cp "${resourcesDir}/sample.plist" "${plistOutput}"
-
+  echo "    🗂  Creating ${newRDNN}.${newOrgScriptName} plist from ${plistSample} …"
+  cp "${plistSample}" "${plistOutput}"
   echo
   echo "    🔧 Updating internal plist content …"
 
@@ -349,7 +351,7 @@ if [[ -f "${resourcesDir}/sample.plist" ]]; then
   echo "   → ${plistOutput#$projectDir/}"
 
 else
-  echo "    ⚠️  Resources/sample.plist not found; skipping plist generation."
+  echo "    ⚠️  ${plistSample} not found; skipping plist generation."
 fi
 
 
@@ -384,7 +386,7 @@ payloadUUID=$(uuidgen)
 profileUUID=$(uuidgen)
 
 # Output filename
-mobileconfigOutput="${resourcesDir}/${newRDNN}.${newOrgScriptName}-${timestamp}-unsigned.mobileconfig"
+mobileconfigOutput="${artifactsDir}/${newRDNN}.${newOrgScriptName}-${timestamp}-unsigned.mobileconfig"
 
 cat > "${mobileconfigOutput}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -472,7 +474,7 @@ fi
 
 echo
 echo "🔁 Renaming assembled script …"
-newOutputScript="${resourcesDir}/ddm-os-reminder-${newRDNN}-${timestamp}.zsh"
+newOutputScript="${artifactsDir}/ddm-os-reminder-${newRDNN}-${timestamp}.zsh"
 mv "${outputScript}" "${newOutputScript}" || {
   echo "❌ Failed to rename assembled script."
   exit 1

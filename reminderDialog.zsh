@@ -39,6 +39,7 @@ telemetryAppID="8F516A04-664E-4B55-804F-5109D9742D3E"
 telemetryEndpoint="https://nom.telemetrydeck.com/v2/us.snelson/"
 
 
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Organization Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -163,11 +164,8 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 ####################################################################################################
 
 # Generate a stable, anonymous identifier (hashed serial number)
-function telemetryClientID() {
-    local serialNumber
-    serialNumber=$( ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformSerialNumber/{print $4}' )
-    echo "${serialNumber}" | shasum -a 256 | awk '{print $1}'
-}
+serialNumber=$( ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformSerialNumber/{print $4}' )
+hashedSerialNumber=$( echo "${serialNumber}" | shasum -a 256 | awk '{print $1}' )
 
 # Reusable function to send a telemetry signal
 function sendTelemetrySignal() {
@@ -185,9 +183,6 @@ function sendTelemetrySignal() {
 
 set -x
 
-    local clientUser
-    clientUser=$(telemetryClientID)
-
     local sessionID
     sessionID=$(uuidgen)
 
@@ -199,7 +194,7 @@ set -x
         json=$(cat <<EOF
 [{
   "appID": "${telemetryAppID}",
-  "clientUser": "${clientUser}",
+  "clientUser": "${hashedSerialNumber}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
   "timestamp": "${timestamp}",
@@ -214,22 +209,29 @@ EOF
         json=$(cat <<EOF
 [{
   "appID": "${telemetryAppID}",
-  "clientUser": "${clientUser}",
+  "clientUser": "${hashedSerialNumber}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
-  "timestamp": "${timestamp}",
-  "isTestMode": true
+  "timestamp": "${timestamp}"
 }]
 EOF
 )
     fi
 
-    curl -s -X POST "${telemetryEndpoint}" \
+    # Send and capture status code
+    local statusCode
+    statusCode=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST "${telemetryEndpoint}" \
         -H "Content-Type: application/json; charset=utf-8" \
-        -d "${json}" >/dev/null 2>&1
+        -d "${json}")
 
 set +x
 
+    if [[ "${statusCode}" == "200" ]]; then
+        info "TelemetryDeck accepted signal (${signalType})"
+    else
+        warning "TelemetryDeck returned HTTP ${statusCode} for ${signalType}"
+    fi
 }
 
 

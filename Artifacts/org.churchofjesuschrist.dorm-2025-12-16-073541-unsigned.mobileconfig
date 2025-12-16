@@ -61,7 +61,7 @@
                                     <key>DiskSpaceWarningMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
                                     <key>Message</key>
-                                    <string>assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+                                    <string>assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
                                     <key>InfoBox</key>
                                     <string>assembled&lt;br&gt;&lt;br&gt;**Current:** {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**Last Restart:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
                                     <key>HelpMessage</key>
@@ -76,26 +76,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>D211A10B-1C01-4CEE-A085-8D358D8018EB</string>
+            <string>F331186C-077E-461E-8B60-703548D0B667</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>D211A10B-1C01-4CEE-A085-8D358D8018EB</string>
+            <string>F331186C-077E-461E-8B60-703548D0B667</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.2.0b4) to org.churchofjesuschrist standards. Created: 2025-12-15-195955</string>
+    <string>Configures DDM OS Reminder (2.2.0b5) to org.churchofjesuschrist standards. Created: 2025-12-16-073541</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>75256FDB-D483-496F-9E09-0421695CE4AD</string>
+    <string>C8EE4D65-A963-495B-91D5-0868F6FF3D4F</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -105,7 +105,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>75256FDB-D483-496F-9E09-0421695CE4AD</string>
+    <string>C8EE4D65-A963-495B-91D5-0868F6FF3D4F</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 2.2.0b4 -->
-    <!-- Generated on: 2025-12-15-195955 -->
+    <!-- Version: 2.2.0b5 -->
+    <!-- Generated on: 2025-12-16-073541 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -64,7 +64,7 @@
     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
 
     <key>Message</key>
-    <string>assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+    <string>assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
 
     <!-- Infobox -->
     <key>InfoBox</key>

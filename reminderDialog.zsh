@@ -36,7 +36,7 @@ autoload -Uz is-at-least
 
 telemetryEnabled="YES" # Set to anything else to disable TelemetryDeck integration (and DM @dan-snelson a :sadpanda: on the Mac Admins Slack)
 telemetryAppID="8F516A04-664E-4B55-804F-5109D9742D3E"
-telemetryEndpoint="https://nom.telemetrydeck.com/v2/us.snelson/"
+telemetryEndpoint="https://nom.telemetrydeck.com/v2/"
 
 
 

@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 2.2.0b3 (15-Dec-2025)
+### Version 2.2.0b4 (15-Dec-2025)
 - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 - Added instructions for monitoring the client-side log
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)

@@ -89,7 +89,7 @@
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.2.0b3) to org.churchofjesuschrist standards. Created: 2025-12-15-195955</string>
+    <string>Configures DDM OS Reminder (2.2.0b4) to org.churchofjesuschrist standards. Created: 2025-12-15-195955</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>

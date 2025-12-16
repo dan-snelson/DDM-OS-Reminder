@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b5"
+scriptVersion="2.2.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -28,6 +28,15 @@ scriptLog="/var/log/org.churchofjesuschrist.log"
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
 
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# TelemetryDeck Integration
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+telemetryEnabled="YES" # Set to anything else to disable TelemetryDeck integration (and DM @dan-snelson a :sadpanda: on the Mac Admins Slack)
+telemetryAppID="8F516A04-664E-4B55-804F-5109D9742D3E"
+telemetryEndpoint="https://nom.telemetrydeck.com/v2/us.snelson/"
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -144,6 +153,84 @@ function error()        { updateScriptLog "[ERROR]           ${1}"; let errorCou
 function warning()      { updateScriptLog "[WARNING]         ${1}"; let errorCount++; }
 function fatal()        { updateScriptLog "[FATAL ERROR]     ${1}"; exit 1; }
 function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
+
+
+
+####################################################################################################
+#
+# TelemetryDeck Functions
+#
+####################################################################################################
+
+# Generate a stable, anonymous identifier (hashed serial number)
+function telemetryClientID() {
+    local serialNumber
+    serialNumber=$( ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformSerialNumber/{print $4}' )
+    echo "${serialNumber}" | shasum -a 256 | awk '{print $1}'
+}
+
+# Reusable function to send a telemetry signal
+function sendTelemetrySignal() {
+
+    local signalType="${1}"
+    local payloadJSON="${2}"
+
+    # Allow script-wide disable
+    if [[ "${telemetryEnabled}" != "YES" ]]; then
+        logComment "Telemetry disabled; skipping ${signalType}"
+        return 0
+    else
+        notice "Sending telemetry signal: ${signalType}"
+    fi
+
+set -x
+
+    local clientUser
+    clientUser=$(telemetryClientID)
+
+    local sessionID
+    sessionID=$(uuidgen)
+
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Build JSON
+    if [[ -n "${payloadJSON}" ]]; then
+        json=$(cat <<EOF
+[{
+  "appID": "${telemetryAppID}",
+  "clientUser": "${clientUser}",
+  "sessionID": "${sessionID}",
+  "type": "${signalType}",
+  "timestamp": "${timestamp}",
+  "isTestMode": false,
+  "payload": {
+    ${payloadJSON}
+  }
+}]
+EOF
+)
+    else
+        json=$(cat <<EOF
+[{
+  "appID": "${telemetryAppID}",
+  "clientUser": "${clientUser}",
+  "sessionID": "${sessionID}",
+  "type": "${signalType}",
+  "timestamp": "${timestamp}",
+  "isTestMode": true
+}]
+EOF
+)
+    fi
+
+    curl -s -X POST "${telemetryEndpoint}" \
+        -H "Content-Type: application/json; charset=utf-8" \
+        -d "${json}" >/dev/null 2>&1
+
+set +x
+
+}
 
 
 
@@ -694,6 +781,8 @@ function displayReminderDialog() {
     additionalDialogOptions=("$@")
 
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
+    sendTelemetrySignal "dialog_displayed" \
+        "\"daysRemaining\": \"${ddmVersionStringDaysRemaining}\", \"blurscreen\": \"${blurscreen}\""
 
     dialogArgs=(
         --title "${title}"
@@ -724,6 +813,9 @@ function displayReminderDialog() {
 
     0)  ## Process exit code 0 scenario here
         notice "${loggedInUser} clicked ${button1text}"
+        sendTelemetrySignal "clicked_primary" \
+            "\"button\": \"${button1text}\", \"requiredVersion\": \"${ddmVersionString}\""
+
         if [[ "${action}" == *"systempreferences"* ]]; then
             su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
             notice "Checking if System Settings is open …"
@@ -753,11 +845,17 @@ function displayReminderDialog() {
 
         2)  ## Process exit code 2 scenario here
             notice "${loggedInUser} clicked ${button2text}"
+            sendTelemetrySignal "clicked_secondary" \
+                "\"button\": \"${button2text}\""
+
             quitScript "0"
             ;;
 
         3)  ## Process exit code 3 scenario here
             notice "${loggedInUser} clicked ${infobuttontext}"
+            sendTelemetrySignal "clicked_info" \
+                "\"kb\": \"${infobuttonaction}\""
+
             info "Disabling blurscreen, hiding dialog and opening KB article: ${infobuttontext}"
             echo "blurscreen: disable" >> /var/tmp/dialog.log
             echo "hide:" >> /var/tmp/dialog.log
@@ -775,6 +873,9 @@ function displayReminderDialog() {
 
         4)  ## Process exit code 4 scenario here
             notice "User allowed timer to expire"
+            sendTelemetrySignal "timer_expired" \
+                "\"daysRemaining\": \"${ddmVersionStringDaysRemaining}\""
+
             quitScript "0"
             ;;
 
@@ -900,6 +1001,8 @@ preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${l
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 preFlight "Complete"
+sendTelemetrySignal "script_started" \
+    "\"scriptVersion\": \"${scriptVersion}\", \"osVersion\": \"$(sw_vers -productVersion)\""
 
 
 
@@ -916,6 +1019,8 @@ preFlight "Complete"
 if [[ "${1}" == "demo" ]]; then
 
     notice "Demo mode enabled"
+    sendTelemetrySignal "demo_mode" \
+        "\"user\":\"${loggedInUser}\",\"scriptVersion\":\"${scriptVersion}\""
 
     # Installed vs Required Version
     installedmacOSVersion=$( sw_vers -productVersion )

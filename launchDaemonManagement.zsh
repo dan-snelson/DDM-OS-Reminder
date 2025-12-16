@@ -26,6 +26,7 @@
 #   - Added instructions for monitoring the client-side log
 #   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 #   - Updated `Resources/sample.plist` to address Feature Request #43
+#   - Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable)
 #
 ####################################################################################################
 
@@ -40,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b5"
+scriptVersion="2.2.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

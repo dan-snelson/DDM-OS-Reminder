@@ -21,9 +21,10 @@
 #
 # HISTORY
 #
-# Version 2.2.0b1, 15-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b3, 15-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 #   - Added instructions for monitoring the client-side log
+#   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 #
 ####################################################################################################
 
@@ -38,7 +39,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b1"
+scriptVersion="2.2.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

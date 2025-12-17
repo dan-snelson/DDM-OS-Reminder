@@ -440,7 +440,7 @@ function sendTelemetrySignal() {
         json=$(cat <<EOF
 [{
   "appID": "${telemetryAppID}",
-  "tdClientID": "${tdClientID}",
+  "clientUser": "${telemetryClientUser}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
   "timestamp": "${timestamp}",
@@ -458,7 +458,7 @@ EOF
         json=$(cat <<EOF
 [{
   "appID": "${telemetryAppID}",
-  "tdClientID": "${tdClientID}",
+  "clientUser": "${telemetryClientUser}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
   "timestamp": "${timestamp}",
@@ -1258,23 +1258,23 @@ if [[ "${telemetryEnabled}" == "YES" ]]; then
 
     preFlight "TelemetryDeck is enabled; checking for Client ID …"
 
-    tdClientIDFile="${organizationDirectory}/${organizationScriptName}TelemetryDeckClientID"
+    telemetryClientUserFile="${organizationDirectory}/${organizationScriptName}TelemetryDeckClientID"
 
-    if [[ -f "${tdClientIDFile}" ]]; then
+    if [[ -f "${telemetryClientUserFile}" ]]; then
         preFlight "Found existing TelemetryDeck Client ID file."
-        tdClientID=$( cat "${tdClientIDFile}" )
+        telemetryClientUser=$( < "${telemetryClientUserFile}" )
 
     else
 
         preFlight "Generating new TelemetryDeck Client ID."
         mkdir -p "${organizationDirectory}"
-        tdClientID=$( uuidgen | tr '[:upper:]' '[:lower:]' )
-        echo "${tdClientID}" > "${tdClientIDFile}"
-        chmod 644 "${tdClientIDFile}"
+        telemetryClientUser=$( uuidgen | tr '[:upper:]' '[:lower:]' )
+        echo "${telemetryClientUser}" > "${telemetryClientUserFile}"
+        chmod 644 "${telemetryClientUserFile}"
 
     fi
 
-    preFlight "TelemetryDeck Client ID: ${tdClientID}"
+    preFlight "TelemetryDeck Client ID: ${telemetryClientUser}"
     computerModel=$( sysctl -n hw.model )
 
 else

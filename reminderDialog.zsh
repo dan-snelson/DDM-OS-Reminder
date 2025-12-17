@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b6"
+scriptVersion="2.2.0b7"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -166,6 +166,7 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 # Generate a stable, anonymous identifier (hashed serial number)
 serialNumber=$( ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformSerialNumber/{print $4}' )
 hashedSerialNumber=$( echo "${serialNumber}" | shasum -a 256 | awk '{print $1}' )
+computerModel=$( sysctl -n hw.model )
 
 # Reusable function to send a telemetry signal
 function sendTelemetrySignal() {
@@ -175,13 +176,11 @@ function sendTelemetrySignal() {
 
     # Allow script-wide disable
     if [[ "${telemetryEnabled}" != "YES" ]]; then
-        logComment "Telemetry disabled; skipping ${signalType}"
+        logComment "TelemetryDeck disabled; skipping ${signalType}"
         return 0
     else
-        notice "Sending telemetry signal: ${signalType}"
+        notice "Sending TelemetryDeck signal: ${signalType} …"
     fi
-
-set -x
 
     local sessionID
     sessionID=$(uuidgen)
@@ -189,7 +188,7 @@ set -x
     local timestamp
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    # Build JSON
+    # Build JSON with standard TelemetryDeck properties
     if [[ -n "${payloadJSON}" ]]; then
         json=$(cat <<EOF
 [{
@@ -199,6 +198,9 @@ set -x
   "type": "${signalType}",
   "timestamp": "${timestamp}",
   "isTestMode": false,
+  "appVersion": "${scriptVersion}",
+  "TelemetryDeck.Device.systemMajorVersion": "${installedmacOSVersion}",
+  "TelemetryDeck.Device.modelName": "${computerModel}",
   "payload": {
     ${payloadJSON}
   }
@@ -212,7 +214,11 @@ EOF
   "clientUser": "${hashedSerialNumber}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
-  "timestamp": "${timestamp}"
+  "timestamp": "${timestamp}",
+  "isTestMode": false,
+  "appVersion": "${scriptVersion}",
+  "TelemetryDeck.Device.systemMajorVersion": "${installedmacOSVersion}",
+  "TelemetryDeck.Device.modelName": "${computerModel}"
 }]
 EOF
 )
@@ -225,13 +231,12 @@ EOF
         -H "Content-Type: application/json; charset=utf-8" \
         -d "${json}")
 
-set +x
-
     if [[ "${statusCode}" == "200" ]]; then
-        info "TelemetryDeck accepted signal (${signalType})"
+        info "TelemetryDeck accepted signal: ${signalType}"
     else
         warning "TelemetryDeck returned HTTP ${statusCode} for ${signalType}"
     fi
+
 }
 
 
@@ -783,7 +788,7 @@ function displayReminderDialog() {
     additionalDialogOptions=("$@")
 
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
-    sendTelemetrySignal "dialog_displayed" \
+    sendTelemetrySignal "02_dialog_displayed" \
         "\"daysRemaining\": \"${ddmVersionStringDaysRemaining}\", \"blurscreen\": \"${blurscreen}\""
 
     dialogArgs=(
@@ -815,7 +820,7 @@ function displayReminderDialog() {
 
     0)  ## Process exit code 0 scenario here
         notice "${loggedInUser} clicked ${button1text}"
-        sendTelemetrySignal "clicked_primary" \
+        sendTelemetrySignal "03_clicked_primary" \
             "\"button\": \"${button1text}\", \"requiredVersion\": \"${ddmVersionString}\""
 
         if [[ "${action}" == *"systempreferences"* ]]; then
@@ -847,7 +852,7 @@ function displayReminderDialog() {
 
         2)  ## Process exit code 2 scenario here
             notice "${loggedInUser} clicked ${button2text}"
-            sendTelemetrySignal "clicked_secondary" \
+            sendTelemetrySignal "03_clicked_secondary" \
                 "\"button\": \"${button2text}\""
 
             quitScript "0"
@@ -855,7 +860,7 @@ function displayReminderDialog() {
 
         3)  ## Process exit code 3 scenario here
             notice "${loggedInUser} clicked ${infobuttontext}"
-            sendTelemetrySignal "clicked_info" \
+            sendTelemetrySignal "03_clicked_info" \
                 "\"kb\": \"${infobuttonaction}\""
 
             info "Disabling blurscreen, hiding dialog and opening KB article: ${infobuttontext}"
@@ -875,7 +880,7 @@ function displayReminderDialog() {
 
         4)  ## Process exit code 4 scenario here
             notice "User allowed timer to expire"
-            sendTelemetrySignal "timer_expired" \
+            sendTelemetrySignal "03_timer_expired" \
                 "\"daysRemaining\": \"${ddmVersionStringDaysRemaining}\""
 
             quitScript "0"
@@ -1003,7 +1008,7 @@ preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${l
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 preFlight "Complete"
-sendTelemetrySignal "script_started" \
+sendTelemetrySignal "01_script_started" \
     "\"scriptVersion\": \"${scriptVersion}\", \"osVersion\": \"$(sw_vers -productVersion)\""
 
 
@@ -1021,7 +1026,7 @@ sendTelemetrySignal "script_started" \
 if [[ "${1}" == "demo" ]]; then
 
     notice "Demo mode enabled"
-    sendTelemetrySignal "demo_mode" \
+    sendTelemetrySignal "99_demo_mode" \
         "\"user\":\"${loggedInUser}\",\"scriptVersion\":\"${scriptVersion}\""
 
     # Installed vs Required Version

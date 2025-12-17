@@ -21,12 +21,12 @@
 #
 # HISTORY
 #
-# Version 2.2.0b5, 16-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b7, 16-Dec-2025, Dan K. Snelson (@dan-snelson)
+#   - :warning: Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable) :warning:
 #   - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 #   - Added instructions for monitoring the client-side log
 #   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 #   - Updated `Resources/sample.plist` to address Feature Request #43
-#   - Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable)
 #
 ####################################################################################################
 
@@ -41,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b6"
+scriptVersion="2.2.0b7"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

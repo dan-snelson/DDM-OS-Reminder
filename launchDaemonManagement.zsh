@@ -21,13 +21,13 @@
 #
 # HISTORY
 #
-# Version 2.2.0b10, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b11, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 #   - Added instructions for monitoring the client-side log
 #   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 #   - Updated `Resources/sample.plist` to address Feature Request #43
 #   - Harmonized Organization Variables between `launchDaemonManagement.zsh` and `reminderDialog.zsh`
-#   - Added  Detection for staged macOS updates (Addresses Feature Request #49)
+#   - Added Detection for staged macOS updates (Addresses Feature Request #49)
 #
 ####################################################################################################
 
@@ -42,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b10"
+scriptVersion="2.2.0b11"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b10"
+scriptVersion="2.2.0b11"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -221,6 +221,8 @@ function replacePlaceholders() {
     value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
     value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
     value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
+    value=${value//\{updateReadyMessage\}/${updateReadyMessage}}
+    value=${value//'{updateReadyMessage}'/${updateReadyMessage}}
     value=${value//\{diskSpaceHumanReadable\}/${diskSpaceHumanReadable}}
     value=${value//'{diskSpaceHumanReadable}'/${diskSpaceHumanReadable}}
     value=${value//\{diskSpaceWarningMessage\}/${diskSpaceWarningMessage}}
@@ -302,6 +304,10 @@ function loadPreferenceOverrides() {
         infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
         helpmessage_managed=$(defaults read "${managedPreferencesPlist}" HelpMessage 2> /dev/null)
         helpimage_managed=$(defaults read "${managedPreferencesPlist}" HelpImage 2> /dev/null)
+        stagedUpdateMessage_managed=$(defaults read "${managedPreferencesPlist}" StagedUpdateMessage 2>/dev/null)
+        partiallyStagedUpdateMessage_managed=$(defaults read "${managedPreferencesPlist}" PartiallyStagedUpdateMessage 2>/dev/null)
+        pendingDownloadMessage_managed=$(defaults read "${managedPreferencesPlist}" PendingDownloadMessage 2>/dev/null)
+        hideStagedInfo_managed=$(defaults read "${managedPreferencesPlist}" HideStagedUpdateInfo 2>/dev/null)
     fi
 
     if [[ -f ${localPreferencesPlist}.plist ]]; then
@@ -332,6 +338,10 @@ function loadPreferenceOverrides() {
         infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
         helpmessage_local=$(defaults read "${localPreferencesPlist}" HelpMessage 2> /dev/null)
         helpimage_local=$(defaults read "${localPreferencesPlist}" HelpImage 2> /dev/null)
+        stagedUpdateMessage_local=$(defaults read "${localPreferencesPlist}" StagedUpdateMessage 2>/dev/null)
+        partiallyStagedUpdateMessage_local=$(defaults read "${localPreferencesPlist}" PartiallyStagedUpdateMessage 2>/dev/null)
+        pendingDownloadMessage_local=$(defaults read "${localPreferencesPlist}" PendingDownloadMessage 2>/dev/null)
+        hideStagedInfo_local=$(defaults read "${localPreferencesPlist}" HideStagedUpdateInfo 2>/dev/null)
     fi
     setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
     setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
@@ -342,6 +352,7 @@ function loadPreferenceOverrides() {
     setNumericPreferenceValue "minimumDiskFreePercentage" "${minimumDiskFreePercentage_managed}" "${minimumDiskFreePercentage_local}" "${minimumDiskFreePercentage}"
     setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${diskSpaceWarningMessage}"
     setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
+    setPreferenceValue "hideStagedInfo" "${hideStagedInfo_managed}" "${hideStagedInfo_local}" "NO"
     setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
     [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
 }
@@ -770,15 +781,40 @@ function updateRequiredVariables() {
         fi
     fi
 
-    # Staging Info
-    if [[ "${updateStagingStatus}" == "Fully staged" ]]; then
-        updateReadyMessage="<br><br>**Good news!** The macOS ${ddmVersionString} update has already been downloaded to your Mac and is ready to install. The installation will proceed quickly when you click **${button1text}**."
-    else
+    # Staged Update Messaging
+    local defaultStagedUpdateMessage="<br><br>**Good news!** The macOS ${ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **${button1text}**."
+    local defaultPartiallyStagedUpdateMessage="<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
+    local defaultPendingDownloadMessage=""
+
+    # Load preferences (manager > local > default)
+    setPreferenceValue "stagedUpdateMessage" "${stagedUpdateMessage_managed}" "${stagedUpdateMessage_local}" "${defaultStagedUpdateMessage}"
+    setPreferenceValue "partiallyStagedUpdateMessage" "${partiallyStagedUpdateMessage_managed}" "${partiallyStagedUpdateMessage_local}" "${defaultPartiallyStagedUpdateMessage}"
+    setPreferenceValue "pendingDownloadMessage" "${pendingDownloadMessage_managed}" "${pendingDownloadMessage_local}" "${defaultPendingDownloadMessage}"
+
+    # Honor HideStagedUpdateInfo flag
+    if [[ "${hideStagedInfo}" == "1" ]]; then
         updateReadyMessage=""
+    else
+        case "${updateStagingStatus}" in
+            "Fully staged")
+                updateReadyMessage="${stagedUpdateMessage}"
+                ;;
+            "Partially staged")
+                updateReadyMessage="${partiallyStagedUpdateMessage}"
+                ;;
+            "Pending download"|"Not detected")
+                updateReadyMessage="${pendingDownloadMessage}"
+                ;;
+            *)
+                updateReadyMessage=""
+                ;;
+        esac
     fi
 
-
     local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.${updateReadyMessage}<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    if [[ -n "${updateReadyMessage}" && "${message}" == *"{updateReadyMessage}"* ]]; then
+        message=${message//\{updateReadyMessage\}/${updateReadyMessage}}
+    fi
     setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
     replacePlaceholders "message"
 
@@ -788,7 +824,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}<br><br>**Free Disk Space:** ${diskSpaceHumanReadable}"
+    local defaultInfobox="**Current:** macOS ${installedmacOSVersion}<br><br>**Required:** macOS ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}<br><br>**Free Disk Space:** ${diskSpaceHumanReadable}"
     setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
     replacePlaceholders "infobox"
 

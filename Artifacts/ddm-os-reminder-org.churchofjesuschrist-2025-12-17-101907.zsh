@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.2.0b9, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b10, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
 #   - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 #   - Added instructions for monitoring the client-side log
 #   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
@@ -41,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b9"
+scriptVersion="2.2.0b10"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -260,7 +260,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b9"
+scriptVersion="2.2.0b10"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -599,6 +599,117 @@ function currentLoggedInUser() {
 
 
 
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Detect Staged macOS Updates
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function detectStagedUpdate() {
+
+    local stagedUpdateSize="0"
+    local stagedUpdateLocation="Not detected"
+    local stagedUpdateStatus="Pending download"
+    
+    # Check for APFS snapshots indicating staged updates
+    local updateSnapshots=$(tmutil listlocalsnapshots / 2>/dev/null | grep -c "com.apple.os.update")
+    
+    if [[ ${updateSnapshots} -gt 0 ]]; then
+        info "Found ${updateSnapshots} update snapshot(s)"
+        stagedUpdateStatus="Partially staged"
+    fi
+    
+    # Identify Preboot UUID directory
+    local systemVolumeUUID
+    systemVolumeUUID=$(
+        ls -1 /System/Volumes/Preboot 2>/dev/null \
+        | grep -E '^[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}$' \
+        | head -1
+    )
+
+    if [[ -z "${systemVolumeUUID}" ]]; then
+        info "No Preboot UUID directory found; staging cannot be evaluated."
+        updateStagingStatus="Pending download"
+        return
+    fi
+
+    local prebootPath="/System/Volumes/Preboot/${systemVolumeUUID}"
+    info "Using Preboot UUID directory: ${prebootPath}"
+
+    if [[ -n "${systemVolumeUUID}" ]]; then
+        local prebootPath="/System/Volumes/Preboot/${systemVolumeUUID}"
+
+        # Diagnostic Logging (Preboot visibility)
+        info "Analyzing Preboot path: ${prebootPath}"
+
+        if [[ ! -d "${prebootPath}" ]]; then
+            info "Preboot path does not exist or is not a directory."
+        else
+            info "Listing contents of Preboot UUID directory:"
+            ls -l "${prebootPath}" 2>/dev/null | sed 's/^/    /' || info "Unable to list Preboot contents"
+
+            # Check for expected staging directories
+            if [[ ! -d "${prebootPath}/cryptex1" ]]; then
+                info "No 'cryptex1' directory present (normal until staging begins)"
+            fi
+            if [[ ! -d "${prebootPath}/restore-staged" ]]; then
+                info "No 'restore-staged' directory present (normal until later staging phase)"
+            fi
+        fi
+
+        # Check cryptex1 for staged update content
+        if [[ -d "${prebootPath}/cryptex1" ]]; then
+            local cryptexSize=$(sudo du -sk "${prebootPath}/cryptex1" 2>/dev/null | awk '{print $1}')
+            
+            # Typical cryptex1 is < 1GB; if > 1GB, staging is very likely underway
+            if [[ -n "${cryptexSize}" ]] && [[ ${cryptexSize} -gt 1048576 ]]; then
+                stagedUpdateSize=$(echo "scale=2; ${cryptexSize} / 1048576" | bc)
+                stagedUpdateLocation="${prebootPath}/cryptex1"
+                stagedUpdateStatus="Fully staged"
+                info "Staged update detected: ${stagedUpdateSize} GB in cryptex1"
+            fi
+        fi
+        
+        # Check restore-staged directory (optional supplemental assets)
+        if [[ -d "${prebootPath}/restore-staged" ]]; then
+            local restoreSize=$(sudo du -sk "${prebootPath}/restore-staged" 2>/dev/null | awk '{print $1}')
+            if [[ -n "${restoreSize}" ]] && [[ ${restoreSize} -gt 102400 ]]; then
+                local restoreSizeGB=$(echo "scale=2; ${restoreSize} / 1048576" | bc)
+                info "Additional staged content: ${restoreSizeGB} GB in restore-staged"
+            fi
+        fi
+        
+        # Check total Preboot volume usage
+        local totalPrebootSize=$(sudo du -sk "${prebootPath}" 2>/dev/null | awk '{print $1}')
+        if [[ -n "${totalPrebootSize}" ]]; then
+            local prebootGB=$(echo "scale=2; ${totalPrebootSize} / 1048576" | bc)
+            
+            # Typical Preboot is 1–3 GB; if > 8 GB, major update assets are staged
+            if (( $(echo "${prebootGB} > 8" | bc -l) )); then
+                if [[ "${stagedUpdateStatus}" != "Fully staged" ]]; then
+                    stagedUpdateSize="${prebootGB}"
+                    stagedUpdateLocation="${prebootPath}"
+                    stagedUpdateStatus="Fully staged"
+                    info "Large Preboot volume detected: ${prebootGB} GB total (threshold 8 GB)"
+                fi
+            fi
+        fi
+    fi
+    
+    # Export variables for use in dialog
+    updateStagedSize="${stagedUpdateSize}"
+    updateStagedLocation="${stagedUpdateLocation}"
+    updateStagingStatus="${stagedUpdateStatus}"
+    
+    notice "Update Staging Status: ${stagedUpdateStatus}"
+    if [[ "${stagedUpdateStatus}" == "Fully staged" ]]; then
+        notice "Update Size: ${stagedUpdateSize} GB"
+        notice "Location: ${stagedUpdateLocation}"
+    fi
+
+}
+
+
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Installed OS vs. DDM-enforced OS Comparison
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -689,12 +800,20 @@ installedOSvsDDMenforcedOS() {
         hideSecondaryButton="NO"
     fi
 
-    # Version Comparison Result
+    # Version Comparison for pending DDM-enforced update
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
+
         versionComparisonResult="Up-to-date"
         info "DDM-enforced OS Version: $ddmVersionString"
+
     else
+
         versionComparisonResult="Update Required"
+
+        # Detect staged updates
+        detectStagedUpdate
+
+        # Determine if an "Update" or an "Upgrade" is needed
         info "DDM-enforced OS Version: $ddmVersionString"
         info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
         majorInstalled="${installedmacOSVersion%%.*}"
@@ -891,8 +1010,15 @@ function updateRequiredVariables() {
         fi
     fi
 
+    # Staging Info
+    if [[ "${updateStagingStatus}" == "Fully staged" ]]; then
+        updateReadyMessage="<br><br>**Good news!** The macOS ${ddmVersionString} update has already been downloaded to your Mac and is ready to install. The installation will proceed quickly when you click **${button1text}**."
+    else
+        updateReadyMessage=""
+    fi
 
-    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+
+    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.${updateReadyMessage}<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
     replacePlaceholders "message"
 

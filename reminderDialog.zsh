@@ -37,10 +37,10 @@ autoload -Uz is-at-least
 # Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
-# Organization's reverse domain (used for plist domains)
+# Organization’s reverse domain (used for plist domains)
 reverseDomainNameNotation="org.churchofjesuschrist"
 
-# Organization's Script Name
+# Organization’s Script Name
 organizationScriptName="dorm"
 
 # Preference plist domains
@@ -48,22 +48,22 @@ preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
-# Organization's number of days before deadline to starting displaying reminders
+# Organization’s number of days before deadline to starting displaying reminders
 daysBeforeDeadlineDisplayReminder="60"
 
-# Organization's number of days before deadline to enable swiftDialog's blurscreen
+# Organization’s number of days before deadline to enable swiftDialog’s blurscreen
 daysBeforeDeadlineBlurscreen="45"
 
-# Organization's number of days before deadline to hide the secondary button
+# Organization’s number of days before deadline to hide the secondary button
 daysBeforeDeadlineHidingButton2="21"
 
-# Organization's number of days of excessive uptime before warning the user
+# Organization’s number of days of excessive uptime before warning the user
 daysOfExcessiveUptimeWarning="0"
 
-# Organization's minimum percentage of free disk space required for update
+# Organization’s minimum percentage of free disk space required for update
 minimumDiskFreePercentage="99"
 
-# Organization's Meeting Delay (in minutes) 
+# Organization’s Meeting Delay (in minutes) 
 meetingDelay="75"
 
 # Track whether the secondary button should be hidden (computed at runtime)
@@ -519,7 +519,7 @@ installedOSvsDDMenforcedOS() {
         # Enforcement deadline passed
         notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
 
-        # Read Apple's internal padded enforcement date from install.log
+        # Read Apple’s internal padded enforcement date from install.log
         pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
         if [[ -n "$pastDueDeadline" ]]; then
             paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
@@ -603,12 +603,12 @@ installedOSvsDDMenforcedOS() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Check User's Display Sleep Assertions (thanks, @techtrekkie!)
+# Check User’s Display Sleep Assertions (thanks, @techtrekkie!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function checkUserDisplaySleepAssertions() {
 
-    notice "Check ${loggedInUser}'s Display Sleep Assertions"
+    notice "Check ${loggedInUser}’s Display Sleep Assertions"
 
     local intervalSeconds=300  # Default: 300 seconds (i.e., 5 minutes)
     local intervalMinutes=$(( intervalSeconds / 60 ))
@@ -633,7 +633,7 @@ function checkUserDisplaySleepAssertions() {
             sleep "${intervalSeconds}"
         else
             userDisplaySleepAssertions="FALSE"
-            info "${loggedInUser}'s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
+            info "${loggedInUser}’s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
             IFS="${previousIFS}"
             return 0  # No active Display Sleep Assertions found
         fi
@@ -655,10 +655,10 @@ function checkUserDisplaySleepAssertions() {
 function updateRequiredVariables() {
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Organization's Branding Variables
+    # Organization’s Branding Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # Organization's Overlayicon URL
+    # Organization’s Overlayicon URL
     local defaultOverlayiconURL="${organizationOverlayiconURL:-"https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"}"
     setPreferenceValue "organizationOverlayiconURL" "${organizationOverlayiconURL_managed}" "${organizationOverlayiconURL_local}" "${defaultOverlayiconURL}"
 
@@ -1213,7 +1213,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
             quitScript "0"
         fi
     else
-        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+        info "Deadline is within 24 hours; ignoring ${loggedInUser}’s Display Sleep Assertions; proceeding …"
     fi
 
 

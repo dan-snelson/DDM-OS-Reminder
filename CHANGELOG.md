@@ -2,12 +2,14 @@
 
 ## Changelog
 
-### Version 2.2.0b7 (16-Dec-2025)
-- :warning: Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable) :warning:
+### Version 2.2.0b8 (16-Dec-2025)
+- :warning: Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable)
 - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 - Added instructions for monitoring the client-side log
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 - Updated `Resources/sample.plist` to address Feature Request #43
+- Harmonized Organization Variables between `launchDaemonManagement.zsh` and `reminderDialog.zsh`
+
 
 ### Version 2.1.0 (13-Dec-2025)
 - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)

@@ -21,12 +21,13 @@
 #
 # HISTORY
 #
-# Version 2.2.0b7, 16-Dec-2025, Dan K. Snelson (@dan-snelson)
-#   - :warning: Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable) :warning:
+# Version 2.2.0b8, 16-Dec-2025, Dan K. Snelson (@dan-snelson)
+#   - :warning: Added TelemetryDeck integration to collect anonymous usage data (set `telemetryEnabled="NO"` in `reminderDialog.zsh` to disable)
 #   - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
 #   - Added instructions for monitoring the client-side log
 #   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 #   - Updated `Resources/sample.plist` to address Feature Request #43
+#   - Harmonized Organization Variables between `launchDaemonManagement.zsh` and `reminderDialog.zsh`
 #
 ####################################################################################################
 
@@ -41,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b7"
+scriptVersion="2.2.0b8"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -64,7 +65,7 @@ resetConfiguration="${4:-"All"}"
 # Organization Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Organization's Reverse Domain Name Notation (i.e., com.company.division)
+# Organization's Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
 reverseDomainNameNotation="org.churchofjesuschrist"
 
 # Script Human-readabale Name
@@ -177,6 +178,17 @@ function resetConfiguration() {
 
             warning "*** UNINSTALLING ${humanReadableScriptName} ***"
 
+            # Uninstall TelemetryDeck Client ID File
+            info "Uninstall TelemetryDeck Client ID File … "
+            tdClientIDFile="${organizationDirectory}/${organizationScriptName}TelemetryDeckClientID"
+            if [[ -f "${tdClientIDFile}" ]]; then
+                logComment "Removing '${tdClientIDFile}' … "
+                rm -f "${tdClientIDFile}" 2>&1
+                logComment "Removed '${tdClientIDFile}'"
+            else
+                logComment "TelemetryDeck Client ID file not found; nothing to remove"
+            fi
+
             # Uninstall LaunchDaemon
             info "Uninstall LaunchDaemon … "
             launchDaemonStatus
@@ -260,7 +272,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b7"
+scriptVersion="2.2.0b8"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -274,7 +286,7 @@ autoload -Uz is-at-least
 # TelemetryDeck Integration
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-telemetryEnabled="YES" # Set to anything else to disable TelemetryDeck integration (and DM @dan-snelson a :sadpanda: on the Mac Admins Slack)
+telemetryEnabled="YES" # Set to anything other than "YES" to disable TelemetryDeck integration (and DM @dan-snelson a :sadpanda: on the Mac Admins Slack)
 telemetryAppID="8F516A04-664E-4B55-804F-5109D9742D3E"
 telemetryEndpoint="https://nom.telemetrydeck.com/v2/"
 
@@ -284,14 +296,17 @@ telemetryEndpoint="https://nom.telemetrydeck.com/v2/"
 # Organization Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+# Organization's Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
+reverseDomainNameNotation="org.churchofjesuschrist"
+
 # Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
-# Organization's reverse domain (used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
-
 # Organization's Script Name
 organizationScriptName="dorm"
+
+# Organization's Directory (i.e., where your client-side scripts reside)
+organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
 
 # Preference plist domains
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -397,18 +412,10 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 
-####################################################################################################
-#
-# TelemetryDeck Functions
-#
-####################################################################################################
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# TelemetryDeck
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Generate a stable, anonymous identifier (hashed serial number)
-serialNumber=$( ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformSerialNumber/{print $4}' )
-hashedSerialNumber=$( echo "${serialNumber}" | shasum -a 256 | awk '{print $1}' )
-computerModel=$( sysctl -n hw.model )
-
-# Reusable function to send a telemetry signal
 function sendTelemetrySignal() {
 
     local signalType="${1}"
@@ -433,13 +440,13 @@ function sendTelemetrySignal() {
         json=$(cat <<EOF
 [{
   "appID": "${telemetryAppID}",
-  "clientUser": "${hashedSerialNumber}",
+  "tdClientID": "${tdClientID}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
   "timestamp": "${timestamp}",
   "isTestMode": false,
   "appVersion": "${scriptVersion}",
-  "TelemetryDeck.Device.systemMajorVersion": "${installedmacOSVersion}",
+  "TelemetryDeck.Device.systemMajorVersion": "${majorInstalled}",
   "TelemetryDeck.Device.modelName": "${computerModel}",
   "payload": {
     ${payloadJSON}
@@ -451,13 +458,13 @@ EOF
         json=$(cat <<EOF
 [{
   "appID": "${telemetryAppID}",
-  "clientUser": "${hashedSerialNumber}",
+  "tdClientID": "${tdClientID}",
   "sessionID": "${sessionID}",
   "type": "${signalType}",
   "timestamp": "${timestamp}",
   "isTestMode": false,
   "appVersion": "${scriptVersion}",
-  "TelemetryDeck.Device.systemMajorVersion": "${installedmacOSVersion}",
+  "TelemetryDeck.Device.systemMajorVersion": "${majorInstalled}",
   "TelemetryDeck.Device.modelName": "${computerModel}"
 }]
 EOF
@@ -1203,7 +1210,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n####\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n#\n# Telemetry Enabled: ${telemetryEnabled}\n####\n"
 preFlight "Initiating …"
 
 
@@ -1240,6 +1247,41 @@ loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
 preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Pre-flight Check: TelemetryDeck Persistent, Privacy-respecting Client ID
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+if [[ "${telemetryEnabled}" == "YES" ]]; then
+
+    preFlight "TelemetryDeck is enabled; checking for Client ID …"
+
+    tdClientIDFile="${organizationDirectory}/${organizationScriptName}TelemetryDeckClientID"
+
+    if [[ -f "${tdClientIDFile}" ]]; then
+        preFlight "Found existing TelemetryDeck Client ID file."
+        tdClientID=$( cat "${tdClientIDFile}" )
+
+    else
+
+        preFlight "Generating new TelemetryDeck Client ID."
+        mkdir -p "${organizationDirectory}"
+        tdClientID=$( uuidgen | tr '[:upper:]' '[:lower:]' )
+        echo "${tdClientID}" > "${tdClientIDFile}"
+        chmod 644 "${tdClientIDFile}"
+
+    fi
+
+    preFlight "TelemetryDeck Client ID: ${tdClientID}"
+    computerModel=$( sysctl -n hw.model )
+
+else
+
+    preFlight "TelemetryDeck is disabled; skipping TelemetryDeck Client ID check."
+
+fi
 
 
 

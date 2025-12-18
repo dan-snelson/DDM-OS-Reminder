@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b14"
+scriptVersion="2.2.0b15"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -173,7 +173,7 @@ declare -A preferenceConfiguration=(
 )
 
     # Map of preference keys to their plist key names (for keys that differ)
-    declare -A plistKeyMap=(
+declare -A plistKeyMap=(
     ["scriptLog"]="ScriptLog"
     ["daysBeforeDeadlineDisplayReminder"]="DaysBeforeDeadlineDisplayReminder"
     ["daysBeforeDeadlineBlurscreen"]="DaysBeforeDeadlineBlurscreen"
@@ -431,6 +431,16 @@ function loadPreferenceOverrides() {
     
     preFlight "Preferences loaded"
 
+}
+
+function validatePreferenceLoad() {
+    # Verify critical preferences loaded correctly
+    local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
+    for var in "${criticalVars[@]}"; do
+        if [[ -z "${(P)var}" ]]; then
+            warning "Critical preference '${var}' is empty; using default"
+        fi
+    done
 }
 
 
@@ -736,8 +746,10 @@ function checkUserDisplaySleepAssertions() {
 function downloadBrandingAssets() {
     # Download overlay icon
     if [[ -n "${organizationOverlayiconURL}" ]]; then
-        if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail; then
+        notice "Downloading overlay icon from '${organizationOverlayiconURL}'"
+        if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
             overlayicon="/var/tmp/overlayicon.png"
+            info "Successfully downloaded overlay icon"
         else
             error "Failed to download overlayicon from '${organizationOverlayiconURL}'"
             overlayicon="/System/Library/CoreServices/Finder.app"
@@ -1040,11 +1052,13 @@ preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${l
 
 ####################################################################################################
 #
-# Apply Preference Overrides
+# Apply / Validate Preference Overrides
 #
 ####################################################################################################
 
 loadPreferenceOverrides
+
+validatePreferenceLoad
 
 
 

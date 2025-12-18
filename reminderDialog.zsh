@@ -1201,7 +1201,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
             quitScript "0"
         fi
     else
-        notice "Reminder dialog hasn't been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
+        notice "Reminder dialog hasn’t been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
     fi
 
 

@@ -61,9 +61,9 @@
                                     <key>DiskSpaceWarningMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
                                     <key>StagedUpdateMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;assembled **Good news!** The macOS update has already been downloaded. When ready, click **{button1text}** to install.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
                                     <key>PartiallyStagedUpdateMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;assembled Your Mac is currently preparing the required macOS update.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
                                     <key>PendingDownloadMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled Your Mac will begin downloading the update shortly.</string>
                                     <key>HideStagedUpdateInfo</key>
@@ -84,26 +84,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>1F92FC16-DD60-4D60-8E29-C07773880D8E</string>
+            <string>33F4FFC8-5380-44E9-B4A7-C33031EB9BB0</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>1F92FC16-DD60-4D60-8E29-C07773880D8E</string>
+            <string>33F4FFC8-5380-44E9-B4A7-C33031EB9BB0</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.2.0b14) to org.churchofjesuschrist standards. Created: 2025-12-18-114036</string>
+    <string>Configures DDM OS Reminder (2.2.0b14) to org.churchofjesuschrist standards. Created: 2025-12-18-152528</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>2A7A2B53-7640-40CB-BD53-30D70C7C781B</string>
+    <string>FD18082C-E419-4E24-B7F4-AD31A06906F0</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -113,7 +113,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>2A7A2B53-7640-40CB-BD53-30D70C7C781B</string>
+    <string>FD18082C-E419-4E24-B7F4-AD31A06906F0</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

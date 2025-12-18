@@ -162,7 +162,7 @@ declare -A preferenceConfiguration=(
     # Update Staging Messages
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
-    ["pendingDownloadMessage"]="string|"
+    ["pendingDownloadMessage"]="string|<br><br>Your Mac will begin downloading the update shortly."
     ["hideStagedInfo"]="boolean|NO"
     
     # Complex UI Text

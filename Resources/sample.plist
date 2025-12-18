@@ -63,9 +63,9 @@
     <key>DiskSpaceWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
     <key>StagedUpdateMessage</key>
-    <string>&lt;br&gt;&lt;br&gt;Sample **Good news!** The macOS update has already been downloaded. When ready, click **{button1text}** to install.</string>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
     <key>PartiallyStagedUpdateMessage</key>
-    <string>&lt;br&gt;&lt;br&gt;Sample Your Mac is currently preparing the required macOS update.</string>
+    <string>&lt;br&gt;&lt;br&gt;Sample Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
     <key>PendingDownloadMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac will begin downloading the update shortly.</string>
     <key>HideStagedUpdateInfo</key>

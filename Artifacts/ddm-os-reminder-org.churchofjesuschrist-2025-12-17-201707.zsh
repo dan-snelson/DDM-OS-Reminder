@@ -21,12 +21,12 @@
 #
 # HISTORY
 #
-# Version 2.2.0b9, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
-#   - Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
-#   - Added instructions for monitoring the client-side log
-#   - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
-#   - Updated `Resources/sample.plist` to address Feature Request #43
-#   - Harmonized Organization Variables between `launchDaemonManagement.zsh` and `reminderDialog.zsh`
+# Version 2.2.0b12, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
+# - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
+# - Added instructions for monitoring the client-side log to the log file itself
+# - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
+# - Updated `Resources/sample.plist` to address Feature Request #43
+# - Added Detection for staged macOS updates (Addresses Feature Request #49)
 #
 ####################################################################################################
 
@@ -41,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b9"
+scriptVersion="2.2.0b12"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -135,7 +135,7 @@ function resetConfiguration() {
             # Reset LaunchDaemon
             info "Reset LaunchDaemon … "
             launchDaemonStatus
-            if [[ -n "${launchDaemonStatus}" ]]; then
+            if [[ -n "${launchDaemonStatusResult}" ]]; then
                 logComment "Unload '${launchDaemonPath}' … "
                 launchctl bootout system "${launchDaemonPath}"
                 launchDaemonStatus
@@ -155,7 +155,7 @@ function resetConfiguration() {
 
             info "Reset LaunchDaemon … "
             launchDaemonStatus
-            if [[ -n "${launchDaemonStatus}" ]]; then
+            if [[ -n "${launchDaemonStatusResult}" ]]; then
                 logComment "Unload '${launchDaemonPath}' … "
                 launchctl bootout system "${launchDaemonPath}"
                 launchDaemonStatus
@@ -180,7 +180,7 @@ function resetConfiguration() {
             # Uninstall LaunchDaemon
             info "Uninstall LaunchDaemon … "
             launchDaemonStatus
-            if [[ -n "${launchDaemonStatus}" ]]; then
+            if [[ -n "${launchDaemonStatusResult}" ]]; then
                 logComment "Unload '${launchDaemonPath}' … "
                 launchctl bootout system "${launchDaemonPath}"
                 launchDaemonStatus
@@ -260,7 +260,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b9"
+scriptVersion="2.2.0b12"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -277,10 +277,10 @@ autoload -Uz is-at-least
 # Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
-# Organization's reverse domain (used for plist domains)
+# Organization’s reverse domain (used for plist domains)
 reverseDomainNameNotation="org.churchofjesuschrist"
 
-# Organization's Script Name
+# Organization’s Script Name
 organizationScriptName="dorm"
 
 # Preference plist domains
@@ -288,22 +288,22 @@ preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
-# Organization's number of days before deadline to starting displaying reminders
+# Organization’s number of days before deadline to starting displaying reminders
 daysBeforeDeadlineDisplayReminder="60"
 
-# Organization's number of days before deadline to enable swiftDialog's blurscreen
+# Organization’s number of days before deadline to enable swiftDialog’s blurscreen
 daysBeforeDeadlineBlurscreen="45"
 
-# Organization's number of days before deadline to hide the secondary button
+# Organization’s number of days before deadline to hide the secondary button
 daysBeforeDeadlineHidingButton2="21"
 
-# Organization's number of days of excessive uptime before warning the user
+# Organization’s number of days of excessive uptime before warning the user
 daysOfExcessiveUptimeWarning="0"
 
-# Organization's minimum percentage of free disk space required for update
+# Organization’s minimum percentage of free disk space required for update
 minimumDiskFreePercentage="99"
 
-# Organization's Meeting Delay (in minutes) 
+# Organization’s Meeting Delay (in minutes) 
 meetingDelay="75"
 
 # Track whether the secondary button should be hidden (computed at runtime)
@@ -461,6 +461,8 @@ function replacePlaceholders() {
     value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
     value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
     value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
+    value=${value//\{updateReadyMessage\}/${updateReadyMessage}}
+    value=${value//'{updateReadyMessage}'/${updateReadyMessage}}
     value=${value//\{diskSpaceHumanReadable\}/${diskSpaceHumanReadable}}
     value=${value//'{diskSpaceHumanReadable}'/${diskSpaceHumanReadable}}
     value=${value//\{diskSpaceWarningMessage\}/${diskSpaceWarningMessage}}
@@ -542,6 +544,10 @@ function loadPreferenceOverrides() {
         infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
         helpmessage_managed=$(defaults read "${managedPreferencesPlist}" HelpMessage 2> /dev/null)
         helpimage_managed=$(defaults read "${managedPreferencesPlist}" HelpImage 2> /dev/null)
+        stagedUpdateMessage_managed=$(defaults read "${managedPreferencesPlist}" StagedUpdateMessage 2>/dev/null)
+        partiallyStagedUpdateMessage_managed=$(defaults read "${managedPreferencesPlist}" PartiallyStagedUpdateMessage 2>/dev/null)
+        pendingDownloadMessage_managed=$(defaults read "${managedPreferencesPlist}" PendingDownloadMessage 2>/dev/null)
+        hideStagedInfo_managed=$(defaults read "${managedPreferencesPlist}" HideStagedUpdateInfo 2>/dev/null)
     fi
 
     if [[ -f ${localPreferencesPlist}.plist ]]; then
@@ -572,6 +578,10 @@ function loadPreferenceOverrides() {
         infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
         helpmessage_local=$(defaults read "${localPreferencesPlist}" HelpMessage 2> /dev/null)
         helpimage_local=$(defaults read "${localPreferencesPlist}" HelpImage 2> /dev/null)
+        stagedUpdateMessage_local=$(defaults read "${localPreferencesPlist}" StagedUpdateMessage 2>/dev/null)
+        partiallyStagedUpdateMessage_local=$(defaults read "${localPreferencesPlist}" PartiallyStagedUpdateMessage 2>/dev/null)
+        pendingDownloadMessage_local=$(defaults read "${localPreferencesPlist}" PendingDownloadMessage 2>/dev/null)
+        hideStagedInfo_local=$(defaults read "${localPreferencesPlist}" HideStagedUpdateInfo 2>/dev/null)
     fi
     setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
     setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
@@ -582,6 +592,7 @@ function loadPreferenceOverrides() {
     setNumericPreferenceValue "minimumDiskFreePercentage" "${minimumDiskFreePercentage_managed}" "${minimumDiskFreePercentage_local}" "${minimumDiskFreePercentage}"
     setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${diskSpaceWarningMessage}"
     setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
+    setPreferenceValue "hideStagedInfo" "${hideStagedInfo_managed}" "${hideStagedInfo_local}" "NO"
     setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
     [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
 }
@@ -595,6 +606,117 @@ function loadPreferenceOverrides() {
 function currentLoggedInUser() {
     loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
     preFlight "Current Logged-in User: ${loggedInUser}"
+}
+
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Detect Staged macOS Updates
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function detectStagedUpdate() {
+
+    local stagedUpdateSize="0"
+    local stagedUpdateLocation="Not detected"
+    local stagedUpdateStatus="Pending download"
+    
+    # Check for APFS snapshots indicating staged updates
+    local updateSnapshots=$(tmutil listlocalsnapshots / 2>/dev/null | grep -c "com.apple.os.update")
+    
+    if [[ ${updateSnapshots} -gt 0 ]]; then
+        info "Found ${updateSnapshots} update snapshot(s)"
+        stagedUpdateStatus="Partially staged"
+    fi
+    
+    # Identify Preboot UUID directory
+    local systemVolumeUUID
+    systemVolumeUUID=$(
+        ls -1 /System/Volumes/Preboot 2>/dev/null \
+        | grep -E '^[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}$' \
+        | head -1
+    )
+
+    if [[ -z "${systemVolumeUUID}" ]]; then
+        info "No Preboot UUID directory found; staging cannot be evaluated."
+        updateStagingStatus="Pending download"
+        return
+    fi
+
+    local prebootPath="/System/Volumes/Preboot/${systemVolumeUUID}"
+    info "Using Preboot UUID directory: ${prebootPath}"
+
+    if [[ -n "${systemVolumeUUID}" ]]; then
+        local prebootPath="/System/Volumes/Preboot/${systemVolumeUUID}"
+
+        # Diagnostic Logging (Preboot visibility)
+        info "Analyzing Preboot path: ${prebootPath}"
+
+        if [[ ! -d "${prebootPath}" ]]; then
+            info "Preboot path does not exist or is not a directory."
+        else
+            info "Listing contents of Preboot UUID directory:"
+            ls -l "${prebootPath}" 2>/dev/null | sed 's/^/    /' || info "Unable to list Preboot contents"
+
+            # Check for expected staging directories
+            if [[ ! -d "${prebootPath}/cryptex1" ]]; then
+                info "No 'cryptex1' directory present (normal until staging begins)"
+            fi
+            if [[ ! -d "${prebootPath}/restore-staged" ]]; then
+                info "No 'restore-staged' directory present (normal until later staging phase)"
+            fi
+        fi
+
+        # Check cryptex1 for staged update content
+        if [[ -d "${prebootPath}/cryptex1" ]]; then
+            local cryptexSize=$(sudo du -sk "${prebootPath}/cryptex1" 2>/dev/null | awk '{print $1}')
+            
+            # Typical cryptex1 is < 1GB; if > 1GB, staging is very likely underway
+            if [[ -n "${cryptexSize}" ]] && [[ ${cryptexSize} -gt 1048576 ]]; then
+                stagedUpdateSize=$(echo "scale=2; ${cryptexSize} / 1048576" | bc)
+                stagedUpdateLocation="${prebootPath}/cryptex1"
+                stagedUpdateStatus="Fully staged"
+                info "Staged update detected: ${stagedUpdateSize} GB in cryptex1"
+            fi
+        fi
+        
+        # Check restore-staged directory (optional supplemental assets)
+        if [[ -d "${prebootPath}/restore-staged" ]]; then
+            local restoreSize=$(sudo du -sk "${prebootPath}/restore-staged" 2>/dev/null | awk '{print $1}')
+            if [[ -n "${restoreSize}" ]] && [[ ${restoreSize} -gt 102400 ]]; then
+                local restoreSizeGB=$(echo "scale=2; ${restoreSize} / 1048576" | bc)
+                info "Additional staged content: ${restoreSizeGB} GB in restore-staged"
+            fi
+        fi
+        
+        # Check total Preboot volume usage
+        local totalPrebootSize=$(sudo du -sk "${prebootPath}" 2>/dev/null | awk '{print $1}')
+        if [[ -n "${totalPrebootSize}" ]]; then
+            local prebootGB=$(echo "scale=2; ${totalPrebootSize} / 1048576" | bc)
+            
+            # Typical Preboot is 1–3 GB; if > 8 GB, major update assets are staged
+            if (( $(echo "${prebootGB} > 8" | bc -l) )); then
+                if [[ "${stagedUpdateStatus}" != "Fully staged" ]]; then
+                    stagedUpdateSize="${prebootGB}"
+                    stagedUpdateLocation="${prebootPath}"
+                    stagedUpdateStatus="Fully staged"
+                    info "Large Preboot volume detected: ${prebootGB} GB total (threshold 8 GB)"
+                fi
+            fi
+        fi
+    fi
+    
+    # Export variables for use in dialog
+    updateStagedSize="${stagedUpdateSize}"
+    updateStagedLocation="${stagedUpdateLocation}"
+    updateStagingStatus="${stagedUpdateStatus}"
+    
+    notice "Update Staging Status: ${stagedUpdateStatus}"
+    if [[ "${stagedUpdateStatus}" == "Fully staged" ]]; then
+        notice "Update Size: ${stagedUpdateSize} GB"
+        notice "Location: ${stagedUpdateLocation}"
+    fi
+
 }
 
 
@@ -637,7 +759,7 @@ installedOSvsDDMenforcedOS() {
         # Enforcement deadline passed
         notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
 
-        # Read Apple's internal padded enforcement date from install.log
+        # Read Apple’s internal padded enforcement date from install.log
         pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
         if [[ -n "$pastDueDeadline" ]]; then
             paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
@@ -689,12 +811,20 @@ installedOSvsDDMenforcedOS() {
         hideSecondaryButton="NO"
     fi
 
-    # Version Comparison Result
+    # Version Comparison: Check if system meets DDM requirement
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
+
         versionComparisonResult="Up-to-date"
         info "DDM-enforced OS Version: $ddmVersionString"
+
     else
+
         versionComparisonResult="Update Required"
+
+        # Detect staged updates
+        detectStagedUpdate
+
+        # Determine if an "Update" or an "Upgrade" is needed
         info "DDM-enforced OS Version: $ddmVersionString"
         info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
         majorInstalled="${installedmacOSVersion%%.*}"
@@ -713,12 +843,12 @@ installedOSvsDDMenforcedOS() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Check User's Display Sleep Assertions (thanks, @techtrekkie!)
+# Check User’s Display Sleep Assertions (thanks, @techtrekkie!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function checkUserDisplaySleepAssertions() {
 
-    notice "Check ${loggedInUser}'s Display Sleep Assertions"
+    notice "Check ${loggedInUser}’s Display Sleep Assertions"
 
     local intervalSeconds=300  # Default: 300 seconds (i.e., 5 minutes)
     local intervalMinutes=$(( intervalSeconds / 60 ))
@@ -743,7 +873,7 @@ function checkUserDisplaySleepAssertions() {
             sleep "${intervalSeconds}"
         else
             userDisplaySleepAssertions="FALSE"
-            info "${loggedInUser}'s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
+            info "${loggedInUser}’s Display Sleep Assertion has ended after $(( checkCount * intervalMinutes )) minute(s)."
             IFS="${previousIFS}"
             return 0  # No active Display Sleep Assertions found
         fi
@@ -765,10 +895,10 @@ function checkUserDisplaySleepAssertions() {
 function updateRequiredVariables() {
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Organization's Branding Variables
+    # Organization’s Branding Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    # Organization's Overlayicon URL
+    # Organization’s Overlayicon URL
     local defaultOverlayiconURL="${organizationOverlayiconURL:-"https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"}"
     setPreferenceValue "organizationOverlayiconURL" "${organizationOverlayiconURL_managed}" "${organizationOverlayiconURL_local}" "${defaultOverlayiconURL}"
 
@@ -878,21 +1008,55 @@ function updateRequiredVariables() {
 
     local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
     if (( upTimeMin < allowedUptimeMinutes )); then
-        unset "excessiveUptimeWarningMessage"
+        excessiveUptimeWarningMessage=""
     fi
 
     # Disk Space Warning
+    local defaultDiskSpaceWarningMessage="<br><br>**Note:** Your Mac has only **${diskSpaceHumanReadable}**, which may prevent this macOS ${titleMessageUpdateOrUpgrade:l}."
+    setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${defaultDiskSpaceWarningMessage}"
+    replacePlaceholders "diskSpaceWarningMessage"
+
     if [[ -n "${freePercentage}" ]]; then
         belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
-        if [[ "${belowThreshold}" -eq 1 ]]; then
-            diskSpaceWarningMessage="<br><br>**Note:** Your Mac has only **${diskSpaceHumanReadable}**, which may prevent this macOS ${titleMessageUpdateOrUpgrade:l}."
-        else
-            unset "diskSpaceWarningMessage"
+        if [[ "${belowThreshold}" -ne 1 ]]; then
+            diskSpaceWarningMessage=""
         fi
     fi
 
+    # Staged Update Messaging
+    local defaultStagedUpdateMessage="<br><br>**Good news!** The macOS ${ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **${button1text}**."
+    local defaultPartiallyStagedUpdateMessage="<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
+    local defaultPendingDownloadMessage=""
 
-    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    # Load preferences (manager > local > default)
+    setPreferenceValue "stagedUpdateMessage" "${stagedUpdateMessage_managed}" "${stagedUpdateMessage_local}" "${defaultStagedUpdateMessage}"
+    setPreferenceValue "partiallyStagedUpdateMessage" "${partiallyStagedUpdateMessage_managed}" "${partiallyStagedUpdateMessage_local}" "${defaultPartiallyStagedUpdateMessage}"
+    setPreferenceValue "pendingDownloadMessage" "${pendingDownloadMessage_managed}" "${pendingDownloadMessage_local}" "${defaultPendingDownloadMessage}"
+
+    # Honor HideStagedUpdateInfo flag
+    if [[ "${hideStagedInfo}" == "1" ]]; then
+        updateReadyMessage=""
+    else
+        case "${updateStagingStatus}" in
+            "Fully staged")
+                updateReadyMessage="${stagedUpdateMessage}"
+                ;;
+            "Partially staged")
+                updateReadyMessage="${partiallyStagedUpdateMessage}"
+                ;;
+            "Pending download"|"Not detected")
+                updateReadyMessage="${pendingDownloadMessage}"
+                ;;
+            *)
+                updateReadyMessage=""
+                ;;
+        esac
+    fi
+
+    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.${updateReadyMessage}<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    if [[ -n "${updateReadyMessage}" && "${message}" == *"{updateReadyMessage}"* ]]; then
+        message=${message//\{updateReadyMessage\}/${updateReadyMessage}}
+    fi
     setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
     replacePlaceholders "message"
 
@@ -902,7 +1066,7 @@ function updateRequiredVariables() {
     # Infobox Variables
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    local defaultInfobox="**Current:** ${installedmacOSVersion}<br><br>**Required:** ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}<br><br>**Free Disk Space:** ${diskSpaceHumanReadable}"
+    local defaultInfobox="**Current:** macOS ${installedmacOSVersion}<br><br>**Required:** macOS ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}<br><br>**Free Disk Space:** ${diskSpaceHumanReadable}"
     setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
     replacePlaceholders "infobox"
 
@@ -1210,7 +1374,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
             quitScript "0"
         fi
     else
-        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+        info "Deadline is within 24 hours; ignoring ${loggedInUser}’s Display Sleep Assertions; proceeding …"
     fi
 
 
@@ -1367,10 +1531,10 @@ function launchDaemonStatus() {
 
     notice "LaunchDaemon Status"
     
-    launchDaemonStatus=$( launchctl list | grep "${launchDaemonLabel}" )
+    launchDaemonStatusResult=$( launchctl list | grep "${launchDaemonLabel}" )
 
-    if [[ -n "${launchDaemonStatus}" ]]; then
-        logComment "${launchDaemonStatus}"
+    if [[ -n "${launchDaemonStatusResult}" ]]; then
+        logComment "${launchDaemonStatusResult}"
     else
         logComment "${launchDaemonLabel} is NOT loaded"
     fi
@@ -1568,14 +1732,14 @@ if [[ -f "${launchDaemonPath}" ]]; then
 
     launchDaemonStatus
 
-    if [[ -n "${launchDaemonStatus}" ]]; then
+    if [[ -n "${launchDaemonStatusResult}" ]]; then
 
         logComment "${launchDaemonLabel} IS loaded"
 
     else
 
         logComment "Loading '${launchDaemonLabel}' …"
-        launchctl asuser $(id -u) bootstrap gui/$(id -u) "${launchDaemonPath}"
+        launchctl bootstrap system "${launchDaemonPath}"
         launchDaemonStatus
 
     fi

@@ -2,11 +2,12 @@
 
 ## Changelog
 
-### Version 2.2.0b9 (17-Dec-2025)
-- Addressed Feature Request: Intelligently display reminder dialog after rebooting #42
-- Added instructions for monitoring the client-side log
+### Version 2.2.0b12 (17-Dec-2025)
+- Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
+- Added instructions for monitoring the client-side log to the log file itself
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 - Updated `Resources/sample.plist` to address Feature Request #43
+- Added Detection for staged macOS updates (Addresses Feature Request #49)
 
 ### Version 2.1.0 (13-Dec-2025)
 - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)

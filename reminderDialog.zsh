@@ -1114,11 +1114,11 @@ if [[ "${1}" == "demo" ]]; then
     # Title / update-or-upgrade logic
     # If required major != installed major → upgrade, else update
     if [[ "${demoMajorVersion}" != "${installedmacOSVersion%%.*}" ]]; then
-        titleMessageUpdateOrUpgrade="Upgrade"
-        softwareUpdateButtonText="Upgrade Now"
+        titleMessageUpdateOrUpgrade="Demo Upgrade"
+        softwareUpdateButtonText="Demo Upgrade Now"
     else
-        titleMessageUpdateOrUpgrade="Update"
-        softwareUpdateButtonText="Restart Now"
+        titleMessageUpdateOrUpgrade="Demo Update"
+        softwareUpdateButtonText="Demo Restart Now"
     fi
 
     # Other variables normally generated in installedOSvsDDMenforcedOS

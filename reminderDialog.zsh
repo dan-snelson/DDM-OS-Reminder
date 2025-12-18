@@ -975,7 +975,7 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "Keep them movin' blades sharp!"
+    quitOut "Keep them movin’ blades sharp!"
 
     exit "${1}"
 

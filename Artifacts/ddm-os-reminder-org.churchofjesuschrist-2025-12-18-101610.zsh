@@ -21,12 +21,13 @@
 #
 # HISTORY
 #
-# Version 2.2.0b13, 17-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b13, 18-Dec-2025, Dan K. Snelson (@dan-snelson)
 # - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 # - Added instructions for monitoring the client-side log to the log file itself
 # - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 # - Updated `Resources/sample.plist` to address Feature Request #43
 # - Added Detection for staged macOS updates (Addresses Feature Request #49)
+# - Refactored Configuration Profile-related code
 #
 ####################################################################################################
 
@@ -612,18 +613,23 @@ function loadDefaultPreferences() {
 }
 
 function loadPreferenceOverrides() {
-    preFlight "Reading preference overrides from '${managedPreferencesPlist}.plist' (and '${localPreferencesPlist}.plist')"
     
     # Check if managed preferences exist
     local hasManagedPrefs=false
-    [[ -f ${managedPreferencesPlist}.plist ]] && hasManagedPrefs=true
+    if [[ -f ${managedPreferencesPlist}.plist ]]; then
+        hasManagedPrefs=true
+        preFlight "Reading preference overrides from '${managedPreferencesPlist}.plist'"
+    fi
     
     # Check if local preferences exist
     local hasLocalPrefs=false
-    [[ -f ${localPreferencesPlist}.plist ]] && hasLocalPrefs=true
+    if [[ -f ${localPreferencesPlist}.plist ]]; then
+        hasLocalPrefs=true
+        preFlight "Reading preference overrides from '${localPreferencesPlist}.plist'"
+    fi
     
     if [[ "${hasManagedPrefs}" == "false" && "${hasLocalPrefs}" == "false" ]]; then
-        info "No client-side preferences found; using defaults"
+        preFlight "No client-side preferences found; using script-defined defaults"
         loadDefaultPreferences
         return
     fi

@@ -857,7 +857,7 @@ function displayReminderDialog() {
         --button1text "${button1text}"
         --messagefont "size=14"
         --width 800
-        --height 600
+        --height 625
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )

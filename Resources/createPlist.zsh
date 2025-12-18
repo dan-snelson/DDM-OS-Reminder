@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.2.0b11"
+scriptVersion="2.2.0b12"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -106,6 +106,7 @@ esac
 # ─────────────────────────────────────────────────────────────
 defaultTitle=$(extract_default defaultTitle)
 defaultExcessiveUptimeWarningMessage=$(extract_default defaultExcessiveUptimeWarningMessage)
+defaultDiskSpaceWarningMessage=$(extract_default defaultDiskSpaceWarningMessage)
 defaultMessage=$(extract_default defaultMessage)
 defaultInfobox=$(extract_default defaultInfobox)
 defaultHelpmessage=$(extract_default defaultHelpmessage)
@@ -138,6 +139,7 @@ resolvedInfobuttontext="$defaultSupportKB"
 # ---------------------------------------------------------------------
 title_xml=$(process "$defaultTitle")
 excessiveUptimeWarningMessage_xml=$(process "$defaultExcessiveUptimeWarningMessage")
+diskSpaceWarningMessage_xml=$(process "$defaultDiskSpaceWarningMessage")
 stagedUpdateMessage_xml=$(process "${defaultStagedUpdateMessage}")
 partiallyStagedUpdateMessage_xml=$(process "${defaultPartiallyStagedUpdateMessage}")
 pendingDownloadMessage_xml=$(process "${defaultPendingDownloadMessage}")
@@ -272,7 +274,7 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
         <dict>
             <key>PayloadContent</key>
             <dict>
-                <key>${reverseDomainNameNotation}</key>
+                <key>${reverseDomainNameNotation}.${organizationScriptName}</key>
                 <dict>
                     <key>Forced</key>
                     <array>

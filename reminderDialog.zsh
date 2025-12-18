@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b11"
+scriptVersion="2.2.0b12"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -571,7 +571,7 @@ installedOSvsDDMenforcedOS() {
         hideSecondaryButton="NO"
     fi
 
-    # Version Comparison for pending DDM-enforced update
+    # Version Comparison: Check if system meets DDM requirement
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
 
         versionComparisonResult="Up-to-date"
@@ -768,16 +768,18 @@ function updateRequiredVariables() {
 
     local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
     if (( upTimeMin < allowedUptimeMinutes )); then
-        unset "excessiveUptimeWarningMessage"
+        excessiveUptimeWarningMessage=""
     fi
 
     # Disk Space Warning
+    local defaultDiskSpaceWarningMessage="<br><br>**Note:** Your Mac has only **${diskSpaceHumanReadable}**, which may prevent this macOS ${titleMessageUpdateOrUpgrade:l}."
+    setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${defaultDiskSpaceWarningMessage}"
+    replacePlaceholders "diskSpaceWarningMessage"
+
     if [[ -n "${freePercentage}" ]]; then
         belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
-        if [[ "${belowThreshold}" -eq 1 ]]; then
-            diskSpaceWarningMessage="<br><br>**Note:** Your Mac has only **${diskSpaceHumanReadable}**, which may prevent this macOS ${titleMessageUpdateOrUpgrade:l}."
-        else
-            unset "diskSpaceWarningMessage"
+        if [[ "${belowThreshold}" -ne 1 ]]; then
+            diskSpaceWarningMessage=""
         fi
     fi
 

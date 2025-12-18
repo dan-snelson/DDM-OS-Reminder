@@ -372,18 +372,23 @@ function loadDefaultPreferences() {
 }
 
 function loadPreferenceOverrides() {
-    preFlight "Reading preference overrides from '${managedPreferencesPlist}.plist' (and '${localPreferencesPlist}.plist')"
     
     # Check if managed preferences exist
     local hasManagedPrefs=false
-    [[ -f ${managedPreferencesPlist}.plist ]] && hasManagedPrefs=true
+    if [[ -f ${managedPreferencesPlist}.plist ]]; then
+        hasManagedPrefs=true
+        preFlight "Reading preference overrides from '${managedPreferencesPlist}.plist'"
+    fi
     
     # Check if local preferences exist
     local hasLocalPrefs=false
-    [[ -f ${localPreferencesPlist}.plist ]] && hasLocalPrefs=true
+    if [[ -f ${localPreferencesPlist}.plist ]]; then
+        hasLocalPrefs=true
+        preFlight "Reading preference overrides from '${localPreferencesPlist}.plist'"
+    fi
     
     if [[ "${hasManagedPrefs}" == "false" && "${hasLocalPrefs}" == "false" ]]; then
-        info "No client-side preferences found; using defaults"
+        preFlight "No client-side preferences found; using script-defined defaults"
         loadDefaultPreferences
         return
     fi

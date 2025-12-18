@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.2.0b13, 18-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b14, 18-Dec-2025, Dan K. Snelson (@dan-snelson)
 # - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 # - Added instructions for monitoring the client-side log to the log file itself
 # - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
@@ -42,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b13"
+scriptVersion="2.2.0b14"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -261,7 +261,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b13"
+scriptVersion="2.2.0b14"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1063,10 +1063,11 @@ function updateRequiredVariables() {
     computeDynamicWarnings
     computeUpdateStagingMessage
     
-    # Replace all placeholders in text fields
-    local textFields=("title" "button1text" "button2text" "infobuttontext" "message" 
-                      "infobox" "helpmessage" "helpimage" "excessiveUptimeWarningMessage" 
-                      "diskSpaceWarningMessage")
+    # Replace all placeholders in text fields ("message" must be last)
+    local textFields=("title" "button1text" "button2text" "infobuttontext"
+                    "infobox" "helpmessage" "helpimage"
+                    "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+                    "message")
     
     for field in "${textFields[@]}"; do
         replacePlaceholders "${field}"
@@ -1098,7 +1099,7 @@ function displayReminderDialog() {
         --button1text "${button1text}"
         --messagefont "size=14"
         --width 800
-        --height 600
+        --height 625
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )

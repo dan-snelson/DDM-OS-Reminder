@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b13"
+scriptVersion="2.2.0b14"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -822,10 +822,11 @@ function updateRequiredVariables() {
     computeDynamicWarnings
     computeUpdateStagingMessage
     
-    # Replace all placeholders in text fields
-    local textFields=("title" "button1text" "button2text" "infobuttontext" "message" 
-                      "infobox" "helpmessage" "helpimage" "excessiveUptimeWarningMessage" 
-                      "diskSpaceWarningMessage")
+    # Replace all placeholders in text fields ("message" must be last)
+    local textFields=("title" "button1text" "button2text" "infobuttontext"
+                    "infobox" "helpmessage" "helpimage"
+                    "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+                    "message")
     
     for field in "${textFields[@]}"; do
         replacePlaceholders "${field}"

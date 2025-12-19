@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 2.2.0b15 (18-Dec-2025)
+### Version 2.2.0b16 (19-Dec-2025)
 - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 - Added instructions for monitoring the client-side log to the log file itself
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)

@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 2.2.0b15 -->
-    <!-- Generated on: 2025-12-18-162137 -->
+    <!-- Version: 2.2.0b16 -->
+    <!-- Generated on: 2025-12-19-085344 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -43,11 +43,11 @@
     <key>SupportTeamWebsite</key>
     <string>https://support.assembled.org</string>
     <key>SupportKB</key>
-    <string>108382</string>
+    <string>Update macOS on Mac</string>
     <key>InfoButtonAction</key>
     <string>https://support.apple.com/108382</string>
     <key>SupportKBURL</key>
-    <string>[108382](https://support.apple.com/108382)</string>
+    <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
 
     <!-- Dialog text -->
     <key>Title</key>
@@ -57,7 +57,7 @@
     <key>Button2Text</key>
     <string>assembled Remind Me Later</string>
     <key>InfoButtonText</key>
-    <string>assembled 108382</string>
+    <string>assembled Update macOS on Mac</string>
     <key>ExcessiveUptimeWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
     <key>DiskSpaceWarningMessage</key>

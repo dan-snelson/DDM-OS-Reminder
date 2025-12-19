@@ -43,11 +43,11 @@
                                     <key>SupportTeamWebsite</key>
                                     <string>https://support.assembled.org</string>
                                     <key>SupportKB</key>
-                                    <string>108382</string>
+                                    <string>Update macOS on Mac</string>
                                     <key>InfoButtonAction</key>
                                     <string>https://support.apple.com/108382</string>
                                     <key>SupportKBURL</key>
-                                    <string>[108382](https://support.apple.com/108382)</string>
+                                    <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
                                     <key>Title</key>
                                     <string>assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
                                     <key>Button1Text</key>
@@ -55,7 +55,7 @@
                                     <key>Button2Text</key>
                                     <string>assembled Remind Me Later</string>
                                     <key>InfoButtonText</key>
-                                    <string>assembled 108382</string>
+                                    <string>assembled Update macOS on Mac</string>
                                     <key>ExcessiveUptimeWarningMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
                                     <key>DiskSpaceWarningMessage</key>
@@ -84,26 +84,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>36B1D3B1-95EB-4885-AB82-02C2CDDFF6F7</string>
+            <string>4BAF9698-E898-4706-8E00-BDF2375EB8DF</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>36B1D3B1-95EB-4885-AB82-02C2CDDFF6F7</string>
+            <string>4BAF9698-E898-4706-8E00-BDF2375EB8DF</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.2.0b15) to org.churchofjesuschrist standards. Created: 2025-12-18-162137</string>
+    <string>Configures DDM OS Reminder (2.2.0b16) to org.churchofjesuschrist standards. Created: 2025-12-19-085344</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>6A1C5646-C862-4B16-9DAD-7CFCF5326365</string>
+    <string>3B3A0862-C52D-4642-A0C0-6BF9DC8E1483</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -113,7 +113,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>6A1C5646-C862-4B16-9DAD-7CFCF5326365</string>
+    <string>3B3A0862-C52D-4642-A0C0-6BF9DC8E1483</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

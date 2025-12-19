@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.2.0b15, 18-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b16, 19-Dec-2025, Dan K. Snelson (@dan-snelson)
 # - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 # - Added instructions for monitoring the client-side log to the log file itself
 # - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
@@ -42,7 +42,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b15"
+scriptVersion="2.2.0b16"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -65,16 +65,16 @@ resetConfiguration="${4:-"All"}"
 # Organization Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Organization's Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
-
-# Script Human-readabale Name
+# Organization’s Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder"
 
-# Organization's Script Name
+# Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
+reverseDomainNameNotation="org.churchofjesuschrist"
+
+# Organization’s Script Name
 organizationScriptName="dor"
 
-# Organization's Directory (i.e., where your client-side scripts reside)
+# Organization’s Directory (i.e., where your client-side scripts reside)
 organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
 
 # LaunchDaemon Name & Path
@@ -246,10 +246,10 @@ cat <<'ENDOFSCRIPT'
 #   The following function creates the client-side DDM OS Reminder script, which dynamically
 #   generates the end-user message.
 #
-#   Either copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh"
+#   Either copy-pasta your Organization’s customized "DDM-OS-Reminder End-user Message.zsh"
 #   script between the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below — making sure to leave
 #   a full return at the end of the content before the "ENDOFSCRIPT" line — or use the new
-#   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your organization's
+#   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your Organization’s
 #   customized script:
 #
 #       cd Resources
@@ -465,22 +465,28 @@ function dialogInstall() {
 function dialogCheck() {
 
     # Check for Dialog and install if not found
-    if [ ! -x "/Library/Application Support/Dialog/Dialog.app" ]; then
+    if [[ ! -x "/Library/Application Support/Dialog/Dialog.app" ]]; then
 
-        preFlight "swiftDialog not found. Installing..."
+        preFlight "swiftDialog not found; installing …"
         dialogInstall
+        if [[ ! -x "/usr/local/bin/dialog" ]]; then
+            fatal "swiftDialog still not found; are downloads from GitHub blocked on this Mac?"
+        fi
 
     else
 
         dialogVersion=$(/usr/local/bin/dialog --version)
         if [[ "${dialogVersion}" < "${swiftDialogMinimumRequiredVersion}" ]]; then
             
-            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating..."
+            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating …"
             dialogInstall
-            
+            if [[ ! -x "/usr/local/bin/dialog" ]]; then
+                fatal "Unable to update swiftDialog; are downloads from GitHub blocked on this Mac?"
+            fi
+
         else
 
-            preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+            preFlight "swiftDialog version ${dialogVersion} found; proceeding …"
 
         fi
     

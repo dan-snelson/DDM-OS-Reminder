@@ -17,7 +17,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b18"
+scriptVersion="2.2.0rc1"
 
 # Client-side Log (must match value set in "ddmOSReminder.zsh" script)
 scriptLog="/var/log/org.churchofjesuschrist.log"

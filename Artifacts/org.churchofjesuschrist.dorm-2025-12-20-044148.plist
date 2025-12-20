@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 2.2.0b12 -->
-    <!-- Generated on: 2025-12-17-210203 -->
+    <!-- Version: 2.2.0b18 -->
+    <!-- Generated on: 2025-12-20-044148 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -43,11 +43,11 @@
     <key>SupportTeamWebsite</key>
     <string>https://support.assembled.org</string>
     <key>SupportKB</key>
-    <string>108382</string>
+    <string>Update macOS on Mac</string>
     <key>InfoButtonAction</key>
     <string>https://support.apple.com/108382</string>
     <key>SupportKBURL</key>
-    <string>[108382](https://support.apple.com/108382)</string>
+    <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
 
     <!-- Dialog text -->
     <key>Title</key>
@@ -57,15 +57,15 @@
     <key>Button2Text</key>
     <string>assembled Remind Me Later</string>
     <key>InfoButtonText</key>
-    <string>assembled 108382</string>
+    <string>assembled Update macOS on Mac</string>
     <key>ExcessiveUptimeWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
     <key>DiskSpaceWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
     <key>StagedUpdateMessage</key>
-    <string>&lt;br&gt;&lt;br&gt;assembled **Good news!** The macOS update has already been downloaded. When ready, click **{button1text}** to install.</string>
+    <string>&lt;br&gt;&lt;br&gt;assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
     <key>PartiallyStagedUpdateMessage</key>
-    <string>&lt;br&gt;&lt;br&gt;assembled Your Mac is currently preparing the required macOS update.</string>
+    <string>&lt;br&gt;&lt;br&gt;assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
     <key>PendingDownloadMessage</key>
     <string>&lt;br&gt;&lt;br&gt;assembled Your Mac will begin downloading the update shortly.</string>
     <key>HideStagedUpdateInfo</key>

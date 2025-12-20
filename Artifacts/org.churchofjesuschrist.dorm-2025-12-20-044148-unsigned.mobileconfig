@@ -43,11 +43,11 @@
                                     <key>SupportTeamWebsite</key>
                                     <string>https://support.assembled.org</string>
                                     <key>SupportKB</key>
-                                    <string>108382</string>
+                                    <string>Update macOS on Mac</string>
                                     <key>InfoButtonAction</key>
                                     <string>https://support.apple.com/108382</string>
                                     <key>SupportKBURL</key>
-                                    <string>[108382](https://support.apple.com/108382)</string>
+                                    <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
                                     <key>Title</key>
                                     <string>assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
                                     <key>Button1Text</key>
@@ -55,15 +55,15 @@
                                     <key>Button2Text</key>
                                     <string>assembled Remind Me Later</string>
                                     <key>InfoButtonText</key>
-                                    <string>assembled 108382</string>
+                                    <string>assembled Update macOS on Mac</string>
                                     <key>ExcessiveUptimeWarningMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
                                     <key>DiskSpaceWarningMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
                                     <key>StagedUpdateMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;assembled **Good news!** The macOS update has already been downloaded. When ready, click **{button1text}** to install.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
                                     <key>PartiallyStagedUpdateMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;assembled Your Mac is currently preparing the required macOS update.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
                                     <key>PendingDownloadMessage</key>
                                     <string>&lt;br&gt;&lt;br&gt;assembled Your Mac will begin downloading the update shortly.</string>
                                     <key>HideStagedUpdateInfo</key>
@@ -84,26 +84,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>522E56E4-350D-487B-ADB4-AE89BFD9A20D</string>
+            <string>3DC276E0-EC69-4FAD-8598-1F3CC6AD827B</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>522E56E4-350D-487B-ADB4-AE89BFD9A20D</string>
+            <string>3DC276E0-EC69-4FAD-8598-1F3CC6AD827B</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.2.0b12) to org.churchofjesuschrist standards. Created: 2025-12-17-210203</string>
+    <string>Configures DDM OS Reminder (2.2.0b18) to org.churchofjesuschrist standards. Created: 2025-12-20-044148</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>382F9B74-C597-4A8A-8152-84F5C14824F8</string>
+    <string>531AD370-9E5A-4C1E-A604-B29D06E262D7</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -113,7 +113,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>382F9B74-C597-4A8A-8152-84F5C14824F8</string>
+    <string>531AD370-9E5A-4C1E-A604-B29D06E262D7</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

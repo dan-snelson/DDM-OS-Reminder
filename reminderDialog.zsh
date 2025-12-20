@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b12"
+scriptVersion="2.2.0b18"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -34,10 +34,10 @@ autoload -Uz is-at-least
 # Organization Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Script Human-readable Name
+# Organization’s Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
-# Organization’s reverse domain (used for plist domains)
+# Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
 reverseDomainNameNotation="org.churchofjesuschrist"
 
 # Organization’s Script Name
@@ -111,13 +111,102 @@ freeSpace=$(diskutil info / | awk -F ': ' '/Free Space|Available Space|Container
 diskBytes=$(diskutil info / | awk -F '[()]' '/Total Space/ {print $2}' | awk '{print $1}')
 freeBytes=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk '{print $1}')
 
-if [[ -n "${diskBytes}" && -n "${freeBytes}" ]]; then
+if [[ -n "${diskBytes}" && -n "${freeBytes}" && "${diskBytes}" -gt 0 ]]; then
     freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
 else
-    freePercentage=""  # fallback
+    error "Invalid disk space data: diskBytes=${diskBytes}, freeBytes=${freeBytes}"
+    freePercentage="Unknown"
 fi
 
 diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Preference Configuration Map
+# - Format: key|type|defaultValue
+# - Types: string, numeric, boolean
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+declare -A preferenceConfiguration=(
+    # Logging and Timing
+    ["scriptLog"]="string|/var/log/org.churchofjesuschrist.log"
+    ["daysBeforeDeadlineDisplayReminder"]="numeric|60"
+    ["daysBeforeDeadlineBlurscreen"]="numeric|45"
+    ["daysBeforeDeadlineHidingButton2"]="numeric|21"
+    ["daysOfExcessiveUptimeWarning"]="numeric|0"
+    ["meetingDelay"]="numeric|75"
+    ["minimumDiskFreePercentage"]="numeric|99"
+    
+    # Branding
+    ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"
+    ["swapOverlayAndLogo"]="boolean|NO"
+    ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
+    
+    # Support Team
+    ["supportTeamName"]="string|IT Support"
+    ["supportTeamPhone"]="string|+1 (801) 555-1212"
+    ["supportTeamEmail"]="string|rescue@domain.org"
+    ["supportTeamWebsite"]="string|https://support.domain.org"
+    ["supportKB"]="string|Update macOS on Mac"
+    ["infobuttonaction"]="string|https://support.apple.com/108382"
+    ["supportKBURL"]="string|[Update macOS on Mac](https://support.apple.com/108382)"
+    
+    # UI Text
+    ["title"]="string|macOS {titleMessageUpdateOrUpgrade} Required"
+    ["button1text"]="string|Open Software Update"
+    ["button2text"]="string|Remind Me Later"
+    ["infobuttontext"]="string|Update macOS on Mac"
+    ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
+    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
+    
+    # Update Staging Messages
+    ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
+    ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
+    ["pendingDownloadMessage"]="string|<br><br>Your Mac will begin downloading the update shortly."
+    ["hideStagedInfo"]="boolean|NO"
+    
+    # Complex UI Text
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** {ddmVersionStringDaysRemaining}<br><br>**Last Restart:** {uptimeHumanReadable}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
+    ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
+    ["helpimage"]="string|qr={infobuttonaction}"
+)
+
+    # Map of preference keys to their plist key names (for keys that differ)
+declare -A plistKeyMap=(
+    ["scriptLog"]="ScriptLog"
+    ["daysBeforeDeadlineDisplayReminder"]="DaysBeforeDeadlineDisplayReminder"
+    ["daysBeforeDeadlineBlurscreen"]="DaysBeforeDeadlineBlurscreen"
+    ["daysBeforeDeadlineHidingButton2"]="DaysBeforeDeadlineHidingButton2"
+    ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
+    ["meetingDelay"]="MeetingDelay"
+    ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
+    ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
+    ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
+    ["supportTeamName"]="SupportTeamName"
+    ["supportTeamPhone"]="SupportTeamPhone"
+    ["supportTeamEmail"]="SupportTeamEmail"
+    ["supportTeamWebsite"]="SupportTeamWebsite"
+    ["supportKB"]="SupportKB"
+    ["infobuttonaction"]="InfoButtonAction"
+    ["supportKBURL"]="SupportKBURL"
+    ["title"]="Title"
+    ["button1text"]="Button1Text"
+    ["button2text"]="Button2Text"
+    ["infobuttontext"]="InfoButtonText"
+    ["excessiveUptimeWarningMessage"]="ExcessiveUptimeWarningMessage"
+    ["diskSpaceWarningMessage"]="DiskSpaceWarningMessage"
+    ["stagedUpdateMessage"]="StagedUpdateMessage"
+    ["partiallyStagedUpdateMessage"]="PartiallyStagedUpdateMessage"
+    ["pendingDownloadMessage"]="PendingDownloadMessage"
+    ["hideStagedInfo"]="HideStagedUpdateInfo"
+    ["message"]="Message"
+    ["infobox"]="InfoBox"
+    ["helpmessage"]="HelpMessage"
+    ["helpimage"]="HelpImage"
+)
 
 
 
@@ -128,7 +217,7 @@ diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"
 ####################################################################################################
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Client-side Logging
+# Client-side Logging (any formatting changes must also be reflected in "Quiet period")
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function updateScriptLog() {
@@ -148,11 +237,19 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Preference Helpers
+# Preference Loading and Management
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function setPreferenceValue() {
+function normalizeBooleanValue() {
+    local value="${1}"
+    case "${value:l}" in
+        1|true|yes) echo "YES" ;;
+        0|false|no) echo "NO" ;;
+        *)         echo "" ;;
+    esac
+}
 
+function setPreferenceValue() {
     local targetVariable="${1}"
     local managedValue="${2}"
     local localValue="${3}"
@@ -168,18 +265,16 @@ function setPreferenceValue() {
     fi
 
     printf -v "${targetVariable}" '%s' "${chosenValue}"
-
 }
 
 function setNumericPreferenceValue() {
-
     local targetVariable="${1}"
     local managedValue="${2}"
     local localValue="${3}"
     local defaultValue="${4}"
     local candidate=""
 
-    if [[ -n "${managedValue}" && "${managedValue}" == <-> ]]; then
+    if [[ "${managedValue}" =~ ^[0-9]+$ ]] && (( managedValue >= 0 && managedValue <= 999 )); then
         candidate="${managedValue}"
     elif [[ -n "${localValue}" && "${localValue}" == <-> ]]; then
         candidate="${localValue}"
@@ -188,76 +283,166 @@ function setNumericPreferenceValue() {
     fi
 
     printf -v "${targetVariable}" '%s' "${candidate}"
+}
 
+function setBooleanPreferenceValue() {
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local localValue="${3}"
+    local defaultValue="${4}"
+    local chosenValue="${defaultValue}"
+    local normalized=""
+
+    # Managed takes precedence
+    if [[ -n "${managedValue}" ]]; then
+        normalized=$(normalizeBooleanValue "${managedValue}")
+        [[ -n "${normalized}" ]] && chosenValue="${normalized}"
+    elif [[ -n "${localValue}" ]]; then
+        normalized=$(normalizeBooleanValue "${localValue}")
+        [[ -n "${normalized}" ]] && chosenValue="${normalized}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${chosenValue}"
+}
+
+function loadDefaultPreferences() {
+    for prefKey in "${(@k)preferenceConfiguration}"; do
+        local prefConfig="${preferenceConfiguration[$prefKey]}"
+        local defaultValue="${prefConfig#*|}"
+        printf -v "${prefKey}" '%s' "${defaultValue}"
+    done
+}
+
+function loadPreferenceOverrides() {
+    
+    # Check if managed preferences exist
+    local hasManagedPrefs=false
+    if [[ -f ${managedPreferencesPlist}.plist ]]; then
+        hasManagedPrefs=true
+        preFlight "Reading preference overrides from '${managedPreferencesPlist}.plist'"
+    fi
+    
+    # Check if local preferences exist
+    local hasLocalPrefs=false
+    if [[ -f ${localPreferencesPlist}.plist ]]; then
+        hasLocalPrefs=true
+        preFlight "Reading preference overrides from '${localPreferencesPlist}.plist'"
+    fi
+    
+    if [[ "${hasManagedPrefs}" == "false" && "${hasLocalPrefs}" == "false" ]]; then
+        preFlight "No client-side preferences found; using script-defined defaults"
+        loadDefaultPreferences
+        return
+    fi
+    
+    # Load all preferences using the configuration map
+    for prefKey in "${(@k)preferenceConfiguration}"; do
+        local prefConfig="${preferenceConfiguration[$prefKey]}"
+        local prefType="${prefConfig%%|*}"
+        local defaultValue="${prefConfig#*|}"
+        local plistKey="${plistKeyMap[$prefKey]:-$prefKey}"
+        
+        # Read managed value
+        local managedValue=""
+        if [[ "${hasManagedPrefs}" == "true" ]]; then
+            managedValue=$(defaults read "${managedPreferencesPlist}" "${plistKey}" 2>/dev/null)
+        fi
+        
+        # Read local value
+        local localValue=""
+        if [[ "${hasLocalPrefs}" == "true" ]]; then
+            localValue=$(defaults read "${localPreferencesPlist}" "${plistKey}" 2>/dev/null)
+        fi
+        
+        # Apply the preference based on type
+        case "${prefType}" in
+            numeric)
+                setNumericPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                ;;
+            boolean)
+                setBooleanPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                ;;
+            string|*)
+                setPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                ;;
+        esac
+    done
+    
+    # Special handling for date format
+    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+    
+    preFlight "Preferences loaded"
+
+}
+
+function validatePreferenceLoad() {
+    # Verify critical preferences loaded correctly
+    local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
+    for var in "${criticalVars[@]}"; do
+        if [[ -z "${(P)var}" ]]; then
+            warning "Critical preference '${var}' is empty; using default"
+        fi
+    done
+}
+
+function buildPlaceholderMap() {
+    declare -gA PLACEHOLDER_MAP=(
+        [weekday]="$( date +'%A' )"
+        [userfirstname]="${loggedInUserFirstname}"
+        [loggedInUserFirstname]="${loggedInUserFirstname}"
+        [ddmVersionString]="${ddmVersionString}"
+        [ddmEnforcedInstallDateHumanReadable]="${ddmEnforcedInstallDateHumanReadable}"
+        [installedmacOSVersion]="${installedmacOSVersion}"
+        [ddmVersionStringDeadlineHumanReadable]="${ddmVersionStringDeadlineHumanReadable}"
+        [ddmVersionStringDaysRemaining]="${ddmVersionStringDaysRemaining}"
+        [titleMessageUpdateOrUpgrade]="${titleMessageUpdateOrUpgrade}"
+        [uptimeHumanReadable]="${uptimeHumanReadable}"
+        [excessiveUptimeWarningMessage]="${excessiveUptimeWarningMessage}"
+        [updateReadyMessage]="${updateReadyMessage}"
+        [diskSpaceHumanReadable]="${diskSpaceHumanReadable}"
+        [diskSpaceWarningMessage]="${diskSpaceWarningMessage}"
+        [softwareUpdateButtonText]="${softwareUpdateButtonText}"
+        [button1text]="${button1text}"
+        [button2text]="${button2text}"
+        [supportTeamName]="${supportTeamName}"
+        [supportTeamPhone]="${supportTeamPhone}"
+        [supportTeamEmail]="${supportTeamEmail}"
+        [supportTeamWebsite]="${supportTeamWebsite}"
+        [supportKBURL]="${supportKBURL}"
+        [supportKB]="${supportKB}"
+        [infobuttonaction]="${infobuttonaction}"
+        [dialogVersion]="$(/usr/local/bin/dialog -v 2>/dev/null)"
+        [scriptVersion]="${scriptVersion}"
+    )
 }
 
 function replacePlaceholders() {
-
     local targetVariable="${1}"
     local value="${(P)targetVariable}"
 
-    # Handle both {placeholder} from plist and \{placeholder\} from inline defaults
-    value=${value//\{weekday\}/$( date +'%A' )}
-    value=${value//'{weekday}'/$( date +'%A' )}
-    value=${value//\{userfirstname\}/${loggedInUserFirstname}}
-    value=${value//'{userfirstname}'/${loggedInUserFirstname}}
-    value=${value//\{loggedInUserFirstname\}/${loggedInUserFirstname}}
-    value=${value//'{loggedInUserFirstname}'/${loggedInUserFirstname}}
-    value=${value//\{ddmVersionString\}/${ddmVersionString}}
-    value=${value//'{ddmVersionString}'/${ddmVersionString}}
-    value=${value//\{ddmEnforcedInstallDateHumanReadable\}/${ddmEnforcedInstallDateHumanReadable}}
-    value=${value//'{ddmEnforcedInstallDateHumanReadable}'/${ddmEnforcedInstallDateHumanReadable}}
-    value=${value//\{installedmacOSVersion\}/${installedmacOSVersion}}
-    value=${value//'{installedmacOSVersion}'/${installedmacOSVersion}}
-    value=${value//\{ddmVersionStringDeadlineHumanReadable\}/${ddmVersionStringDeadlineHumanReadable}}
-    value=${value//'{ddmVersionStringDeadlineHumanReadable}'/${ddmVersionStringDeadlineHumanReadable}}
-    value=${value//\{ddmVersionStringDaysRemaining\}/${ddmVersionStringDaysRemaining}}
-    value=${value//'{ddmVersionStringDaysRemaining}'/${ddmVersionStringDaysRemaining}}
-    value=${value//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
-    value=${value//'{titleMessageUpdateOrUpgrade}'/${titleMessageUpdateOrUpgrade}}
-    value=${value//\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
-    value=${value//'{titleMessageUpdateOrUpgrade:l}'/${titleMessageUpdateOrUpgrade:l}}
-    value=${value//\{uptimeHumanReadable\}/${uptimeHumanReadable}}
-    value=${value//'{uptimeHumanReadable}'/${uptimeHumanReadable}}
-    value=${value//\{excessiveUptimeWarningMessage\}/${excessiveUptimeWarningMessage}}
-    value=${value//'{excessiveUptimeWarningMessage}'/${excessiveUptimeWarningMessage}}
-    value=${value//\{updateReadyMessage\}/${updateReadyMessage}}
-    value=${value//'{updateReadyMessage}'/${updateReadyMessage}}
-    value=${value//\{diskSpaceHumanReadable\}/${diskSpaceHumanReadable}}
-    value=${value//'{diskSpaceHumanReadable}'/${diskSpaceHumanReadable}}
-    value=${value//\{diskSpaceWarningMessage\}/${diskSpaceWarningMessage}}
-    value=${value//'{diskSpaceWarningMessage}'/${diskSpaceWarningMessage}}
-    value=${value//\{softwareUpdateButtonText\}/${softwareUpdateButtonText}}
-    value=${value//'{softwareUpdateButtonText}'/${softwareUpdateButtonText}}
-    value=${value//\{button1text\}/${button1text}}
-    value=${value//'{button1text}'/${button1text}}
-    value=${value//\{button2text\}/${button2text}}
-    value=${value//'{button2text}'/${button2text}}
-    value=${value//\{supportTeamName\}/${supportTeamName}}
-    value=${value//'{supportTeamName}'/${supportTeamName}}
-    value=${value//\{supportTeamPhone\}/${supportTeamPhone}}
-    value=${value//'{supportTeamPhone}'/${supportTeamPhone}}
-    value=${value//\{supportTeamEmail\}/${supportTeamEmail}}
-    value=${value//'{supportTeamEmail}'/${supportTeamEmail}}
-    value=${value//\{supportTeamWebsite\}/${supportTeamWebsite}}
-    value=${value//'{supportTeamWebsite}'/${supportTeamWebsite}}
-    value=${value//\{supportKBURL\}/${supportKBURL}}
-    value=${value//'{supportKBURL}'/${supportKBURL}}
-    value=${value//\{supportKB\}/${supportKB}}
-    value=${value//'{supportKB}'/${supportKB}}
-    value=${value//\{infobuttonaction\}/${infobuttonaction}}
-    value=${value//'{infobuttonaction}'/${infobuttonaction}}
-    value=${value//\{dialogVersion\}/$(/usr/local/bin/dialog -v 2>/dev/null)}
-    value=${value//'{dialogVersion}'/$(/usr/local/bin/dialog -v 2>/dev/null)}
-    value=${value//\{scriptVersion\}/${scriptVersion}}
-    value=${value//'{scriptVersion}'/${scriptVersion}}
+    # Resolve nested placeholders: run multiple passes until stable
+    local maxPasses=5
+    local pass=0
+    local previousValue
+
+    while (( pass < maxPasses )); do
+        previousValue="${value}"
+
+        for placeholder replaceValue in "${(@kv)PLACEHOLDER_MAP}"; do
+            value=${value//\{${placeholder}\}/${replaceValue}}
+            value=${value//\{${placeholder}:l\}/${replaceValue:l}}
+        done
+
+        ((pass++))
+
+        # Stop if nothing changed in this pass
+        [[ "${value}" == "${previousValue}" ]] && break
+    done
 
     printf -v "${targetVariable}" '%s' "${value}"
-
 }
 
 function applyHideRules() {
-
     # Hide info button explicitly
     if [[ "${infobuttontext}" == "hide" ]]; then
         infobuttontext=""
@@ -272,89 +457,31 @@ function applyHideRules() {
     if [[ "${hideSecondaryButton}" == "YES" ]]; then
         button2text=""
     fi
-
 }
 
-function loadPreferenceOverrides() {
-    if [[ -f ${managedPreferencesPlist}.plist ]]; then
-        scriptLog_managed=$(defaults read "${managedPreferencesPlist}" ScriptLog 2> /dev/null)
-        daysBeforeDeadlineDisplayReminder_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
-        daysBeforeDeadlineBlurscreen_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
-        daysBeforeDeadlineHidingButton2_managed=$(defaults read "${managedPreferencesPlist}" DaysBeforeDeadlineHidingButton2 2> /dev/null)
-        daysOfExcessiveUptimeWarning_managed=$(defaults read "${managedPreferencesPlist}" DaysOfExcessiveUptimeWarning 2> /dev/null)
-        meetingDelay_managed=$(defaults read "${managedPreferencesPlist}" MeetingDelay 2> /dev/null)
-        organizationOverlayiconURL_managed=$(defaults read "${managedPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
-        swapOverlayAndLogo_managed=$(defaults read "${managedPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
-        dateFormatDeadlineHumanReadable_managed=$(defaults read "${managedPreferencesPlist}" DateFormatDeadlineHumanReadable 2> /dev/null)
-        supportTeamName_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamName 2> /dev/null)
-        supportTeamPhone_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamPhone 2> /dev/null)
-        supportTeamEmail_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamEmail 2> /dev/null)
-        supportTeamWebsite_managed=$(defaults read "${managedPreferencesPlist}" SupportTeamWebsite 2> /dev/null)
-        supportKB_managed=$(defaults read "${managedPreferencesPlist}" SupportKB 2> /dev/null)
-        infobuttonaction_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonAction 2> /dev/null)
-        supportKBURL_managed=$(defaults read "${managedPreferencesPlist}" SupportKBURL 2> /dev/null)
-        title_managed=$(defaults read "${managedPreferencesPlist}" Title 2> /dev/null)
-        button1text_managed=$(defaults read "${managedPreferencesPlist}" Button1Text 2> /dev/null)
-        button2text_managed=$(defaults read "${managedPreferencesPlist}" Button2Text 2> /dev/null)
-        excessiveUptimeWarningMessage_managed=$(defaults read "${managedPreferencesPlist}" ExcessiveUptimeWarningMessage 2> /dev/null)
-        minimumDiskFreePercentage_managed=$(defaults read "${managedPreferencesPlist}" MinimumDiskFreePercentage 2> /dev/null)
-        diskSpaceWarningMessage_managed=$(defaults read "${managedPreferencesPlist}" DiskSpaceWarningMessage 2> /dev/null)
-        message_managed=$(defaults read "${managedPreferencesPlist}" Message 2> /dev/null)
-        infobuttontext_managed=$(defaults read "${managedPreferencesPlist}" InfoButtonText 2> /dev/null)
-        infobox_managed=$(defaults read "${managedPreferencesPlist}" InfoBox 2> /dev/null)
-        helpmessage_managed=$(defaults read "${managedPreferencesPlist}" HelpMessage 2> /dev/null)
-        helpimage_managed=$(defaults read "${managedPreferencesPlist}" HelpImage 2> /dev/null)
-        stagedUpdateMessage_managed=$(defaults read "${managedPreferencesPlist}" StagedUpdateMessage 2>/dev/null)
-        partiallyStagedUpdateMessage_managed=$(defaults read "${managedPreferencesPlist}" PartiallyStagedUpdateMessage 2>/dev/null)
-        pendingDownloadMessage_managed=$(defaults read "${managedPreferencesPlist}" PendingDownloadMessage 2>/dev/null)
-        hideStagedInfo_managed=$(defaults read "${managedPreferencesPlist}" HideStagedUpdateInfo 2>/dev/null)
+function updateRequiredVariables() {
+    downloadBrandingAssets
+    dialogBinary="/usr/local/bin/dialog"
+    if [[ ! -x "${dialogBinary}" ]]; then
+        fatal "swiftDialog not found at '${dialogBinary}'; are downloads from GitHub blocked on this Mac?"
     fi
 
-    if [[ -f ${localPreferencesPlist}.plist ]]; then
-        scriptLog_local=$(defaults read "${localPreferencesPlist}" ScriptLog 2> /dev/null)
-        daysBeforeDeadlineDisplayReminder_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineDisplayReminder 2> /dev/null)
-        daysBeforeDeadlineBlurscreen_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineBlurscreen 2> /dev/null)
-        daysBeforeDeadlineHidingButton2_local=$(defaults read "${localPreferencesPlist}" DaysBeforeDeadlineHidingButton2 2> /dev/null)
-        daysOfExcessiveUptimeWarning_local=$(defaults read "${localPreferencesPlist}" DaysOfExcessiveUptimeWarning 2> /dev/null)
-        meetingDelay_local=$(defaults read "${localPreferencesPlist}" MeetingDelay 2> /dev/null)
-        organizationOverlayiconURL_local=$(defaults read "${localPreferencesPlist}" OrganizationOverlayIconURL 2> /dev/null)
-        swapOverlayAndLogo_local=$(defaults read "${localPreferencesPlist}" SwapOverlayAndLogo 2> /dev/null)
-        dateFormatDeadlineHumanReadable_local=$(defaults read "${localPreferencesPlist}" DateFormatDeadlineHumanReadable 2> /dev/null)
-        supportTeamName_local=$(defaults read "${localPreferencesPlist}" SupportTeamName 2> /dev/null)
-        supportTeamPhone_local=$(defaults read "${localPreferencesPlist}" SupportTeamPhone 2> /dev/null)
-        supportTeamEmail_local=$(defaults read "${localPreferencesPlist}" SupportTeamEmail 2> /dev/null)
-        supportTeamWebsite_local=$(defaults read "${localPreferencesPlist}" SupportTeamWebsite 2> /dev/null)
-        supportKB_local=$(defaults read "${localPreferencesPlist}" SupportKB 2> /dev/null)
-        infobuttonaction_local=$(defaults read "${localPreferencesPlist}" InfoButtonAction 2> /dev/null)
-        supportKBURL_local=$(defaults read "${localPreferencesPlist}" SupportKBURL 2> /dev/null)
-        title_local=$(defaults read "${localPreferencesPlist}" Title 2> /dev/null)
-        button1text_local=$(defaults read "${localPreferencesPlist}" Button1Text 2> /dev/null)
-        button2text_local=$(defaults read "${localPreferencesPlist}" Button2Text 2> /dev/null)
-        excessiveUptimeWarningMessage_local=$(defaults read "${localPreferencesPlist}" ExcessiveUptimeWarningMessage 2> /dev/null)
-        minimumDiskFreePercentage_local=$(defaults read "${localPreferencesPlist}" MinimumDiskFreePercentage 2> /dev/null)
-        diskSpaceWarningMessage_local=$(defaults read "${localPreferencesPlist}" DiskSpaceWarningMessage 2> /dev/null)
-        message_local=$(defaults read "${localPreferencesPlist}" Message 2> /dev/null)
-        infobuttontext_local=$(defaults read "${localPreferencesPlist}" InfoButtonText 2> /dev/null)
-        infobox_local=$(defaults read "${localPreferencesPlist}" InfoBox 2> /dev/null)
-        helpmessage_local=$(defaults read "${localPreferencesPlist}" HelpMessage 2> /dev/null)
-        helpimage_local=$(defaults read "${localPreferencesPlist}" HelpImage 2> /dev/null)
-        stagedUpdateMessage_local=$(defaults read "${localPreferencesPlist}" StagedUpdateMessage 2>/dev/null)
-        partiallyStagedUpdateMessage_local=$(defaults read "${localPreferencesPlist}" PartiallyStagedUpdateMessage 2>/dev/null)
-        pendingDownloadMessage_local=$(defaults read "${localPreferencesPlist}" PendingDownloadMessage 2>/dev/null)
-        hideStagedInfo_local=$(defaults read "${localPreferencesPlist}" HideStagedUpdateInfo 2>/dev/null)
-    fi
-    setPreferenceValue "scriptLog" "${scriptLog_managed}" "${scriptLog_local}" "${scriptLog}"
-    setNumericPreferenceValue "daysBeforeDeadlineDisplayReminder" "${daysBeforeDeadlineDisplayReminder_managed}" "${daysBeforeDeadlineDisplayReminder_local}" "${daysBeforeDeadlineDisplayReminder}"
-    setNumericPreferenceValue "daysBeforeDeadlineBlurscreen" "${daysBeforeDeadlineBlurscreen_managed}" "${daysBeforeDeadlineBlurscreen_local}" "${daysBeforeDeadlineBlurscreen}"
-    setNumericPreferenceValue "daysBeforeDeadlineHidingButton2" "${daysBeforeDeadlineHidingButton2_managed}" "${daysBeforeDeadlineHidingButton2_local}" "${daysBeforeDeadlineHidingButton2}"
-    setNumericPreferenceValue "daysOfExcessiveUptimeWarning" "${daysOfExcessiveUptimeWarning_managed}" "${daysOfExcessiveUptimeWarning_local}" "${daysOfExcessiveUptimeWarning}"
-    setNumericPreferenceValue "meetingDelay" "${meetingDelay_managed}" "${meetingDelay_local}" "${meetingDelay}"
-    setNumericPreferenceValue "minimumDiskFreePercentage" "${minimumDiskFreePercentage_managed}" "${minimumDiskFreePercentage_local}" "${minimumDiskFreePercentage}"
-    setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${diskSpaceWarningMessage}"
-    setPreferenceValue "swapOverlayAndLogo" "${swapOverlayAndLogo_managed}" "${swapOverlayAndLogo_local}" "${swapOverlayAndLogo}"
-    setPreferenceValue "hideStagedInfo" "${hideStagedInfo_managed}" "${hideStagedInfo_local}" "NO"
-    setPreferenceValue "dateFormatDeadlineHumanReadable" "${dateFormatDeadlineHumanReadable_managed}" "${dateFormatDeadlineHumanReadable_local}" "${dateFormatDeadlineHumanReadable}"
-    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+    action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
+    
+    computeDynamicWarnings
+    computeUpdateStagingMessage
+    buildPlaceholderMap
+    
+    local textFields=("title" "button1text" "button2text" "infobuttontext"
+                    "infobox" "helpmessage" "helpimage"
+                    "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+                    "message")
+    
+    for field in "${textFields[@]}"; do
+        replacePlaceholders "${field}"
+    done
+    
+    applyHideRules
 }
 
 
@@ -384,7 +511,7 @@ function detectStagedUpdate() {
     # Check for APFS snapshots indicating staged updates
     local updateSnapshots=$(tmutil listlocalsnapshots / 2>/dev/null | grep -c "com.apple.os.update")
     
-    if [[ ${updateSnapshots} -gt 0 ]]; then
+    if [[ "${updateSnapshots}" -gt 0 ]]; then
         info "Found ${updateSnapshots} update snapshot(s)"
         stagedUpdateStatus="Partially staged"
     fi
@@ -429,7 +556,7 @@ function detectStagedUpdate() {
 
         # Check cryptex1 for staged update content
         if [[ -d "${prebootPath}/cryptex1" ]]; then
-            local cryptexSize=$(sudo du -sk "${prebootPath}/cryptex1" 2>/dev/null | awk '{print $1}')
+            local cryptexSize=$(du -sk "${prebootPath}/cryptex1" 2>/dev/null | awk '{print $1}')
             
             # Typical cryptex1 is < 1GB; if > 1GB, staging is very likely underway
             if [[ -n "${cryptexSize}" ]] && [[ ${cryptexSize} -gt 1048576 ]]; then
@@ -442,7 +569,7 @@ function detectStagedUpdate() {
         
         # Check restore-staged directory (optional supplemental assets)
         if [[ -d "${prebootPath}/restore-staged" ]]; then
-            local restoreSize=$(sudo du -sk "${prebootPath}/restore-staged" 2>/dev/null | awk '{print $1}')
+            local restoreSize=$(du -sk "${prebootPath}/restore-staged" 2>/dev/null | awk '{print $1}')
             if [[ -n "${restoreSize}" ]] && [[ ${restoreSize} -gt 102400 ]]; then
                 local restoreSizeGB=$(echo "scale=2; ${restoreSize} / 1048576" | bc)
                 info "Additional staged content: ${restoreSizeGB} GB in restore-staged"
@@ -450,12 +577,12 @@ function detectStagedUpdate() {
         fi
         
         # Check total Preboot volume usage
-        local totalPrebootSize=$(sudo du -sk "${prebootPath}" 2>/dev/null | awk '{print $1}')
+        local totalPrebootSize=$(du -sk "${prebootPath}" 2>/dev/null | awk '{print $1}')
         if [[ -n "${totalPrebootSize}" ]]; then
             local prebootGB=$(echo "scale=2; ${totalPrebootSize} / 1048576" | bc)
             
             # Typical Preboot is 1–3 GB; if > 8 GB, major update assets are staged
-            if (( $(echo "${prebootGB} > 8" | bc -l) )); then
+            if [[ $(echo "${prebootGB} > 8" | bc) -eq 1 ]]; then
                 if [[ "${stagedUpdateStatus}" != "Fully staged" ]]; then
                     stagedUpdateSize="${prebootGB}"
                     stagedUpdateLocation="${prebootPath}"
@@ -505,6 +632,9 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
+    if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
+        fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
+    fi
     ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
     # Fallback to default if format fails
     if [[ -z "${ddmVersionStringDeadlineHumanReadable}" ]]; then
@@ -582,7 +712,12 @@ installedOSvsDDMenforcedOS() {
         versionComparisonResult="Update Required"
 
         # Detect staged updates
-        detectStagedUpdate
+        if [[ "${hideStagedInfo}" == "YES" ]]; then
+            notice "Skipping check for staged macOS updates. (The variable 'hideStagedInfo' is set to '${hideStagedInfo}'.)"
+        else
+            notice "Checking for staged macOS updates …"
+            detectStagedUpdate
+        fi
 
         # Determine if an "Update" or an "Upgrade" is needed
         info "DDM-enforced OS Version: $ddmVersionString"
@@ -652,199 +787,82 @@ function checkUserDisplaySleepAssertions() {
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function updateRequiredVariables() {
-
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Organization’s Branding Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    # Organization’s Overlayicon URL
-    local defaultOverlayiconURL="${organizationOverlayiconURL:-"https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"}"
-    setPreferenceValue "organizationOverlayiconURL" "${organizationOverlayiconURL_managed}" "${organizationOverlayiconURL_local}" "${defaultOverlayiconURL}"
-
-    # Download the overlayicon from ${organizationOverlayiconURL}
+function downloadBrandingAssets() {
+    # Download overlay icon
     if [[ -n "${organizationOverlayiconURL}" ]]; then
-        # notice "Downloading overlayicon from '${organizationOverlayiconURL}' …"
-        curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail
-        if [[ "$?" -ne 0 ]]; then
-            echo "Error: Failed to download the overlayicon from '${organizationOverlayiconURL}'."
-            overlayicon="/System/Library/CoreServices/Finder.app"
-        else
+        notice "Downloading overlay icon from '${organizationOverlayiconURL}'"
+        if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
             overlayicon="/var/tmp/overlayicon.png"
+            info "Successfully downloaded overlay icon"
+        else
+            error "Failed to download overlayicon from '${organizationOverlayiconURL}'"
+            overlayicon="/System/Library/CoreServices/Finder.app"
         fi
     else
         overlayicon="/System/Library/CoreServices/Finder.app"
     fi
-
-
-
-    # macOS Installer Icon URL
-    majorDDM="${ddmVersionString%%.*}"
+    
+    # Download macOS icon based on version
+    local majorDDM="${ddmVersionString%%.*}"
     case ${majorDDM} in
-        14)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
-        15)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
-        26)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
-        *)   macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
+        14) macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
+        15) macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
+        26) macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
+        *)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
     esac
-
-    # Download the icon from ${macOSIconURL}
-    if [[ -n "${macOSIconURL}" ]]; then
-        # notice "Downloading icon from '${macOSIconURL}' …"
-        curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail
-        if [[ "$?" -ne 0 ]]; then
-            error "Failed to download the icon from '${macOSIconURL}'."
-            icon="/System/Library/CoreServices/Finder.app"
-        else
-            icon="/var/tmp/icon.png"
-        fi
+    
+    if curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail; then
+        icon="/var/tmp/icon.png"
+    else
+        error "Failed to download icon from '${macOSIconURL}'"
+        icon="/System/Library/CoreServices/Finder.app"
     fi
-
-    if [[ "${swapOverlayAndLogo}" == "1" || "${swapOverlayAndLogo:l}" == "true" || "${swapOverlayAndLogo:l}" == "yes" ]]; then
-        tmp="$icon"
+    
+    # Swap icons if requested
+    if [[ "${swapOverlayAndLogo}" == "YES" ]]; then
+        local tmp="$icon"
         icon="$overlayicon"
         overlayicon="$tmp"
     fi
+}
 
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # swiftDialog Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    # swiftDialog Binary Path
-    dialogBinary="/usr/local/bin/dialog"
-
-
-
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # IT Support Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    local defaultSupportTeamName="${supportTeamName:-"IT Support"}"
-    setPreferenceValue "supportTeamName" "${supportTeamName_managed}" "${supportTeamName_local}" "${defaultSupportTeamName}"
-
-    local defaultSupportTeamPhone="${supportTeamPhone:-"+1 (801) 555-1212"}"
-    setPreferenceValue "supportTeamPhone" "${supportTeamPhone_managed}" "${supportTeamPhone_local}" "${defaultSupportTeamPhone}"
-
-    local defaultSupportTeamEmail="${supportTeamEmail:-"rescue@domain.org"}"
-    setPreferenceValue "supportTeamEmail" "${supportTeamEmail_managed}" "${supportTeamEmail_local}" "${defaultSupportTeamEmail}"
-
-    local defaultSupportTeamWebsite="${supportTeamWebsite:-"https://support.domain.org"}"
-    setPreferenceValue "supportTeamWebsite" "${supportTeamWebsite_managed}" "${supportTeamWebsite_local}" "${defaultSupportTeamWebsite}"
-
-    local defaultSupportKB="${supportKB:-"108382"}"
-    setPreferenceValue "supportKB" "${supportKB_managed}" "${supportKB_local}" "${defaultSupportKB}"
-
-    local defaultInfobuttonaction="https://support.apple.com/${supportKB}"
-    setPreferenceValue "infobuttonaction" "${infobuttonaction_managed}" "${infobuttonaction_local}" "${defaultInfobuttonaction}"
-
-    local defaultSupportKBURL="[${supportKB}](${infobuttonaction})"
-    setPreferenceValue "supportKBURL" "${supportKBURL_managed}" "${supportKBURL_local}" "${defaultSupportKBURL}"
-
-
-
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Title, Message and  Button Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    local defaultTitle="macOS ${titleMessageUpdateOrUpgrade} Required"
-    setPreferenceValue "title" "${title_managed}" "${title_local}" "${defaultTitle}"
-    replacePlaceholders "title"
-
-    local defaultButton1text="${button1text:-"Open Software Update"}"
-    setPreferenceValue "button1text" "${button1text_managed}" "${button1text_local}" "${defaultButton1text}"
-
-    local defaultButton2text="${button2text:-"Remind Me Later"}"
-    setPreferenceValue "button2text" "${button2text_managed}" "${button2text_local}" "${defaultButton2text}"
-
-    local defaultInfobuttontext="${infobuttontext:-${supportKB}}"
-    setPreferenceValue "infobuttontext" "${infobuttontext_managed}" "${infobuttontext_local}" "${defaultInfobuttontext}"
-
-    local defaultAction="${action:-"x-apple.systempreferences:com.apple.preferences.softwareupdate"}"
-    printf -v "action" '%s' "${defaultAction}"
-
-    # Excessive Uptime Warning
-    local defaultExcessiveUptimeWarningMessage="${excessiveUptimeWarningMessage:-"<br><br>**Note:** Your Mac has been powered-on for **${uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."}"
-    setPreferenceValue "excessiveUptimeWarningMessage" "${excessiveUptimeWarningMessage_managed}" "${excessiveUptimeWarningMessage_local}" "${defaultExcessiveUptimeWarningMessage}"
-    replacePlaceholders "excessiveUptimeWarningMessage"
-
+function computeDynamicWarnings() {
+    # Excessive uptime warning
     local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
     if (( upTimeMin < allowedUptimeMinutes )); then
         excessiveUptimeWarningMessage=""
     fi
-
+    
     # Disk Space Warning
-    local defaultDiskSpaceWarningMessage="<br><br>**Note:** Your Mac has only **${diskSpaceHumanReadable}**, which may prevent this macOS ${titleMessageUpdateOrUpgrade:l}."
-    setPreferenceValue "diskSpaceWarningMessage" "${diskSpaceWarningMessage_managed}" "${diskSpaceWarningMessage_local}" "${defaultDiskSpaceWarningMessage}"
-    replacePlaceholders "diskSpaceWarningMessage"
-
-    if [[ -n "${freePercentage}" ]]; then
-        belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
-        if [[ "${belowThreshold}" -ne 1 ]]; then
-            diskSpaceWarningMessage=""
-        fi
-    fi
-
-    # Staged Update Messaging
-    local defaultStagedUpdateMessage="<br><br>**Good news!** The macOS ${ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **${button1text}**."
-    local defaultPartiallyStagedUpdateMessage="<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
-    local defaultPendingDownloadMessage=""
-
-    # Load preferences (manager > local > default)
-    setPreferenceValue "stagedUpdateMessage" "${stagedUpdateMessage_managed}" "${stagedUpdateMessage_local}" "${defaultStagedUpdateMessage}"
-    setPreferenceValue "partiallyStagedUpdateMessage" "${partiallyStagedUpdateMessage_managed}" "${partiallyStagedUpdateMessage_local}" "${defaultPartiallyStagedUpdateMessage}"
-    setPreferenceValue "pendingDownloadMessage" "${pendingDownloadMessage_managed}" "${pendingDownloadMessage_local}" "${defaultPendingDownloadMessage}"
-
-    # Honor HideStagedUpdateInfo flag
-    if [[ "${hideStagedInfo}" == "1" ]]; then
-        updateReadyMessage=""
+    if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        local belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
+        [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
     else
-        case "${updateStagingStatus}" in
-            "Fully staged")
-                updateReadyMessage="${stagedUpdateMessage}"
-                ;;
-            "Partially staged")
-                updateReadyMessage="${partiallyStagedUpdateMessage}"
-                ;;
-            "Pending download"|"Not detected")
-                updateReadyMessage="${pendingDownloadMessage}"
-                ;;
-            *)
-                updateReadyMessage=""
-                ;;
-        esac
+        warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning logic."
+        diskSpaceWarningMessage=""
     fi
+}
 
-    local defaultMessage="**A required macOS ${titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy $( date +'%A' ), ${loggedInUserFirstname}!<br><br>Please ${titleMessageUpdateOrUpgrade:l} to macOS **${ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.${updateReadyMessage}<br><br>To perform the ${titleMessageUpdateOrUpgrade:l} now, click **${button1text}**, review the on-screen instructions, then click **${softwareUpdateButtonText}**.<br><br>If you are unable to perform this ${titleMessageUpdateOrUpgrade:l} now, click **${button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline.${excessiveUptimeWarningMessage}${diskSpaceWarningMessage}<br><br>For assistance, please contact **${supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
-    if [[ -n "${updateReadyMessage}" && "${message}" == *"{updateReadyMessage}"* ]]; then
-        message=${message//\{updateReadyMessage\}/${updateReadyMessage}}
+function computeUpdateStagingMessage() {
+    if [[ "${hideStagedInfo}" == "YES" ]]; then
+        updateReadyMessage=""
+        return
     fi
-    setPreferenceValue "message" "${message_managed}" "${message_local}" "${defaultMessage}"
-    replacePlaceholders "message"
-
-
-
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Infobox Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    local defaultInfobox="**Current:** macOS ${installedmacOSVersion}<br><br>**Required:** macOS ${ddmVersionString}<br><br>**Deadline:** ${ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** ${ddmVersionStringDaysRemaining}<br><br>**Last Restart:** ${uptimeHumanReadable}<br><br>**Free Disk Space:** ${diskSpaceHumanReadable}"
-    setPreferenceValue "infobox" "${infobox_managed}" "${infobox_local}" "${defaultInfobox}"
-    replacePlaceholders "infobox"
-
-
-
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-    # Help Message Variables
-    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-    local defaultHelpmessage="For assistance, please contact: **${supportTeamName}**<br>- **Telephone:** ${supportTeamPhone}<br>- **Email:** ${supportTeamEmail}<br>- **Website:** ${supportTeamWebsite}<br>- **Knowledge Base Article:** ${supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** $(/usr/local/bin/dialog -v)<br>- **Script:** ${scriptVersion}<br>"
-    setPreferenceValue "helpmessage" "${helpmessage_managed}" "${helpmessage_local}" "${defaultHelpmessage}"
-    replacePlaceholders "helpmessage"
-    local defaultHelpimage="qr=${infobuttonaction}"
-    setPreferenceValue "helpimage" "${helpimage_managed}" "${helpimage_local}" "${defaultHelpimage}"
-    replacePlaceholders "helpimage"
-
-    applyHideRules
-
+    
+    case "${updateStagingStatus}" in
+        "Fully staged")
+            updateReadyMessage="${stagedUpdateMessage}"
+            ;;
+        "Partially staged")
+            updateReadyMessage="${partiallyStagedUpdateMessage}"
+            ;;
+        "Pending download"|"Not detected")
+            updateReadyMessage="${pendingDownloadMessage}"
+            ;;
+        *)
+            updateReadyMessage=""
+            ;;
+    esac
 }
 
 
@@ -869,7 +887,7 @@ function displayReminderDialog() {
         --button1text "${button1text}"
         --messagefont "size=14"
         --width 800
-        --height 600
+        --height 625
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )
@@ -889,7 +907,7 @@ function displayReminderDialog() {
     0)  ## Process exit code 0 scenario here
         notice "${loggedInUser} clicked ${button1text}"
         if [[ "${action}" == *"systempreferences"* ]]; then
-            su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
+            launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
             notice "Checking if System Settings is open …"
             until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
                 info "Pending System Settings launch …"
@@ -910,7 +928,7 @@ function displayReminderDialog() {
             exit 1
             '
         else
-            su - "$(stat -f%Su /dev/console)" -c "open '${action}'"
+            launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
         fi
         quitScript "0"
         ;;
@@ -931,7 +949,8 @@ function displayReminderDialog() {
             if [[ "${hideSecondaryButton}" == "YES" ]]; then
                 info "Within ${daysBeforeDeadlineHidingButton2} day(s) of deadline; waiting 61 seconds before re-showing dialog …"
                 sleep 61
-                displayReminderDialog --ontop --moveable
+                blurscreen="--noblurscreen"
+                displayReminderDialog --ontop --moveable 
             else
                 info "Deadline is more than ${daysBeforeDeadlineHidingButton2} day(s) away; not re-showing dialog after ${loggedInUser} clicked ${infobuttontext}."
             fi
@@ -966,29 +985,21 @@ function quitScript() {
 
     quitOut "Exiting …"
 
-    # Remove overlay icon
-    if [[ -f "${icon}" ]] && [[ "${icon}" != "/System/Library/CoreServices/Finder.app" ]]; then
-        rm -f "${icon}"
-    fi
+    # Remove icons
+    for img in "${icon}" "${overlayicon}"; do
+        if [[ -f "${img}" ]] && [[ "${img}" != "/System/Library/CoreServices/Finder.app" ]]; then
+            rm -f "${img}"
+        fi
+    done
 
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "Keep them movin' blades sharp!"
+    quitOut "Keep them movin’ blades sharp!"
 
     exit "${1}"
 
 }
-
-
-
-####################################################################################################
-#
-# Apply Preference Overrides
-#
-####################################################################################################
-
-loadPreferenceOverrides
 
 
 
@@ -1011,6 +1022,17 @@ if [[ ! -f "${scriptLog}" ]]; then
     fi
 else
     # preFlight "Specified scriptLog '${scriptLog}' exists; writing log entries to it"
+    if [[ -f "${scriptLog}" ]]; then
+        logSize=$(stat -f%z "${scriptLog}" 2>/dev/null || echo "0")
+        maxLogSize=$((10 * 1024 * 1024))  # 10MB
+        
+        if (( logSize > maxLogSize )); then
+            preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
+            mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
+            touch "${scriptLog}"
+            preFlight "Log file rotated; previous log saved as ${scriptLog}.${currentTime}.old"
+        fi
+    fi
 fi
 
 
@@ -1041,21 +1063,34 @@ fi
 preFlight "Check for Logged-in System Accounts …"
 currentLoggedInUser
 
-counter="1"
-
-until { [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]] || [[ "${counter}" -gt "30" ]]; } ; do
-
-    preFlight "Logged-in User Counter: ${counter}"
-    currentLoggedInUser
-    sleep 2
+maxWait=120  # 2 minutes
+counter=0
+until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]]; do
+    if [[ "${counter}" -ge "${maxWait}" ]]; then
+        fatal "No valid user logged in after ${maxWait} seconds; exiting."
+    fi
+    sleep 1
     ((counter++))
-
+    currentLoggedInUser
+    preFlight "Logged-in User Counter: ${counter}"
 done
 
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
 preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
+
+
+
+####################################################################################################
+#
+# Apply / Validate Preference Overrides
+#
+####################################################################################################
+
+loadPreferenceOverrides
+
+validatePreferenceLoad
 
 
 
@@ -1125,11 +1160,11 @@ if [[ "${1}" == "demo" ]]; then
     # Title / update-or-upgrade logic
     # If required major != installed major → upgrade, else update
     if [[ "${demoMajorVersion}" != "${installedmacOSVersion%%.*}" ]]; then
-        titleMessageUpdateOrUpgrade="Upgrade"
-        softwareUpdateButtonText="Upgrade Now"
+        titleMessageUpdateOrUpgrade="Demo Upgrade"
+        softwareUpdateButtonText="Demo Upgrade Now"
     else
-        titleMessageUpdateOrUpgrade="Update"
-        softwareUpdateButtonText="Restart Now"
+        titleMessageUpdateOrUpgrade="Demo Update"
+        softwareUpdateButtonText="Demo Restart Now"
     fi
 
     # Other variables normally generated in installedOSvsDDMenforcedOS
@@ -1187,15 +1222,26 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
 
-    lastDialog=$( grep "Display Reminder Dialog" "${scriptLog}" | tail -1 | awk '{print $3" "$4}' )
+    # Match the exact log format: "dorm (2.2.0): 2025-12-19 14:30:45 - [NOTICE] ..."
+    lastDialog=$(grep -E '\[NOTICE\].*Display Reminder Dialog' "${scriptLog}" | tail -1 | \
+        sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 
     if [[ -n "${lastDialog}" ]]; then
-        lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
-        delta=$(( nowEpoch - lastEpoch ))
-        if (( delta < quietPeriodSeconds )); then
-            minutesAgo=$(( delta / 60 ))
-            quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
-            quitScript "0"
+        # Validate the extracted timestamp matches expected format
+        if [[ "${lastDialog}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
+            if [[ -n "${lastEpoch}" ]]; then
+                delta=$(( nowEpoch - lastEpoch ))
+                if (( delta < quietPeriodSeconds )); then
+                    minutesAgo=$(( delta / 60 ))
+                    quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
+                    quitScript "0"
+                fi
+            else
+                info "Could not parse last dialog timestamp; proceeding with display"
+            fi
+        else
+            info "Last dialog timestamp format invalid; proceeding with display"
         fi
     else
         notice "Reminder dialog hasn't been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"

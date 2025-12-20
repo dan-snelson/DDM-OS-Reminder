@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.2.0b16, 19-Dec-2025, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0b17, 19-Dec-2025, Dan K. Snelson (@dan-snelson)
 # - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 # - Added instructions for monitoring the client-side log to the log file itself
 # - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
@@ -42,13 +42,16 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b16"
+scriptVersion="2.2.0b17"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
 swiftDialogMinimumRequiredVersion="2.5.6.4805"
+
+# Load is-at-least for version comparison
+autoload -Uz is-at-least
 
 
 
@@ -261,7 +264,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b16"
+scriptVersion="2.2.0b17"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -823,7 +826,7 @@ function detectStagedUpdate() {
             local prebootGB=$(echo "scale=2; ${totalPrebootSize} / 1048576" | bc)
             
             # Typical Preboot is 1–3 GB; if > 8 GB, major update assets are staged
-            if (( $(echo "${prebootGB} > 8" | bc -l) )); then
+            if [[ $(echo "${prebootGB} > 8" | bc) -eq 1 ]]; then
                 if [[ "${stagedUpdateStatus}" != "Fully staged" ]]; then
                     stagedUpdateSize="${prebootGB}"
                     stagedUpdateLocation="${prebootPath}"
@@ -1263,6 +1266,17 @@ if [[ ! -f "${scriptLog}" ]]; then
     fi
 else
     # preFlight "Specified scriptLog '${scriptLog}' exists; writing log entries to it"
+    if [[ -f "${scriptLog}" ]]; then
+        logSize=$(stat -f%z "${scriptLog}" 2>/dev/null || echo "0")
+        maxLogSize=$((10 * 1024 * 1024))  # 10MB
+        
+        if (( logSize > maxLogSize )); then
+            preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
+            mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
+            touch "${scriptLog}"
+            preFlight "Log file rotated; previous log saved as ${scriptLog}.${currentTime}.old"
+        fi
+    fi
 fi
 
 
@@ -1371,18 +1385,29 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
 
-    lastDialog=$( grep "Display Reminder Dialog" "${scriptLog}" | tail -1 | awk '{print $3" "$4}' )
+    # Match the exact log format: "dorm (2.2.0): 2025-12-19 14:30:45 - [NOTICE] ..."
+    lastDialog=$(grep -E '\[NOTICE\].*Display Reminder Dialog' "${scriptLog}" | tail -1 | \
+        sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 
     if [[ -n "${lastDialog}" ]]; then
-        lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
-        delta=$(( nowEpoch - lastEpoch ))
-        if (( delta < quietPeriodSeconds )); then
-            minutesAgo=$(( delta / 60 ))
-            quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
-            quitScript "0"
+        # Validate the extracted timestamp matches expected format
+        if [[ "${lastDialog}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
+            if [[ -n "${lastEpoch}" ]]; then
+                delta=$(( nowEpoch - lastEpoch ))
+                if (( delta < quietPeriodSeconds )); then
+                    minutesAgo=$(( delta / 60 ))
+                    quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
+                    quitScript "0"
+                fi
+            else
+                info "Could not parse last dialog timestamp; proceeding with display"
+            fi
+        else
+            info "Last dialog timestamp format invalid; proceeding with display"
         fi
     else
-        notice "Reminder dialog hasn’t been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
+        notice "Reminder dialog hasn't been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
     fi
 
 
@@ -1474,8 +1499,8 @@ ENDOFSCRIPT
 #
 # CREATE LAUNCHDAEMON
 #
-#   The following function creates the LaunchDaemon which executes the previously created
-#   client-side DDM OS Reminder script.
+#   The following function creates the LaunchDaemon which executes the previously created,
+#   client-side "reminderDialog.zsh" script.
 #
 #   We've elected to prompt our users twice a day (8 a.m. and 4 p.m.) to ensure they see the message.
 #
@@ -1589,8 +1614,18 @@ if [[ ! -f "${scriptLog}" ]]; then
     fi
 else
     # preFlight "Specified scriptLog '${scriptLog}' exists; writing log entries to it"
+    if [[ -f "${scriptLog}" ]]; then
+        logSize=$(stat -f%z "${scriptLog}" 2>/dev/null || echo "0")
+        maxLogSize=$((10 * 1024 * 1024))  # 10MB
+        
+        if (( logSize > maxLogSize )); then
+            preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
+            mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
+            touch "${scriptLog}"
+            preFlight "Log file rotated; previous log saved as ${scriptLog}.${currentTime}.old"
+        fi
+    fi
 fi
-
 
 
 
@@ -1620,26 +1655,42 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Pre-flight Check: Validate / install swiftDialog (Thanks big bunches, @acodega!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function dialogInstall() {
-
     # Get the URL of the latest PKG From the Dialog GitHub repo
-    dialogURL=$(curl -L --silent --fail "https://api.github.com/repos/swiftDialog/swiftDialog/releases/latest" | awk -F '"' "/browser_download_url/ && /pkg\"/ { print \$4; exit }")
+    dialogURL=$(curl -L --silent --fail --connect-timeout 10 --max-time 30 \
+        "https://api.github.com/repos/swiftDialog/swiftDialog/releases/latest" \
+        | awk -F '"' "/browser_download_url/ && /pkg\"/ { print \$4; exit }")
+    
+    # Validate URL was retrieved
+    if [[ -z "${dialogURL}" ]]; then
+        fatal "Failed to retrieve swiftDialog download URL from GitHub API"
+    fi
+    
+    # Validate URL format
+    if [[ ! "${dialogURL}" =~ ^https://github\.com/ ]]; then
+        fatal "Invalid swiftDialog URL format: ${dialogURL}"
+    fi
 
     # Expected Team ID of the downloaded PKG
     expectedDialogTeamID="PWA5E9TQ59"
 
-    preFlight "Installing swiftDialog..."
+    preFlight "Installing swiftDialog from ${dialogURL}..."
 
     # Create temporary working directory
     workDirectory=$( basename "$0" )
     tempDirectory=$( mktemp -d "/private/tmp/$workDirectory.XXXXXX" )
 
-    # Download the installer package
-    curl --location --silent "$dialogURL" -o "$tempDirectory/Dialog.pkg"
+    # Download the installer package with timeouts
+    if ! curl --location --silent --fail --connect-timeout 10 --max-time 60 \
+             "$dialogURL" -o "$tempDirectory/Dialog.pkg"; then
+        rm -Rf "$tempDirectory"
+        fatal "Failed to download swiftDialog package"
+    fi
 
     # Verify the download
     teamID=$(spctl -a -vv -t install "$tempDirectory/Dialog.pkg" 2>&1 | awk '/origin=/ {print $NF }' | tr -d '()')
@@ -1681,7 +1732,7 @@ function dialogCheck() {
     else
 
         dialogVersion=$(/usr/local/bin/dialog --version)
-        if [[ "${dialogVersion}" < "${swiftDialogMinimumRequiredVersion}" ]]; then
+        if ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
             
             preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating …"
             dialogInstall
@@ -1719,7 +1770,9 @@ preFlight "Complete!"
 # Validate / install swiftDialog
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-dialogCheck
+if [[ "${resetConfiguration}" != "Uninstall" ]]; then
+    dialogCheck
+fi
 
 
 

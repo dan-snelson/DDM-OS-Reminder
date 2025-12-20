@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0b16"
+scriptVersion="2.2.0b17"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -582,7 +582,7 @@ function detectStagedUpdate() {
             local prebootGB=$(echo "scale=2; ${totalPrebootSize} / 1048576" | bc)
             
             # Typical Preboot is 1–3 GB; if > 8 GB, major update assets are staged
-            if (( $(echo "${prebootGB} > 8" | bc -l) )); then
+            if [[ $(echo "${prebootGB} > 8" | bc) -eq 1 ]]; then
                 if [[ "${stagedUpdateStatus}" != "Fully staged" ]]; then
                     stagedUpdateSize="${prebootGB}"
                     stagedUpdateLocation="${prebootPath}"
@@ -1022,6 +1022,17 @@ if [[ ! -f "${scriptLog}" ]]; then
     fi
 else
     # preFlight "Specified scriptLog '${scriptLog}' exists; writing log entries to it"
+    if [[ -f "${scriptLog}" ]]; then
+        logSize=$(stat -f%z "${scriptLog}" 2>/dev/null || echo "0")
+        maxLogSize=$((10 * 1024 * 1024))  # 10MB
+        
+        if (( logSize > maxLogSize )); then
+            preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
+            mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
+            touch "${scriptLog}"
+            preFlight "Log file rotated; previous log saved as ${scriptLog}.${currentTime}.old"
+        fi
+    fi
 fi
 
 
@@ -1211,18 +1222,29 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
 
-    lastDialog=$( grep "Display Reminder Dialog" "${scriptLog}" | tail -1 | awk '{print $3" "$4}' )
+    # Match the exact log format: "dorm (2.2.0): 2025-12-19 14:30:45 - [NOTICE] ..."
+    lastDialog=$(grep -E '\[NOTICE\].*Display Reminder Dialog' "${scriptLog}" | tail -1 | \
+        sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 
     if [[ -n "${lastDialog}" ]]; then
-        lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
-        delta=$(( nowEpoch - lastEpoch ))
-        if (( delta < quietPeriodSeconds )); then
-            minutesAgo=$(( delta / 60 ))
-            quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
-            quitScript "0"
+        # Validate the extracted timestamp matches expected format
+        if [[ "${lastDialog}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
+            if [[ -n "${lastEpoch}" ]]; then
+                delta=$(( nowEpoch - lastEpoch ))
+                if (( delta < quietPeriodSeconds )); then
+                    minutesAgo=$(( delta / 60 ))
+                    quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
+                    quitScript "0"
+                fi
+            else
+                info "Could not parse last dialog timestamp; proceeding with display"
+            fi
+        else
+            info "Last dialog timestamp format invalid; proceeding with display"
         fi
     else
-        notice "Reminder dialog hasn’t been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
+        notice "Reminder dialog hasn't been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
     fi
 
 

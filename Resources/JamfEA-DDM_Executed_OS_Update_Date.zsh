@@ -4,7 +4,7 @@
 # Reports when the CURRENT OS version/build first appeared in /var/log/install.log.
 #
 # Version: 2.2.0
-# Date: 06-Jan-2026
+# Date: 05-Jan-2026
 
 # Safety: don't use -e or pipefail in Jamf EA context
 set -u

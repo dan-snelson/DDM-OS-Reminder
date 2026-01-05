@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0rc2"
+scriptVersion="2.2.0rc3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1222,29 +1222,34 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
 
-    # Match the exact log format: "dorm (2.2.0): 2025-12-19 14:30:45 - [NOTICE] ..."
-    lastDialog=$(grep -E '\[NOTICE\].*Display Reminder Dialog' "${scriptLog}" | tail -1 | \
+    # Look for the most recent user interaction ("Remind Me Later" or "Open Software Update")
+    # These are the events that indicate the user consciously dismissed / acknowledged the dialog
+    lastInteraction=$(grep -E '\[NOTICE\].*clicked (Remind Me Later|Open Software Update)|User allowed timer to expire' "${scriptLog}" | \
+        tail -1 | \
         sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 
-    if [[ -n "${lastDialog}" ]]; then
+    if [[ -n "${lastInteraction}" ]]; then
         # Validate the extracted timestamp matches expected format
-        if [[ "${lastDialog}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
-            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDialog}" +"%s" 2>/dev/null )
+        if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
             if [[ -n "${lastEpoch}" ]]; then
                 delta=$(( nowEpoch - lastEpoch ))
                 if (( delta < quietPeriodSeconds )); then
                     minutesAgo=$(( delta / 60 ))
-                    quitOut "Reminder dialog last displayed ${minutesAgo} minute(s) ago; exiting quietly."
+                    quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
                     quitScript "0"
+                else
+                    minutesAgo=$(( delta / 60 ))
+                    notice "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; proceeding with display"
                 fi
             else
-                info "Could not parse last dialog timestamp; proceeding with display"
+                info "Could not parse last interaction timestamp; proceeding with display"
             fi
         else
-            info "Last dialog timestamp format invalid; proceeding with display"
+            info "Last interaction timestamp format invalid; proceeding with display"
         fi
     else
-        notice "Reminder dialog hasn't been shown within last $(( quietPeriodSeconds / 60 )) minutes; proceeding …"
+        notice "No recent user interaction found in log; proceeding with display"
     fi
 
 

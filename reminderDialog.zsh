@@ -1179,6 +1179,7 @@ if [[ "${1}" == "demo" ]]; then
     # Logged-in user (normally populated earlier)
     loggedInUserFirstname="${loggedInUserFirstname:-Demo}"
     loggedInUser="${loggedInUser:-demo}"
+    loggedInUserID="${loggedInUserID:-599}"
 
     # Now populate dialog strings using your standard function
     updateRequiredVariables
@@ -1238,6 +1239,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     if [[ -n "${lastInteraction}" ]]; then
         # Validate the extracted timestamp matches expected format
         if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            nowEpoch=$(date +%s)
             lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
             if [[ -n "${lastEpoch}" ]]; then
                 delta=$(( nowEpoch - lastEpoch ))

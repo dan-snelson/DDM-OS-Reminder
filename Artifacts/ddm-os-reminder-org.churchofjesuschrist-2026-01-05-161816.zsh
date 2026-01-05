@@ -1402,6 +1402,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     if [[ -n "${lastInteraction}" ]]; then
         # Validate the extracted timestamp matches expected format
         if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            nowEpoch=$(date +%s)
             lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
             if [[ -n "${lastEpoch}" ]]; then
                 delta=$(( nowEpoch - lastEpoch ))
@@ -1632,6 +1633,7 @@ else
         maxLogSize=$((10 * 1024 * 1024))  # 10MB
         
         if (( logSize > maxLogSize )); then
+            currentTime=$(date '+%Y-%m-%d-%H%M%S')
             preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
             mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
             touch "${scriptLog}"

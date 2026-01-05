@@ -397,6 +397,7 @@ else
         maxLogSize=$((10 * 1024 * 1024))  # 10MB
         
         if (( logSize > maxLogSize )); then
+            currentTime=$(date '+%Y-%m-%d-%H%M%S')
             preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
             mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
             touch "${scriptLog}"

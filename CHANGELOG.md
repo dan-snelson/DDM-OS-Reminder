@@ -2,14 +2,14 @@
 
 ## Changelog
 
-### Version 2.2.0rc3 (05-Jan-2026)
+### Version 2.2.0rc4 (05-Jan-2026)
 - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 - Added instructions for monitoring the client-side log to the log file itself
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
 - Updated `Resources/sample.plist` to address Feature Request #43
 - Added Detection for staged macOS updates (Addresses Feature Request #49)
 - Refactored Configuration Profile-related code
-- Refactored "Quiet Period" logic based on user-interaction (rather than dialog display)
+- Refactored "Quiet Period" logic based on user-interaction via Return Code (rather than dialog display)
 
 ### Version 2.1.0 (13-Dec-2025)
 - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)

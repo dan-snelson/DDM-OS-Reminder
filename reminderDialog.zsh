@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0rc3"
+scriptVersion="2.2.0rc4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1217,14 +1217,18 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
 
     # -------------------------------------------------------------------------
-    # Quiet period: skip dialog if shown recently
+    # Quiet period: skip dialog if user interacted recently
     # -------------------------------------------------------------------------
 
     quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
 
-    # Look for the most recent user interaction ("Remind Me Later" or "Open Software Update")
+    # Look for the most recent user interaction by Return Code
+    # Return Code 0: User clicked Button 1 (Open Software Update)
+    # Return Code 2: User clicked Button 2 (Remind Me Later)
+    # Return Code 4: User allowed timer to expire
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
-    lastInteraction=$(grep -E '\[NOTICE\].*clicked (Remind Me Later|Open Software Update)|User allowed timer to expire' "${scriptLog}" | \
+
+    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|4)' "${scriptLog}" | \
         tail -1 | \
         sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 

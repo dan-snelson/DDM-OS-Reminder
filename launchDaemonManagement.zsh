@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.2.0rc4, 05-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.2.0, 06-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 # - Added instructions for monitoring the client-side log to the log file itself
 # - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
@@ -43,7 +43,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0rc4"
+scriptVersion="2.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0rc4"
+scriptVersion="2.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -126,6 +126,9 @@ diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"
 # Preference Configuration Map
 # - Format: key|type|defaultValue
 # - Types: string, numeric, boolean
+# - String values can contain URLs, text, markdown, or placeholders like {ddmVersionString}
+# - Numeric values are integers 0-999 (days, minutes, percentages, etc.)
+# - Boolean values accept: 1/true/yes/YES → "YES"; 0/false/no/NO → "NO"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 declare -A preferenceConfiguration=(
@@ -1041,7 +1044,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n####\n"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n###\n"
 preFlight "Initiating …"
 
 

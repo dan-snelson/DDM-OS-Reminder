@@ -21,16 +21,14 @@
 #
 # HISTORY
 #
-# Version 2.1.0, 13-Dec-2025, Dan K. Snelson (@dan-snelson)
-#   - Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
-#   - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
-#   - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
-#   - Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; Feature Request #28)
-#   - Added logic for when the reminder dialog is re-displayed after clicking the `infobutton` (based on if we're already hiding the secondary button; #31)
-#   - Streamline Deployment & Documentation (Feature Request #35)
-#   - Addressed Bugs #34 (thanks, @TechTrekkie!) and #36 (I. Blame. AI.)
-#   - Refactored `assemble.zsh` (thanks for the feedback, @Andrew!)
-#   - Added warning for low disk space (configurable via `minimumDiskFreePercentage` variable; Feature Request #39. (Thanks for the suggestion, @prgsenright!)
+# Version 2.2.0, 06-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
+# - Added instructions for monitoring the client-side log to the log file itself
+# - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
+# - Updated `Resources/sample.plist` to address Feature Request #43
+# - Added Detection for staged macOS updates (Addresses Feature Request #49)
+# - Refactored Configuration Profile-related code
+# - Refactored "Quiet Period" logic based on user-interaction via Return Code (rather than dialog display)
 #
 ####################################################################################################
 
@@ -45,13 +43,16 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.1.0"
+scriptVersion="2.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
 swiftDialogMinimumRequiredVersion="2.5.6.4805"
+
+# Load is-at-least for version comparison
+autoload -Uz is-at-least
 
 
 
@@ -68,16 +69,16 @@ resetConfiguration="${4:-"All"}"
 # Organization Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Organization's Reverse Domain Name Notation (i.e., com.company.division)
-reverseDomainNameNotation="org.churchofjesuschrist"
-
-# Script Human-readabale Name
+# Organization’s Script Human-readable Name
 humanReadableScriptName="DDM OS Reminder"
 
-# Organization's Script Name
+# Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
+reverseDomainNameNotation="org.churchofjesuschrist"
+
+# Organization’s Script Name
 organizationScriptName="dor"
 
-# Organization's Directory (i.e., where your client-side scripts reside)
+# Organization’s Directory (i.e., where your client-side scripts reside)
 organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
 
 # LaunchDaemon Name & Path
@@ -139,7 +140,7 @@ function resetConfiguration() {
             # Reset LaunchDaemon
             info "Reset LaunchDaemon … "
             launchDaemonStatus
-            if [[ -n "${launchDaemonStatus}" ]]; then
+            if [[ -n "${launchDaemonStatusResult}" ]]; then
                 logComment "Unload '${launchDaemonPath}' … "
                 launchctl bootout system "${launchDaemonPath}"
                 launchDaemonStatus
@@ -159,7 +160,7 @@ function resetConfiguration() {
 
             info "Reset LaunchDaemon … "
             launchDaemonStatus
-            if [[ -n "${launchDaemonStatus}" ]]; then
+            if [[ -n "${launchDaemonStatusResult}" ]]; then
                 logComment "Unload '${launchDaemonPath}' … "
                 launchctl bootout system "${launchDaemonPath}"
                 launchDaemonStatus
@@ -184,7 +185,7 @@ function resetConfiguration() {
             # Uninstall LaunchDaemon
             info "Uninstall LaunchDaemon … "
             launchDaemonStatus
-            if [[ -n "${launchDaemonStatus}" ]]; then
+            if [[ -n "${launchDaemonStatusResult}" ]]; then
                 logComment "Unload '${launchDaemonPath}' … "
                 launchctl bootout system "${launchDaemonPath}"
                 launchDaemonStatus
@@ -244,23 +245,19 @@ function createDDMOSReminderScript() {
 cat <<'ENDOFSCRIPT'
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# CREATE DDM OS REMINDER SCRIPT
+#   AUTOMATED INSTRUCTIONS:
+#   To automate the combination of your customized "reminderDialog.zsh" script with this script,
+#   please run "zsh assemble.zsh" from the "DDM-OS-Reminder" repository's root directory.
 #
-#   The following function creates the client-side DDM OS Reminder script, which dynamically
-#   generates the end-user message.
+#   This will generate the complete client-side script and place it in the "Artifacts/" directory,
+#   which you will then deploy with your MDM solution.
 #
-#   Either copy-pasta your organization's customized "DDM-OS-Reminder End-user Message.zsh"
-#   script between the "cat <<ENDOFSCRIPT" and "ENDOFSCRIPT" lines below — making sure to leave
-#   a full return at the end of the content before the "ENDOFSCRIPT" line — or use the new
-#   `Resources/assembleDDMOSReminder.zsh` script to automatically assemble your organization's
-#   customized script:
+#   See: https://snelson.us/ddm for detailed information.
 #
-#       cd Resources
-#       zsh assembleDDMOSReminder.zsh
-#
-#   NOTE: With manual assembly, you'll most likely want to modify the `updateScriptLog` function
-#   in the copied script to comment out (or remove) the "| tee -a "${scriptLog}" portion of the line
-#   to avoid duplicate entries in the log file.
+#   MANUAL INSTRUCTIONS:
+#   Replace this entire comment block with your organization’s customized "reminderDialog.zsh" script,
+#   being careful to leave a full return at the end of the content before the "ENDOFSCRIPT" line below
+#   (and then ask yourself: "Why am I not using the automated instructions above?").
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -282,8 +279,8 @@ ENDOFSCRIPT
 #
 # CREATE LAUNCHDAEMON
 #
-#   The following function creates the LaunchDaemon which executes the previously created
-#   client-side DDM OS Reminder script.
+#   The following function creates the LaunchDaemon which executes the previously created,
+#   client-side "reminderDialog.zsh" script.
 #
 #   We've elected to prompt our users twice a day (8 a.m. and 4 p.m.) to ensure they see the message.
 #
@@ -364,10 +361,10 @@ function launchDaemonStatus() {
 
     notice "LaunchDaemon Status"
     
-    launchDaemonStatus=$( launchctl list | grep "${launchDaemonLabel}" )
+    launchDaemonStatusResult=$( launchctl list | grep "${launchDaemonLabel}" )
 
-    if [[ -n "${launchDaemonStatus}" ]]; then
-        logComment "${launchDaemonStatus}"
+    if [[ -n "${launchDaemonStatusResult}" ]]; then
+        logComment "${launchDaemonStatusResult}"
     else
         logComment "${launchDaemonLabel} is NOT loaded"
     fi
@@ -395,8 +392,19 @@ if [[ ! -f "${scriptLog}" ]]; then
     fi
 else
     # preFlight "Specified scriptLog '${scriptLog}' exists; writing log entries to it"
+    if [[ -f "${scriptLog}" ]]; then
+        logSize=$(stat -f%z "${scriptLog}" 2>/dev/null || echo "0")
+        maxLogSize=$((10 * 1024 * 1024))  # 10MB
+        
+        if (( logSize > maxLogSize )); then
+            currentTime=$(date '+%Y-%m-%d-%H%M%S')
+            preFlight "Log file exceeds ${maxLogSize} bytes; rotating"
+            mv "${scriptLog}" "${scriptLog}.${currentTime}.old"
+            touch "${scriptLog}"
+            preFlight "Log file rotated; previous log saved as ${scriptLog}.${currentTime}.old"
+        fi
+    fi
 fi
-
 
 
 
@@ -418,26 +426,42 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Pre-flight Check: Validate / install swiftDialog (Thanks big bunches, @acodega!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function dialogInstall() {
-
     # Get the URL of the latest PKG From the Dialog GitHub repo
-    dialogURL=$(curl -L --silent --fail "https://api.github.com/repos/swiftDialog/swiftDialog/releases/latest" | awk -F '"' "/browser_download_url/ && /pkg\"/ { print \$4; exit }")
+    dialogURL=$(curl -L --silent --fail --connect-timeout 10 --max-time 30 \
+        "https://api.github.com/repos/swiftDialog/swiftDialog/releases/latest" \
+        | awk -F '"' "/browser_download_url/ && /pkg\"/ { print \$4; exit }")
+    
+    # Validate URL was retrieved
+    if [[ -z "${dialogURL}" ]]; then
+        fatal "Failed to retrieve swiftDialog download URL from GitHub API"
+    fi
+    
+    # Validate URL format
+    if [[ ! "${dialogURL}" =~ ^https://github\.com/ ]]; then
+        fatal "Invalid swiftDialog URL format: ${dialogURL}"
+    fi
 
     # Expected Team ID of the downloaded PKG
     expectedDialogTeamID="PWA5E9TQ59"
 
-    preFlight "Installing swiftDialog..."
+    preFlight "Installing swiftDialog from ${dialogURL}..."
 
     # Create temporary working directory
     workDirectory=$( basename "$0" )
     tempDirectory=$( mktemp -d "/private/tmp/$workDirectory.XXXXXX" )
 
-    # Download the installer package
-    curl --location --silent "$dialogURL" -o "$tempDirectory/Dialog.pkg"
+    # Download the installer package with timeouts
+    if ! curl --location --silent --fail --connect-timeout 10 --max-time 60 \
+             "$dialogURL" -o "$tempDirectory/Dialog.pkg"; then
+        rm -Rf "$tempDirectory"
+        fatal "Failed to download swiftDialog package"
+    fi
 
     # Verify the download
     teamID=$(spctl -a -vv -t install "$tempDirectory/Dialog.pkg" 2>&1 | awk '/origin=/ {print $NF }' | tr -d '()')
@@ -468,22 +492,28 @@ function dialogInstall() {
 function dialogCheck() {
 
     # Check for Dialog and install if not found
-    if [ ! -x "/Library/Application Support/Dialog/Dialog.app" ]; then
+    if [[ ! -x "/Library/Application Support/Dialog/Dialog.app" ]]; then
 
-        preFlight "swiftDialog not found. Installing..."
+        preFlight "swiftDialog not found; installing …"
         dialogInstall
+        if [[ ! -x "/usr/local/bin/dialog" ]]; then
+            fatal "swiftDialog still not found; are downloads from GitHub blocked on this Mac?"
+        fi
 
     else
 
         dialogVersion=$(/usr/local/bin/dialog --version)
-        if [[ "${dialogVersion}" < "${swiftDialogMinimumRequiredVersion}" ]]; then
+        if ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
             
-            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating..."
+            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating …"
             dialogInstall
-            
+            if [[ ! -x "/usr/local/bin/dialog" ]]; then
+                fatal "Unable to update swiftDialog; are downloads from GitHub blocked on this Mac?"
+            fi
+
         else
 
-            preFlight "swiftDialog version ${dialogVersion} found; proceeding..."
+            preFlight "swiftDialog version ${dialogVersion} found; proceeding …"
 
         fi
     
@@ -511,7 +541,9 @@ preFlight "Complete!"
 # Validate / install swiftDialog
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-dialogCheck
+if [[ "${resetConfiguration}" != "Uninstall" ]]; then
+    dialogCheck
+fi
 
 
 
@@ -555,14 +587,14 @@ if [[ -f "${launchDaemonPath}" ]]; then
 
     launchDaemonStatus
 
-    if [[ -n "${launchDaemonStatus}" ]]; then
+    if [[ -n "${launchDaemonStatusResult}" ]]; then
 
         logComment "${launchDaemonLabel} IS loaded"
 
     else
 
         logComment "Loading '${launchDaemonLabel}' …"
-        launchctl asuser $(id -u) bootstrap gui/$(id -u) "${launchDaemonPath}"
+        launchctl bootstrap system "${launchDaemonPath}"
         launchDaemonStatus
 
     fi
@@ -591,5 +623,9 @@ launchDaemonStatus
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Exit
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+quitOut "Completed ${reverseDomainNameNotation}.${organizationScriptName} LaunchDaemon"
+quitOut "Monitor the client-side log via:"
+quitOut "tail -f ${scriptLog}"
 
 exit 0

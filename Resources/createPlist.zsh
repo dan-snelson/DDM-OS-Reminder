@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.1.1"
+scriptVersion="2.2.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -106,10 +106,14 @@ esac
 # ─────────────────────────────────────────────────────────────
 defaultTitle=$(extract_default defaultTitle)
 defaultExcessiveUptimeWarningMessage=$(extract_default defaultExcessiveUptimeWarningMessage)
+defaultDiskSpaceWarningMessage=$(extract_default defaultDiskSpaceWarningMessage)
 defaultMessage=$(extract_default defaultMessage)
 defaultInfobox=$(extract_default defaultInfobox)
 defaultHelpmessage=$(extract_default defaultHelpmessage)
 defaultHelpimage=$(extract_default defaultHelpimage)
+defaultStagedUpdateMessage=$(extract_default defaultStagedUpdateMessage)
+defaultPartiallyStagedUpdateMessage=$(extract_default defaultPartiallyStagedUpdateMessage)
+defaultPendingDownloadMessage=$(extract_default defaultPendingDownloadMessage)
 defaultButton1text=$(extract_default defaultButton1text)
 defaultButton2text=$(extract_default defaultButton2text)
 defaultInfobuttontext=$(extract_default defaultInfobuttontext)
@@ -135,6 +139,10 @@ resolvedInfobuttontext="$defaultSupportKB"
 # ---------------------------------------------------------------------
 title_xml=$(process "$defaultTitle")
 excessiveUptimeWarningMessage_xml=$(process "$defaultExcessiveUptimeWarningMessage")
+diskSpaceWarningMessage_xml=$(process "$defaultDiskSpaceWarningMessage")
+stagedUpdateMessage_xml=$(process "${defaultStagedUpdateMessage}")
+partiallyStagedUpdateMessage_xml=$(process "${defaultPartiallyStagedUpdateMessage}")
+pendingDownloadMessage_xml=$(process "${defaultPendingDownloadMessage}")
 message_xml=$(process "$defaultMessage")
 infobox_xml=$(process "$defaultInfobox")
 helpmessage_xml=$(process "$defaultHelpmessage")
@@ -224,6 +232,16 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infobuttontext_xml}</string>
     <key>ExcessiveUptimeWarningMessage</key>
     <string>${excessiveUptimeWarningMessage_xml}</string>
+    <key>DiskSpaceWarningMessage</key>
+    <string>${diskSpaceWarningMessage_xml}</string>
+    <key>StagedUpdateMessage</key>
+    <string>${stagedUpdateMessage_xml}</string>
+    <key>PartiallyStagedUpdateMessage</key>
+    <string>${partiallyStagedUpdateMessage_xml}</string>
+    <key>PendingDownloadMessage</key>
+    <string>${pendingDownloadMessage_xml}</string>
+    <key>HideStagedUpdateInfo</key>
+    <false/>
     <key>Message</key>
     <string>${message_xml}</string>
 
@@ -256,7 +274,7 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
         <dict>
             <key>PayloadContent</key>
             <dict>
-                <key>${reverseDomainNameNotation}</key>
+                <key>${reverseDomainNameNotation}.${organizationScriptName}</key>
                 <dict>
                     <key>Forced</key>
                     <array>
@@ -306,6 +324,16 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infobuttontext_xml}</string>
                                 <key>ExcessiveUptimeWarningMessage</key>
                                 <string>${excessiveUptimeWarningMessage_xml}</string>
+                                <key>DiskSpaceWarningMessage</key>
+                                <string>${diskSpaceWarningMessage_xml}</string>
+                                <key>StagedUpdateMessage</key>
+                                <string>${stagedUpdateMessage_xml}</string>
+                                <key>PartiallyStagedUpdateMessage</key>
+                                <string>${partiallyStagedUpdateMessage_xml}</string>
+                                <key>PendingDownloadMessage</key>
+                                <string>${pendingDownloadMessage_xml}</string>
+                                <key>HideStagedUpdateInfo</key>
+                                <false/>
                                 <key>Message</key>
                                 <string>${message_xml}</string>
                                 <key>InfoBox</key>

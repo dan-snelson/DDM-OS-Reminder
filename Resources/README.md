@@ -27,7 +27,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.1.0)
+🧩 Assemble DDM OS Reminder (2.2.0)
 ===============================================================
 
 Full Paths:

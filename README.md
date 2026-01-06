@@ -8,6 +8,7 @@
 ## Overview
 
 While Apple’s Declarative Device Management (DDM) provides Mac Admins a powerful way to _enforce_ macOS updates, its built-in notification is often _too subtle_ for most administrators:
+<br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
 **DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate` entries in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki)-enabled script plus a LaunchDaemon to deliver a more prominent end-user dialog that reminds users to update their Mac to comply with DDM-enforced macOS update deadlines.

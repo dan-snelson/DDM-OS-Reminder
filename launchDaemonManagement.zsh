@@ -21,14 +21,8 @@
 #
 # HISTORY
 #
-# Version 2.3.0b1, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
-# - Added instructions for monitoring the client-side log to the log file itself
-# - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
-# - Updated `Resources/sample.plist` to address Feature Request #43
-# - Added Detection for staged macOS updates (Addresses Feature Request #49)
-# - Refactored Configuration Profile-related code
-# - Refactored "Quiet Period" logic based on user-interaction via Return Code (rather than dialog display)
+# Version 2.3.0b2, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Refactored Update Required logic to address Feature Request #55
 #
 ####################################################################################################
 
@@ -43,7 +37,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b1"
+scriptVersion="2.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

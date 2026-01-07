@@ -3,7 +3,7 @@
 # EA: DDM Executed OS Update Date (log-based)
 # Reports when the CURRENT OS version/build first appeared in /var/log/install.log.
 #
-# Version: 2.3.0b1
+# Version: 2.3.0b2
 # Date: 07-Jan-2026
 
 # Safety: don't use -e or pipefail in Jamf EA context

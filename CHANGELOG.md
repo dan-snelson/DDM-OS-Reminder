@@ -2,7 +2,10 @@
 
 ## Changelog
 
-### Version 2.3.0b1 (07-Jan-2026)
+## Version 2.3.0b2 (07-Jan-2026)
+- Refactored Update Required logic to address [Feature Request #55](https://github.com/dan-snelson/DDM-OS-Reminder/issues/55)
+
+### Version 2.2.0 (06-Jan-2026)
 - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
 - Added instructions for monitoring the client-side log to the log file itself
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)

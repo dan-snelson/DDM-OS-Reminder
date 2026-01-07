@@ -21,8 +21,9 @@
 #
 # HISTORY
 #
-# Version 2.3.0b2, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.3.0b3, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
+# - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 #
 ####################################################################################################
 
@@ -37,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b2"
+scriptVersion="2.3.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

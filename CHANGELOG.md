@@ -2,8 +2,9 @@
 
 ## Changelog
 
-## Version 2.3.0b2 (07-Jan-2026)
+## Version 2.3.0b3 (07-Jan-2026)
 - Refactored Update Required logic to address [Feature Request #55](https://github.com/dan-snelson/DDM-OS-Reminder/issues/55)
+- Updated "Organization Variables" (i.e., removed redundant variable declarations)
 
 ### Version 2.2.0 (06-Jan-2026)
 - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)

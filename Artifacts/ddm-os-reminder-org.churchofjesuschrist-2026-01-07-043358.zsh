@@ -21,8 +21,9 @@
 #
 # HISTORY
 #
-# Version 2.3.0b2, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.3.0b3, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
+# - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 #
 ####################################################################################################
 
@@ -37,7 +38,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b2"
+scriptVersion="2.3.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -259,7 +260,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b2"
+scriptVersion="2.3.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -287,32 +288,10 @@ preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
-# Organization’s number of days before deadline to starting displaying reminders
-daysBeforeDeadlineDisplayReminder="60"
-
-# Organization’s number of days before deadline to enable swiftDialog’s blurscreen
-daysBeforeDeadlineBlurscreen="45"
-
-# Organization’s number of days before deadline to hide the secondary button
-daysBeforeDeadlineHidingButton2="21"
-
-# Organization’s number of days of excessive uptime before warning the user
-daysOfExcessiveUptimeWarning="0"
-
-# Organization’s minimum percentage of free disk space required for update
-minimumDiskFreePercentage="99"
-
-# Organization’s Meeting Delay (in minutes) 
-meetingDelay="75"
-
-# Track whether the secondary button should be hidden (computed at runtime)
-hideSecondaryButton="NO"
-
-# Date format for deadlines (used with date -jf)
-dateFormatDeadlineHumanReadable="+%a, %d-%b-%Y, %-l:%M %p"
-
-# Swap main icon and overlay icon (set to YES, true, or 1 to enable)
-swapOverlayAndLogo="NO"
+# NOTE: All configurable preferences (days to deadline, blurscreen threshold, disk
+# space, meeting delay, format strings, icons, etc.) are now defined in the
+# preferenceConfiguration map below and loaded via loadPreferenceOverrides()
+# to support managed and local plist overrides.
 
 
 

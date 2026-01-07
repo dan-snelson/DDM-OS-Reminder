@@ -24,6 +24,7 @@
 # Version 2.3.0b4, 07-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
+# - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
 #
 ####################################################################################################
 

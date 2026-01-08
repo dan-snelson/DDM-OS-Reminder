@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b3"
+scriptVersion="2.3.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -771,13 +771,36 @@ function checkUserDisplaySleepAssertions() {
 function downloadBrandingAssets() {
     # Download overlay icon
     if [[ -n "${organizationOverlayiconURL}" ]]; then
-        notice "Downloading overlay icon from '${organizationOverlayiconURL}'"
-        if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
-            overlayicon="/var/tmp/overlayicon.png"
-            info "Successfully downloaded overlay icon"
+        notice "Processing overlay icon from '${organizationOverlayiconURL}'"
+        
+        # Check if it's a local file path (file or directory/bundle)
+        if [[ -e "${organizationOverlayiconURL}" ]]; then
+            info "Overlay icon is a local path; using directly"
+            overlayicon="${organizationOverlayiconURL}"
+            info "Successfully configured overlay icon"
+        
+        # Check if it's a file:// URI
+        elif [[ "${organizationOverlayiconURL}" =~ ^file:// ]]; then
+            info "Overlay icon is a file:// URI; converting to path"
+            local filePath="${organizationOverlayiconURL#file://}"
+            if [[ -e "${filePath}" ]]; then
+                overlayicon="${filePath}"
+                info "Successfully configured overlay icon from file:// URI"
+            else
+                error "Path not found: '${filePath}' (from URI '${organizationOverlayiconURL}')"
+                overlayicon="/System/Library/CoreServices/Finder.app"
+            fi
+        
+        # Assume it's a remote URL
         else
-            error "Failed to download overlayicon from '${organizationOverlayiconURL}'"
-            overlayicon="/System/Library/CoreServices/Finder.app"
+            info "Overlay icon appears to be a remote URL; downloading with curl"
+            if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
+                overlayicon="/var/tmp/overlayicon.png"
+                info "Successfully downloaded overlay icon"
+            else
+                error "Failed to download overlay icon from '${organizationOverlayiconURL}'"
+                overlayicon="/System/Library/CoreServices/Finder.app"
+            fi
         fi
     else
         overlayicon="/System/Library/CoreServices/Finder.app"
@@ -966,10 +989,10 @@ function quitScript() {
 
     quitOut "Exiting …"
 
-    # Remove icons
+    # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
-        if [[ -f "${img}" ]] && [[ "${img}" != "/System/Library/CoreServices/Finder.app" ]]; then
-            rm -f "${img}"
+        if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
+            rm -rf "${img}"
         fi
     done
 

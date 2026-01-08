@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b4"
+scriptVersion="2.3.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -47,6 +47,10 @@ organizationScriptName="dorm"
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
+
+# Disable button2 (instead of hiding it when approaching deadline)
+# Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
+disableButton2InsteadOfHide="NO"
 
 # NOTE: All configurable preferences (days to deadline, blurscreen threshold, disk
 # space, meeting delay, format strings, icons, etc.) are now defined in the
@@ -148,7 +152,7 @@ declare -A preferenceConfiguration=(
     ["hideStagedInfo"]="boolean|NO"
     
     # Complex UI Text
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** {ddmVersionStringDaysRemaining}<br><br>**Last Restart:** {uptimeHumanReadable}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -434,10 +438,12 @@ function applyHideRules() {
         helpimage=""
     fi
 
-    # Hide secondary button based on computed deadline window flag
+    # Handle secondary button based on computed deadline window flag
+    # hideSecondaryButton can be: "NO" (show), "YES" (hide), or "DISABLED" (greyed out)
     if [[ "${hideSecondaryButton}" == "YES" ]]; then
         button2text=""
     fi
+    # Note: DISABLED state is handled in displayReminderDialog() via --button2disabled flag
 }
 
 function updateRequiredVariables() {
@@ -677,7 +683,11 @@ installedOSvsDDMenforcedOS() {
         blurscreen="--noblurscreen"
     fi
     if (( secondsUntilDeadline <= hideButton2ThresholdSeconds )); then
-        hideSecondaryButton="YES"
+        if [[ "${disableButton2InsteadOfHide}" == "YES" ]]; then
+            hideSecondaryButton="DISABLED"
+        else
+            hideSecondaryButton="YES"
+        fi
     else
         hideSecondaryButton="NO"
     fi
@@ -897,6 +907,7 @@ function displayReminderDialog() {
     )
 
     [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
+    [[ "${hideSecondaryButton}" == "DISABLED" ]] && dialogArgs+=(--button2disabled)
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
@@ -1155,7 +1166,11 @@ if [[ "${1}" == "demo" ]]; then
         blurscreen="--noblurscreen"
     fi
     if (( secondsUntilDeadline <= hideButton2ThresholdSeconds )); then
-        hideSecondaryButton="YES"
+        if [[ "${disableButton2InsteadOfHide}" == "YES" ]]; then
+            hideSecondaryButton="DISABLED"
+        else
+            hideSecondaryButton="YES"
+        fi
     else
         hideSecondaryButton="NO"
     fi

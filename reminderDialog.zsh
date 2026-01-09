@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b8"
+scriptVersion="2.3.0b9"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -331,14 +331,12 @@ function loadPreferenceOverrides() {
         local managedValue=""
         if [[ "${hasManagedPrefs}" == "true" ]]; then
             managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
-
         fi
         
         # Read local value
         local localValue=""
         if [[ "${hasLocalPrefs}" == "true" ]]; then
             localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
-
         fi
         
         # Apply the preference based on type

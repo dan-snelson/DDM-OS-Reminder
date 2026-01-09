@@ -21,11 +21,12 @@
 #
 # HISTORY
 #
-# Version 2.3.0b8, 08-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.3.0b9, 09-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 # - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
 # - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
+# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huxley!)
 #
 ####################################################################################################
 
@@ -40,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b8"
+scriptVersion="2.3.0b9"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -262,7 +263,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b8"
+scriptVersion="2.3.0b9"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -572,13 +573,15 @@ function loadPreferenceOverrides() {
         # Read managed value
         local managedValue=""
         if [[ "${hasManagedPrefs}" == "true" ]]; then
-            managedValue=$(defaults read "${managedPreferencesPlist}" "${plistKey}" 2>/dev/null)
+            managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+
         fi
         
         # Read local value
         local localValue=""
         if [[ "${hasLocalPrefs}" == "true" ]]; then
-            localValue=$(defaults read "${localPreferencesPlist}" "${plistKey}" 2>/dev/null)
+            localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+
         fi
         
         # Apply the preference based on type

@@ -27,7 +27,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.3.0b7)
+🧩 Assemble DDM OS Reminder (2.3.0b8)
 ===============================================================
 
 Full Paths:
@@ -160,9 +160,9 @@ zsh Resources/createPlist.zsh
 
 ```
 ❯ zsh Resources/createPlist.zsh
-Generating default plist → ~/DDM-OS-Reminder/Resources/org.churchofjesuschrist.ics.dor-2026-01-08-055622.plist
+Generating default plist → ~/DDM-OS-Reminder/Resources/org.churchofjesuschrist.dor-2026-01-08-055622.plist
 SUCCESS! plist generated:
-   → ~/DDM-OS-Reminder/Resources/org.churchofjesuschrist.ics.dor-2026-01-08-055622.plist
+   → ~/DDM-OS-Reminder/Resources/org.churchofjesuschrist.dor-2026-01-08-055622.plist
 SUCCESS! mobileconfig generated:
    → ~/DDM-OS-Reminder/Resources/DDM OS Reminder-2026-01-08-055622-unsigned.mobileconfig
 ```

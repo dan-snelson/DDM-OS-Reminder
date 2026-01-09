@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.3.0b7, 08-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.3.0b8, 08-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 # - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
@@ -40,7 +40,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b7"
+scriptVersion="2.3.0b8"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

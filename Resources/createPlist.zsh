@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.3.0b7"
+scriptVersion="2.3.0b8"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -23,9 +23,13 @@ datestamp=$(date '+%Y-%m-%d-%H%M%S')
 
 # ─────────────────────────────────────────────────────────────
 # Safety check for default reverseDomainNameNotation
+# IMPORTANT: You must customize reminderDialog.zsh BEFORE running this script.
+# Change reverseDomainNameNotation from "org.churchofjesuschrist" to your organization's value.
 # ─────────────────────────────────────────────────────────────
 if [[ "$reverseDomainNameNotation" == "org.churchofjesuschrist" ]]; then
-    echo "ERROR: Please customize both 'reminderDialog.zsh' and 'launchDaemonManagement.zsh' before executing this script; exiting."
+    echo "ERROR: Please customize 'reminderDialog.zsh' before executing this script."
+    echo "       Change reverseDomainNameNotation to your organization's value (e.g., us.snelson)."
+    echo "       Then run this script again to generate configs from your customized values."
     exit 1
 fi
 
@@ -41,23 +45,24 @@ MANAGEDCLIENT_PAYLOAD_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
 echo "Generating default plist → $OUTPUT_PLIST_FILE"
 
 # ─────────────────────────────────────────────────────────────
-# Extract default value
+# Extract value from preferenceConfiguration map (v2.3.0+ format)
+# Format: ["key"]="type|defaultValue"
 # ─────────────────────────────────────────────────────────────
-extract_default() {
-    local name=$1
+extract_from_preference_map() {
+    local key=$1
     local line
-    line=$(grep -m1 "[[:space:]]*local[[:space:]]\+${name}=" "$SOURCE_SCRIPT") || {
-        echo "ERROR: Missing 'local ${name}=' in reminderDialog.zsh" >&2
+    
+    # Search for the key in the preferenceConfiguration map (contains "|" separator)
+    line=$(grep -m1 "\[\"${key}\"\]=\"[^|]*|" "$SOURCE_SCRIPT") || {
+        echo "ERROR: Missing key '${key}' in preferenceConfiguration map" >&2
         exit 1
     }
 
-    # Extract the fallback value inside ${...:-"..." } or plain "value"
-    if [[ $line =~ '\$\{[^}]+:-\ ?"([^"]+)"' ]]; then
-        echo "${match[1]}"
-    elif [[ $line =~ '"([^"]+)"' ]]; then
+    # Extract the value after the pipe: ["key"]="type|value"
+    if [[ $line =~ '"[^|]+\|([^"]+)"' ]]; then
         echo "${match[1]}"
     else
-        echo "ERROR: Cannot extract default for $name" >&2
+        echo "ERROR: Cannot extract value for ${key}" >&2
         exit 1
     fi
 }
@@ -89,18 +94,20 @@ xml_escape() {
 process() { echo "$1" | normalize_placeholders | xml_escape; }
 
 # ─────────────────────────────────────────────────────────────
-# Extract globals
+# Extract globals (still use awk for non-map variables)
 # ─────────────────────────────────────────────────────────────
 scriptVersion=$(awk -F'"' '/^scriptVersion=/{print $2}' "$SOURCE_SCRIPT")
-scriptLog=$(awk -F'"' '/^scriptLog=/{print $2}' "$SOURCE_SCRIPT")
-daysBeforeDeadlineDisplayReminder=$(awk -F'"' '/^daysBeforeDeadlineDisplayReminder=/{print $2}' "$SOURCE_SCRIPT")
-daysBeforeDeadlineBlurscreen=$(awk -F'"' '/^daysBeforeDeadlineBlurscreen=/{print $2}' "$SOURCE_SCRIPT")
-daysBeforeDeadlineHidingButton2=$(awk -F'"' '/^daysBeforeDeadlineHidingButton2=/{print $2}' "$SOURCE_SCRIPT")
-daysOfExcessiveUptimeWarning=$(awk -F'"' '/^daysOfExcessiveUptimeWarning=/{print $2}' "$SOURCE_SCRIPT")
-meetingDelay=$(awk -F'"' '/^meetingDelay=/{print $2}' "$SOURCE_SCRIPT")
-dateFormatDeadlineHumanReadable=$(awk -F'"' '/^dateFormatDeadlineHumanReadable=/{print $2}' "$SOURCE_SCRIPT")
-swapOverlayAndLogo_raw=$(awk -F'"' '/^swapOverlayAndLogo=/{print $2}' "$SOURCE_SCRIPT")
-minimumDiskFreePercentage=$(awk -F'"' '/^minimumDiskFreePercentage=/{print $2}' "$SOURCE_SCRIPT")
+
+# Extract from preferenceConfiguration map
+scriptLog=$(extract_from_preference_map scriptLog)
+daysBeforeDeadlineDisplayReminder=$(extract_from_preference_map daysBeforeDeadlineDisplayReminder)
+daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlurscreen)
+daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
+daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
+meetingDelay=$(extract_from_preference_map meetingDelay)
+dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
+swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
+minimumDiskFreePercentage=$(extract_from_preference_map minimumDiskFreePercentage)
 
 case "${swapOverlayAndLogo_raw:u}" in
     YES|TRUE|1) swapOverlayAndLogo_xml="<true/>" ;;
@@ -108,29 +115,29 @@ case "${swapOverlayAndLogo_raw:u}" in
 esac
 
 # ─────────────────────────────────────────────────────────────
-# Extract all defaults
+# Extract all values from preferenceConfiguration map
 # ─────────────────────────────────────────────────────────────
-defaultTitle=$(extract_default defaultTitle)
-defaultExcessiveUptimeWarningMessage=$(extract_default defaultExcessiveUptimeWarningMessage)
-defaultDiskSpaceWarningMessage=$(extract_default defaultDiskSpaceWarningMessage)
-defaultMessage=$(extract_default defaultMessage)
-defaultInfobox=$(extract_default defaultInfobox)
-defaultHelpmessage=$(extract_default defaultHelpmessage)
-defaultHelpimage=$(extract_default defaultHelpimage)
-defaultStagedUpdateMessage=$(extract_default defaultStagedUpdateMessage)
-defaultPartiallyStagedUpdateMessage=$(extract_default defaultPartiallyStagedUpdateMessage)
-defaultPendingDownloadMessage=$(extract_default defaultPendingDownloadMessage)
-defaultButton1text=$(extract_default defaultButton1text)
-defaultButton2text=$(extract_default defaultButton2text)
-defaultInfobuttontext=$(extract_default defaultInfobuttontext)
-defaultOverlayiconURL=$(extract_default defaultOverlayiconURL)
-defaultSupportTeamName=$(extract_default defaultSupportTeamName)
-defaultSupportTeamPhone=$(extract_default defaultSupportTeamPhone)
-defaultSupportTeamEmail=$(extract_default defaultSupportTeamEmail)
-defaultSupportTeamWebsite=$(extract_default defaultSupportTeamWebsite)
-defaultSupportKB=$(extract_default defaultSupportKB)
-defaultInfobuttonaction=$(extract_default defaultInfobuttonaction)
-defaultSupportKBURL=$(extract_default defaultSupportKBURL)
+defaultTitle=$(extract_from_preference_map title)
+defaultExcessiveUptimeWarningMessage=$(extract_from_preference_map excessiveUptimeWarningMessage)
+defaultDiskSpaceWarningMessage=$(extract_from_preference_map diskSpaceWarningMessage)
+defaultMessage=$(extract_from_preference_map message)
+defaultInfobox=$(extract_from_preference_map infobox)
+defaultHelpmessage=$(extract_from_preference_map helpmessage)
+defaultHelpimage=$(extract_from_preference_map helpimage)
+defaultStagedUpdateMessage=$(extract_from_preference_map stagedUpdateMessage)
+defaultPartiallyStagedUpdateMessage=$(extract_from_preference_map partiallyStagedUpdateMessage)
+defaultPendingDownloadMessage=$(extract_from_preference_map pendingDownloadMessage)
+defaultButton1text=$(extract_from_preference_map button1text)
+defaultButton2text=$(extract_from_preference_map button2text)
+defaultInfobuttontext=$(extract_from_preference_map infobuttontext)
+defaultOverlayiconURL=$(extract_from_preference_map organizationOverlayiconURL)
+defaultSupportTeamName=$(extract_from_preference_map supportTeamName)
+defaultSupportTeamPhone=$(extract_from_preference_map supportTeamPhone)
+defaultSupportTeamEmail=$(extract_from_preference_map supportTeamEmail)
+defaultSupportTeamWebsite=$(extract_from_preference_map supportTeamWebsite)
+defaultSupportKB=$(extract_from_preference_map supportKB)
+defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
+defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
 
 # Resolve Info button-related defaults to concrete values,
 # mirroring runtime behavior in reminderDialog.zsh

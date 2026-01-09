@@ -348,13 +348,15 @@ function loadPreferenceOverrides() {
         # Read managed value
         local managedValue=""
         if [[ "${hasManagedPrefs}" == "true" ]]; then
-            managedValue=$(defaults read "${managedPreferencesPlist}" "${plistKey}" 2>/dev/null)
+            managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+
         fi
         
         # Read local value
         local localValue=""
         if [[ "${hasLocalPrefs}" == "true" ]]; then
-            localValue=$(defaults read "${localPreferencesPlist}" "${plistKey}" 2>/dev/null)
+            localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+
         fi
         
         # Apply the preference based on type

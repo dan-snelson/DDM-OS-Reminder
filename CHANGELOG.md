@@ -7,6 +7,8 @@
 - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 - Refactored `OrganizationOverlayIconURL` logic to address [Bug Report #56](https://github.com/dan-snelson/DDM-OS-Reminder/issues/56) (thanks, @walkintom!)
 - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by [Bug Report #58](https://github.com/dan-snelson/DDM-OS-Reminder/issues/58), thanks @ScottEKendall!)
+- Updated `Resources/createPlist.zsh` to find the newest assembled script in `Artifacts/` (instead of a hard-coded `reminderDialog.zsh` file in `Resources/`) Thanks, Andrew!
+- Updated `Resources/createSelfExtracting.zsh` to find the newest assembled script in `Artifacts/` (instead of a hard-coded `reminderDialog.zsh` file in `Resources/`) Thanks, Andrew!
 
 ### Version 2.2.0 (06-Jan-2026)
 - Added "quiet period" to skip reminder dialog if recently shown (Addresses [Feature Request #42](https://github.com/dan-snelson/DDM-OS-Reminder/issues/42))

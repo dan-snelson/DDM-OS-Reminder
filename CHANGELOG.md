@@ -2,44 +2,44 @@
 
 ## Changelog
 
-## Version 2.3.0b5 (08-Jan-2026)
+## Version 2.3.0b6 (08-Jan-2026)
 - Refactored Update Required logic to address [Feature Request #55](https://github.com/dan-snelson/DDM-OS-Reminder/issues/55)
 - Updated "Organization Variables" (i.e., removed redundant variable declarations)
-- Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
-- Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
+- Refactored `OrganizationOverlayIconURL` logic to address [Bug Report #56](https://github.com/dan-snelson/DDM-OS-Reminder/issues/56) (thanks, @walkintom!)
+- Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by [Bug Report #58](https://github.com/dan-snelson/DDM-OS-Reminder/issues/58), thanks @ScottEKendall!)
 
 ### Version 2.2.0 (06-Jan-2026)
-- Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
+- Added "quiet period" to skip reminder dialog if recently shown (Addresses [Feature Request #42](https://github.com/dan-snelson/DDM-OS-Reminder/issues/42))
 - Added instructions for monitoring the client-side log to the log file itself
 - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
-- Updated `Resources/sample.plist` to address Feature Request #43
-- Added Detection for staged macOS updates (Addresses Feature Request #49)
+- Updated `Resources/sample.plist` to address [Feature Request #43](https://github.com/dan-snelson/DDM-OS-Reminder/issues/43)
+- Added Detection for staged macOS updates (Addresses [Feature Request #49](https://github.com/dan-snelson/DDM-OS-Reminder/issues/49))
 - Refactored Configuration Profile-related code
 - Refactored "Quiet Period" logic based on user-interaction via Return Code (rather than dialog display)
 
 ### Version 2.1.0 (13-Dec-2025)
-- Added ability to use `titleMessageUpdateOrUpgrade:l` (Pull Request #26; thanks, @maxsundellacne!)
-- Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` (Pull Request #27; thanks, @maxsundellacne!)
+- Added ability to use `titleMessageUpdateOrUpgrade:l` ([Pull Request #26](https://github.com/dan-snelson/DDM-OS-Reminder/pull/26); thanks, @maxsundellacne!)
+- Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` ([Pull Request #27](https://github.com/dan-snelson/DDM-OS-Reminder/pull/27); thanks, @maxsundellacne!)
 - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
-- Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; #28)
-- Added logic for when the reminder dialog is re-displayed after clicking the `infobutton` (based on if we're already hiding the secondary button; #31)
+- Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; [Issue #28](https://github.com/dan-snelson/DDM-OS-Reminder/issues/28))
+- Added logic for when the reminder dialog is re-displayed after clicking the `infobutton` (based on if we're already hiding the secondary button; [Issue #31](https://github.com/dan-snelson/DDM-OS-Reminder/issues/31))
 - Moved and renamed [`sample.plist`](Resources/sample.plist)
-- Streamline Deployment & Documentation (Feature Request #35)
-- Addressed Bugs #34 (thanks, @TechTrekkie!) and #36 (I. Blame. AI.)
+- Streamline Deployment & Documentation ([Feature Request #35](https://github.com/dan-snelson/DDM-OS-Reminder/issues/35))
+- Addressed [Bugs #34](https://github.com/dan-snelson/DDM-OS-Reminder/issues/34) (thanks, @TechTrekkie!) and [#36](https://github.com/dan-snelson/DDM-OS-Reminder/issues/36) (I. Blame. AI.)
 - Refactored `assemble.zsh` (thanks for the feedback, @Andrew!)
 - Added warning for low disk space (configurable via `minimumDiskFreePercentage` variable; Feature Request #39. (Thanks for the suggestion, @prgsenright!)
 
 ### Version 2.0.0 (06-Dec-2025)
 - Reorganized script structure for (hopefully) improved clarity
-- Defined `swiftDialogMinimumRequiredVersion` (Addresses #16; thanks for the heads-up, @deski-arnaud!)
-- Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by Pull Request: #20; thanks, @TazNZ!)
+- Defined `swiftDialogMinimumRequiredVersion` (Addresses [Issue #16](https://github.com/dan-snelson/DDM-OS-Reminder/issues/16); thanks for the heads-up, @deski-arnaud!)
+- Refactored `displayReminderDialog` function's Exit Code `3` to re-display dialog after 61 seconds when infobutton (i.e., KB) is clicked (Inspired by [Pull Request: #20](https://github.com/dan-snelson/DDM-OS-Reminder/pull/20); thanks, @TazNZ!)
 - Refactored `daysBeforeDeadlineBlurscreen` logic to use seconds (instead of days) for more precise control (thanks for the suggestion, @Ancaeus!)
 - Added a "demo" mode to the `reminderDialog.zsh` script for testing purposes (thanks for the suggestion, Max S!)
-- Added ability to read variables from `.plist` (Pull Request #22; thanks, Obi-@maxsundellacne!)
+- Added ability to read variables from `.plist` ([Pull Request #22](https://github.com/dan-snelson/DDM-OS-Reminder/pull/22); thanks, Obi-@maxsundellacne!)
 
 ### Version 1.4.0 (18-Nov-2025)
 - (Reluctantly) added swiftDialog installation detection
-- Added `meetingDelay` variable to pause reminder display until meeting has completed (Issue #14; thanks for the suggestion, @sabanessts!)
+- Added `meetingDelay` variable to pause reminder display until meeting has completed ([Issue #14](https://github.com/dan-snelson/DDM-OS-Reminder/issues/14); thanks for the suggestion, @sabanessts!)
 - Added `Resources/createSelfExtracting.zsh` script to create self-extracting version of assembled script
 - Updated `Resources/README.md` to include "Assemble DDM OS Reminder" and "Create Self-extracting Script" instructions
 - Re-re-refactored `installedOSvsDDMenforcedOS` to include @rgbpixel's recent discovery of `setPastDuePaddedEnforcementDate` (thanks again, @rgbpixel!)
@@ -50,7 +50,7 @@
 ### Version 1.3.0 (09-Nov-2025)
 - Refactored `installedOSvsDDMenforcedOS` to better reflect the actual DDM-enforced restart date and time for past-due deadlines (thanks for the suggestion, @rgbpixel!)
 - Refactored logged-in user detection
-- Added fail-safe to make sure System Settings is brought to the forefront (Pull Request #12; thanks, @techtrekkie!)
+- Added fail-safe to make sure System Settings is brought to the forefront ([Pull Request #12](https://github.com/dan-snelson/DDM-OS-Reminder/pull/12); thanks, @techtrekkie!)
 - Corrected an errant `mkdir` command that created an unnecessary nested directory (thanks for the heads-up, @jonathanchan!)
 - Improved "Uninstall" behavior in `resetConfiguration` function to remove empty `organizationDirectory` (thanks for the suggestion, @Lab5!)
 
@@ -72,7 +72,7 @@
 > _Sorry for any Dan-induced headaches._
 
 - Added `checkUserFocusDisplayAssertions` function to avoid interrupting users with Display Sleep Assertions enabled (thanks, @TechTrekkie!)
-- Refactored `infobuttonaction` to disable blurscreen (Pull Request #2; thanks, @TechTrekkie!)
+- Refactored `infobuttonaction` to disable blurscreen ([Pull Request #2](https://github.com/dan-snelson/DDM-OS-Reminder/pull/2); thanks, @TechTrekkie!)
 - Updated `message` variable to clarify update instructions
 - Tweaked `updateScriptLog` function to satisfy my CDO (i.e., the alphabetical version of "OCD")
 

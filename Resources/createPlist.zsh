@@ -1,21 +1,21 @@
 #!/bin/zsh --no-rcs
 # shellcheck shell=bash
 #
-# createPlist.zsh — Generate .plist and .mobileconfig from an assembled script in Artifacts/
+# createPlist.zsh — Generate .plist and .mobileconfig from reminderDialog.zsh
 #
-# This script finds the newest assembled DDM OS Reminder script in the Artifacts/ folder
-# and regenerates configuration files from it, preserving all customizations made during assembly.
+# NOTE: This script is OPTIONAL since assemble.zsh already generates configuration files.
+# Use this only if you need to regenerate configs without running the full assembly process.
+#
+# This script extracts default values from the original reminderDialog.zsh file
+# and generates corresponding .plist and .mobileconfig files.
 
 set -euo pipefail
 
 scriptVersion="2.3.0b7"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ARTIFACTS_DIR="${SCRIPT_DIR}/../Artifacts"
+SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
-# Find the newest assembled file in the Artifacts directory
-SOURCE_SCRIPT=$(ls -t "${ARTIFACTS_DIR}"/ddm-os-reminder-*.zsh(N) 2>/dev/null | head -n 1)
-
-[[ -f "$SOURCE_SCRIPT" ]] || { echo "ERROR: Cannot find assembled script in ${ARTIFACTS_DIR}"; echo "Please run assemble.zsh first."; exit 1; }
+[[ -f "$SOURCE_SCRIPT" ]] || { echo "ERROR: Cannot find reminderDialog.zsh at ${SOURCE_SCRIPT}"; exit 1; }
 
 reverseDomainNameNotation=$(awk -F'"' '/^reverseDomainNameNotation=/{print $2}' "$SOURCE_SCRIPT")
 organizationScriptName=$(awk -F'"' '/^organizationScriptName=/{print $2}' "$SOURCE_SCRIPT")

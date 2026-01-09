@@ -145,11 +145,14 @@ You can deploy the assembled, self-extracting script to your Macs using your MDM
 
 > **Note:** This step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files in the `Artifacts/` folder.
 
-The [`createPlist.zsh`](createPlist.zsh) script can regenerate configuration files from an already-assembled script. It finds the **newest assembled script** in the `Artifacts/` folder and extracts customizations to create updated `.plist` and `.mobileconfig` files.
+The [`createPlist.zsh`](createPlist.zsh) script extracts default values from the **original** `reminderDialog.zsh` file to generate `.plist` and `.mobileconfig` files.
 
 **Use this only if you need to:**
-- Regenerate configuration files after manually editing an assembled script
-- Create alternate configurations from the same assembled script
+- Generate configuration files **without** running the full assembly process
+- Create standalone configs for testing purposes
+- Regenerate configs after modifying `reminderDialog.zsh` directly
+
+**Important:** This script reads from the original source files, not assembled scripts. To get configs with assembly customizations (RDNN updates, etc.), use the output from `assemble.zsh` instead.
 
 ```zsh
 zsh Resources/createPlist.zsh
@@ -157,14 +160,12 @@ zsh Resources/createPlist.zsh
 
 ```
 ❯ zsh Resources/createPlist.zsh
-Generating default plist → ~/DDM-OS-Reminder/Resources/us.snelson.dorm-2026-01-08-055622.plist
+Generating default plist → ~/DDM-OS-Reminder/Resources/org.churchofjesuschrist.ics.dor-2026-01-08-055622.plist
 SUCCESS! plist generated:
-   → ~/DDM-OS-Reminder/Resources/us.snelson.dorm-2026-01-08-055622.plist
+   → ~/DDM-OS-Reminder/Resources/org.churchofjesuschrist.ics.dor-2026-01-08-055622.plist
 SUCCESS! mobileconfig generated:
    → ~/DDM-OS-Reminder/Resources/DDM OS Reminder-2026-01-08-055622-unsigned.mobileconfig
 ```
-
-Upload the resulting `.plist` or `.mobileconfig` to your MDM of choice.
 
 ---
 

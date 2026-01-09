@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.3.0b3"
+scriptVersion="2.3.0b4"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 

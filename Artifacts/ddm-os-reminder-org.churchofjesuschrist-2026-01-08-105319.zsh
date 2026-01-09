@@ -21,7 +21,7 @@
 #
 # HISTORY
 #
-# Version 2.3.0b5, 08-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.3.0b6, 08-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 # - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
@@ -40,7 +40,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b5"
+scriptVersion="2.3.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -262,7 +262,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b5"
+scriptVersion="2.3.0b6"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1203,7 +1203,7 @@ function displayReminderDialog() {
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
 
             # Only re-display the reminder dialog when we are within the "hide secondary button" window (i.e., close to the deadline)
-            if [[ "${hideSecondaryButton}" == "YES" ]]; then
+            if [[ "${hideSecondaryButton}" == "YES" || "${hideSecondaryButton}" == "DISABLED" ]]; then
                 info "Within ${daysBeforeDeadlineHidingButton2} day(s) of deadline; waiting 61 seconds before re-showing dialog …"
                 sleep 61
                 blurscreen="--noblurscreen"

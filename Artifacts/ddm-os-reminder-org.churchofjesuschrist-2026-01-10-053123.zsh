@@ -21,12 +21,12 @@
 #
 # HISTORY
 #
-# Version 2.3.0b9, 09-Jan-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.3.0rc1, 10-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 # - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
 # - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
-# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huxley!)
+# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huexley!)
 #
 ####################################################################################################
 
@@ -41,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b9"
+scriptVersion="2.3.0rc1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -263,7 +263,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0b9"
+scriptVersion="2.3.0rc1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -574,14 +574,12 @@ function loadPreferenceOverrides() {
         local managedValue=""
         if [[ "${hasManagedPrefs}" == "true" ]]; then
             managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
-
         fi
         
         # Read local value
         local localValue=""
         if [[ "${hasLocalPrefs}" == "true" ]]; then
             localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
-
         fi
         
         # Apply the preference based on type

@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0rc1"
+scriptVersion="2.3.0rc2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -50,7 +50,7 @@ localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
 # Disable button2 (instead of hiding it when approaching deadline)
 # Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
-disableButton2InsteadOfHide="NO"
+disableButton2InsteadOfHide="YES"
 
 # NOTE: All configurable preferences (days to deadline, blurscreen threshold, disk
 # space, meeting delay, format strings, icons, etc.) are now defined in the
@@ -80,7 +80,9 @@ if [[ "${uptimeDays}" = "day"* ]]; then
 elif [[ "${uptimeDays}" == "mins"* ]]; then
     uptimeHumanReadable="${uptimeNumber} mins"
 else
-    uptimeHumanReadable="${uptimeNumber} (HH:MM)"
+    hours=$((upTimeMin / 60))
+    mins=$((upTimeMin % 60))
+    uptimeHumanReadable="$(printf "%02d:%02d" ${hours} ${mins}) (HH:MM)"
 fi
 
 

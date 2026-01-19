@@ -36,6 +36,8 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins a powerf
 
 Community-supplied, best-effort support is available on the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel, or you can open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).
 
+See also: [Diagrams/README.md](Diagrams/README.md) for architecture and sequence diagrams.
+
 ## What’s New
 See the [CHANGELOG](CHANGELOG.md) for a detailed list of changes / improvements.
 

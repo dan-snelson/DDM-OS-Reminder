@@ -6,7 +6,7 @@
 #
 # Updated by: Dan K. Snelson
 # For DDM OS Reminder v2.0.0+
-# Version: 2.3.0rc2
+# Version: 2.3.0
 # Date: 19-Jan-2026
 #
 # Creates a self-extracting, base64-encoded shell script from

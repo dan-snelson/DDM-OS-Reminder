@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0"
+scriptVersion="2.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -48,32 +48,14 @@ preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 
-# Organization’s number of days before deadline to starting displaying reminders
-daysBeforeDeadlineDisplayReminder="60"
+# Disable button2 (instead of hiding it when approaching deadline)
+# Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
+disableButton2InsteadOfHide="YES"
 
-# Organization’s number of days before deadline to enable swiftDialog’s blurscreen
-daysBeforeDeadlineBlurscreen="45"
-
-# Organization’s number of days before deadline to hide the secondary button
-daysBeforeDeadlineHidingButton2="21"
-
-# Organization’s number of days of excessive uptime before warning the user
-daysOfExcessiveUptimeWarning="0"
-
-# Organization’s minimum percentage of free disk space required for update
-minimumDiskFreePercentage="99"
-
-# Organization’s Meeting Delay (in minutes) 
-meetingDelay="75"
-
-# Track whether the secondary button should be hidden (computed at runtime)
-hideSecondaryButton="NO"
-
-# Date format for deadlines (used with date -jf)
-dateFormatDeadlineHumanReadable="+%a, %d-%b-%Y, %-l:%M %p"
-
-# Swap main icon and overlay icon (set to YES, true, or 1 to enable)
-swapOverlayAndLogo="NO"
+# NOTE: All configurable preferences (days to deadline, blurscreen threshold, disk
+# space, meeting delay, format strings, icons, etc.) are now defined in the
+# preferenceConfiguration map below and loaded via loadPreferenceOverrides()
+# to support managed and local plist overrides.
 
 
 
@@ -98,7 +80,9 @@ if [[ "${uptimeDays}" = "day"* ]]; then
 elif [[ "${uptimeDays}" == "mins"* ]]; then
     uptimeHumanReadable="${uptimeNumber} mins"
 else
-    uptimeHumanReadable="${uptimeNumber} (HH:MM)"
+    hours=$((upTimeMin / 60))
+    mins=$((upTimeMin % 60))
+    uptimeHumanReadable="$(printf "%02d:%02d" ${hours} ${mins}) (HH:MM)"
 fi
 
 
@@ -170,7 +154,7 @@ declare -A preferenceConfiguration=(
     ["hideStagedInfo"]="boolean|NO"
     
     # Complex UI Text
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later.<br><br>However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** {ddmVersionStringDaysRemaining}<br><br>**Last Restart:** {uptimeHumanReadable}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -348,13 +332,13 @@ function loadPreferenceOverrides() {
         # Read managed value
         local managedValue=""
         if [[ "${hasManagedPrefs}" == "true" ]]; then
-            managedValue=$(defaults read "${managedPreferencesPlist}" "${plistKey}" 2>/dev/null)
+            managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
         fi
         
         # Read local value
         local localValue=""
         if [[ "${hasLocalPrefs}" == "true" ]]; then
-            localValue=$(defaults read "${localPreferencesPlist}" "${plistKey}" 2>/dev/null)
+            localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
         fi
         
         # Apply the preference based on type
@@ -456,10 +440,12 @@ function applyHideRules() {
         helpimage=""
     fi
 
-    # Hide secondary button based on computed deadline window flag
+    # Handle secondary button based on computed deadline window flag
+    # hideSecondaryButton can be: "NO" (show), "YES" (hide), or "DISABLED" (greyed out)
     if [[ "${hideSecondaryButton}" == "YES" ]]; then
         button2text=""
     fi
+    # Note: DISABLED state is handled in displayReminderDialog() via --button2disabled flag
 }
 
 function updateRequiredVariables() {
@@ -699,7 +685,11 @@ installedOSvsDDMenforcedOS() {
         blurscreen="--noblurscreen"
     fi
     if (( secondsUntilDeadline <= hideButton2ThresholdSeconds )); then
-        hideSecondaryButton="YES"
+        if [[ "${disableButton2InsteadOfHide}" == "YES" ]]; then
+            hideSecondaryButton="DISABLED"
+        else
+            hideSecondaryButton="YES"
+        fi
     else
         hideSecondaryButton="NO"
     fi
@@ -793,13 +783,36 @@ function checkUserDisplaySleepAssertions() {
 function downloadBrandingAssets() {
     # Download overlay icon
     if [[ -n "${organizationOverlayiconURL}" ]]; then
-        notice "Downloading overlay icon from '${organizationOverlayiconURL}'"
-        if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
-            overlayicon="/var/tmp/overlayicon.png"
-            info "Successfully downloaded overlay icon"
+        notice "Processing overlay icon from '${organizationOverlayiconURL}'"
+        
+        # Check if it's a local file path (file or directory/bundle)
+        if [[ -e "${organizationOverlayiconURL}" ]]; then
+            info "Overlay icon is a local path; using directly"
+            overlayicon="${organizationOverlayiconURL}"
+            info "Successfully configured overlay icon"
+        
+        # Check if it's a file:// URI
+        elif [[ "${organizationOverlayiconURL}" =~ ^file:// ]]; then
+            info "Overlay icon is a file:// URI; converting to path"
+            local filePath="${organizationOverlayiconURL#file://}"
+            if [[ -e "${filePath}" ]]; then
+                overlayicon="${filePath}"
+                info "Successfully configured overlay icon from file:// URI"
+            else
+                error "Path not found: '${filePath}' (from URI '${organizationOverlayiconURL}')"
+                overlayicon="/System/Library/CoreServices/Finder.app"
+            fi
+        
+        # Assume it's a remote URL
         else
-            error "Failed to download overlayicon from '${organizationOverlayiconURL}'"
-            overlayicon="/System/Library/CoreServices/Finder.app"
+            info "Overlay icon appears to be a remote URL; downloading with curl"
+            if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
+                overlayicon="/var/tmp/overlayicon.png"
+                info "Successfully downloaded overlay icon"
+            else
+                error "Failed to download overlay icon from '${organizationOverlayiconURL}'"
+                overlayicon="/System/Library/CoreServices/Finder.app"
+            fi
         fi
     else
         overlayicon="/System/Library/CoreServices/Finder.app"
@@ -896,6 +909,7 @@ function displayReminderDialog() {
     )
 
     [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
+    [[ "${hideSecondaryButton}" == "DISABLED" ]] && dialogArgs+=(--button2disabled)
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
@@ -949,7 +963,7 @@ function displayReminderDialog() {
             su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
 
             # Only re-display the reminder dialog when we are within the "hide secondary button" window (i.e., close to the deadline)
-            if [[ "${hideSecondaryButton}" == "YES" ]]; then
+            if [[ "${hideSecondaryButton}" == "YES" || "${hideSecondaryButton}" == "DISABLED" ]]; then
                 info "Within ${daysBeforeDeadlineHidingButton2} day(s) of deadline; waiting 61 seconds before re-showing dialog …"
                 sleep 61
                 blurscreen="--noblurscreen"
@@ -988,17 +1002,17 @@ function quitScript() {
 
     quitOut "Exiting …"
 
-    # Remove icons
+    # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
-        if [[ -f "${img}" ]] && [[ "${img}" != "/System/Library/CoreServices/Finder.app" ]]; then
-            rm -f "${img}"
+        if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
+            rm -rf "${img}"
         fi
     done
 
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "Keep them movin’ blades sharp!"
+    quitOut "Gambling only pays when you’re winning!"
 
     exit "${1}"
 
@@ -1154,7 +1168,11 @@ if [[ "${1}" == "demo" ]]; then
         blurscreen="--noblurscreen"
     fi
     if (( secondsUntilDeadline <= hideButton2ThresholdSeconds )); then
-        hideSecondaryButton="YES"
+        if [[ "${disableButton2InsteadOfHide}" == "YES" ]]; then
+            hideSecondaryButton="DISABLED"
+        else
+            hideSecondaryButton="YES"
+        fi
     else
         hideSecondaryButton="NO"
     fi
@@ -1208,33 +1226,61 @@ installedOSvsDDMenforcedOS
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # -------------------------------------------------------------------------
-    # Skip reminder dialog if we're outside the defined window (thanks for the suggestion, @kristian!)
-    # -------------------------------------------------------------------------
-
-    if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
-        quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away; skipping reminder until within ${daysBeforeDeadlineDisplayReminder}-day window."
-        quitScript "0"
-    else
-        notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding …"
-    fi
-
-
-
-    # -------------------------------------------------------------------------
-    # Quiet period: skip dialog if user interacted recently
+    # Deadline window and periodic reminder logic (thanks for the suggestion, @kristian!)
     # -------------------------------------------------------------------------
 
     quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
+    periodicReminderDays=28     # 28 days
+    periodicReminderSeconds=$(( periodicReminderDays * 86400 ))
 
     # Look for the most recent user interaction by Return Code
     # Return Code 0: User clicked Button 1 (Open Software Update)
     # Return Code 2: User clicked Button 2 (Remind Me Later)
+    # Return Code 3: User clicked Info Button
     # Return Code 4: User allowed timer to expire
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
 
-    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|4)' "${scriptLog}" | \
+    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4)' "${scriptLog}" | \
         tail -1 | \
         sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
+
+    if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
+        # Outside the deadline window; check if we should display initial/periodic reminder
+        
+        if [[ -z "${lastInteraction}" ]]; then
+            # No interaction history; display the initial reminder dialog
+            notice "No reminder interaction history found; displaying initial reminder dialog"
+        else
+            # Validate the extracted timestamp matches expected format
+            if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+                nowEpoch=$(date +%s)
+                lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
+                if [[ -n "${lastEpoch}" ]]; then
+                    delta=$(( nowEpoch - lastEpoch ))
+                    if (( delta >= periodicReminderSeconds )); then
+                        # Last interaction was 28+ days ago; display periodic reminder
+                        daysAgo=$(( delta / 86400 ))
+                        notice "Last reminder interaction was ${daysAgo} day(s) ago; displaying periodic reminder dialog"
+                    else
+                        # Last interaction was within 28 days; skip
+                        daysAgo=$(( delta / 86400 ))
+                        quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and last reminder was ${daysAgo} day(s) ago; exiting quietly."
+                        quitScript "0"
+                    fi
+                else
+                    info "Could not parse last interaction timestamp; proceeding with display"
+                fi
+            else
+                info "Last interaction timestamp format invalid; proceeding with display"
+            fi
+        fi
+    else
+        notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding …"
+    fi
+
+    # -------------------------------------------------------------------------
+    # Short quiet period: skip dialog if user interacted very recently
+    # -------------------------------------------------------------------------
 
     if [[ -n "${lastInteraction}" ]]; then
         # Validate the extracted timestamp matches expected format
@@ -1247,18 +1293,9 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     minutesAgo=$(( delta / 60 ))
                     quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
                     quitScript "0"
-                else
-                    minutesAgo=$(( delta / 60 ))
-                    notice "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; proceeding with display"
                 fi
-            else
-                info "Could not parse last interaction timestamp; proceeding with display"
             fi
-        else
-            info "Last interaction timestamp format invalid; proceeding with display"
         fi
-    else
-        notice "No recent user interaction found in log; proceeding with display"
     fi
 
 

@@ -1,7 +1,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
 # DDM OS Reminder
-> An additional maintenance release to Mac Admins’ new favorite, MDM-agnostic, **“set-it-and-forget-it”** end-user reminder for Apple’s Declarative Device Management-enforced macOS update deadlines that **further simplifies enterprise-wide deployment** while informing users **when updates are staged for installation**.
+> Another maintenance release to Mac Admins’ new favorite, MDM-agnostic, **“set-it-and-forget-it”** end-user reminder for Apple’s Declarative Device Management-enforced macOS update deadlines with **improved Apple-aligned reminder dialog timing**, **flexible button behavior**, and **full internationalization support**.
 
 <img src="images/ddmOSReminder_Hero.png" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -35,6 +35,8 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins a powerf
 ## Support
 
 Community-supplied, best-effort support is available on the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel, or you can open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).
+
+See also: [Diagrams/README.md](Diagrams/README.md) for architecture and sequence diagrams.
 
 ## What’s New
 See the [CHANGELOG](CHANGELOG.md) for a detailed list of changes / improvements.

@@ -21,14 +21,12 @@
 #
 # HISTORY
 #
-# Version 2.2.0, 06-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Added "quiet period" to skip reminder dialog if recently shown (Addresses Feature Request #42)
-# - Added instructions for monitoring the client-side log to the log file itself
-# - `assemble.zsh` now outputs to `Artifacts/` (instead of `Resources/`)
-# - Updated `Resources/sample.plist` to address Feature Request #43
-# - Added Detection for staged macOS updates (Addresses Feature Request #49)
-# - Refactored Configuration Profile-related code
-# - Refactored "Quiet Period" logic based on user-interaction via Return Code (rather than dialog display)
+# Version 2.3.0, 19-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Refactored Update Required logic to address Feature Request #55
+# - Updated "Organization Variables" (i.e., removed redundant variable declarations)
+# - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
+# - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
+# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huexley!)
 #
 ####################################################################################################
 
@@ -43,7 +41,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.2.0"
+scriptVersion="2.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

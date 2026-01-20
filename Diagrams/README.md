@@ -76,6 +76,21 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ---
 
+### 6. [Configuration Reference](06-configuration-reference.md)
+**Purpose**: Complete reference for all 31 configurable preferences
+
+**Shows**:
+- Quick reference table (all variables at a glance)
+- Detailed documentation by category
+- Complete placeholder reference
+- Configuration methods and examples
+- Common deployment scenarios
+- Troubleshooting guide
+
+**Best For**: Customizing DDM OS Reminder, looking up specific variables
+
+---
+
 ## 🎨 Rendering Diagrams
 
 All diagrams use **Mermaid.js** syntax for maximum portability and version control.

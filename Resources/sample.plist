@@ -5,7 +5,7 @@
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
     <!-- Version: 2.3.0 -->
-    <!-- Generated on: 2025-12-16-073139 -->
+    <!-- Generated on: 2026-01-19-190656 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -27,7 +27,7 @@
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>
-    <string>https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2</string>
+    <string>https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607 487f4719bd4707f2e283500f54428153af17da082e2</string>
     <key>SwapOverlayAndLogo</key>
     <false/>
     <key>DateFormatDeadlineHumanReadable</key>

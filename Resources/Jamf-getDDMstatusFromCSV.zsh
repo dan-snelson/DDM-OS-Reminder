@@ -3,7 +3,7 @@
 
 ####################################################################################################
 #
-# getDDMstatusFromCSV.zsh
+# Jamf-getDDMstatusFromCSV.zsh
 #
 # https://snelson.us
 #
@@ -106,7 +106,7 @@ filename=""
 debugMode="false"                    # Set to "true" to enable debug logging
 
 # Organization Script Name (for logging)
-organizationScriptName="Get DDM Status from CSV"
+organizationScriptName="Jamf Pro: Get DDM Status from CSV"
 
 
 
@@ -1119,9 +1119,9 @@ fi
 
 printf "${dividerLine}"
 printf "\n###\n"
-printf "# Get DDM Status via CSV (${yellow}${scriptVersion}${resetColor})\n"
+printf "# ${organizationScriptName} (${yellow}${scriptVersion}${resetColor})\n"
 printf "###\n"
-updateScriptLog "\n\n###\n# Get DDM Status via CSV (${scriptVersion})\n###\n"
+updateScriptLog "\n\n###\n# ${organizationScriptName} (${scriptVersion})\n###\n"
 preFlight "Initiating …"
 
 if [[ "${debugMode}" == "true" ]]; then

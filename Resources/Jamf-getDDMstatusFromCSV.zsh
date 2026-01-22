@@ -55,6 +55,12 @@
 #   • Improved user experience with step-by-step progress indicators
 #   • Help displays automatically when no parameters are provided
 #
+# Version 0.0.3, 22-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Enhanced token refresh mechanism:
+#   • Added fallback to getBearerToken if keep-alive refresh fails
+#   • Improved error handling in token refresh scenarios
+#   • Better handling of completely expired tokens during long-running operations
+#
 ####################################################################################################
 
 
@@ -68,7 +74,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="0.0.2"
+scriptVersion="0.0.3"
 
 # Script Name (for help display)
 scriptName=$(basename "${0}")
@@ -653,9 +659,19 @@ function refreshBearerToken() {
         -H "Authorization: Bearer ${apiBearerToken}" \
         "${apiUrl}/api/v1/auth/keep-alive")
 
-    if [[ -z "${refreshJson}" ]]; then
-        error "keep-alive returned empty; cannot refresh token."
+    if [[ -z "${refreshJson}" ]] || [[ "${refreshJson}" == *"error"* ]]; then
+        warning "keep-alive failed or returned error; attempting to get a new token."
+        
+        # Fall back to getting a completely new token
+        getBearerToken
+        
+        if [[ -n "${apiBearerToken}" ]]; then
+            info "Successfully obtained new Bearer Token after keep-alive failure."
+            return 0
+        else
+            error "Failed to obtain new token after keep-alive failure."
         return 1
+        fi
     fi
 
     if command -v plutil >/dev/null 2>&1; then
@@ -665,11 +681,21 @@ function refreshBearerToken() {
     fi
 
     if [[ -z "${apiBearerToken}" ]]; then
-        error "Failed to parse refreshed token."
+        warning "Failed to parse refreshed token; attempting to get a new token."
+        
+        # Fall back to getting a completely new token
+        getBearerToken
+        
+        if [[ -n "${apiBearerToken}" ]]; then
+            info "Successfully obtained new Bearer Token after parse failure."
+            return 0
+        else
+            error "Failed to obtain new token after parse failure."
         return 1
+        fi
     fi
 
-    info "Successfully refreshed Bearer Token."
+    info "Successfully refreshed Bearer Token via keep-alive."
 
     if [[ "${debugMode}" == "true" ]]; then
         debug "Refreshed apiBearerToken: ${apiBearerToken}"
@@ -797,6 +823,7 @@ function getComputerByIdOrSerial() {
     if [[ "${httpStatus}" == "401" ]]; then
         info "Token expired during serial lookup; refreshing …" >&2
         if refreshBearerToken; then
+            info "Token refreshed successfully. Retrying serial lookup for ${identifier} …" >&2
             computerInfoAndStatus=$(
                 curl -H "Authorization: Bearer ${apiBearerToken}" \
                      -H "Accept: application/json" \
@@ -806,6 +833,9 @@ function getComputerByIdOrSerial() {
             )
             httpStatus="${computerInfoAndStatus: -3}"
             computerInfo="${computerInfoAndStatus%???}"
+        else
+            error "Failed to refresh token during serial lookup for ${identifier}" >&2
+            return 1
         fi
     fi
     
@@ -849,6 +879,7 @@ function getDdmStatusItems() {
     if [[ "${httpStatus}" == "401" ]]; then
         info "Token expired during DDM status retrieval; refreshing …" >&2
         if refreshBearerToken; then
+            info "Token refreshed successfully. Retrying DDM status retrieval for Management ID ${managementId} …" >&2
             ddmStatusAndCode=$(
                 curl -H "Authorization: Bearer ${apiBearerToken}" \
                      -H "Accept: application/json" \
@@ -858,6 +889,9 @@ function getDdmStatusItems() {
             )
             httpStatus="${ddmStatusAndCode: -3}"
             ddmStatus="${ddmStatusAndCode%???}"
+        else
+            error "Failed to refresh token during DDM status retrieval for Management ID ${managementId}" >&2
+            return 1
         fi
     fi
     

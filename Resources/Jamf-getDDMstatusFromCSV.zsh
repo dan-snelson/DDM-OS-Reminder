@@ -228,17 +228,17 @@ by Dan K. Snelson (@dan-snelson)
         zsh ${scriptName} --lane
         (Will prompt to select Development, Stage, or Production environment)
 
-    Method 3 - With direct lane specification:
-        zsh ${scriptName} --lane stage
-        zsh ${scriptName} --lane dev
-        zsh ${scriptName} --lane prod
+    Method 3 - With direct lane specification and CSV file:
+        zsh ${scriptName} --lane stage computers.csv
+        zsh ${scriptName} -l prod computers.csv
+        zsh ${scriptName} -l dev -d /path/to/computers.csv
 
     Method 4 - Interactive mode (will prompt for missing parameters):
         zsh ${scriptName}
 
     Method 5 - Single Serial Number lookup:
-        zsh ${scriptName} --serial C02ABC123DEF
-        zsh ${scriptName} -s C02ABC123DEF --lane stage
+        zsh ${scriptName} --serial C02ABC123DEF --lane stage
+        zsh ${scriptName} -s C02ABC123DEF -l prod
 
     Optional Flags:
         --serial, -s SN       Look up a single computer by Serial Number (terminal output only)
@@ -248,13 +248,21 @@ by Dan K. Snelson (@dan-snelson)
         --help, -h            Display this help information
 
     Examples:
+        # Traditional method with full credentials
         zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
+        
+        # CSV batch processing with lane selection
+        zsh ${scriptName} -l stage computers.csv
+        zsh ${scriptName} --lane prod -d /path/to/computers.csv
+        
+        # Serial number lookup
         zsh ${scriptName} --serial C02ABC123DEF --lane stage
         zsh ${scriptName} -s C02ABC123DEF -l prod -d
+        
+        # Interactive modes
         zsh ${scriptName} -l stage
         zsh ${scriptName} --lane
         zsh ${scriptName} -h
-        zsh ${scriptName} --debug
 
     "
     exit 0
@@ -1510,11 +1518,8 @@ while test $# -gt 0; do
     esac
 done
 
-# Now capture remaining positional parameters (only used in CSV batch mode)
-apiUrl="${1:-}"
-apiUser="${2:-}"
-apiPassword="${3:-}"
-filename="${4:-}"
+# Save remaining positional parameters for later processing
+remainingArgs=("$@")
 
 # Initialize output paths now that outputDir is set
 scriptLog="${outputDir}/DDM_Status_Report.log"
@@ -1619,6 +1624,39 @@ if [[ "${laneSelectionRequested}" == "yes" ]]; then
     fi
     laneSelection "${specifiedLane}"
     printf "\n${green}✓${resetColor} Lane credentials configured\n"
+fi
+
+# Now process remaining positional parameters (captured earlier)
+# If credentials are already set (via lane selection) and we have positional args,
+# treat the first one as the filename instead of apiUrl
+if [[ "${debugMode}" == "true" ]]; then
+    debug "Processing ${#remainingArgs[@]} remaining arguments"
+    debug "Credentials: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}"
+fi
+
+if [[ -n "${apiUrl}" ]] && [[ -n "${apiUser}" ]] && [[ -n "${apiPassword}" ]] && [[ ${#remainingArgs[@]} -ge 1 ]] && [[ -z "${filename}" ]]; then
+    # Credentials already set via lane, so treat remaining args as filename
+    filename="${remainingArgs[1]}"
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Credentials already set via lane; treating arg as filename: ${filename}"
+    fi
+elif [[ -z "${filename}" ]]; then
+    # Traditional positional parameter order: apiUrl apiUser apiPassword filename
+    if [[ -z "${apiUrl}" ]] && [[ ${#remainingArgs[@]} -ge 1 ]]; then
+        apiUrl="${remainingArgs[1]}"
+    fi
+    if [[ -z "${apiUser}" ]] && [[ ${#remainingArgs[@]} -ge 2 ]]; then
+        apiUser="${remainingArgs[2]}"
+    fi
+    if [[ -z "${apiPassword}" ]] && [[ ${#remainingArgs[@]} -ge 3 ]]; then
+        apiPassword="${remainingArgs[3]}"
+    fi
+    if [[ -z "${filename}" ]] && [[ ${#remainingArgs[@]} -ge 4 ]]; then
+        filename="${remainingArgs[4]}"
+    fi
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Using traditional positional parameter assignment"
+    fi
 fi
 
 # Prompt for missing API credentials

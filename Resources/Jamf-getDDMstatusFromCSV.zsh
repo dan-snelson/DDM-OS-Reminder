@@ -73,6 +73,9 @@
 # - Improved progress tracking with elapsed time display for each computer
 # - Optimized log format for improved readability (compact prefix)
 #
+# Version 0.0.5, 23-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Added ability to lookup a single Serial Number via command-line argument
+#
 ####################################################################################################
 
 
@@ -86,7 +89,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="0.0.4"
+scriptVersion="0.0.5"
 
 # Script Name (for help display)
 scriptName=$(basename "${0}")
@@ -216,27 +219,41 @@ by Dan K. Snelson (@dan-snelson)
 
     Usage:
     zsh ${scriptName} [apiUrl] [apiUser] [apiPassword] [csvFilename] [--lane] [--debug] [--help]
+    zsh ${scriptName} --serial SERIALNUMBER [--lane] [--debug]
 
     Method 1 - With all parameters:
         zsh ${scriptName} \"https://yourserver.jamfcloud.com\" \"apiUser\" \"apiPassword\" \"computers.csv\"
 
-    Method 2 - With lane selection:
+    Method 2 - With lane selection (interactive):
         zsh ${scriptName} --lane
         (Will prompt to select Development, Stage, or Production environment)
 
-    Method 3 - Interactive mode (will prompt for missing parameters):
+    Method 3 - With direct lane specification:
+        zsh ${scriptName} --lane stage
+        zsh ${scriptName} --lane dev
+        zsh ${scriptName} --lane prod
+
+    Method 4 - Interactive mode (will prompt for missing parameters):
         zsh ${scriptName}
 
+    Method 5 - Single Serial Number lookup:
+        zsh ${scriptName} --serial C02ABC123DEF
+        zsh ${scriptName} -s C02ABC123DEF --lane stage
+
     Optional Flags:
-        --lane              Prompt for lane selection (Dev/Stage/Prod)
-        --debug             Enable debug mode with verbose logging
-        --output-dir PATH   Specify output directory (default: ~/Desktop)
-        --help              Display this help information
+        --serial, -s SN       Look up a single computer by Serial Number (terminal output only)
+        --lane, -l [LANE]     Select lane: dev/development, stage, prod/production (prompts if omitted)
+        --debug, -d           Enable debug mode with verbose logging
+        --output-dir PATH     Specify output directory (default: ~/Desktop)
+        --help, -h            Display this help information
 
     Examples:
         zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
+        zsh ${scriptName} --serial C02ABC123DEF --lane stage
+        zsh ${scriptName} -s C02ABC123DEF -l prod -d
+        zsh ${scriptName} -l stage
         zsh ${scriptName} --lane
-        zsh ${scriptName} --help
+        zsh ${scriptName} -h
         zsh ${scriptName} --debug
 
     "
@@ -251,6 +268,16 @@ by Dan K. Snelson (@dan-snelson)
 
 function laneSelection() {
 
+    local lane="${1:-}"
+
+    # If lane was provided as parameter, use it directly
+    if [[ -n "${lane}" ]]; then
+        info "Lane specified via command line: ${lane}"
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Direct lane selection: ${lane}"
+        fi
+    else
+        # Prompt user for lane selection
     echo "Please select a lane:
 
 [d] Development
@@ -267,10 +294,11 @@ function laneSelection() {
 
     info "Elapsed Time: ${SECONDS} seconds"
     logComment ""
+    fi
 
     case "${lane}" in
         
-    d|D )
+    d|D|dev|development )
 
         info "Development Lane"
         if [[ "${debugMode}" == "true" ]]; then
@@ -281,17 +309,23 @@ function laneSelection() {
         apiPassword=""
         ;;
 
-    s|S )
+    s|S|stage )
 
         info "Stage Lane"
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Selected: Stage Lane"
+        fi
         apiUrl=""
         apiUser=""
         apiPassword=""
         ;;
 
-    p|P )
+    p|P|prod|production )
 
         info "Production Lane"
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Selected: Production Lane"
+        fi
         apiUrl=""
         apiUser=""
         apiPassword=""
@@ -864,7 +898,7 @@ function validateCsvFormat() {
             printf "\n  • ${columnCount} columns" >&2
             printf "\n  • Headers: ${headers}" >&2
             printf "\n\n${cyan}What is required:${resetColor}" >&2
-            printf "\n  • A single-column CSV with Jamf Pro Computer IDs or Serial Numbers, or" >&2
+            printf "\n  • A single-column CSV with Jamf Pro Computer IDs" >&2
             printf "\n  • A multi-column CSV with a 'JSS Computer ID' header column" >&2
             printf "\n\nPlease export a valid format from Jamf Pro and try again.\n\n" >&2
             return 1
@@ -957,108 +991,131 @@ function extractJssIdColumn() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Get computer information by ID or Serial Number
+# Get computer information by JSS Computer ID
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function getComputerByIdOrSerial() {
-    local identifier="${1}"
-    local computerInfoAndStatus
-    local httpStatus
+function getComputerById() {
+    local computerId="${1}"
+    local rawResponse
     local computerInfo
     
-    # Try as Computer ID first (if numeric)
-    if [[ "${identifier}" =~ ^[0-9]+$ ]]; then
+    # Validate that identifier is numeric
+    if [[ ! "${computerId}" =~ ^[0-9]+$ ]]; then
         if [[ "${debugMode}" == "true" ]]; then
-            debug "Identifier '${identifier}' is numeric; attempting lookup by Computer ID" >&2
-            debug "API endpoint: ${apiUrl}/api/v1/computers-inventory-detail/${identifier}" >&2
+            debug "Invalid Computer ID: '${computerId}' (must be numeric)" >&2
         fi
-        # Get raw JSON and extract only the fields we need immediately
-        # This avoids storing the full response with extension attributes
-        local rawResponse=$(
-            curl -H "Authorization: Bearer ${apiBearerToken}" \
-                 -H "Accept: application/json" \
-                 -sfk \
-                 "${apiUrl}/api/v1/computers-inventory-detail/${identifier}?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM" \
-                 -X GET 2>/dev/null
-        )
-        
-        if [[ "${debugMode}" == "true" ]]; then
-            local responseSize=${#rawResponse}
-            debug "Raw API response size: ${responseSize} bytes" >&2
-        fi
-        
-        # Extract only the fields we need using jq on the raw response
-        # This filters out extension attributes and other bloat before we store it
-        computerInfo=$(printf "%s" "${rawResponse}" | jq -c '{id: .id, general: {name: .general.name, managementId: .general.managementId, declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled, lastContactTime: .general.lastContactTime}, hardware: {serialNumber: .hardware.serialNumber, modelIdentifier: .hardware.modelIdentifier}, operatingSystem: {version: .operatingSystem.version}}' 2>/dev/null)
-        
-        if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
-            if [[ "${debugMode}" == "true" ]]; then
-                debug "Successfully retrieved and filtered computer data for ID ${identifier}" >&2
-                local filteredSize=${#computerInfo}
-                debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
-            fi
-            echo "${computerInfo}"
-            return 0
-        fi
+        return 1
     fi
     
-    # Try as Serial Number
-    local encodedSerial=$(printf "%s" "${identifier}" | sed 's/ /%20/g')
     if [[ "${debugMode}" == "true" ]]; then
-        debug "Identifier lookup by ID failed; attempting serial number lookup" >&2
-        debug "Serial number (URL encoded): ${encodedSerial}" >&2
-        debug "API endpoint: ${apiUrl}/api/v2/computers-inventory?filter=hardware.serialNumber=='${encodedSerial}'" >&2
+        debug "Looking up computer by ID: ${computerId}" >&2
+        debug "API endpoint: ${apiUrl}/api/v1/computers-inventory-detail/${computerId}" >&2
     fi
-    computerInfoAndStatus=$(
+    
+    # Get raw JSON and extract only the fields we need immediately
+    # This avoids storing the full response with extension attributes
+    rawResponse=$(
         curl -H "Authorization: Bearer ${apiBearerToken}" \
              -H "Accept: application/json" \
-             -sfk -w "%{http_code}" \
-             "${apiUrl}/api/v2/computers-inventory?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM&filter=hardware.serialNumber=='${encodedSerial}'" \
+             -sfk \
+             "${apiUrl}/api/v1/computers-inventory-detail/${computerId}?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM" \
              -X GET 2>/dev/null
     )
     
-    httpStatus="${computerInfoAndStatus: -3}"
-    computerInfo="${computerInfoAndStatus%???}"
-    
     if [[ "${debugMode}" == "true" ]]; then
-        debug "Serial lookup HTTP status: ${httpStatus}" >&2
+        local responseSize=${#rawResponse}
+        debug "Raw API response size: ${responseSize} bytes" >&2
     fi
     
-    # Handle 401 with token refresh
-    if [[ "${httpStatus}" == "401" ]]; then
-        info "Token expired during serial lookup; refreshing …" >&2
-        if refreshBearerToken; then
-            info "Token refreshed successfully. Retrying serial lookup for ${identifier} …" >&2
-            computerInfoAndStatus=$(
-                curl -H "Authorization: Bearer ${apiBearerToken}" \
-                     -H "Accept: application/json" \
-                     -sfk -w "%{http_code}" \
-                     "${apiUrl}/api/v2/computers-inventory?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM&filter=hardware.serialNumber=='${encodedSerial}'" \
-                     -X GET 2>/dev/null
-            )
-            httpStatus="${computerInfoAndStatus: -3}"
-            computerInfo="${computerInfoAndStatus%???}"
-        else
-            error "Failed to refresh token during serial lookup for ${identifier}" >&2
-            return 1
+    # Extract only the fields we need using jq on the raw response
+    # This filters out extension attributes and other bloat before we store it
+    computerInfo=$(printf "%s" "${rawResponse}" | jq -c '{id: .id, general: {name: .general.name, managementId: .general.managementId, declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled, lastContactTime: .general.lastContactTime}, hardware: {serialNumber: .hardware.serialNumber, modelIdentifier: .hardware.modelIdentifier}, operatingSystem: {version: .operatingSystem.version}}' 2>/dev/null)
+    
+    if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
+            local filteredSize=${#computerInfo}
+            debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
         fi
+        echo "${computerInfo}"
+        return 0
     fi
     
-    if [[ "${httpStatus}" == "200" ]]; then
-        # Extract first result from results array using jq
-        local firstResult=$(printf "%s" "${computerInfo}" | jq -r '.results[0] // empty' 2>/dev/null)
-        if [[ -n "${firstResult}" ]] && [[ "${firstResult}" != "null" ]]; then
-            echo "${firstResult}"
-            return 0
-        fi
+    # Not found or error
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Computer ID ${computerId} not found or API error" >&2
     fi
-    
-    # Not found
     return 1
 }
 
 
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Get computer ID by Serial Number
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function getComputerIdBySerialNumber() {
+    local serialNumber="${1}"
+    local rawResponse
+    local computerId
+    
+    if [[ -z "${serialNumber}" ]]; then
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Serial Number is required" >&2
+        fi
+        return 1
+    fi
+    
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Looking up computer by Serial Number: ${serialNumber}" >&2
+        debug "API endpoint: ${apiUrl}/api/v1/computers-inventory" >&2
+    fi
+    
+    # Use Modern API with filter to find computer by serial number
+    rawResponse=$(
+        curl -H "Authorization: Bearer ${apiBearerToken}" \
+             -H "Accept: application/json" \
+             -sfk \
+             "${apiUrl}/api/v1/computers-inventory?section=GENERAL&page=0&page-size=1&filter=hardware.serialNumber%3D%3D%22${serialNumber}%22" \
+             -X GET 2>/dev/null
+    )
+    
+    if [[ "${debugMode}" == "true" ]]; then
+        local responseSize=${#rawResponse}
+        debug "Raw API response size: ${responseSize} bytes" >&2
+    fi
+    
+    # Check if we got results
+    local totalCount=$(printf "%s" "${rawResponse}" | jq -r '.totalCount // 0' 2>/dev/null)
+    
+    if [[ "${totalCount}" -eq 0 ]]; then
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "No computer found with Serial Number: ${serialNumber}" >&2
+        fi
+        return 1
+    fi
+    
+    # Extract the computer ID from the first result
+    computerId=$(printf "%s" "${rawResponse}" | jq -r '.results[0].id // empty' 2>/dev/null)
+    
+    if [[ -n "${computerId}" ]] && [[ "${computerId}" != "null" ]]; then
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Successfully resolved Serial Number ${serialNumber} to Computer ID ${computerId}" >&2
+        fi
+        echo "${computerId}"
+        return 0
+    fi
+    
+    # Not found or error
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Failed to resolve Serial Number ${serialNumber} to Computer ID" >&2
+    fi
+    return 1
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Retry Logic with Exponential Backoff
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -1401,6 +1458,9 @@ function parsePendingSoftwareUpdates() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 laneSelectionRequested="no"
+specifiedLane=""
+singleLookupMode="no"
+lookupSerialNumber=""
 
 # Process flags first
 while test $# -gt 0; do
@@ -1408,12 +1468,30 @@ while test $# -gt 0; do
         --help|-h)
             displayHelp
             ;;
-        --debug)
+        --debug|-d)
             debugMode="true"
             shift
             ;;
-        --lane)
+        --lane|-l)
             laneSelectionRequested="yes"
+            shift
+            # Check if next argument is a valid lane name (not a flag or file)
+            if [[ $# -gt 0 ]] && [[ "$1" != -* ]]; then
+                case "$1" in
+                    dev|development|d|D|stage|s|S|prod|production|p|P)
+                        specifiedLane="$1"
+            shift
+                        ;;
+                    *)
+                        # Not a valid lane name, don't consume it
+                        ;;
+                esac
+            fi
+            ;;
+        --serial|-s)
+            singleLookupMode="yes"
+            shift
+            lookupSerialNumber="$1"
             shift
             ;;
         --output-dir)
@@ -1432,7 +1510,7 @@ while test $# -gt 0; do
     esac
 done
 
-# Now capture remaining positional parameters
+# Now capture remaining positional parameters (only used in CSV batch mode)
 apiUrl="${1:-}"
 apiUser="${2:-}"
 apiPassword="${3:-}"
@@ -1534,8 +1612,12 @@ printf "###\n"
 
 # Check if lane selection was requested
 if [[ "${laneSelectionRequested}" == "yes" ]]; then
-    info "Lane selection requested; prompting user ..."
-    laneSelection
+    if [[ -n "${specifiedLane}" ]]; then
+        info "Lane selection requested with specified lane: ${specifiedLane}"
+    else
+        info "Lane selection requested; prompting user ..."
+    fi
+    laneSelection "${specifiedLane}"
     printf "\n${green}✓${resetColor} Lane credentials configured\n"
 fi
 
@@ -1568,72 +1650,96 @@ printf "\n${green}✓${resetColor} Bearer Token obtained successfully\n"
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Pre-flight Check: Validate CSV filename
+# Pre-flight Check: Validate CSV filename (skip in single lookup mode)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-printf "${dividerLine}"
-printf "\n###\n"
-printf "# Step 3: Validate CSV Input File\n"
-printf "###\n"
-printf "\n"
+if [[ "${singleLookupMode}" != "yes" ]]; then
 
-# Prompt for CSV filename if not provided
-promptCSVfilename
+    printf "${dividerLine}"
+    printf "\n###\n"
+    printf "# Step 3: Validate CSV Input File\n"
+    printf "###\n"
+    printf "\n"
 
-if [[ -z "${filename}" ]]; then
-    die "A list of Jamf Pro Computer IDs or Serial Numbers was NOT specified."
-elif [[ ! -f "${filename}" ]]; then
-    die "The specified file '${filename}' does not exist."
+    # Prompt for CSV filename if not provided
+    promptCSVfilename
+
+    if [[ -z "${filename}" ]]; then
+        die "A list of Jamf Pro Computer IDs was NOT specified."
+    elif [[ ! -f "${filename}" ]]; then
+        die "The specified file '${filename}' does not exist."
+    else
+        filenameNumberOfLines=$(awk 'END { print NR }' "${filename}")
+        info "The filename '${filename}' contains ${filenameNumberOfLines} lines; proceeding …"
+        printf "${green}✓${resetColor} CSV file contains ${filenameNumberOfLines} lines\n"
+        
+        # Validate CSV encoding
+        validateCsvEncoding "${filename}"
+        
+        # Validate CSV format (single column only)
+        if ! validateCsvFormat "${filename}"; then
+            die "CSV format validation failed. Please provide a single-column CSV file."
+        fi
+        printf "${green}✓${resetColor} CSV format validated (single column)\n"
+        
+        # Extract JSS Computer ID column if CSV has headers
+        processedFilename=$(extractJssIdColumn "${filename}")
+        if [[ $? -ne 0 ]]; then
+            die "Failed to process CSV file."
+        fi
+        
+        # Update line count for processed file
+        processedNumberOfLines=$(awk 'END { print NR }' "${processedFilename}")
+        
+        if [[ "${processedFilename}" != "${filename}" ]]; then
+            info "Processing ${processedNumberOfLines} extracted JSS Computer IDs …"
+            printf "${green}✓${resetColor} Extracted ${processedNumberOfLines} JSS Computer IDs from CSV\n"
+            filenameNumberOfLines="${processedNumberOfLines}"
+        fi
+    fi
+
 else
-    filenameNumberOfLines=$(awk 'END { print NR }' "${filename}")
-    info "The filename '${filename}' contains ${filenameNumberOfLines} lines; proceeding …"
-    printf "${green}✓${resetColor} CSV file contains ${filenameNumberOfLines} lines\n"
-    
-    # Validate CSV encoding
-    validateCsvEncoding "${filename}"
-    
-    # Validate CSV format (single column only)
-    if ! validateCsvFormat "${filename}"; then
-        die "CSV format validation failed. Please provide a single-column CSV file."
-    fi
-    printf "${green}✓${resetColor} CSV format validated (single column)\n"
-    
-    # Extract JSS Computer ID column if CSV has headers
-    processedFilename=$(extractJssIdColumn "${filename}")
-    if [[ $? -ne 0 ]]; then
-        die "Failed to process CSV file."
+
+    # Single lookup mode: Validate serial number was provided
+    if [[ -z "${lookupSerialNumber}" ]]; then
+        die "Serial Number is required when using --serial flag."
     fi
     
-    # Update line count for processed file
-    processedNumberOfLines=$(awk 'END { print NR }' "${processedFilename}")
+    printf "${dividerLine}"
+    printf "\n###\n"
+    printf "# Step 3: Single Lookup Mode\n"
+    printf "###\n"
+    printf "\n"
     
-    if [[ "${processedFilename}" != "${filename}" ]]; then
-        info "Processing ${processedNumberOfLines} extracted JSS Computer IDs …"
-        printf "${green}✓${resetColor} Extracted ${processedNumberOfLines} JSS Computer IDs from CSV\n"
-        filenameNumberOfLines="${processedNumberOfLines}"
-    fi
+    info "Single lookup mode enabled for Serial Number: ${lookupSerialNumber}"
+    printf "${green}✓${resetColor} Single lookup mode: Serial Number ${lookupSerialNumber}\n"
+
 fi
 
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Pre-flight Check: Initialize CSV Output
+# Pre-flight Check: Initialize CSV Output (skip in single lookup mode)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-printf "${dividerLine}"
-printf "\n###\n"
-printf "# Step 4: Initialize CSV Output\n"
-printf "###\n"
-printf "\n"
+if [[ "${singleLookupMode}" != "yes" ]]; then
 
-info "Initializing CSV output: ${csvOutput}"
-printf "${green}✓${resetColor} CSV output file: ${csvOutput}\n"
-if [[ "${debugMode}" == "true" ]]; then
-    debug "Creating CSV with header row"
-fi
-echo "Jamf Pro Computer ID,Jamf Pro Link,Name,Serial Number,Last Inventory Update,Current OS,Pending Updates,Model,Management ID,DDM Enabled,Active Blueprints,Failed Blueprints,Software Update Errors" > "${csvOutput}"
-if [[ "${debugMode}" == "true" ]]; then
-    debug "CSV file created successfully at: ${csvOutput}"
+    printf "${dividerLine}"
+    printf "\n###\n"
+    printf "# Step 4: Initialize CSV Output\n"
+    printf "###\n"
+    printf "\n"
+
+    info "Initializing CSV output: ${csvOutput}"
+    printf "${green}✓${resetColor} CSV output file: ${csvOutput}\n"
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Creating CSV with header row"
+    fi
+    echo "Jamf Pro Computer ID,Jamf Pro Link,Name,Serial Number,Last Inventory Update,Current OS,Pending Updates,Model,Management ID,DDM Enabled,Active Blueprints,Failed Blueprints,Software Update Errors" > "${csvOutput}"
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "CSV file created successfully at: ${csvOutput}"
+    fi
+
 fi
 
 
@@ -1650,12 +1756,135 @@ printf "# Step 5: Processing Computers\n"
 printf "###\n"
 printf "\n"
 
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Single Lookup Mode
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+if [[ "${singleLookupMode}" == "yes" ]]; then
+
+    info "Looking up Serial Number: ${lookupSerialNumber}"
+    printf "Looking up Serial Number: ${lookupSerialNumber} …\n\n"
+    
+    # Resolve Serial Number to Computer ID
+    info "Resolving Serial Number to Computer ID …"
+    computerId=$(retryWithBackoff getComputerIdBySerialNumber "${lookupSerialNumber}")
+    
+    if [[ $? -ne 0 ]] || [[ -z "${computerId}" ]]; then
+        printf "${red}✗${resetColor} Serial Number '${lookupSerialNumber}' not found in Jamf Pro\n\n"
+        error "Serial Number '${lookupSerialNumber}' not found in Jamf Pro"
+        invalidateBearerToken
+        printf "${dividerLine}\n\n"
+        exit 1
+    fi
+    
+    info "Resolved Serial Number ${lookupSerialNumber} to Computer ID ${computerId}"
+    printf "${green}✓${resetColor} Resolved to Computer ID: ${computerId}\n\n"
+    
+    # Retrieve computer information
+    info "Retrieving computer information for Computer ID ${computerId} …"
+    computerInfoRaw=$(retryWithBackoff getComputerById "${computerId}")
+    
+    if [[ $? -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
+        printf "${red}✗${resetColor} Failed to retrieve computer information\n\n"
+        error "Failed to retrieve computer information for Computer ID ${computerId}"
+        invalidateBearerToken
+        printf "${dividerLine}\n\n"
+        exit 1
+    fi
+    
+    # Parse computer information
+    computerName=$(printf "%s" "${computerInfoRaw}" | jq -r '.general.name // "Unknown"')
+    computerSerialNumber=$(printf "%s" "${computerInfoRaw}" | jq -r '.hardware.serialNumber // "Unknown"')
+    computerLastContactTime=$(printf "%s" "${computerInfoRaw}" | jq -r '.general.lastContactTime // "Unknown"')
+    computerOsVersion=$(printf "%s" "${computerInfoRaw}" | jq -r '.operatingSystem.version // "Unknown"')
+    computerModelIdentifier=$(printf "%s" "${computerInfoRaw}" | jq -r '.hardware.modelIdentifier // "Unknown"')
+    managementId=$(printf "%s" "${computerInfoRaw}" | jq -r '.general.managementId // "Unknown"')
+    ddmEnabled=$(printf "%s" "${computerInfoRaw}" | jq -r '.general.declarativeDeviceManagementEnabled // false')
+    
+    # Display computer information
+    printf "${cyan}Computer Information:${resetColor}\n"
+    printf "  • Name: ${computerName}\n"
+    printf "  • Serial Number: ${computerSerialNumber}\n"
+    printf "  • Computer ID: ${computerId}\n"
+    printf "  • Management ID: ${managementId}\n"
+    printf "  • Last Contact: ${computerLastContactTime}\n"
+    printf "  • Current OS: ${computerOsVersion}\n"
+    printf "  • Model: ${computerModelIdentifier}\n"
+    printf "  • DDM Enabled: ${ddmEnabled}\n\n"
+    
+    info "Computer Name: ${computerName}"
+    info "Serial Number: ${computerSerialNumber}"
+    info "Computer ID: ${computerId}"
+    info "Management ID: ${managementId}"
+    info "DDM Enabled: ${ddmEnabled}"
+    
+    # Check DDM status if enabled
+    if [[ "${ddmEnabled}" == "true" ]]; then
+        
+        info "DDM is enabled; retrieving DDM status items …"
+        printf "${cyan}DDM Status:${resetColor}\n"
+        
+        # Get DDM status items
+        ddmStatusRaw=$(retryWithBackoff getDdmStatusItems "${managementId}")
+        
+        if [[ $? -eq 0 ]] && [[ -n "${ddmStatusRaw}" ]]; then
+            
+            # Parse DDM status
+            activeBlueprints=$(parseActiveBlueprints "${ddmStatusRaw}")
+            failedBlueprints=$(parseFailedBlueprints "${ddmStatusRaw}")
+            softwareUpdateErrors=$(parseSoftwareUpdateErrors "${ddmStatusRaw}")
+            pendingUpdates=$(parsePendingSoftwareUpdates "${ddmStatusRaw}")
+            
+            printf "  • Active Blueprints: ${activeBlueprints:-None}\n"
+            printf "  • Failed Blueprints: ${failedBlueprints:-None}\n"
+            printf "  • Software Update Errors: ${softwareUpdateErrors:-None}\n"
+            printf "  • Pending Updates: ${pendingUpdates:-None}\n\n"
+            
+            info "Active Blueprints: ${activeBlueprints:-None}"
+            info "Failed Blueprints: ${failedBlueprints:-None}"
+            info "Software Update Errors: ${softwareUpdateErrors:-None}"
+            info "Pending Updates: ${pendingUpdates:-None}"
+            
+        else
+            printf "  ${yellow}⚠${resetColor} No DDM status items available or API error\n\n"
+            info "No DDM status items available for Management ID ${managementId}"
+        fi
+        
+    else
+        printf "${yellow}⚠${resetColor} DDM is not enabled for this computer\n\n"
+        info "DDM is not enabled for this computer"
+    fi
+    
+    # Construct Jamf Pro hyperlink
+    jamfProLink="${apiUrl}/computers.html?id=${computerId}&o=r"
+    printf "${cyan}Jamf Pro Link:${resetColor}\n"
+    printf "  ${jamfProLink}\n\n"
+    info "Jamf Pro Link: ${jamfProLink}"
+    
+    # Cleanup and exit
+    printf "${green}✓${resetColor} Single lookup complete\n\n"
+    info "Single lookup complete"
+    
+    invalidateBearerToken
+    
+    printf "${dividerLine}\n\n"
+    exit 0
+
+fi
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# CSV Batch Processing Mode
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 info "\n\nProcessing computers …\n"
 printf "Processing ${filenameNumberOfLines} computers …\n\n"
 
 counter="0"
 
-# Process each line in the CSV as a Jamf Pro Computer ID or Serial Number
+# Process each line in the CSV as a Jamf Pro Computer ID
 while IFS= read -r identifier; do
 
     SECONDS="0"
@@ -1677,10 +1906,10 @@ while IFS= read -r identifier; do
     printf "${blue}[ ${counter}/${filenameNumberOfLines} (${progressPercent}%%) ]${resetColor} Processing Jamf Pro Computer ID: ${identifier} …\n"
 
     ################################################################################################
-    # Retrieve computer information by ID or Serial Number
+    # Retrieve computer information by JSS Computer ID
     ################################################################################################
 
-    computerInfoRaw=$(getComputerByIdOrSerial "${identifier}")
+    computerInfoRaw=$(getComputerById "${identifier}")
     
     if [[ $? -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
         error "Computer '${identifier}' not found in Jamf Pro; skipping …"
@@ -1911,6 +2140,7 @@ if [[ "${processedFilename}" != "${filename}" ]] && [[ -f "${processedFilename}"
     fi
 fi
 
+# Open log and CSV files (single lookup mode exits early, so this is only for batch mode)
 info "\n\nOpening log and CSV files …\n\n"
 printf "Opening log and CSV files …\n\n"
 if [[ "${debugMode}" == "true" ]]; then

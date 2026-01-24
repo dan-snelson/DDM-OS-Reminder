@@ -222,7 +222,7 @@ by Dan K. Snelson (@dan-snelson)
         zsh ${scriptName} --serial SERIALNUMBER [OPTIONS]
 
     Options:
-        -s, --serial SN       Look up a single computer by Serial Number
+        -s, --serial SN       Look up a single computer by Serial Number (Terminal output only)
         -l, --lane [LANE]     Select lane: dev, stage, or prod (prompts if omitted)
         -d, --debug           Enable debug mode with verbose logging
         --output-dir PATH     Specify output directory (default: ~/Desktop)

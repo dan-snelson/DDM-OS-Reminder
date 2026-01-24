@@ -218,51 +218,28 @@ ${scriptDisplayName} (${scriptVersion})
 by Dan K. Snelson (@dan-snelson)
 
     Usage:
-    zsh ${scriptName} [apiUrl] [apiUser] [apiPassword] [csvFilename] [--lane] [--debug] [--help]
-    zsh ${scriptName} --serial SERIALNUMBER [--lane] [--debug]
+        zsh ${scriptName} [OPTIONS] [csvFilename]
+        zsh ${scriptName} --serial SERIALNUMBER [OPTIONS]
 
-    Method 1 - With all parameters:
-        zsh ${scriptName} \"https://yourserver.jamfcloud.com\" \"apiUser\" \"apiPassword\" \"computers.csv\"
-
-    Method 2 - With lane selection (interactive):
-        zsh ${scriptName} --lane
-        (Will prompt to select Development, Stage, or Production environment)
-
-    Method 3 - With direct lane specification and CSV file:
-        zsh ${scriptName} --lane stage computers.csv
-        zsh ${scriptName} -l prod computers.csv
-        zsh ${scriptName} -l dev -d /path/to/computers.csv
-
-    Method 4 - Interactive mode (will prompt for missing parameters):
-        zsh ${scriptName}
-
-    Method 5 - Single Serial Number lookup:
-        zsh ${scriptName} --serial C02ABC123DEF --lane stage
-        zsh ${scriptName} -s C02ABC123DEF -l prod
-
-    Optional Flags:
-        --serial, -s SN       Look up a single computer by Serial Number (terminal output only)
-        --lane, -l [LANE]     Select lane: dev/development, stage, prod/production (prompts if omitted)
-        --debug, -d           Enable debug mode with verbose logging
+    Options:
+        -s, --serial SN       Look up a single computer by Serial Number
+        -l, --lane [LANE]     Select lane: dev, stage, or prod (prompts if omitted)
+        -d, --debug           Enable debug mode with verbose logging
         --output-dir PATH     Specify output directory (default: ~/Desktop)
-        --help, -h            Display this help information
+        -h, --help            Display this help information
 
     Examples:
-        # Traditional method with full credentials
-        zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
-        
-        # CSV batch processing with lane selection
+        # CSV batch processing with lane
         zsh ${scriptName} -l stage computers.csv
-        zsh ${scriptName} --lane prod -d /path/to/computers.csv
         
-        # Serial number lookup
-        zsh ${scriptName} --serial C02ABC123DEF --lane stage
-        zsh ${scriptName} -s C02ABC123DEF -l prod -d
+        # Single serial number lookup
+        zsh ${scriptName} --serial C02ABC123DEF --lane prod
         
-        # Interactive modes
-        zsh ${scriptName} -l stage
-        zsh ${scriptName} --lane
-        zsh ${scriptName} -h
+        # Interactive mode (prompts for missing parameters)
+        zsh ${scriptName}
+        
+        # Full credentials (no lane selection)
+        zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
 
     "
     exit 0

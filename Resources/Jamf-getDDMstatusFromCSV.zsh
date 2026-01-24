@@ -1555,6 +1555,91 @@ if [[ "${debugMode}" == "true" ]]; then
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Process Remaining Arguments (both flags and positional parameters)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# Process any flags that were intermixed with positional parameters
+# and extract the actual positional parameters
+if [[ ${#remainingArgs[@]} -gt 0 ]]; then
+    positionalParams=()
+    i=1
+    while [[ $i -le ${#remainingArgs[@]} ]]; do
+        arg="${remainingArgs[$i]}"
+        case "$arg" in
+            --lane|-l)
+                # Process lane flag if not already set
+                if [[ "${laneSelectionRequested}" != "yes" ]]; then
+                    laneSelectionRequested="yes"
+                fi
+                ((i++))
+                # Check for lane specifier
+                if [[ $i -le ${#remainingArgs[@]} ]] && [[ "${remainingArgs[$i]}" != -* ]]; then
+                    case "${remainingArgs[$i]}" in
+                        dev|development|d|D|stage|s|S|prod|production|p|P)
+                            specifiedLane="${remainingArgs[$i]}"
+                            ((i++))
+                            ;;
+                    esac
+                fi
+                ;;
+            --serial|-s)
+                # Process serial flag if not already set
+                if [[ "${singleLookupMode}" != "yes" ]]; then
+                    singleLookupMode="yes"
+                fi
+                ((i++))
+                if [[ $i -le ${#remainingArgs[@]} ]]; then
+                    lookupSerialNumber="${remainingArgs[$i]}"
+                    ((i++))
+                fi
+                ;;
+            --output-dir)
+                # Skip output-dir flag and its argument (already processed)
+                ((i++))
+                [[ $i -le ${#remainingArgs[@]} ]] && ((i++))
+                ;;
+            --debug|-d)
+                # Debug already processed, just skip
+                ((i++))
+                ;;
+            --help|-h)
+                # Help already processed, just skip
+                ((i++))
+                ;;
+            *)
+                # Not a flag, add to positional parameters
+                positionalParams+=("$arg")
+                ((i++))
+                ;;
+        esac
+    done
+    
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Extracted ${#positionalParams[@]} positional parameters from ${#remainingArgs[@]} remaining arguments"
+        debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
+    fi
+    
+    # Traditional positional parameter order: apiUrl apiUser apiPassword filename
+    if [[ -z "${apiUrl}" ]] && [[ ${#positionalParams[@]} -ge 1 ]]; then
+        apiUrl="${positionalParams[1]}"
+    fi
+    if [[ -z "${apiUser}" ]] && [[ ${#positionalParams[@]} -ge 2 ]]; then
+        apiUser="${positionalParams[2]}"
+    fi
+    if [[ -z "${apiPassword}" ]] && [[ ${#positionalParams[@]} -ge 3 ]]; then
+        apiPassword="${positionalParams[3]}"
+    fi
+    if [[ -z "${filename}" ]] && [[ ${#positionalParams[@]} -ge 4 ]]; then
+        filename="${positionalParams[4]}"
+    fi
+    
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Positional parameters assigned"
+        debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}"
+    fi
+fi
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Prompt for help if no parameters provided
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -1615,47 +1700,30 @@ printf "\n###\n"
 printf "# Step 1: API Connection Settings\n"
 printf "###\n"
 
+# Check if explicit credentials were provided via positional parameters
+explicitCredentialsProvided="no"
+if [[ -n "${apiUrl}" ]] && [[ -n "${apiUser}" ]] && [[ -n "${apiPassword}" ]]; then
+    explicitCredentialsProvided="yes"
+fi
+
 # Check if lane selection was requested
 if [[ "${laneSelectionRequested}" == "yes" ]]; then
-    if [[ -n "${specifiedLane}" ]]; then
-        info "Lane selection requested with specified lane: ${specifiedLane}"
+    # If explicit credentials were already provided, warn and use explicit credentials
+    if [[ "${explicitCredentialsProvided}" == "yes" ]]; then
+        printf "\n${yellow}⚠${resetColor} Lane selection (-l/--lane) specified but explicit credentials were also provided.\n"
+        printf "${yellow}⚠${resetColor} Using explicit credentials instead of lane configuration.\n"
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Skipping lane selection; using explicit credentials (URL: ${apiUrl})"
+        fi
     else
-        info "Lane selection requested; prompting user ..."
-    fi
-    laneSelection "${specifiedLane}"
-    printf "\n${green}✓${resetColor} Lane credentials configured\n"
-fi
-
-# Now process remaining positional parameters (captured earlier)
-# If credentials are already set (via lane selection) and we have positional args,
-# treat the first one as the filename instead of apiUrl
-if [[ "${debugMode}" == "true" ]]; then
-    debug "Processing ${#remainingArgs[@]} remaining arguments"
-    debug "Credentials: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}"
-fi
-
-if [[ -n "${apiUrl}" ]] && [[ -n "${apiUser}" ]] && [[ -n "${apiPassword}" ]] && [[ ${#remainingArgs[@]} -ge 1 ]] && [[ -z "${filename}" ]]; then
-    # Credentials already set via lane, so treat remaining args as filename
-    filename="${remainingArgs[1]}"
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "Credentials already set via lane; treating arg as filename: ${filename}"
-    fi
-elif [[ -z "${filename}" ]]; then
-    # Traditional positional parameter order: apiUrl apiUser apiPassword filename
-    if [[ -z "${apiUrl}" ]] && [[ ${#remainingArgs[@]} -ge 1 ]]; then
-        apiUrl="${remainingArgs[1]}"
-    fi
-    if [[ -z "${apiUser}" ]] && [[ ${#remainingArgs[@]} -ge 2 ]]; then
-        apiUser="${remainingArgs[2]}"
-    fi
-    if [[ -z "${apiPassword}" ]] && [[ ${#remainingArgs[@]} -ge 3 ]]; then
-        apiPassword="${remainingArgs[3]}"
-    fi
-    if [[ -z "${filename}" ]] && [[ ${#remainingArgs[@]} -ge 4 ]]; then
-        filename="${remainingArgs[4]}"
-    fi
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "Using traditional positional parameter assignment"
+        # No explicit credentials, use lane selection
+        if [[ -n "${specifiedLane}" ]]; then
+            info "Lane selection requested with specified lane: ${specifiedLane}"
+        else
+            info "Lane selection requested; prompting user ..."
+        fi
+        laneSelection "${specifiedLane}"
+        printf "\n${green}✓${resetColor} Lane credentials configured\n"
     fi
 fi
 

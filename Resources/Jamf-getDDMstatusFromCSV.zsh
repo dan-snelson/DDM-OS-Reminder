@@ -102,6 +102,8 @@
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
+setopt monitor
+
 # Script Version
 scriptVersion="0.0.6"
 

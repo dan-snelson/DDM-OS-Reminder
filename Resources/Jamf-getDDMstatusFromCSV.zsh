@@ -76,6 +76,20 @@
 # Version 0.0.5, 23-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Added ability to lookup a single Serial Number via command-line argument
 #
+# Version 0.0.6, 25-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Thanks for the suggestions, @TechTrekkie!
+#   • Fixed argument parsing to support position-independent flags (addresses issue where -d flag consumed CSV filename)
+#   • Simplified interactive prompts by removing Y/N confirmations (now directly prompts for values, CTRL-C to exit; )
+#   • Enhanced CSV format documentation in help text and validation function
+#   • Improved error handling for unknown flags (fail-fast)
+# - Thanks for the bug report and suggestions, @ScottEKendall!
+#   • Added automatic token refresh to prevent API authentication failures during long-running operations
+#   • Token is now automatically refreshed every 4 minutes (before the 5-minute OAuth expiration)
+#   • Added token age tracking with proactive refresh before API calls
+#   • Experimental Parallel Processing (inspired by Scott's multitasking implementation in his GetDDMInfo.sh script)
+#      • Added optional parallel processing (--parallel flag) to dramatically speed up execution
+#      • Parallel processing runs up to 10 computers concurrently (configurable with --max-jobs flag)
+#
 ####################################################################################################
 
 
@@ -89,7 +103,10 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="0.0.5"
+scriptVersion="0.0.6"
+
+# Elapsed Time
+SECONDS="0"
 
 # Script Name (for help display)
 scriptName=$(basename "${0}")
@@ -110,6 +127,14 @@ yellow=$'\e[1;33m'
 blue=$'\e[1;34m'
 cyan=$'\e[1;36m'
 resetColor=$'\e[0m'
+
+# Token management variables
+tokenObtainedTime=0
+tokenRefreshInterval=240  # Refresh every 4 minutes (before 5-minute OAuth expiration)
+
+# Parallel processing variables (inspired by @ScottEKendall)
+parallelProcessing="false"          # Enable parallel processing for faster execution
+maxParallelJobs=10                  # Number of concurrent background jobs (default: 10)
 
 
 
@@ -180,7 +205,9 @@ trap cleanup EXIT INT TERM
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function updateScriptLog() {
-    echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" >> "${scriptLog}"
+    if [[ -n "${scriptLog}" ]]; then
+        echo "${organizationScriptName} ($scriptVersion): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" >> "${scriptLog}"
+    fi
 }
 
 function preFlight()    { updateScriptLog "[PRE-FLIGHT]      ${1}"; }
@@ -218,7 +245,7 @@ ${scriptDisplayName} (${scriptVersion})
 by Dan K. Snelson (@dan-snelson)
 
     Usage:
-        zsh ${scriptName} [OPTIONS] [csvFilename]
+        zsh ${scriptName} [OPTIONS] [apiURL] [apiUsername] [apiPassword] [csvFilename]
         zsh ${scriptName} --serial SERIALNUMBER [OPTIONS]
 
     Options:
@@ -226,20 +253,35 @@ by Dan K. Snelson (@dan-snelson)
         -l, --lane [LANE]     Select lane: dev, stage, or prod (prompts if omitted)
         -d, --debug           Enable debug mode with verbose logging
         --output-dir PATH     Specify output directory (default: ~/Desktop)
+        --parallel            Enable parallel processing for faster execution
+        --max-jobs N          Set maximum parallel jobs (default: 10, requires --parallel)
         -h, --help            Display this help information
+
+    CSV Format Requirements:
+        Single-column:    One Computer ID per line (no header required)
+                          123
+                          456
+                          789
+        
+        Multi-column:     Must include 'JSS Computer ID' header (case-sensitive)
+                          Computer Name,JSS Computer ID,Serial Number
+                          Mac1,123,C02ABC
+                          Mac2,456,C02DEF
 
     Examples:
         # CSV batch processing with lane
-        zsh ${scriptName} -l stage computers.csv
+        zsh ${scriptName} --lane stage computers.csv
+        
+        # Full credentials (flags are position-independent)
+        zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
+        zsh ${scriptName} --debug https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
+        zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword --debug computers.csv
         
         # Single serial number lookup
         zsh ${scriptName} --serial C02ABC123DEF --lane prod
         
         # Interactive mode (prompts for missing parameters)
         zsh ${scriptName}
-        
-        # Full credentials (no lane selection)
-        zsh ${scriptName} https://yourserver.jamfcloud.com apiUser apiPassword computers.csv
 
     "
     exit 0
@@ -352,96 +394,44 @@ function promptAPIurl() {
             
             apiUrl=$( /usr/bin/defaults read "/Library/Preferences/com.jamfsoftware.jamf.plist" jss_url 2>&1 | sed 's|/$||' )
             
-            echo "
-The API URL has been read from the Jamf preferences.
-
-Use this URL? ${apiUrl}
-
-[y] Yes - Use the URL presented above
-[n] No - Enter the API URL at the next prompt
-[x] Exit"
-
-            printf "\n> "
-            read -k 1 urlResponse
-            printf "\n"
-            info "Use this URL: ${apiUrl}? ${urlResponse}"
-
-            case "${urlResponse}" in
-
-                y|Y)
-                    info "Using URL from JAMF plist: ${apiUrl}"
-                    printf "\n\n${green}✓${resetColor} Using URL from JAMF plist: ${apiUrl}\n"
-                    ;;
-
-                n|N)
-                    apiUrl=""
-                    printf "\nPlease enter the API URL (e.g., https://yourserver.jamfcloud.com): "
-                    read apiUrl
-                    printf "\n"
-                    if [[ "${debugMode}" == "true" ]]; then
-                        debug "Raw URL input: ${apiUrl}"
-                    fi
-                    apiUrl=$( echo "${apiUrl}" | sed 's|/$||' )
-                    if [[ "${debugMode}" == "true" ]]; then
-                        debug "URL after trailing slash removal: ${apiUrl}"
-                    fi
-                    info "User entered API URL: ${apiUrl}"
-                    printf "${green}✓${resetColor} API URL set to: ${apiUrl}\n"
-                    ;;
-
-                x|X)
-                    quitOut "Exiting. Goodbye!"
-                    printf "\n\nExiting. Goodbye!\n\n"
-                    exit 0
-                    ;;
-
-                *)
-                    error "Did not recognize response: ${urlResponse}; exiting."
-                    printf "\n${red}ERROR:${resetColor} Did not recognize response: ${urlResponse}; exiting.\n\n"
-                    exit 1
-                    ;;
-
-            esac
+            printf "\nThe API URL has been read from the Jamf preferences: ${apiUrl}\n"
+            printf "Press ENTER to use this URL, or type a different URL: "
+            read userInput
+            
+            if [[ -n "${userInput}" ]]; then
+                apiUrl="${userInput}"
+                # Remove quotes if user added them
+                apiUrl="${apiUrl//\"/}"
+                apiUrl="${apiUrl//\'/}"
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "Raw URL input: ${apiUrl}"
+                fi
+                apiUrl=$( echo "${apiUrl}" | sed 's|/$||' )
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "URL after trailing slash removal: ${apiUrl}"
+                fi
+                info "User entered API URL: ${apiUrl}"
+            else
+                info "Using URL from JAMF plist: ${apiUrl}"
+            fi
+            printf "${green}✓${resetColor} API URL set to: ${apiUrl}\n"
 
         else
 
             info "No API URL is specified in the script; prompt user ..."
-
-            echo "
-No API URL is specified in the script. Enter it now?
-
-[y] Yes - Enter the URL at the next prompt
-[n] No - Exit the script"
-
-            printf "\n> "
-            read -k 1 urlResponse
-            printf "\n"
-
-            case "${urlResponse}" in
-
-                y|Y)
-                    printf "\nPlease enter the API URL (e.g., https://yourserver.jamfcloud.com): "
-                    read apiUrl
-                    printf "\n"
+            
+            while [[ -z "${apiUrl}" ]]; do
+                printf "\nPlease enter the API URL (e.g., https://yourserver.jamfcloud.com): "
+                read apiUrl
+                if [[ -n "${apiUrl}" ]]; then
                     apiUrl=$( echo "${apiUrl}" | sed 's|/$||' )
                     info "User entered API URL: ${apiUrl}"
                     printf "${green}✓${resetColor} API URL set to: ${apiUrl}\n"
-                    ;;
+                fi
+            done
 
-                n|N)
-                    quitOut "Exiting. Goodbye!"
-                    printf "\n\nExiting. Goodbye!\n\n"
-                    exit 0
-                    ;;
-
-                *)
-                    error "Did not recognize response: ${urlResponse}; exiting."
-                    printf "\n${red}ERROR:${resetColor} Did not recognize response: ${urlResponse}; exiting.\n\n"
-                    exit 1
-                    ;;
-
-            esac
         fi
+
     fi
 
     apiUrl=$( echo "${apiUrl}" | sed 's|/$||' )
@@ -465,40 +455,19 @@ function promptAPIusername() {
     SECONDS="0"
 
     if [[ -z "${apiUser}" ]]; then
-        notice "No API Username (or Client ID) has been supplied. Enter it now?"
-        printf "\n\nNo API Username (or Client ID) has been supplied. Enter it now?
-
-[y] Yes - Enter the Username (or Client ID) at the next prompt
-[n] No - Exit
-"
-
-        printf "\n> "
-        read -k 1 apiUsernameResponse
-        printf "\n"
-
-        case "${apiUsernameResponse}" in
-
-            y|Y)
-                printf "\nPlease enter the API Username (or Client ID): "
-                read apiUser
-                printf "\n"
+        notice "No API Username (or Client ID) has been supplied."
+        
+        while [[ -z "${apiUser}" ]]; do
+            printf "\nPlease enter the API Username (or Client ID): "
+            read apiUser
+            if [[ -n "${apiUser}" ]]; then
+                # Remove quotes if user added them
+                apiUser="${apiUser//\"/}"
+                apiUser="${apiUser//\'/}"
                 info "User entered API Username (or Client ID): ${apiUser}"
                 printf "${green}✓${resetColor} API Username (or Client ID) set\n"
-                ;;
-
-            n|N)
-                quitOut "Exiting. Goodbye!"
-                printf "\n\nExiting. Goodbye!\n\n"
-                exit 0
-                ;;
-
-            *)
-                error "Did not recognize response: ${apiUsernameResponse}; exiting."
-                printf "\n${red}ERROR:${resetColor} Did not recognize response: ${apiUsernameResponse}; exiting.\n\n"
-                exit 1
-                ;;
-
-        esac
+            fi
+        done
 
     fi
 
@@ -525,40 +494,20 @@ function promptAPIpassword() {
     SECONDS="0"
 
     if [[ -z "${apiPassword}" ]]; then
-        notice "No API Password (or Client Secret) has been supplied. Enter it now?"
-        printf "\n\nNo API Password (or Client Secret) has been supplied. Enter it now?
-
-[y] Yes - Enter the password (or Client Secret) at the next prompt
-[n] No - Exit
-"
-
-        printf "\n> "
-        read -k 1 apiPasswordEntryResponse
-        printf "\n"
-
-        case "${apiPasswordEntryResponse}" in
-
-            y|Y)
-                printf "\nPlease enter the API Password (or Client Secret): "
-                read -s apiPassword
-                printf "\n"
+        notice "No API Password (or Client Secret) has been supplied."
+        
+        while [[ -z "${apiPassword}" ]]; do
+            printf "\nPlease enter the API Password (or Client Secret): "
+            read -s apiPassword
+            printf "\n"
+            if [[ -n "${apiPassword}" ]]; then
+                # Remove quotes if user added them
+                apiPassword="${apiPassword//\"/}"
+                apiPassword="${apiPassword//\'/}"
                 info "User entered API Password (or Client Secret)"
                 printf "${green}✓${resetColor} API Password (or Client Secret) set\n"
-                ;;
-
-            n|N)
-                quitOut "Exiting. Goodbye!"
-                printf "\n\nExiting. Goodbye!\n\n"
-                exit 0
-                ;;
-
-            *)
-                error "Did not recognize response: ${apiPasswordEntryResponse}; exiting."
-                printf "\n${red}ERROR:${resetColor} Did not recognize response: ${apiPasswordEntryResponse}; exiting.\n\n"
-                exit 1
-                ;;
-
-        esac
+            fi
+        done
 
     fi
 
@@ -588,23 +537,13 @@ function promptCSVfilename() {
     SECONDS="0"
 
     if [[ -z "${filename}" ]]; then
-        info "No CSV filename has been supplied. Enter it now?"
-        printf "\n\nNo CSV filename has been supplied. Enter it now?
-
-[y] Yes - Enter the filename at the next prompt
-[n] No - Exit
-"
-
-        printf "\n> "
-        read -k 1 csvFilenameResponse
-        printf "\n"
-
-        case "${csvFilenameResponse}" in
-
-            y|Y)
-                printf "\nPlease enter the CSV filename (or drag-and-drop the file): "
-                read filename
-                printf "\n"
+        info "No CSV filename has been supplied."
+        
+        while [[ ! -f "${filename}" ]]; do
+            printf "\nPlease enter the CSV filename (or drag-and-drop the file): "
+            read filename
+            
+            if [[ -n "${filename}" ]]; then
                 if [[ "${debugMode}" == "true" ]]; then
                     debug "Raw filename input: ${filename}"
                 fi
@@ -614,30 +553,25 @@ function promptCSVfilename() {
                 if [[ "${debugMode}" == "true" ]]; then
                     debug "Filename after quote removal: ${filename}"
                 fi
-                info "User entered CSV filename: ${filename}"
-                ;;
+                
+                # Verify file exists
+                if [[ ! -f "${filename}" ]]; then
+                    error "The specified file '${filename}' does not exist."
+                    printf "${red}ERROR:${resetColor} The specified file '${filename}' does not exist. Please try again.\n"
+                    filename=""  # Reset to loop again
+                else
+                    info "User entered CSV filename: ${filename}"
+                fi
+            fi
+        done
 
-            n|N)
-                quitOut "Exiting. Goodbye!"
-                printf "\n\nExiting. Goodbye!\n\n"
-                exit 0
-                ;;
-
-            *)
-                error "Did not recognize response: ${csvFilenameResponse}; exiting."
-                printf "\n${red}ERROR:${resetColor} Did not recognize response: ${csvFilenameResponse}; exiting.\n\n"
-                exit 1
-                ;;
-
-        esac
-
-    fi
-
-    # Verify file exists
-    if [[ ! -f "${filename}" ]]; then
-        error "The specified file '${filename}' does not exist."
-        printf "\n${red}ERROR:${resetColor} The specified file '${filename}' does not exist.\n\n"
-        exit 1
+    else
+        # Verify file exists (for non-interactive mode)
+        if [[ ! -f "${filename}" ]]; then
+            error "The specified file '${filename}' does not exist."
+            printf "\n${red}ERROR:${resetColor} The specified file '${filename}' does not exist.\n\n"
+            exit 1
+        fi
     fi
 
     info "Using CSV filename: ${filename}"
@@ -701,11 +635,26 @@ function getBearerToken() {
 
     # Basic sanity check on JSON
     if [[ -z "${tokenJson}" ]]; then
-        die "Jamf Pro auth returned an empty response; check URL and network."
+        error "Jamf Pro auth returned an empty response; check URL and network."
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "API URL used: ${apiUrl}"
+            debug "Response was completely empty"
+        fi
+        die "ERROR: Jamf Pro auth returned an empty response; check URL and network."
     fi
 
     if [[ "${debugMode}" == "true" ]]; then
         debug "Token response: ${tokenJson}"
+    fi
+    
+    # Check for error in response
+    if [[ "${tokenJson}" == *"error"* ]]; then
+        error "Token response contains an error"
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Full error response: ${tokenJson}"
+        fi
+        printf "\n${red}ERROR:${resetColor} Authentication failed. Response contains error:\n${tokenJson}\n\n"
+        die "Unable to authenticate with Jamf Pro. Check credentials and URL."
     fi
 
     # Extract token with plutil (handles both access_token and token fields)
@@ -725,15 +674,28 @@ function getBearerToken() {
         fi
     fi
 
-    if [[ -z "${apiBearerToken}" ]] || [[ "${tokenJson}" == *"error"* ]]; then
+    if [[ -z "${apiBearerToken}" ]]; then
+        error "Failed to extract bearer token from response"
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Token extraction failed. Response was: ${tokenJson}"
+        fi
+        printf "\n${red}ERROR:${resetColor} Unable to extract bearer token from response.\n"
+        printf "This could indicate:"
+        printf "\n  • Invalid credentials"
+        printf "\n  • Incorrect URL"
+        printf "\n  • API permissions issue\n\n"
         die "Unable to obtain Bearer Token; double-check API credentials and URL."
     fi
 
     info "Obtained Bearer Token; proceeding …"
 
+    # Record when the token was obtained
+    tokenObtainedTime=$(date +%s)
+
     if [[ "${debugMode}" == "true" ]]; then
         local maskedToken=$(maskCredential "${apiBearerToken}")
         debug "apiBearerToken: ${maskedToken}"
+        debug "Token obtained at: ${tokenObtainedTime}"
     fi
 }
 
@@ -792,11 +754,41 @@ function refreshBearerToken() {
 
     info "Successfully refreshed Bearer Token via keep-alive."
 
+    # Update token timestamp after successful refresh
+    tokenObtainedTime=$(date +%s)
+
     if [[ "${debugMode}" == "true" ]]; then
         local maskedToken=$(maskCredential "${apiBearerToken}")
         debug "Refreshed apiBearerToken: ${maskedToken}"
+        debug "Token refreshed at: ${tokenObtainedTime}"
     fi
 
+    return 0
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Invalidate Bearer Token
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function checkAndRefreshToken() {
+    local currentTime=$(date +%s)
+    local tokenAge=$((currentTime - tokenObtainedTime))
+    
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Token age: ${tokenAge} seconds (refresh interval: ${tokenRefreshInterval})"
+    fi
+    
+    # Refresh token if it's older than the refresh interval
+    if [[ ${tokenAge} -ge ${tokenRefreshInterval} ]]; then
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Token age (${tokenAge}s) exceeds refresh interval (${tokenRefreshInterval}s); refreshing ..."
+        fi
+        refreshBearerToken
+        return $?
+    fi
+    
     return 0
 }
 
@@ -851,6 +843,25 @@ function maskCredential() {
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Validate CSV format (single column or multi-column with JSS Computer ID)
+# 
+# IMPORTANT: CSV Format Requirements
+# 
+# This script accepts two CSV formats:
+# 
+# 1. Single-column CSV (no header required):
+#    123
+#    456
+#    789
+# 
+# 2. Multi-column CSV (MUST include 'JSS Computer ID' header - case-sensitive):
+#    Computer Name,JSS Computer ID,Serial Number,OS Version
+#    Mac1,123,C02ABC,14.5
+#    Mac2,456,C02DEF,14.6
+# 
+# When exporting from Jamf Pro:
+# - Include the "Jamf Pro Computer ID" column in your export
+# - The column header must be exactly: JSS Computer ID
+# - Other columns are optional and will be ignored
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function validateCsvFormat() {
@@ -984,6 +995,9 @@ function getComputerById() {
     local rawResponse
     local computerInfo
     
+    # Check and refresh token if needed before API call
+    checkAndRefreshToken
+    
     # Validate that identifier is numeric
     if [[ ! "${computerId}" =~ ^[0-9]+$ ]]; then
         if [[ "${debugMode}" == "true" ]]; then
@@ -1002,6 +1016,7 @@ function getComputerById() {
     rawResponse=$(
         curl -H "Authorization: Bearer ${apiBearerToken}" \
              -H "Accept: application/json" \
+             --max-time 30 \
              -sfk \
              "${apiUrl}/api/v1/computers-inventory-detail/${computerId}?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM" \
              -X GET 2>/dev/null
@@ -1044,6 +1059,9 @@ function getComputerIdBySerialNumber() {
     local rawResponse
     local computerId
     
+    # Check and refresh token if needed before API call
+    checkAndRefreshToken
+    
     if [[ -z "${serialNumber}" ]]; then
         if [[ "${debugMode}" == "true" ]]; then
             debug "Serial Number is required" >&2
@@ -1060,6 +1078,7 @@ function getComputerIdBySerialNumber() {
     rawResponse=$(
         curl -H "Authorization: Bearer ${apiBearerToken}" \
              -H "Accept: application/json" \
+             --max-time 30 \
              -sfk \
              "${apiUrl}/api/v1/computers-inventory?section=GENERAL&page=0&page-size=1&filter=hardware.serialNumber%3D%3D%22${serialNumber}%22" \
              -X GET 2>/dev/null
@@ -1152,6 +1171,9 @@ function getDdmStatusItems() {
     local httpStatus
     local ddmStatus
     
+    # Check and refresh token if needed before API call
+    checkAndRefreshToken
+    
     if [[ "${debugMode}" == "true" ]]; then
         debug "Calling DDM status endpoint for Management ID: ${managementId}" >&2
         debug "API endpoint: ${apiUrl}/api/v1/ddm/${managementId}/status-items" >&2
@@ -1160,6 +1182,7 @@ function getDdmStatusItems() {
     ddmStatusAndCode=$(
         curl -H "Authorization: Bearer ${apiBearerToken}" \
              -H "Accept: application/json" \
+             --max-time 30 \
              -sfk -w "%{http_code}" \
              "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
              -X GET 2>/dev/null
@@ -1184,6 +1207,7 @@ function getDdmStatusItems() {
             ddmStatusAndCode=$(
                 curl -H "Authorization: Bearer ${apiBearerToken}" \
                      -H "Accept: application/json" \
+                     --max-time 30 \
                      -sfk -w "%{http_code}" \
                      "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
                      -X GET 2>/dev/null
@@ -1447,8 +1471,11 @@ specifiedLane=""
 singleLookupMode="no"
 lookupSerialNumber=""
 
-# Process flags first
-while test $# -gt 0; do
+# Array to collect positional parameters
+declare -a positionalArgs=()
+
+# Single-pass argument parsing with position-independent flags
+while [[ $# -gt 0 ]]; do
     case "$1" in
         --help|-h)
             displayHelp
@@ -1460,15 +1487,12 @@ while test $# -gt 0; do
         --lane|-l)
             laneSelectionRequested="yes"
             shift
-            # Check if next argument is a valid lane name (not a flag or file)
-            if [[ $# -gt 0 ]] && [[ "$1" != -* ]]; then
+            # Check if next argument is a valid lane name (not a flag)
+            if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^- ]]; then
                 case "$1" in
                     dev|development|d|D|stage|s|S|prod|production|p|P)
                         specifiedLane="$1"
-            shift
-                        ;;
-                    *)
-                        # Not a valid lane name, don't consume it
+                        shift
                         ;;
                 esac
             fi
@@ -1476,27 +1500,72 @@ while test $# -gt 0; do
         --serial|-s)
             singleLookupMode="yes"
             shift
-            lookupSerialNumber="$1"
-            shift
+            if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^- ]]; then
+                lookupSerialNumber="$1"
+                shift
+            else
+                die "Error: --serial requires a serial number argument"
+            fi
             ;;
         --output-dir)
             shift
-            outputDir="$1"
+            if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^- ]]; then
+                outputDir="$1"
+                shift
+            else
+                die "Error: --output-dir requires a path argument"
+            fi
+            ;;
+        --parallel)
+            parallelProcessing="true"
             shift
+            ;;
+        --max-jobs)
+            shift
+            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
+                maxParallelJobs="$1"
+                shift
+            else
+                die "Error: --max-jobs requires a numeric argument"
+            fi
             ;;
         -*)
-            # Unknown flag
-            shift
+            # Unknown flag - fail fast
+            die "Error: Unknown flag '$1'. Use --help for usage information."
             ;;
         *)
-            # Not a flag, stop processing
-            break
+            # Collect positional arguments
+            positionalArgs+=("$1")
+            shift
             ;;
     esac
 done
 
-# Save remaining positional parameters for later processing
-remainingArgs=("$@")
+# Validate parallel processing settings
+if [[ "${maxParallelJobs}" != "10" ]] && [[ "${parallelProcessing}" != "true" ]]; then
+    warning "--max-jobs specified without --parallel flag; parallel processing will not be enabled"
+fi
+
+# Assign positional parameters from collected array
+# Order: apiUrl apiUser apiPassword filename
+if [[ ${#positionalArgs[@]} -ge 1 ]]; then
+    apiUrl="${positionalArgs[1]}"
+fi
+if [[ ${#positionalArgs[@]} -ge 2 ]]; then
+    apiUser="${positionalArgs[2]}"
+fi
+if [[ ${#positionalArgs[@]} -ge 3 ]]; then
+    apiPassword="${positionalArgs[3]}"
+fi
+if [[ ${#positionalArgs[@]} -ge 4 ]]; then
+    filename="${positionalArgs[4]}"
+fi
+
+if [[ "${debugMode}" == "true" ]]; then
+    debug "Collected ${#positionalArgs[@]} positional parameters"
+    debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
+    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}"
+fi
 
 # Initialize output paths now that outputDir is set
 scriptLog="${outputDir}/DDM_Status_Report.log"
@@ -1529,91 +1598,6 @@ preFlight "Initiating …"
 if [[ "${debugMode}" == "true" ]]; then
     debug "Debug Mode Enabled"
     printf "\n${green}DEBUG MODE ENABLED${resetColor}\n"
-fi
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Process Remaining Arguments (both flags and positional parameters)
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-# Process any flags that were intermixed with positional parameters
-# and extract the actual positional parameters
-if [[ ${#remainingArgs[@]} -gt 0 ]]; then
-    positionalParams=()
-    i=1
-    while [[ $i -le ${#remainingArgs[@]} ]]; do
-        arg="${remainingArgs[$i]}"
-        case "$arg" in
-            --lane|-l)
-                # Process lane flag if not already set
-                if [[ "${laneSelectionRequested}" != "yes" ]]; then
-                    laneSelectionRequested="yes"
-                fi
-                ((i++))
-                # Check for lane specifier
-                if [[ $i -le ${#remainingArgs[@]} ]] && [[ "${remainingArgs[$i]}" != -* ]]; then
-                    case "${remainingArgs[$i]}" in
-                        dev|development|d|D|stage|s|S|prod|production|p|P)
-                            specifiedLane="${remainingArgs[$i]}"
-                            ((i++))
-                            ;;
-                    esac
-                fi
-                ;;
-            --serial|-s)
-                # Process serial flag if not already set
-                if [[ "${singleLookupMode}" != "yes" ]]; then
-                    singleLookupMode="yes"
-                fi
-                ((i++))
-                if [[ $i -le ${#remainingArgs[@]} ]]; then
-                    lookupSerialNumber="${remainingArgs[$i]}"
-                    ((i++))
-                fi
-                ;;
-            --output-dir)
-                # Skip output-dir flag and its argument (already processed)
-                ((i++))
-                [[ $i -le ${#remainingArgs[@]} ]] && ((i++))
-                ;;
-            --debug|-d)
-                # Debug already processed, just skip
-                ((i++))
-                ;;
-            --help|-h)
-                # Help already processed, just skip
-                ((i++))
-                ;;
-            *)
-                # Not a flag, add to positional parameters
-                positionalParams+=("$arg")
-                ((i++))
-                ;;
-        esac
-    done
-    
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "Extracted ${#positionalParams[@]} positional parameters from ${#remainingArgs[@]} remaining arguments"
-        debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
-    fi
-    
-    # Traditional positional parameter order: apiUrl apiUser apiPassword filename
-    if [[ -z "${apiUrl}" ]] && [[ ${#positionalParams[@]} -ge 1 ]]; then
-        apiUrl="${positionalParams[1]}"
-    fi
-    if [[ -z "${apiUser}" ]] && [[ ${#positionalParams[@]} -ge 2 ]]; then
-        apiUser="${positionalParams[2]}"
-    fi
-    if [[ -z "${apiPassword}" ]] && [[ ${#positionalParams[@]} -ge 3 ]]; then
-        apiPassword="${positionalParams[3]}"
-    fi
-    if [[ -z "${filename}" ]] && [[ ${#positionalParams[@]} -ge 4 ]]; then
-        filename="${positionalParams[4]}"
-    fi
-    
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "Positional parameters assigned"
-        debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}"
-    fi
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1755,9 +1739,6 @@ if [[ "${singleLookupMode}" != "yes" ]]; then
         filenameNumberOfLines=$(awk 'END { print NR }' "${filename}")
         info "The filename '${filename}' contains ${filenameNumberOfLines} lines; proceeding …"
         printf "${green}✓${resetColor} CSV file contains ${filenameNumberOfLines} lines\n"
-        
-        # Validate CSV encoding
-        validateCsvEncoding "${filename}"
         
         # Validate CSV format (single column only)
         if ! validateCsvFormat "${filename}"; then
@@ -1965,45 +1946,57 @@ fi
 info "\n\nProcessing computers …\n"
 printf "Processing ${filenameNumberOfLines} computers …\n\n"
 
-counter="0"
+# Display processing mode
+if [[ "${parallelProcessing}" == "true" ]]; then
+    info "Parallel processing enabled with ${maxParallelJobs} concurrent jobs"
+    printf "${cyan}⚡ Parallel processing: ${maxParallelJobs} concurrent jobs${resetColor}\n\n"
+fi
 
-# Process each line in the CSV as a Jamf Pro Computer ID
-while IFS= read -r identifier; do
+####################################################################################################
+#
+# Process Computer Function (for parallel or sequential execution)
+#
+####################################################################################################
 
-    SECONDS="0"
-
+processComputer() {
+    local identifier="$1"
+    local recordNumber="$2"
+    local totalRecords="$3"
+    local tempCsvFile="$4"
+    
+    local recordStartTime="${SECONDS}"
+    
     # Strip CR and BOM (in case of UTF-8 BOM in the file)
     identifier=$(printf "%s" "${identifier}" | tr -d '\r' | sed 's/^\xEF\xBB\xBF//')
-
+    
     # Skip blank lines
     if [[ -z "${identifier}" ]]; then
-        continue
+        return 0
     fi
-
-    (( counter++ ))
-    progressPercent=$((counter * 100 / filenameNumberOfLines))
-    info "\n\n\nRecord ${counter} of ${filenameNumberOfLines} (${progressPercent}%): Identifier: ${identifier}"
+    
+    local progressPercent=$((recordNumber * 100 / totalRecords))
+    info "\n\n\nRecord ${recordNumber} of ${totalRecords} (${progressPercent}%): Identifier: ${identifier}"
     if [[ "${debugMode}" == "true" ]]; then
-        debug "Processing record ${counter}: Starting timer for identifier '${identifier}'"
+        debug "Processing record ${recordNumber}: Starting timer for identifier '${identifier}'"
     fi
-    printf "${blue}[ ${counter}/${filenameNumberOfLines} (${progressPercent}%%) ]${resetColor} Processing Jamf Pro Computer ID: ${identifier} …\n"
-
+    printf "${blue}[ ${recordNumber}/${totalRecords} (${progressPercent}%%) ]${resetColor} Processing Jamf Pro Computer ID: ${identifier} …\n"
+    
     ################################################################################################
     # Retrieve computer information by JSS Computer ID
     ################################################################################################
-
+    
     computerInfoRaw=$(getComputerById "${identifier}")
     
     if [[ $? -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
         error "Computer '${identifier}' not found in Jamf Pro; skipping …"
         printf "  ${red}✗${resetColor} Computer not found in Jamf Pro\n"
-        # Write "Not Found" row to CSV
-        echo "\"${identifier}\",\"\",\"Not Found\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"" >> "${csvOutput}"
-        (( notFoundCount++ ))
-        info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((SECONDS/3600)) $((SECONDS%3600/60)) $((SECONDS%60)))"
-        continue
+        # Write "Not Found" row to temp CSV
+        echo "\"${identifier}\",\"\",\"Not Found\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"" >> "${tempCsvFile}"
+        local recordTime=$((SECONDS - recordStartTime))
+        info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))"
+        return 1
     fi
-
+    
     # Extract all fields from the retrieved computer data
     # Parse the filtered JSON with jq
     fieldData=$(printf "%s" "${computerInfoRaw}" | jq -r '[.id // "", .general.name // "", .hardware.serialNumber // "", .general.managementId // "", .general.declarativeDeviceManagementEnabled // "", .operatingSystem.version // "", .hardware.modelIdentifier // "", .general.lastContactTime // ""] | join("|")' 2>/dev/null)
@@ -2011,9 +2004,10 @@ while IFS= read -r identifier; do
     if [[ -z "${fieldData}" ]] || [[ "${fieldData}" == "|||||||" ]]; then
         error "Failed to parse JSON for identifier: ${identifier}"
         printf "${red}✗${resetColor} Failed to parse computer data for: ${identifier}\n\n"
-        echo "\"${identifier}\",\"${apiUrl}/computers.html?id=${identifier}&o=r\",\"Parse Error\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"" >> "${csvOutput}"
-        info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((SECONDS/3600)) $((SECONDS%3600/60)) $((SECONDS%60)))"
-        continue
+        echo "\"${identifier}\",\"${apiUrl}/computers.html?id=${identifier}&o=r\",\"Parse Error\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"" >> "${tempCsvFile}"
+        local recordTime=$((SECONDS - recordStartTime))
+        info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))"
+        return 1
     fi
     
     # Parse the pipe-separated values
@@ -2035,11 +2029,8 @@ while IFS= read -r identifier; do
     # Normalize DDM enabled value
     if [[ "${ddmEnabled}" != "true" ]]; then
         ddmEnabled="false"
-        (( ddmDisabledCount++ ))
-    else
-        (( ddmEnabledCount++ ))
     fi
-
+    
     info "Computer Information:"
     info "• ID: ${computerId}"
     info "• Name: ${computerName}"
@@ -2049,19 +2040,19 @@ while IFS= read -r identifier; do
     info "• DDM Enabled: ${ddmEnabled}"
     info "• Current OS: ${currentOsVersion}"
     info "• Last Inventory Update: ${lastContactTime}"
-
+    
     printf "  ${green}✓${resetColor} ${computerName} (${computerSerialNumber}) - DDM: ${ddmEnabled}\n"
-
+    
     # Initialize DDM data variables
-    activeBlueprints=""
-    failedBlueprints=""
-    softwareUpdateErrors=""
-    pendingUpdates=""
-
+    local activeBlueprints=""
+    local failedBlueprints=""
+    local softwareUpdateErrors=""
+    local pendingUpdates=""
+    
     ################################################################################################
     # Retrieve DDM Status (only if DDM is enabled)
     ################################################################################################
-
+    
     if [[ "${ddmEnabled}" == "true" ]]; then
         
         info "Retrieving DDM status items …"
@@ -2082,14 +2073,6 @@ while IFS= read -r identifier; do
             failedBlueprints=$(parseFailedBlueprints "${ddmStatus}")
             softwareUpdateErrors=$(parseSoftwareUpdateErrors "${ddmStatus}")
             pendingUpdates=$(parsePendingSoftwareUpdates "${ddmStatus}")
-            
-            # Update counters
-            if [[ -n "${failedBlueprints}" ]] && [[ "${failedBlueprints}" != "None" ]] && [[ "${failedBlueprints}" != "" ]]; then
-                (( failedBlueprintsCount++ ))
-            fi
-            if [[ -n "${pendingUpdates}" ]] && [[ "${pendingUpdates}" != "None" ]] && [[ "${pendingUpdates}" != "" ]]; then
-                (( pendingUpdatesCount++ ))
-            fi
             
             info "DDM Status:"
             info "• Active Blueprints: ${activeBlueprints:-None}"
@@ -2119,7 +2102,6 @@ while IFS= read -r identifier; do
             failedBlueprints="API Error"
             softwareUpdateErrors="API Error"
             pendingUpdates="API Error"
-            (( errorCount++ ))
         fi
         
     else
@@ -2129,11 +2111,11 @@ while IFS= read -r identifier; do
         softwareUpdateErrors="DDM Disabled"
         pendingUpdates="DDM Disabled"
     fi
-
+    
     ################################################################################################
-    # Write to CSV
+    # Write to temp CSV
     ################################################################################################
-
+    
     # Sanitize data for CSV
     csvIdentifier=$(sanitizeForCsv "${identifier}")
     csvComputerName=$(sanitizeForCsv "${computerName}")
@@ -2153,21 +2135,195 @@ while IFS= read -r identifier; do
     if [[ -n "${computerId}" ]] && [[ "${computerId}" != "null" ]]; then
         jamfProLink="${apiUrl}/computers.html?id=${computerId}&o=r"
     fi
-
-    echo "\"${csvIdentifier}\",\"${jamfProLink}\",\"${csvComputerName}\",\"${csvSerialNumber}\",\"${csvLastContactTime}\",\"${csvCurrentOsVersion}\",\"${csvPendingUpdates}\",\"${csvModelIdentifier}\",\"${csvManagementId}\",\"${csvDdmEnabled}\",\"${csvActiveBlueprints}\",\"${csvFailedBlueprints}\",\"${csvSoftwareUpdateErrors}\"" >> "${csvOutput}"
-
-    local recordTime=$(printf '%dh:%dm:%ds' $((SECONDS/3600)) $((SECONDS%3600/60)) $((SECONDS%60)))
-    info "Elapsed Time: ${recordTime}"
+    
+    echo "\"${csvIdentifier}\",\"${jamfProLink}\",\"${csvComputerName}\",\"${csvSerialNumber}\",\"${csvLastContactTime}\",\"${csvCurrentOsVersion}\",\"${csvPendingUpdates}\",\"${csvModelIdentifier}\",\"${csvManagementId}\",\"${csvDdmEnabled}\",\"${csvActiveBlueprints}\",\"${csvFailedBlueprints}\",\"${csvSoftwareUpdateErrors}\"" >> "${tempCsvFile}"
+    
+    local recordTime=$((SECONDS - recordStartTime))
+    local recordTimeFormatted=$(printf '%dh:%dm:%ds' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))
+    info "Elapsed Time: ${recordTimeFormatted}"
     if [[ "${debugMode}" == "true" ]]; then
-        debug "Record ${counter} processed in ${SECONDS} seconds"
+        debug "Record ${recordNumber} processed in ${recordTime} seconds"
     fi
     
-    # Add visual separation between records (except after last record)
-    if [[ ${counter} -lt ${filenameNumberOfLines} ]]; then
+    # Add visual separation between records
+    if [[ ${recordNumber} -lt ${totalRecords} ]]; then
         printf "\n${blue}---${resetColor}\n\n"
     fi
+    
+    return 0
+}
 
-done < "${processedFilename}"
+
+####################################################################################################
+#
+# Parallel Job Management Functions
+#
+####################################################################################################
+
+# Wait for background jobs to complete, with optional maximum job limit
+waitForJobs() {
+    local maxJobs="${1:-0}"  # 0 means wait for all jobs
+    
+    while true; do
+        local runningJobs=$(jobs -r | wc -l | tr -d ' ')
+        
+        if [[ ${maxJobs} -eq 0 ]]; then
+            # Wait for all jobs to complete
+            if [[ ${runningJobs} -eq 0 ]]; then
+                break
+            fi
+        else
+            # Wait until we're below the max job limit
+            if [[ ${runningJobs} -lt ${maxJobs} ]]; then
+                break
+            fi
+        fi
+        
+        sleep 0.1
+    done
+}
+
+
+####################################################################################################
+#
+# Main Processing Loop
+#
+####################################################################################################
+
+counter="0"
+
+if [[ "${parallelProcessing}" == "true" ]]; then
+    
+    ################################################################################################
+    # PARALLEL PROCESSING MODE
+    ################################################################################################
+    
+    info "Starting parallel processing with ${maxParallelJobs} concurrent jobs"
+    
+    # Create temporary directory for parallel job results
+    tempDir=$(mktemp -d "${TMPDIR:-/tmp}/jamf-ddm-parallel.XXXXXX")
+    trap "rm -rf '${tempDir}'" EXIT
+    
+    # Read all identifiers into array
+    declare -a identifiers
+    while IFS= read -r identifier; do
+        identifier=$(printf "%s" "${identifier}" | tr -d '\r' | sed 's/^\xEF\xBB\xBF//')
+        if [[ -n "${identifier}" ]]; then
+            identifiers+=("${identifier}")
+        fi
+    done < "${processedFilename}"
+    
+    totalRecords="${#identifiers[@]}"
+    info "Processing ${totalRecords} computers in parallel mode"
+    
+    # Process each computer in parallel
+    for identifier in "${identifiers[@]}"; do
+        (( counter++ ))
+        
+        # Wait if we've reached the max parallel jobs
+        waitForJobs "${maxParallelJobs}"
+        
+        # Launch background job with its own temp file
+        tempCsvFile="${tempDir}/result_${counter}.csv"
+        (
+            # Export necessary functions and variables for the background job
+            processComputer "${identifier}" "${counter}" "${totalRecords}" "${tempCsvFile}"
+        ) &
+        
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Launched background job ${counter} (PID: $!) for identifier: ${identifier}"
+        fi
+    done
+    
+    # Wait for all remaining jobs to complete
+    info "Waiting for all parallel jobs to complete …"
+    waitForJobs 0
+    
+    info "All parallel jobs completed. Merging results …"
+    
+    # Merge all temporary CSV files in order
+    for ((i=1; i<=totalRecords; i++)); do
+        tempCsvFile="${tempDir}/result_${i}.csv"
+        if [[ -f "${tempCsvFile}" ]]; then
+            cat "${tempCsvFile}" >> "${csvOutput}"
+        fi
+    done
+    
+    info "Results merged successfully"
+    
+else
+    
+    ################################################################################################
+    # SEQUENTIAL PROCESSING MODE
+    ################################################################################################
+    
+    # Process each line in the CSV as a Jamf Pro Computer ID
+    while IFS= read -r identifier; do
+        
+        local recordStartTime="${SECONDS}"
+
+        # Strip CR and BOM (in case of UTF-8 BOM in the file)
+        identifier=$(printf "%s" "${identifier}" | tr -d '\r' | sed 's/^\xEF\xBB\xBF//')
+        
+        # Skip blank lines
+        if [[ -z "${identifier}" ]]; then
+            continue
+        fi
+        
+        (( counter++ ))
+        
+        # Process computer and write directly to main CSV
+        processComputer "${identifier}" "${counter}" "${filenameNumberOfLines}" "${csvOutput}"
+        
+    done < "${processedFilename}"
+    
+fi
+
+
+####################################################################################################
+#
+# Calculate Statistics from CSV
+#
+####################################################################################################
+
+info "Calculating statistics from results …"
+
+# Count various conditions from the CSV (skip header line)
+ddmEnabledCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$10 == "\"true\""' | wc -l | tr -d ' ')
+ddmDisabledCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$10 == "\"false\"" || $10 == "\"DDM Disabled\""' | wc -l | tr -d ' ')
+failedBlueprintsCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$12 != "\"None\"" && $12 != "\"\"" && $12 != "\"DDM Disabled\"" && $12 != "\"No status items\"" && $12 != "\"API Error\""' | wc -l | tr -d ' ')
+pendingUpdatesCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$7 != "\"None\"" && $7 != "\"\"" && $7 != "\"DDM Disabled\"" && $7 != "\"No status items\"" && $7 != "\"API Error\""' | wc -l | tr -d ' ')
+errorCount=$(tail -n +2 "${csvOutput}" | grep -c '"API Error"' || echo "0")
+notFoundCount=$(tail -n +2 "${csvOutput}" | grep -c '"Not Found"' || echo "0")
+
+# Ensure counts are valid numbers
+ddmEnabledCount=${ddmEnabledCount:-0}
+ddmDisabledCount=${ddmDisabledCount:-0}
+failedBlueprintsCount=${failedBlueprintsCount:-0}
+pendingUpdatesCount=${pendingUpdatesCount:-0}
+errorCount=${errorCount:-0}
+notFoundCount=${notFoundCount:-0}
+
+if [[ "${debugMode}" == "true" ]]; then
+    debug "Statistics calculated:"
+    debug "  DDM Enabled: ${ddmEnabledCount}"
+    debug "  DDM Disabled: ${ddmDisabledCount}"
+    debug "  Failed Blueprints: ${failedBlueprintsCount}"
+    debug "  Pending Updates: ${pendingUpdatesCount}"
+    debug "  API Errors: ${errorCount}"
+    debug "  Not Found: ${notFoundCount}"
+fi
+
+
+# This is now a stub - the actual processing happens in processComputer function
+# Keeping this section commented for reference
+: <<'ORIGINAL_SEQUENTIAL_CODE'
+    ################################################################################################
+    # Retrieve computer information by JSS Computer ID
+    ################################################################################################
+
+    computerInfoRaw=$(getComputerById "${identifier}")
+ORIGINAL_SEQUENTIAL_CODE
 
 
 
@@ -2197,7 +2353,8 @@ printf "  • DDM Disabled: ${ddmDisabledCount}\n"
 printf "  • Computers with Failed Blueprints: ${failedBlueprintsCount}\n"
 printf "  • Computers with Pending Updates: ${pendingUpdatesCount}\n"
 printf "  • API Errors: ${errorCount}\n"
-printf "  • Not Found: ${notFoundCount}\n\n"
+printf "  • Not Found: ${notFoundCount}\n"
+printf "  • Total Elapsed Time: $(printf '%dh:%dm:%ds' $((SECONDS/3600)) $((SECONDS%3600/60)) $((SECONDS%60)))\n\n"
 
 info "\nSummary Statistics:"
 info "  DDM Enabled: ${ddmEnabledCount}"
@@ -2206,6 +2363,7 @@ info "  Computers with Failed Blueprints: ${failedBlueprintsCount}"
 info "  Computers with Pending Updates: ${pendingUpdatesCount}"
 info "  API Errors: ${errorCount}"
 info "  Not Found: ${notFoundCount}"
+info "  Total Elapsed Time: $(printf '%dh:%dm:%ds' $((SECONDS/3600)) $((SECONDS%3600/60)) $((SECONDS%60)))"
 
 printf "${green}✓${resetColor} CSV output saved to: ${csvOutput}\n\n"
 

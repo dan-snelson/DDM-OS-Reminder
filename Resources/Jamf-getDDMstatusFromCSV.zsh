@@ -102,7 +102,7 @@
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-setopt monitor
+[[ -o interactive ]] && setopt monitor
 
 # Script Version
 scriptVersion="0.0.6"
@@ -184,6 +184,7 @@ function cleanup() {
     if [[ "${debugMode}" == "true" ]]; then
         debug "Cleanup function called"
     fi
+
     # Clean up temporary files
     if [[ -n "${processedFilename}" ]] && [[ "${processedFilename}" != "${filename}" ]] && [[ -f "${processedFilename}" ]]; then
         rm -f "${processedFilename}" 2>/dev/null
@@ -191,14 +192,55 @@ function cleanup() {
             debug "Removed temporary file: ${processedFilename}"
         fi
     fi
+
     # Remove any other temp files matching pattern
     if [[ -n "${filename}" ]] && [[ -f "${filename}" ]]; then
         rm -f "${filename}.jssids.tmp" 2>/dev/null
     fi
+    
+    # Clean up parallel processing temp directory if it exists
+    if [[ -n "${tempDir}" ]] && [[ -d "${tempDir}" ]]; then
+        rm -rf "${tempDir}" 2>/dev/null
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Removed temporary directory: ${tempDir}"
+        fi
+    fi
+    
+    # Clean up token lock file if it exists
+    if [[ -n "${tokenLockFile}" ]] && [[ -d "${tokenLockFile}" ]]; then
+        rmdir "${tokenLockFile}" 2>/dev/null
+    fi
 }
 
-# Set trap to cleanup on exit or interrupt
-trap cleanup EXIT INT TERM
+function interrupt_handler() {
+    printf "\n\n${yellow}âš ${resetColor} Script interrupted by user. Cleaning up...${resetColor}\n\n"
+    
+    # Kill all background jobs spawned by this script
+    if [[ "${parallelProcessing}" == "true" ]]; then
+        local jobPids=$(jobs -p 2>/dev/null)
+        if [[ -n "${jobPids}" ]]; then
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Killing background jobs: ${jobPids}"
+            fi
+            echo "${jobPids}" | xargs kill 2>/dev/null
+            # Give jobs a moment to terminate gracefully
+            sleep 0.5
+            # Force kill any remaining jobs
+            echo "${jobPids}" | xargs kill -9 2>/dev/null
+        fi
+    fi
+    
+    cleanup
+    invalidateBearerToken 2>/dev/null
+    
+    updateScriptLog "[INTERRUPTED]     Script terminated by user"
+    printf "\n${yellow}Cleanup complete. Exiting.${resetColor}\n\n"
+    exit 130
+}
+
+# Set traps separately for clearer signal handling
+trap cleanup EXIT
+trap interrupt_handler INT TERM
 
 
 
@@ -1954,6 +1996,8 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     printf "${cyan}⚡ Parallel processing: ${maxParallelJobs} concurrent jobs${resetColor}\n\n"
 fi
 
+
+
 ####################################################################################################
 #
 # Process Computer Function (for parallel or sequential execution)
@@ -2186,6 +2230,7 @@ waitForJobs() {
 }
 
 
+
 ####################################################################################################
 #
 # Main Processing Loop
@@ -2330,8 +2375,8 @@ ddmEnabledCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$10 == "\"true\""' | wc
 ddmDisabledCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$10 == "\"false\"" || $10 == "\"DDM Disabled\""' | wc -l | tr -d ' ')
 failedBlueprintsCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$12 != "\"None\"" && $12 != "\"\"" && $12 != "\"DDM Disabled\"" && $12 != "\"No status items\"" && $12 != "\"API Error\""' | wc -l | tr -d ' ')
 pendingUpdatesCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$7 != "\"None\"" && $7 != "\"\"" && $7 != "\"DDM Disabled\"" && $7 != "\"No status items\"" && $7 != "\"API Error\""' | wc -l | tr -d ' ')
-errorCount=$(tail -n +2 "${csvOutput}" | grep -c '"API Error"' || echo "0")
-notFoundCount=$(tail -n +2 "${csvOutput}" | grep -c '"Not Found"' || echo "0")
+errorCount=$(tail -n +2 "${csvOutput}" | grep -c '"API Error"')
+notFoundCount=$(tail -n +2 "${csvOutput}" | grep -c '"Not Found"')
 
 # Ensure counts are valid numbers
 ddmEnabledCount=${ddmEnabledCount:-0}
@@ -2350,17 +2395,6 @@ if [[ "${debugMode}" == "true" ]]; then
     debug "  API Errors: ${errorCount}"
     debug "  Not Found: ${notFoundCount}"
 fi
-
-
-# This is now a stub - the actual processing happens in processComputer function
-# Keeping this section commented for reference
-: <<'ORIGINAL_SEQUENTIAL_CODE'
-    ################################################################################################
-    # Retrieve computer information by JSS Computer ID
-    ################################################################################################
-
-    computerInfoRaw=$(getComputerById "${identifier}")
-ORIGINAL_SEQUENTIAL_CODE
 
 
 

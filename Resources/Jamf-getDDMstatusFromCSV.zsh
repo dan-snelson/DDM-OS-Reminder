@@ -137,7 +137,7 @@ tokenRefreshInterval=240  # Refresh every 4 minutes (before 5-minute OAuth expir
 # Parallel processing variables (inspired by @ScottEKendall)
 parallelProcessing="false"          # Enable parallel processing for faster execution
 maxParallelJobs=10                  # Number of concurrent background jobs (default: 10)
-
+export parallelProcessing
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -2225,12 +2225,14 @@ if [[ "${parallelProcessing}" == "true" ]]; then
         # Wait if we've reached the max parallel jobs
         waitForJobs "${maxParallelJobs}"
         
-        # Launch background job with its own temp file
+        # Launch background job with its own temp files
         tempCsvFile="${tempDir}/result_${counter}.csv"
+        tempLogFile="${tempDir}/log_${counter}.txt"
+
         (
-            # Export necessary functions and variables for the background job
+            scriptLog="${tempLogFile}"
             processComputer "${identifier}" "${counter}" "${totalRecords}" "${tempCsvFile}"
-        ) &
+        ) &!
         
         if [[ "${debugMode}" == "true" ]]; then
             debug "Launched background job ${counter} (PID: $!) for identifier: ${identifier}"
@@ -2243,11 +2245,44 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     
     info "All parallel jobs completed. Merging results …"
     
-    # Merge all temporary CSV files in order
+    # Merge CSV files
     for ((i=1; i<=totalRecords; i++)); do
         tempCsvFile="${tempDir}/result_${i}.csv"
         if [[ -f "${tempCsvFile}" ]]; then
             cat "${tempCsvFile}" >> "${csvOutput}"
+        fi
+    done
+    
+    # Merge per-job log files in order
+    for ((i=1; i<=totalRecords; i++)); do
+        tempLogFile="${tempDir}/log_${i}.txt"
+        if [[ -f "${tempLogFile}" ]]; then
+            cat "${tempLogFile}" >> "${scriptLog}"
+            rm "${tempLogFile}"
+        fi
+    done
+    
+    info "Results merged successfully"
+
+    # Wait for all remaining jobs to complete
+    info "Waiting for all parallel jobs to complete …"
+    waitForJobs 0
+    
+    info "All parallel jobs completed. Merging results …"
+    
+    # Merge all temporary CSV files in order
+    for ((i=1; i<=totalRecords; i++)); do
+        tempCsvFile="$$   {tempDir}/result_   $${i}.csv"
+        if [[ -f "${tempCsvFile}" ]]; then
+            cat "$$   {tempCsvFile}" >> "   $${csvOutput}"
+        fi
+    done
+
+    # Merge per-job log files in order (prevents interleaved log entries)
+    for ((i=1; i<=totalRecords; i++)); do
+        tempLogFile="$$   {tempDir}/log_   $${i}.txt"
+        if [[ -f "${tempLogFile}" ]]; then
+            cat "$$   {tempLogFile}" >> "   $${scriptLog}"
         fi
     done
     
@@ -2390,8 +2425,8 @@ if [[ "${debugMode}" == "true" ]]; then
     debug "Opening log file: ${scriptLog}"
     debug "Opening CSV file: ${csvOutput}"
 fi
-open "${scriptLog}" >/dev/null 2>&1 &
-open "${csvOutput}" >/dev/null 2>&1 &
+open "${scriptLog}" >/dev/null 2>&1 &!
+open "${csvOutput}" >/dev/null 2>&1 &!
 
 printf "${dividerLine}\n\n"
 

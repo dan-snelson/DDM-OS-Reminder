@@ -29,7 +29,7 @@
                                     <key>MeetingDelay</key>
                                     <integer>75</integer>
                                     <key>OrganizationOverlayIconURL</key>
-                                    <string>https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2</string>
+                                    <string>https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607 487f4719bd4707f2e283500f54428153af17da082e2</string>
                                     <key>SwapOverlayAndLogo</key>
                                     <false/>
                                     <key>DateFormatDeadlineHumanReadable</key>
@@ -84,26 +84,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>7C8EF7C9-C4C3-4A61-9DF7-56138A56B039</string>
+            <string>EACB3FD8-342A-4FAE-B991-B3B25CD1B27A</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>7C8EF7C9-C4C3-4A61-9DF7-56138A56B039</string>
+            <string>EACB3FD8-342A-4FAE-B991-B3B25CD1B27A</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.3.0) to org.churchofjesuschrist standards. Created: 2026-01-19-184238</string>
+    <string>Configures DDM OS Reminder (2.3.1b1) to org.churchofjesuschrist standards. Created: 2026-01-28-110717</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>0ABF55BA-9F3A-4AF7-8545-612B222C8365</string>
+    <string>368C143F-9E4C-481E-AB5D-1EAA7B01A7E8</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -113,7 +113,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>0ABF55BA-9F3A-4AF7-8545-612B222C8365</string>
+    <string>368C143F-9E4C-481E-AB5D-1EAA7B01A7E8</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

@@ -21,6 +21,10 @@
 #
 # HISTORY
 #
+#
+# Version 2.3.1b1, 28-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
+#
 # Version 2.3.0, 19-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
@@ -41,7 +45,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0"
+scriptVersion="2.3.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -263,7 +267,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0"
+scriptVersion="2.3.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -881,25 +885,83 @@ installedOSvsDDMenforcedOS() {
         # Enforcement deadline passed
         notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
 
-        # Read Apple’s internal padded enforcement date from install.log
+        # Read Apple's internal padded enforcement date from install.log
+        # Wait up to five minutes for setPastDuePaddedEnforcementDate if it’s in the past
+        local maxWaitSeconds=300  # 5 minutes
+        local checkIntervalSeconds=10
+        local elapsedSeconds=0
+        local paddedDateRaw=""
+        local paddedEpoch=""
+        
+        while (( elapsedSeconds < maxWaitSeconds )); do
         pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
+            
         if [[ -n "$pastDueDeadline" ]]; then
             paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
             paddedEpoch=$( date -jf "%a %b %d %H:%M:%S %Y" "$paddedDateRaw" "+%s" 2>/dev/null )
-            info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
+                
+                if [[ -n "$paddedEpoch" ]]; then
+                    local nowEpoch=$(date +%s)
+                    
+                    # Check if the padded date is in the future
+                    if (( paddedEpoch > nowEpoch )); then
+                        info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw} (valid future date)"
+                        break
+                    else
+                        # Padded date is in the past - this is the race condition
+                        local minutesAgo=$(( (nowEpoch - paddedEpoch) / 60 ))
+                        warning "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw} (${minutesAgo} minutes in the past)"
+                        
+                        if (( elapsedSeconds == 0 )); then
+                            notice "Waiting up to 5 minutes for macOS to update setPastDuePaddedEnforcementDate …"
+                        fi
+                        
+                        # Wait and retry
+                        sleep ${checkIntervalSeconds}
+                        elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+                        
+                        if (( elapsedSeconds >= maxWaitSeconds )); then
+                            warning "Timed out waiting for valid setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+                            warning "Proceeding with current value despite it being in the past"
+                        else
+                            info "Retrying (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
+                        fi
+                    fi
+                else
+                    warning "Unable to parse setPastDuePaddedEnforcementDate: ${paddedDateRaw}"
+                    break
+                fi
+            else
+                # No setPastDuePaddedEnforcementDate found yet
+                if (( elapsedSeconds == 0 )); then
+                    notice "No setPastDuePaddedEnforcementDate found; waiting up to 5 minutes …"
+                fi
+                
+                sleep ${checkIntervalSeconds}
+                elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+                
+                if (( elapsedSeconds >= maxWaitSeconds )); then
+                    warning "Timed out waiting for setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+                    break
+                else
+                    info "Retrying (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
+                fi
+            fi
+        done
 
+        # Process the final result
             if [[ -n "$paddedEpoch" ]]; then
                 ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
                 if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
                     ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
                 fi
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
+        else
+            if [[ -z "$pastDueDeadline" ]]; then
+                warning "No setPastDuePaddedEnforcementDate found in install.log after waiting"
             else
                 warning "Unable to parse padded enforcement date from install.log"
-                ddmEnforcedInstallDateHumanReadable="Unavailable"
             fi
-        else
-            warning "No setPastDuePaddedEnforcementDate found in install.log"
             ddmEnforcedInstallDateHumanReadable="Unavailable"
         fi
 

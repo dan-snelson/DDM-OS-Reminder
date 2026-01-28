@@ -21,6 +21,10 @@
 #
 # HISTORY
 #
+#
+# Version 2.3.1b1, 28-Jan-2026, Dan K. Snelson (@dan-snelson)
+# - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
+#
 # Version 2.3.0, 19-Jan-2026, Dan K. Snelson (@dan-snelson)
 # - Refactored Update Required logic to address Feature Request #55
 # - Updated "Organization Variables" (i.e., removed redundant variable declarations)
@@ -41,7 +45,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0"
+scriptVersion="2.3.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

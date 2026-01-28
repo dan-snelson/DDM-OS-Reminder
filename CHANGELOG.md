@@ -2,6 +2,9 @@
 
 ## Changelog
 
+## Version 2.3.1b1 (28-Jan-2026)
+- Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
+
 ## Version 2.3.0 (19-Jan-2026)
 - Refactored Update Required logic to address [Feature Request #55](https://github.com/dan-snelson/DDM-OS-Reminder/issues/55)
 - Updated "Organization Variables" (i.e., removed redundant variable declarations)

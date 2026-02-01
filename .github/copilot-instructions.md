@@ -13,55 +13,26 @@ It does **not** perform updates, remind about non-OS updates, or support non-mac
 
 ---
 
-## Repository Layout
+## Code Style
 
-```
-DDM-OS-Reminder/
-├── .github/                          # GitHub config (this file lives here)
-├── Resources/
-│   ├── sample.plist                  # Preference template; basis for .mobileconfig generation
-│   ├── createPlist.zsh               # Standalone plist/profile generator
-│   └── createSelfExtracting.zsh      # Wraps assembled script into a self-extracting .sh
-├── images/                           # README screenshots
-├── assemble.zsh                      # BUILD SCRIPT — assembles the two scripts into one deployable artifact
-├── launchDaemonManagement.zsh        # DEPLOYMENT SCRIPT — writes reminderDialog.zsh to disk + creates/loads LaunchDaemon
-├── reminderDialog.zsh                # CORE SCRIPT — parses install.log, checks user availability, displays swiftDialog
-├── org.churchofjesuschrist.dorm.plist # Default preference file (example RDNN)
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-└── README.md
-```
-
-**Artifacts/ directory** is the build output target for `assemble.zsh`.
+- **Variables**: lowerCamelCase exclusively (220 variables, zero exceptions). The only SCREAMING_SNAKE in the file is `PLACEHOLDER_MAP` — a global associative array, which is the sole permitted exception.
+- **Functions**: Always `function name() {` — never bare `name() {`. Opening brace on the same line as the declaration (29 functions, zero exceptions).
+- **Control flow**: Opening brace on the same line: `if [[ ... ]]; then` / `while ... do` / `case ... in`. No standalone `{` lines.
+- **Variable references**: Braced `${var}` is the strong default (394 uses vs. 32 bare `$var`). Use bare `$var` only inside arithmetic `$(( ))` contexts.
+- **Whitespace**: Three blank lines between top-level sections (hash-wall or hash-space separator blocks). One blank line between logical steps inside a function. This is the "human-readable white space" — don't compress it.
+- **Section separators**: Two styles, used at different scopes:
+  - `####################################################################################################` — top-level groupings (Global Variables, Functions, Exit)
+  - `# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #` — individual functions or logical clusters within a group
+  - `# -------------------------------------------------------------------------` — sub-sections inside the main execution block
+- **Comments**: 16% comment density. Full-line comments narrate *why* or *what's next*; inline comments are rare and used only for non-obvious single expressions. Comments inside functions are terse and action-oriented (e.g., `# Read managed value`, `# Apply the preference based on type`).
 
 ---
 
-## Core Components & Responsibilities
+## Core Components
 
-### 1. `reminderDialog.zsh` — the runtime brain
-- Parses `/var/log/install.log` for the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate` entries.
-- Compares installed macOS version against the DDM-enforced version.
-- Checks end-user availability: skips if in a meeting (display sleep assertions) or within a quiet period.
-- Loads preferences via `PlistBuddy` (not `defaults read`) from the managed → local → hard-coded hierarchy.
-- Renders a `swiftDialog` reminder with variable substitution, conditional warnings, and deadline-driven behavior changes.
-- Logs structured entries to `scriptLog`.
-
-**Key functions**: `installedOSvsDDMenforcedOS()`, `checkUserDisplaySleepAssertions()`, `detectStagedUpdate()`, `loadPreferenceOverrides()`
-
-### 2. `launchDaemonManagement.zsh` — the deployment wrapper
-- Receives `reminderDialog.zsh` embedded inside it (via heredoc, injected by `assemble.zsh` at build time).
-- Creates the organization directory, writes the reminder script to disk, generates and loads the LaunchDaemon plist.
-- Handles reset/uninstall via MDM Script Parameter 4: `resetConfiguration` (`All` | `LaunchDaemon` | `Script` | `Uninstall` | blank).
-
-**Key functions**: `createDDMOSReminderScript()`, `createLaunchDaemon()`, `resetConfiguration()`
-
-### 3. `assemble.zsh` — the build system
-- Validates that `reminderDialog.zsh`, `launchDaemonManagement.zsh`, and `Resources/sample.plist` all exist.
-- Checks and harmonizes the Reverse Domain Name Notation (RDNN) across both scripts — mismatched RDNN causes preference loading failures.
-- Embeds `reminderDialog.zsh` into `launchDaemonManagement.zsh` via heredoc.
-- Runs `zsh -n` syntax validation on the assembled output.
-- Generates the `.mobileconfig` Configuration Profile from the sample plist.
-- Outputs everything to `Artifacts/` with consistent timestamps.
+1. **`reminderDialog.zsh`** (CORE) — Parses `/var/log/install.log`, checks user availability, displays the swiftDialog reminder.
+2. **`launchDaemonManagement.zsh`** (DEPLOY) — Writes `reminderDialog.zsh` to disk and creates/loads the LaunchDaemon. Receives the reminder script embedded inside it via heredoc at build time. Handles reset/uninstall via MDM Script Parameter 4: `All` | `LaunchDaemon` | `Script` | `Uninstall` | blank.
+3. **`assemble.zsh`** (BUILD) — Combines the two scripts into a single deployable artifact. Validates and harmonizes RDNN, runs `zsh -n`, generates `.mobileconfig`.
 
 ---
 
@@ -80,14 +51,7 @@ DDM-OS-Reminder/
 
 ## Preference System
 
-**Priority (highest → lowest):**
-1. Managed Preferences — `/Library/Managed Preferences/{RDNN}.dorm.plist` (MDM-deployed, cannot be overridden)
-2. Local Preferences — `/Library/Preferences/{RDNN}.dorm.plist`
-3. Hard-coded defaults in the script's `preferenceConfiguration` array
-
-**Read via `PlistBuddy`**, not `defaults read` — this was a deliberate decision for reliability with nested values.
-
-**Key parameters that govern behavior:**
+**Priority (highest → lowest):** Managed Preferences → Local Preferences → hard-coded defaults (`preferenceConfiguration` array). **Read via `PlistBuddy`**, not `defaults read`.
 
 | Parameter | Default | Effect |
 |-----------|---------|--------|
@@ -110,47 +74,13 @@ Default log: `/var/log/org.churchofjesuschrist.log` (path is configurable via `S
 
 ---
 
-## Build & Test Workflow
+## Build & Test
 
-**Demo/test (no MDM required):**
 ```bash
-zsh reminderDialog.zsh demo
-```
-
-**Assemble for deployment:**
-```bash
-zsh assemble.zsh
-# Prompts for RDNN, outputs to Artifacts/
-```
-
-**Syntax check (should be clean before any release):**
-```bash
-zsh -n reminderDialog.zsh
+zsh reminderDialog.zsh demo       # test dialog without MDM
+zsh -n reminderDialog.zsh         # syntax check (quality gate)
 zsh -n launchDaemonManagement.zsh
 ```
-
-**Validate a plist:**
-```bash
-plutil -lint Resources/sample.plist
-```
-
----
-
-## Deployment Summary
-
-1. `assemble.zsh` produces a single assembled script + `.plist` + `.mobileconfig`.
-2. Upload an assembled `.zsh` script and either a `.plist` or `.mobileconfig` to MDM. Deploy profile first, then run script (Parameter 4 = `All`).
-3. The assembled script self-installs: writes the reminder script to disk, creates and loads the LaunchDaemon.
-4. LaunchDaemon fires on schedule → `reminderDialog.zsh` runs → checks install.log → shows dialog if needed.
-5. Optionally wrap in a self-extracting shell script via `Resources/createSelfExtracting.zsh`.
-
----
-
-## External Dependencies
-
-- **swiftDialog** (minimum v2.5.6.4805) — the dialog rendering engine. Must be installed on target Macs before DDM OS Reminder is deployed.
-- **macOS system commands used**: `pmset`, `diskutil`, `sysctl`, `uptime`, `PlistBuddy`, `launchctl`
-- **Log source**: `/var/log/install.log` — Apple's system log containing DDM enforcement entries. Core behavior depends on parsing this file; upstream format changes from Apple can break deadline detection.
 
 ---
 
@@ -160,12 +90,6 @@ plutil -lint Resources/sample.plist
 2. **Log-parsing fragility** — `/var/log/install.log` format is Apple-controlled; any change breaks deadline detection.
 3. **RDNN must match everywhere** — mismatch between scripts and config files causes silent preference-loading failures. `assemble.zsh` is the safeguard.
 4. **Limited automated test surface** — most validation is manual (demo mode). A mocked-log test harness would reduce regressions.
-
----
-
-## Open Questions (as of 2026-01-31)
-
-1. Should the project support multiple language localizations out of the box?
 
 ---
 

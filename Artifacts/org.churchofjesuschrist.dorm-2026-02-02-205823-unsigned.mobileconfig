@@ -28,6 +28,13 @@
                                     <integer>10</integer>
                                     <key>MeetingDelay</key>
                                     <integer>75</integer>
+                                    <!-- Space-delimited list of meeting/presentation apps whose Display Sleep
+                                         Assertions should be tolerated (reminder defers via MeetingDelay).
+                                         To find the names please run `pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"`
+                                         in Terminal while the application is open and running.
+                                         Example: MSTeams zoom.us Webex -->
+                                    <key>AcceptableAssertionApplicationNames</key>
+                                    <string>MSTeams zoom.us Webex</string>
                                     <key>OrganizationOverlayIconURL</key>
                                     <string>https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607 487f4719bd4707f2e283500f54428153af17da082e2</string>
                                     <key>SwapOverlayAndLogo</key>
@@ -84,26 +91,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>EACB3FD8-342A-4FAE-B991-B3B25CD1B27A</string>
+            <string>51DE3C8C-92E5-4B92-B261-7D4CDB50A438</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>EACB3FD8-342A-4FAE-B991-B3B25CD1B27A</string>
+            <string>51DE3C8C-92E5-4B92-B261-7D4CDB50A438</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.3.1b1) to org.churchofjesuschrist standards. Created: 2026-01-28-110717</string>
+    <string>Configures DDM OS Reminder (2.3.1b1) to org.churchofjesuschrist standards. Created: 2026-02-02-205823</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>368C143F-9E4C-481E-AB5D-1EAA7B01A7E8</string>
+    <string>52D9FAE0-2740-482B-BD9D-14C76001E0E4</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -113,7 +120,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>368C143F-9E4C-481E-AB5D-1EAA7B01A7E8</string>
+    <string>52D9FAE0-2740-482B-BD9D-14C76001E0E4</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

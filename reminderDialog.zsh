@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.1b1"
+scriptVersion="2.4.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -123,6 +123,7 @@ declare -A preferenceConfiguration=(
     ["daysBeforeDeadlineHidingButton2"]="numeric|21"
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
     ["meetingDelay"]="numeric|75"
+    ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
     
     # Branding
@@ -168,6 +169,7 @@ declare -A plistKeyMap=(
     ["daysBeforeDeadlineHidingButton2"]="DaysBeforeDeadlineHidingButton2"
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
     ["meetingDelay"]="MeetingDelay"
+    ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
@@ -801,12 +803,46 @@ function checkUserDisplaySleepAssertions() {
     local maxChecks=$(( meetingDelay * 60 / intervalSeconds ))
     local checkCount=0
 
+    # Plist-sourced meeting-app allowlist (space-delimited string → array)
+    local -a acceptableApps=( ${acceptableAssertionApplicationNames} )
+    if [[ ${#acceptableApps} -gt 0 ]]; then
+        info "Acceptable assertion application names (allowlist): ${acceptableAssertionApplicationNames}"
+    fi
+
     while (( checkCount < maxChecks )); do
         local previousIFS="${IFS}"
         IFS=$'\n'
 
         local displayAssertionsArray
         displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
+
+        # Layer 2: drop assertions from allowlisted meeting/presentation apps
+        if [[ ${#acceptableApps} -gt 0 ]]; then
+            local -a filteredAssertions=()
+            local hadAssertionsBeforeFiltering=false
+            [[ ${#displayAssertionsArray} -gt 0 ]] && hadAssertionsBeforeFiltering=true
+            
+            for displayAssertion in "${displayAssertionsArray[@]}"; do
+                local assertionAppName
+                assertionAppName=$(echo "${displayAssertion}" | awk -F ':' '{print $1;}' | xargs)
+                local isAcceptable=false
+                for app in "${acceptableApps[@]}"; do
+                    if [[ "${assertionAppName}" == "${app}" ]]; then
+                        isAcceptable=true
+                        info "Assertion from '${assertionAppName}' matches allowlist entry '${app}'; ignoring."
+                        break
+                    fi
+                done
+                [[ "${isAcceptable}" == "false" ]] && filteredAssertions+=( "${displayAssertion}" )
+            done
+            
+            # Troubleshooting tip when allowlist is populated but no assertions matched
+            if [[ "${hadAssertionsBeforeFiltering}" == "true" ]] && [[ ${#filteredAssertions} -eq 0 ]] && [[ ${#displayAssertionsArray} -gt 0 ]]; then
+                info "All assertions matched allowlist entries. To verify exact app names, run: pmset -g assertions | grep -E 'NoDisplaySleepAssertion|PreventUserIdleDisplaySleep'"
+            fi
+            
+            displayAssertionsArray=( "${filteredAssertions[@]}" )
+        fi
 
         if [[ -n "${displayAssertionsArray[*]}" ]]; then
             userDisplaySleepAssertions="TRUE"

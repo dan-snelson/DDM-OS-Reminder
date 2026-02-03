@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 2.3.0 -->
-    <!-- Generated on: 2026-01-19-190656 -->
+    <!-- Version: 2.4.0b2 -->
+    <!-- Generated on: 2026-02-02-195724 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -24,6 +24,13 @@
     <integer>10</integer>
     <key>MeetingDelay</key>
     <integer>75</integer>
+    <!-- Space-delimited list of meeting/presentation apps whose Display Sleep
+         Assertions should be tolerated (reminder defers via MeetingDelay).
+         To find the names please run `pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"`
+         in Terminal while the application is open and running.
+         Example: MSTeams zoom.us Webex -->
+    <key>AcceptableAssertionApplicationNames</key>
+    <string>MSTeams zoom.us Webex</string>
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>

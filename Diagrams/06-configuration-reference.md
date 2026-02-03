@@ -31,6 +31,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | [URL] | Branding |
+| organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | (empty) | Branding |
 | swapOverlayAndLogo | SwapOverlayAndLogo | Boolean | NO | Branding |
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
 | supportTeamName | SupportTeamName | String | IT Support | Support |
@@ -343,6 +344,57 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     OrganizationOverlayIconURL -string "file:///Library/Management/icons/company-logo.png"
 ```
+
+---
+
+#### organizationOverlayiconURLdark
+**Plist Key**: `OrganizationOverlayIconURLdark`  
+**Type**: String  
+**Default**: (empty)
+
+**Description**: Optional URL to organization's dark mode icon/logo displayed when macOS is in Dark Mode (System Settings > Appearance > Dark). When empty or unset, the standard `organizationOverlayiconURL` is used regardless of appearance mode. The script automatically detects the user's appearance mode from `~/Library/Preferences/.GlobalPreferences.plist` and selects the appropriate icon.
+
+**Supported Formats**:
+- PNG (recommended)
+- JPEG
+- ICNS
+- Local paths: `file:///path/to/icon.png`
+
+**Behavior**:
+- **Dark Mode Active + Dark URL Set**: Uses `organizationOverlayiconURLdark`
+- **Dark Mode Active + Dark URL Empty**: Falls back to `organizationOverlayiconURL`
+- **Light Mode**: Always uses `organizationOverlayiconURL`
+- **Auto Appearance**: Detects system appearance dynamically at runtime
+
+**Recommendations**:
+- Size: 256x256px or larger (match your light mode icon)
+- Design: Optimize contrast for dark backgrounds
+- Testing: Verify visibility in both System Settings > Appearance modes
+
+**Script Default**:
+```bash
+["organizationOverlayiconURLdark"]="string|"
+```
+
+**Configuration Profile**:
+```xml
+<key>OrganizationOverlayIconURLdark</key>
+<string>https://cdn.company.com/it-icon-dark.png</string>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    OrganizationOverlayIconURLdark -string "https://cdn.company.com/dark-icon.png"
+```
+
+**Local File Example**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    OrganizationOverlayIconURLdark -string "file:///Library/Management/icons/company-logo-dark.png"
+```
+
+**Demo Mode**: Automatically detects and respects the current System Settings > Appearance selection (Auto, Light, or Dark).
 
 ---
 
@@ -1210,7 +1262,38 @@ message = "Contact {supportTeamInfo}"
 
 ---
 
-### Scenario 6: User-Friendly (Helpful Context)
+### Scenario 6: Dark Mode Support (Appearance-Aware Branding)
+
+**Goal**: Optimal icon visibility in both Light and Dark appearance modes
+
+```xml
+<!-- Standard light mode icon -->
+<key>OrganizationOverlayIconURL</key>
+<string>https://cdn.company.com/it-icon-light.png</string>
+
+<!-- Dark mode optimized icon -->
+<key>OrganizationOverlayIconURLdark</key>
+<string>https://cdn.company.com/it-icon-dark.png</string>
+
+<!-- Optional: swap icon position for better visibility -->
+<key>SwapOverlayAndLogo</key>
+<false/>
+```
+
+**Behavior**:
+- Automatically detects user's System Settings > Appearance mode
+- Light Mode or Auto (when light): Uses light icon
+- Dark Mode or Auto (when dark): Uses dark icon
+- Respects empty dark URL by falling back to light icon
+
+**Testing**:
+1. Test in Light Mode: System Settings > Appearance > Light
+2. Test in Dark Mode: System Settings > Appearance > Dark
+3. Test in Auto Mode: Toggle between light/dark times
+
+---
+
+### Scenario 7: User-Friendly (Helpful Context)
 
 **Goal**: Maximum user assistance and transparency
 

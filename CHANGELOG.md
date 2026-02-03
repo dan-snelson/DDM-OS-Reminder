@@ -2,6 +2,9 @@
 
 ## Changelog
 
+## Version 2.4.0b1 (02-Feb-2026)
+- Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
+
 ## Version 2.3.1b1 (28-Jan-2026)
 - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
 

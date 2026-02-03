@@ -21,16 +21,8 @@
 #
 # HISTORY
 #
-#
-# Version 2.3.1b1, 28-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
-#
-# Version 2.3.0, 19-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Refactored Update Required logic to address Feature Request #55
-# - Updated "Organization Variables" (i.e., removed redundant variable declarations)
-# - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
-# - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
-# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huexley!)
+# Version 2.4.0b1 (02-Feb-2026)
+# - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
 #
 ####################################################################################################
 
@@ -45,7 +37,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.1b1"
+scriptVersion="2.4.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -267,7 +259,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.1b1"
+scriptVersion="2.4.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -373,7 +365,8 @@ declare -A preferenceConfiguration=(
     ["minimumDiskFreePercentage"]="numeric|99"
     
     # Branding
-    ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"
+    ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
     
@@ -417,6 +410,7 @@ declare -A plistKeyMap=(
     ["meetingDelay"]="MeetingDelay"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
+    ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["supportTeamName"]="SupportTeamName"
@@ -1085,37 +1079,62 @@ function checkUserDisplaySleepAssertions() {
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+function detectDarkMode() {
+    local interfaceStyle
+    interfaceStyle=$( defaults read /Users/"${loggedInUser}"/Library/Preferences/.GlobalPreferences.plist AppleInterfaceStyle 2>/dev/null )
+    if [[ "${interfaceStyle}" == "Dark" ]]; then
+        echo "Dark"
+    else
+        echo "Light"
+    fi
+}
+
 function downloadBrandingAssets() {
+    # Detect dark mode and choose appropriate icon URL
+    local appearanceMode=$(detectDarkMode)
+    local overlayIconURL="${organizationOverlayiconURL}"
+    
+    if [[ "${appearanceMode}" == "Dark" && -n "${organizationOverlayiconURLdark}" ]]; then
+        notice "Dark mode detected; using dark mode overlay icon"
+        overlayIconURL="${organizationOverlayiconURLdark}"
+    else
+        if [[ "${appearanceMode}" == "Dark" ]]; then
+            notice "Dark mode detected but no dark mode icon URL configured; using standard overlay icon"
+        else
+            notice "Light mode detected; using standard overlay icon"
+        fi
+    fi
+    
     # Download overlay icon
-    if [[ -n "${organizationOverlayiconURL}" ]]; then
-        notice "Processing overlay icon from '${organizationOverlayiconURL}'"
+    if [[ -n "${overlayIconURL}" ]]; then
+        notice "Processing overlay icon from '${overlayIconURL}'"
         
         # Check if it's a local file path (file or directory/bundle)
-        if [[ -e "${organizationOverlayiconURL}" ]]; then
+        if [[ -e "${overlayIconURL}" ]]; then
             info "Overlay icon is a local path; using directly"
-            overlayicon="${organizationOverlayiconURL}"
+            overlayicon="${overlayIconURL}"
             info "Successfully configured overlay icon"
         
         # Check if it's a file:// URI
-        elif [[ "${organizationOverlayiconURL}" =~ ^file:// ]]; then
+        elif [[ "${overlayIconURL}" =~ ^file:// ]]; then
             info "Overlay icon is a file:// URI; converting to path"
-            local filePath="${organizationOverlayiconURL#file://}"
+            local filePath="${overlayIconURL#file://}"
             if [[ -e "${filePath}" ]]; then
                 overlayicon="${filePath}"
                 info "Successfully configured overlay icon from file:// URI"
             else
-                error "Path not found: '${filePath}' (from URI '${organizationOverlayiconURL}')"
+                error "Path not found: '${filePath}' (from URI '${overlayIconURL}')"
                 overlayicon="/System/Library/CoreServices/Finder.app"
             fi
         
         # Assume it's a remote URL
         else
             info "Overlay icon appears to be a remote URL; downloading with curl"
-            if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
+            if curl -o "/var/tmp/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
                 overlayicon="/var/tmp/overlayicon.png"
                 info "Successfully downloaded overlay icon"
             else
-                error "Failed to download overlay icon from '${organizationOverlayiconURL}'"
+                error "Failed to download overlay icon from '${overlayIconURL}'"
                 overlayicon="/System/Library/CoreServices/Finder.app"
             fi
         fi
@@ -1208,7 +1227,7 @@ function displayReminderDialog() {
         --button1text "${button1text}"
         --messagefont "size=14"
         --width 800
-        --height 625
+        --height 650
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )

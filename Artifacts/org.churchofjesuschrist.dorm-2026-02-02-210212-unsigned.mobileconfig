@@ -29,7 +29,9 @@
                                     <key>MeetingDelay</key>
                                     <integer>75</integer>
                                     <key>OrganizationOverlayIconURL</key>
-                                    <string>https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607 487f4719bd4707f2e283500f54428153af17da082e2</string>
+                                    <string>https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d</string>
+                                    <key>OrganizationOverlayIconURLdark</key>
+                                    <string>https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39</string>
                                     <key>SwapOverlayAndLogo</key>
                                     <false/>
                                     <key>DateFormatDeadlineHumanReadable</key>
@@ -84,26 +86,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>EACB3FD8-342A-4FAE-B991-B3B25CD1B27A</string>
+            <string>BB5256F0-FA67-49D2-8C9E-500E1AB48A90</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>EACB3FD8-342A-4FAE-B991-B3B25CD1B27A</string>
+            <string>BB5256F0-FA67-49D2-8C9E-500E1AB48A90</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.3.1b1) to org.churchofjesuschrist standards. Created: 2026-01-28-110717</string>
+    <string>Configures DDM OS Reminder (2.4.0b1) to org.churchofjesuschrist standards. Created: 2026-02-02-210212</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>368C143F-9E4C-481E-AB5D-1EAA7B01A7E8</string>
+    <string>A32C0523-BDF2-4259-9229-5627BF0CBD9A</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -113,7 +115,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>368C143F-9E4C-481E-AB5D-1EAA7B01A7E8</string>
+    <string>A32C0523-BDF2-4259-9229-5627BF0CBD9A</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

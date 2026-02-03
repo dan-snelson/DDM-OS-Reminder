@@ -1233,7 +1233,7 @@ if [[ "${1}" == "demo" ]]; then
     ddmVersionString="${demoMajorVersion}.99"
 
     # Days from today to simulate deadline (can be + or -)
-    demoDeadlineOffsetDays=-3   # positive → future deadline; negative → past due
+    demoDeadlineOffsetDays=3   # positive → future deadline; negative → past due
     if (( demoDeadlineOffsetDays < 0 )); then       # Normalize the offset so “-3” becomes "-3d" and “7” becomes "+7d"
         offsetString="${demoDeadlineOffsetDays}d"   # → "-3d"
         blurscreen="--blurscreen"
@@ -1292,6 +1292,18 @@ if [[ "${1}" == "demo" ]]; then
     loggedInUserFirstname="${loggedInUserFirstname:-Demo}"
     loggedInUser="${loggedInUser:-demo}"
     loggedInUserID="${loggedInUserID:-599}"
+
+    # Check for display sleep assertions (demo mode test)
+    if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
+        if checkUserDisplaySleepAssertions; then
+            notice "No active Display Sleep Assertions detected; proceeding …"
+        else
+            quitOut "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+            exit 0
+        fi
+    else
+        info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+    fi
 
     # Now populate dialog strings using your standard function
     updateRequiredVariables

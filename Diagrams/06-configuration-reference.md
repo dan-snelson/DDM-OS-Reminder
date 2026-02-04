@@ -278,18 +278,17 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### acceptableAssertionApplicationNames
 **Plist Key**: `AcceptableAssertionApplicationNames`  
 **Type**: String  
-**Default**: (empty string)  
+**Default**: `MSTeams zoom.us Webex`  
 **Valid Format**: Space-delimited list of app names
 
 **Description**: Space-delimited list of meeting/presentation application names whose Display Sleep Assertions should be tolerated. When populated, only assertions from apps **on this list** will trigger the `meetingDelay` retry loop. Assertions from apps **not** on the list allow the reminder to proceed immediately.
 
 **Impact**:
-- Empty (default) = all non-coreaudiod assertions trigger deferral (backward compatible)
-- Populated = only listed apps trigger deferral
+- Default (`MSTeams zoom.us Webex`) = only these apps trigger deferral
+- Empty = all non-coreaudiod assertions trigger deferral (legacy behavior)
+- Any other populated value = only listed apps trigger deferral
 - Uses exact app name matching (case-sensitive)
 - Helps filter out non-meeting apps that hold assertions
-
-**Discovery**:
 To find exact app names while the application is active, run in Terminal:
 ```bash
 pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"

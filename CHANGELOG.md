@@ -2,7 +2,7 @@
 
 ## Changelog
 
-## Version 2.4.0b2 (02-Feb-2026)
+## Version 2.4.0b3 (03-Feb-2026)
 - Added space-delimited list of `acceptableAssertionApplicationNames` (Feature Request #67; thanks for the suggestion, @yassermkh!)
 - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
 

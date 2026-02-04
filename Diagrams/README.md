@@ -77,7 +77,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 ---
 
 ### 6. [Configuration Reference](06-configuration-reference.md)
-**Purpose**: Complete reference for all 31 configurable preferences
+**Purpose**: Complete reference for all 33 configurable preferences
 
 **Shows**:
 - Quick reference table (all variables at a glance)

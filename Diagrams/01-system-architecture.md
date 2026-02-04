@@ -47,7 +47,7 @@ graph TB
         INST -->|Creates| CLILD["/Library/LaunchDaemons/<br>(RDNN).dor.plist"]
         INST -->|Installs if needed| SD["swiftDialog.app"]
         
-        MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).plist"]
+        MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).{orgScriptName}.plist"]
         
         style INST fill:#fff4e6
         style CLISCRIPT fill:#e1f5ff
@@ -57,7 +57,7 @@ graph TB
     end
     
     subgraph Runtime["▶️ Runtime Execution"]
-        CLILD -->|Triggers on schedule<br/>8am & 4pm daily| CLISCRIPT
+        CLILD -->|RunAtLoad + schedule<br/>8am & 4pm daily| CLISCRIPT
         
         CLISCRIPT -->|1. Loads preferences| MGDPREF
         CLISCRIPT -->|2. Checks for user| USER{"Logged-in<br>User?"}
@@ -135,7 +135,7 @@ graph TB
 - Managed Preferences deployed via Configuration Profile
 
 ### Runtime Execution
-1. **LaunchDaemon triggers** at scheduled times (default: 8am, 4pm)
+1. **LaunchDaemon triggers** at load and on scheduled times (default: 8am, 4pm)
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** ensures someone is logged in
 4. **Log parsing** extracts DDM enforcement dates from install.log

@@ -22,7 +22,7 @@
 # HISTORY
 #
 #
-# Version 2.4.0b4, 04-Feb-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.4.0rc1, 04-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - Added space-delimited list of `acceptableAssertionApplicationNames` (Feature Request #67; thanks for the suggestion, @yassermkh!)
 # - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
 # - Added DDM version validation to suppress reminders on invalid VersionString formats (thanks for the idea, @nessts!)
@@ -40,7 +40,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0b4"
+scriptVersion="2.4.0rc1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -262,7 +262,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0b4"
+scriptVersion="2.4.0rc1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1077,7 +1077,7 @@ function checkUserDisplaySleepAssertions() {
     local checkCount=0
 
     # Plist-sourced meeting-app allowlist (space-delimited string → array)
-    local -a acceptableApps=( ${acceptableAssertionApplicationNames} )
+    local -a acceptableApps=( ${(s: :)acceptableAssertionApplicationNames} )
     if [[ ${#acceptableApps} -gt 0 ]]; then
         info "Acceptable assertion application names (allowlist): ${acceptableAssertionApplicationNames}"
     fi
@@ -1089,29 +1089,27 @@ function checkUserDisplaySleepAssertions() {
         local displayAssertionsArray
         displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
 
-        # Layer 2: drop assertions from allowlisted meeting/presentation apps
+        # Layer 2: keep only assertions from allowlisted meeting/presentation apps
         if [[ ${#acceptableApps} -gt 0 ]]; then
             local -a filteredAssertions=()
             local hadAssertionsBeforeFiltering=false
             [[ ${#displayAssertionsArray} -gt 0 ]] && hadAssertionsBeforeFiltering=true
             
             for displayAssertion in "${displayAssertionsArray[@]}"; do
-                local assertionAppName
-                assertionAppName=$(echo "${displayAssertion}" | awk -F ':' '{print $1;}' | xargs)
-                local isAcceptable=false
+                local isAllowlisted=false
                 for app in "${acceptableApps[@]}"; do
-                    if [[ "${assertionAppName}" == "${app}" ]]; then
-                        isAcceptable=true
-                        info "Assertion from '${assertionAppName}' matches allowlist entry '${app}'; ignoring."
+                    if echo "${displayAssertion}" | grep -qiF "${app}"; then
+                        isAllowlisted=true
+                        info "Assertion line matches allowlist entry '${app}'; deferring."
                         break
                     fi
                 done
-                [[ "${isAcceptable}" == "false" ]] && filteredAssertions+=( "${displayAssertion}" )
+                [[ "${isAllowlisted}" == "true" ]] && filteredAssertions+=( "${displayAssertion}" )
             done
             
             # Troubleshooting tip when allowlist is populated but no assertions matched
             if [[ "${hadAssertionsBeforeFiltering}" == "true" ]] && [[ ${#filteredAssertions} -eq 0 ]] && [[ ${#displayAssertionsArray} -gt 0 ]]; then
-                info "All assertions matched allowlist entries. To verify exact app names, run: pmset -g assertions | grep -E 'NoDisplaySleepAssertion|PreventUserIdleDisplaySleep'"
+                info "Assertions detected but none matched allowlist entries; proceeding. To verify exact app names, run: pmset -g assertions | grep -E 'NoDisplaySleepAssertion|PreventUserIdleDisplaySleep'"
             fi
             
             displayAssertionsArray=( "${filteredAssertions[@]}" )
@@ -1136,7 +1134,7 @@ function checkUserDisplaySleepAssertions() {
 
     if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
         info "Presentation delay limit (${meetingDelay} min) reached after ${maxChecks} checks. Proceeding with reminder."
-        return 1  # Presentation still active after full delay
+        return 0  # Proceed after full delay
     fi
 
 }
@@ -1242,9 +1240,13 @@ function downloadBrandingAssets() {
 
 function computeDynamicWarnings() {
     # Excessive uptime warning
-    local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
-    if (( upTimeMin < allowedUptimeMinutes )); then
+    if (( daysOfExcessiveUptimeWarning <= 0 )); then
         excessiveUptimeWarningMessage=""
+    else
+        local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
+        if (( upTimeMin < allowedUptimeMinutes )); then
+            excessiveUptimeWarningMessage=""
+        fi
     fi
     
     # Disk Space Warning

@@ -31,8 +31,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
-| organizationOverlayiconURL | OrganizationOverlayIconURL | String | [URL] | Branding |
-| organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | (empty) | Branding |
+| organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
+| organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
 | swapOverlayAndLogo | SwapOverlayAndLogo | Boolean | NO | Branding |
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
 | supportTeamName | SupportTeamName | String | IT Support | Support |
@@ -56,6 +56,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | infobox | InfoBox | String | [System info display] | UI Text |
 | helpmessage | HelpMessage | String | [Support contact info] | UI Text |
 | helpimage | HelpImage | String | qr={infobuttonaction} | UI Text |
+
+**Note**: The sample profile in `Resources/sample.plist` uses shorter timing values (for example, 14/3/1 days) intentionally for demo-friendly behavior and does not reflect script defaults. Managed or local preferences override the script defaults in production.
 
 ---
 
@@ -328,18 +330,19 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### minimumDiskFreePercentage
 **Plist Key**: `MinimumDiskFreePercentage`  
 **Type**: Integer  
-**Default**: 99 (disabled)  
+**Default**: 99  
 **Valid Range**: 0-99
 
 **Description**: Minimum percentage of free disk space required to avoid showing a low disk space warning in the dialog.
 
 **Impact**:
 - Warns users who may not have enough space for update
-- 99 = effectively disabled (warning only if <1% free)
+- 0 = disabled (no warning)
+- 99 = near-disabled (warning only if <1% free)
 - Adds warning message, doesn't block dialog
 
 **Recommendations**:
-- **Disabled**: 99 (default)
+- **Disabled**: 0
 - **Typical macOS update**: 15-20%
 - **Major macOS upgrade**: 25-30%
 
@@ -363,7 +366,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### organizationOverlayiconURL
 **Plist Key**: `OrganizationOverlayIconURL`  
 **Type**: String  
-**Default**: `https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2`
+**Default**: `https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d`
 
 **Description**: URL to organization's icon/logo displayed in the dialog. Accepts HTTP/HTTPS URLs or local file paths.
 
@@ -380,7 +383,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Script Default**:
 ```bash
-["organizationOverlayiconURL"]="string|https://your-cdn.com/icon.png"
+["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
 ```
 
 **Configuration Profile**:
@@ -400,9 +403,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### organizationOverlayiconURLdark
 **Plist Key**: `OrganizationOverlayIconURLdark`  
 **Type**: String  
-**Default**: (empty)
+**Default**: `https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39`
 
-**Description**: Optional URL to organization's dark mode icon/logo displayed when macOS is in Dark Mode (System Settings > Appearance > Dark). When empty or unset, the standard `organizationOverlayiconURL` is used regardless of appearance mode. The script automatically detects the user's appearance mode from `~/Library/Preferences/.GlobalPreferences.plist` and selects the appropriate icon.
+**Description**: URL to organization's dark mode icon/logo displayed when macOS is in Dark Mode (System Settings > Appearance > Dark). Set to empty to always use the standard `organizationOverlayiconURL` regardless of appearance mode. The script automatically detects the user's appearance mode from `~/Library/Preferences/.GlobalPreferences.plist` and selects the appropriate icon.
 
 **Supported Formats**:
 - PNG (recommended)
@@ -423,7 +426,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Script Default**:
 ```bash
-["organizationOverlayiconURLdark"]="string|https://cdn.company.com/it-icon-dark.png"
+["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
 ```
 
 **Configuration Profile**:
@@ -1129,22 +1132,17 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ## Placeholder Reference
 
-### Complete Placeholder List
+### Script Placeholder List (Resolved by `reminderDialog.zsh`)
 
 | Placeholder | Source | Description | Example Output |
 |-------------|--------|-------------|----------------|
 | `{weekday}` | System | Current day of week | Monday |
+| `{userfirstname}` | System | User's first name | Dan |
 | `{loggedInUserFirstname}` | System | User's first name | Dan |
-| `{loggedInUser}` | System | Username | dsnelson |
-| `{userfullname}` | System | Full name | Dan Snelson |
-| `{username}` | System | Account name | dsnelson |
-| `{computername}` | System | Mac name | Dans-MacBook-Pro |
-| `{serialnumber}` | System | Serial number | C02ABC123DEF |
-| `{osversion}` | System | Current macOS | 15.1.1 |
-| `{installedmacOSVersion}` | System | Full macOS version | macOS 15.1.1 (Sequoia) |
+| `{installedmacOSVersion}` | System | Full macOS version | 15.1.1 |
 | `{ddmVersionString}` | DDM | Required version | 15.2 |
-| `{ddmEnforcedInstallDateHumanReadable}` | DDM | Formatted deadline | Wed, 01-Apr-2026, 8:00 AM |
-| `{ddmVersionStringDeadlineHumanReadable}` | DDM | Formatted deadline (alt) | Wed, 01-Apr-2026, 8:00 AM |
+| `{ddmEnforcedInstallDateHumanReadable}` | DDM | Formatted deadline | Sat, 01-Aug-2026, 8:00 AM |
+| `{ddmVersionStringDeadlineHumanReadable}` | DDM | Formatted deadline (alt) | Sat, 01-Aug-2026, 8:00 AM |
 | `{ddmVersionStringDaysRemaining}` | DDM | Days to deadline | 14 |
 | `{titleMessageUpdateOrUpgrade}` | Logic | Update or Upgrade | Update |
 | `{titleMessageUpdateOrUpgrade:l}` | Logic | Lowercase variant | update |
@@ -1159,11 +1157,24 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{supportTeamEmail}` | Config | Email | helpdesk@company.com |
 | `{supportTeamWebsite}` | Config | Website URL | https://support.company.com |
 | `{supportKBURL}` | Config | KB article link | [Link text](URL) |
+| `{supportKB}` | Config | KB article title | Update macOS on Mac |
 | `{button1text}` | Config | Primary button | Open Software Update |
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.3.0 |
+| `{scriptVersion}` | System | Script version | 2.4.0rc1 |
+
+### swiftDialog Built-in Variables (Resolved by swiftDialog)
+
+These placeholders are resolved at render time by swiftDialog itself. See the full list in the [swiftDialog built-in variables](https://github.com/swiftDialog/swiftDialog/wiki/Builtin-Variables) documentation.
+
+| Placeholder | Used In Defaults | Example Output |
+|-------------|------------------|----------------|
+| `{userfullname}` | HelpMessage | Dan Snelson |
+| `{username}` | HelpMessage | dsnelson |
+| `{computername}` | HelpMessage | Dans-MacBook-Pro |
+| `{serialnumber}` | HelpMessage | C02ABC123DEF |
+| `{osversion}` | HelpMessage | 15.1.1 |
 
 **Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. Invalid formats suppress reminder dialogs and emit a `[WARNING]` log entry.
 
@@ -1628,9 +1639,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
+| 2.4.0rc1 | 2026-02-04 | Updated defaults, placeholder documentation, and timing behavior |
 
 ---
 
-**Last Updated**: January 19, 2026  
-**DDM OS Reminder Version**: 2.3.0  
-**Variables Documented**: 31 configurable preferences
+**Last Updated**: February 4, 2026  
+**DDM OS Reminder Version**: 2.4.0rc1  
+**Variables Documented**: 33 configurable preferences

@@ -9,13 +9,13 @@ graph TB
         
         LoadDefaults --> CheckManaged{Managed Preferences<br/>File Exists?}
         
-        CheckManaged -->|Yes| ReadManaged["📖 Read Managed Preferences<br>/Library/Managed Preferences/<br>(RDNN).plist"]
+        CheckManaged -->|Yes| ReadManaged["📖 Read Managed Preferences<br>/Library/Managed Preferences/<br>(RDNN).{orgScriptName}.plist"]
         CheckManaged -->|No| CheckLocal
         
         ReadManaged --> ParseManaged[🔍 Parse Managed Values<br/>Using PlistBuddy]
         ParseManaged --> CheckLocal{Local Preferences<br/>File Exists?}
         
-        CheckLocal -->|Yes| ReadLocal["📖 Read Local Preferences<br>/Library/Preferences/<br>(RDNN).plist"]
+        CheckLocal -->|Yes| ReadLocal["📖 Read Local Preferences<br>/Library/Preferences/<br>(RDNN).{orgScriptName}.plist"]
         CheckLocal -->|No| ApplyValues
         
         ReadLocal --> ParseLocal[🔍 Parse Local Values<br/>Using PlistBuddy]
@@ -39,7 +39,7 @@ graph TB
         Profile[Configuration Profile<br/>.mobileconfig]
         
         MDM -->|Deploys| Profile
-        Profile -->|Writes to| ManagedPlist["/Library/Managed Preferences/<br>(RDNN).plist<br><br>✅ Enforced by MDM<br>❌ Cannot be modified locally<br>🔐 Root-protected"]
+        Profile -->|Writes to| ManagedPlist["/Library/Managed Preferences/<br>(RDNN).{orgScriptName}.plist<br><br>✅ Enforced by MDM<br>❌ Cannot be modified locally<br>🔐 Root-protected"]
         
         ManagedPlist -.->|Precedence: 1st| ReadManaged
         
@@ -53,7 +53,7 @@ graph TB
         CLI[Command Line<br/>defaults write]
         
         Admin -->|Executes| CLI
-        CLI -->|Writes to| LocalPlist["/Library/Preferences/<br>(RDNN).plist<br><br>⚙️ Local customization<br>✏️ Can be modified manually<br>📝 Used when no managed pref"]
+        CLI -->|Writes to| LocalPlist["/Library/Preferences/<br>(RDNN).{orgScriptName}.plist<br><br>⚙️ Local customization<br>✏️ Can be modified manually<br>📝 Used when no managed pref"]
         
         LocalPlist -.->|Precedence: 2nd| ReadLocal
         
@@ -107,6 +107,8 @@ ELSE:
     USE Script Default
 ```
 
+**Note**: `preferenceDomain` is `${reverseDomainNameNotation}.${organizationScriptName}` (for example, `org.example.dorm`).
+
 ---
 
 ## Tier 1: Managed Preferences (MDM)
@@ -154,7 +156,7 @@ ELSE:
 
 | Attribute | Value |
 |-----------|-------|
-| **File Path** | `/Library/Managed Preferences/{RDNN}.plist` |
+| **File Path** | `/Library/Managed Preferences/{RDNN}.{orgScriptName}.plist` |
 | **Permissions** | Root-owned, system-managed |
 | **Modifiable** | ❌ No (enforced by MDM) |
 | **Scope** | Organization-wide enforcement |
@@ -247,7 +249,7 @@ sudo nano /Library/Preferences/org.churchofjesuschrist.dorm.plist
 
 | Attribute | Value |
 |-----------|-------|
-| **File Path** | `/Library/Preferences/{RDNN}.plist` |
+| **File Path** | `/Library/Preferences/{RDNN}.{orgScriptName}.plist` |
 | **Permissions** | Root-owned, locally editable |
 | **Modifiable** | ✅ Yes (with admin privileges) |
 | **Scope** | Single Mac or small groups |

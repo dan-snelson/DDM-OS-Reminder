@@ -1,4 +1,4 @@
-# DDM OS Reminder — Copilot Instructions (2.4.0b4)
+# DDM OS Reminder — Copilot Instructions (2.4.0rc1)
 
 ## Big Picture
 - DDM OS Reminder is a macOS-only, MDM-agnostic reminder system for DDM-enforced OS update deadlines. It reads `/var/log/install.log` and shows a swiftDialog prompt via a LaunchDaemon.

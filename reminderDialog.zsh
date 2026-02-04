@@ -127,7 +127,8 @@ declare -A preferenceConfiguration=(
     ["minimumDiskFreePercentage"]="numeric|99"
     
     # Branding
-    ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"
+    ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
     
@@ -172,6 +173,7 @@ declare -A plistKeyMap=(
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
+    ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["supportTeamName"]="SupportTeamName"
@@ -874,37 +876,68 @@ function checkUserDisplaySleepAssertions() {
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+function detectDarkMode() {
+    local interfaceStyle
+    local globalPreferencesPath="${loggedInUserHomeDirectory}/Library/Preferences/.GlobalPreferences.plist"
+    
+    if [[ -z "${loggedInUserHomeDirectory}" ]]; then
+        globalPreferencesPath="/Users/${loggedInUser}/Library/Preferences/.GlobalPreferences.plist"
+    fi
+    
+    interfaceStyle=$( defaults read "${globalPreferencesPath}" AppleInterfaceStyle 2>/dev/null )
+    if [[ "${interfaceStyle}" == "Dark" ]]; then
+        echo "Dark"
+    else
+        echo "Light"
+    fi
+}
+
 function downloadBrandingAssets() {
+    # Detect dark mode and choose appropriate icon URL
+    local appearanceMode=$(detectDarkMode)
+    local overlayIconURL="${organizationOverlayiconURL}"
+    
+    if [[ "${appearanceMode}" == "Dark" && -n "${organizationOverlayiconURLdark}" ]]; then
+        notice "Dark mode detected; using dark mode overlay icon"
+        overlayIconURL="${organizationOverlayiconURLdark}"
+    else
+        if [[ "${appearanceMode}" == "Dark" ]]; then
+            notice "Dark mode detected but no dark mode icon URL configured; using standard overlay icon"
+        else
+            notice "Light mode detected; using standard overlay icon"
+        fi
+    fi
+    
     # Download overlay icon
-    if [[ -n "${organizationOverlayiconURL}" ]]; then
-        notice "Processing overlay icon from '${organizationOverlayiconURL}'"
+    if [[ -n "${overlayIconURL}" ]]; then
+        notice "Processing overlay icon from '${overlayIconURL}'"
         
         # Check if it's a local file path (file or directory/bundle)
-        if [[ -e "${organizationOverlayiconURL}" ]]; then
+        if [[ -e "${overlayIconURL}" ]]; then
             info "Overlay icon is a local path; using directly"
-            overlayicon="${organizationOverlayiconURL}"
+            overlayicon="${overlayIconURL}"
             info "Successfully configured overlay icon"
         
         # Check if it's a file:// URI
-        elif [[ "${organizationOverlayiconURL}" =~ ^file:// ]]; then
+        elif [[ "${overlayIconURL}" =~ ^file:// ]]; then
             info "Overlay icon is a file:// URI; converting to path"
-            local filePath="${organizationOverlayiconURL#file://}"
+            local filePath="${overlayIconURL#file://}"
             if [[ -e "${filePath}" ]]; then
                 overlayicon="${filePath}"
                 info "Successfully configured overlay icon from file:// URI"
             else
-                error "Path not found: '${filePath}' (from URI '${organizationOverlayiconURL}')"
+                error "Path not found: '${filePath}' (from URI '${overlayIconURL}')"
                 overlayicon="/System/Library/CoreServices/Finder.app"
             fi
         
         # Assume it's a remote URL
         else
             info "Overlay icon appears to be a remote URL; downloading with curl"
-            if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
+            if curl -o "/var/tmp/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
                 overlayicon="/var/tmp/overlayicon.png"
                 info "Successfully downloaded overlay icon"
             else
-                error "Failed to download overlay icon from '${organizationOverlayiconURL}'"
+                error "Failed to download overlay icon from '${overlayIconURL}'"
                 overlayicon="/System/Library/CoreServices/Finder.app"
             fi
         fi
@@ -997,7 +1030,7 @@ function displayReminderDialog() {
         --button1text "${button1text}"
         --messagefont "size=14"
         --width 800
-        --height 625
+        --height 650
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )
@@ -1189,6 +1222,7 @@ done
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
+loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
 preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
 
 

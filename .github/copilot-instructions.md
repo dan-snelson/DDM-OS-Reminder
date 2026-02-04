@@ -1,24 +1,24 @@
-# DDM OS Reminder — Copilot Instructions
+# DDM OS Reminder — Copilot Instructions (2.4.0b4)
 
-## Big picture
+## Big Picture
 - DDM OS Reminder is a macOS-only, MDM-agnostic reminder system for DDM-enforced OS update deadlines. It reads `/var/log/install.log` and shows a swiftDialog prompt via a LaunchDaemon.
 - Core scripts: `reminderDialog.zsh` (runtime logic + dialog), `launchDaemonManagement.zsh` (deploys/loads LaunchDaemon and writes reminder script), `assemble.zsh` (builds deployable artifacts).
 - `assemble.zsh` embeds `reminderDialog.zsh` into `launchDaemonManagement.zsh` via heredoc. Edits to reminder logic require re-assembly before deployment.
 - It does **not** perform updates, remind about non-OS updates, or support non-macOS platforms.
 
-## Critical conventions
+## Critical Conventions
 - **RDNN must match everywhere**: `reminderDialog.zsh`, `launchDaemonManagement.zsh`, and generated plist/mobileconfig. Default placeholder is `org.churchofjesuschrist`. Mismatch causes silent preference-loading failures. `assemble.zsh` is the enforcement point.
 - Preference hierarchy is **Managed Preferences → Local Preferences → Defaults** (`preferenceConfiguration` array). Reads use `PlistBuddy`, not `defaults read` (deliberate decision for nested value reliability).
 - Key parameters: `DaysBeforeDeadlineDisplayReminder` (14), `DaysBeforeDeadlineBlurscreen` (3), `DaysBeforeDeadlineHidingButton2` (1), `MeetingDelay` (75 min).
 - Logging format: `<scriptName> (<version>): <timestamp> - [<level>] <message>` with levels `[PRE-FLIGHT]`, `[NOTICE]`, `[INFO]`, `[WARNING]`, `[ERROR]`, `[FATAL]`. New deadline/suppression logic should log at `[NOTICE]` or `[WARNING]`.
 
-## Build, deploy, demo
+## Build, Deploy, Demo
 - Build artifacts: run `zsh assemble.zsh` (see [Resources/README.md](Resources/README.md)). Output in `Artifacts/`.
 - Self-extracting bundle: `zsh Resources/createSelfExtracting.zsh` (uses newest artifact).
 - Quick demo: `zsh reminderDialog.zsh demo` — fastest feedback loop. Use it.
 - Syntax checks are a quality gate: `zsh -n reminderDialog.zsh` and `zsh -n launchDaemonManagement.zsh`.
 
-## Style and structure (observed)
+## Style and Structure (observed)
 - **Variables**: lowerCamelCase exclusively. Only exception: `PLACEHOLDER_MAP` (global associative array).
 - **Functions**: Always `function name() {` with brace on same line. Control-flow uses same-line braces (`if [[ ... ]]; then`).
 - **Variable references**: Braced `${var}` is the default; bare `$var` only inside arithmetic `$(( ))` contexts.
@@ -31,7 +31,7 @@
 - `launchDaemonManagement.zsh` accepts MDM Script Parameter 4: `All` | `LaunchDaemon` | `Script` | `Uninstall` | blank (for reset/uninstall actions).
 - User-facing behavior and escalation timelines are documented in [Diagrams/README.md](Diagrams/README.md).
 
-## Known constraints & decisions
+## Known Constraints & Decisions
 - LaunchDaemon schedule is not profile-driven; changing frequency requires redeploying the plist.
 - Log parsing depends on Apple's `/var/log/install.log` format — upstream changes break deadline detection.
 - Disable button2 instead of hiding near deadline (gives visual feedback that deferral is unavailable).

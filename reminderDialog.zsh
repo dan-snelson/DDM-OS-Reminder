@@ -842,7 +842,13 @@ function checkUserDisplaySleepAssertions() {
 
 function detectDarkMode() {
     local interfaceStyle
-    interfaceStyle=$( defaults read /Users/"${loggedInUser}"/Library/Preferences/.GlobalPreferences.plist AppleInterfaceStyle 2>/dev/null )
+    local globalPreferencesPath="${loggedInUserHomeDirectory}/Library/Preferences/.GlobalPreferences.plist"
+    
+    if [[ -z "${loggedInUserHomeDirectory}" ]]; then
+        globalPreferencesPath="/Users/${loggedInUser}/Library/Preferences/.GlobalPreferences.plist"
+    fi
+    
+    interfaceStyle=$( defaults read "${globalPreferencesPath}" AppleInterfaceStyle 2>/dev/null )
     if [[ "${interfaceStyle}" == "Dark" ]]; then
         echo "Dark"
     else
@@ -1180,6 +1186,7 @@ done
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
+loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
 preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
 
 

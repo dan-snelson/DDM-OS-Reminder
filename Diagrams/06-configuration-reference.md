@@ -373,7 +373,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Script Default**:
 ```bash
-["organizationOverlayiconURLdark"]="string|"
+["organizationOverlayiconURLdark"]="string|https://cdn.company.com/it-icon-dark.png"
 ```
 
 **Configuration Profile**:

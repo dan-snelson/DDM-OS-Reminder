@@ -29,6 +29,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
+| acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | (empty) | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | [URL] | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | (empty) | Branding |
@@ -272,6 +273,55 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Related Logic**: See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+
+---
+
+#### acceptableAssertionApplicationNames
+**Plist Key**: `AcceptableAssertionApplicationNames`  
+**Type**: String  
+**Default**: `MSTeams zoom.us Webex`  
+**Valid Format**: Space-delimited list of app names
+
+**Description**: Space-delimited list of meeting/presentation application names whose Display Sleep Assertions should be tolerated. When populated, only assertions from apps **on this list** will trigger the `meetingDelay` retry loop. Assertions from apps **not** on the list allow the reminder to proceed immediately.
+
+**Impact**:
+- Default (`MSTeams zoom.us Webex`) = only these apps trigger deferral
+- Empty = all non-coreaudiod assertions trigger deferral (legacy behavior)
+- Any other populated value = only listed apps trigger deferral
+- Uses exact app name matching (case-sensitive)
+- Helps filter out non-meeting apps that hold assertions
+To find exact app names while the application is active, run in Terminal:
+```bash
+pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"
+```
+
+**Example Apps**:
+- `MSTeams` - Microsoft Teams
+- `zoom.us` - Zoom
+- `Webex` - Cisco Webex
+- `Slack` - Slack (screen sharing)
+
+**Script Default**:
+```bash
+["acceptableAssertionApplicationNames"]="string|"
+```
+
+**Configuration Profile**:
+```xml
+<key>AcceptableAssertionApplicationNames</key>
+<string>MSTeams zoom.us Webex</string>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    AcceptableAssertionApplicationNames -string "MSTeams zoom.us Webex"
+```
+
+**Related Logic**: 
+- See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+- Works in conjunction with `meetingDelay` preference
+- Feature Request: Issue #67
 
 ---
 

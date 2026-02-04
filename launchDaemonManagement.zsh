@@ -22,15 +22,8 @@
 # HISTORY
 #
 #
-# Version 2.3.1b1, 28-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
-#
-# Version 2.3.0, 19-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Refactored Update Required logic to address Feature Request #55
-# - Updated "Organization Variables" (i.e., removed redundant variable declarations)
-# - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
-# - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
-# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huexley!)
+# Version 2.4.0b2, 02-Feb-2026, Dan K. Snelson (@dan-snelson)
+# - Added space-delimited list of `acceptableAssertionApplicationNames` (Feature Request #67; thanks for the suggestion, @yassermkh!)
 #
 ####################################################################################################
 

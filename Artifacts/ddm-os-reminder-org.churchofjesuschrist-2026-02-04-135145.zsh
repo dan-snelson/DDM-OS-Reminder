@@ -22,9 +22,10 @@
 # HISTORY
 #
 #
-# Version 2.4.0b3, 03-Feb-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.4.0b4, 04-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - Added space-delimited list of `acceptableAssertionApplicationNames` (Feature Request #67; thanks for the suggestion, @yassermkh!)
 # - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
+# - Added DDM version validation to suppress reminders on invalid VersionString formats (thanks for the idea, @nessts!)
 #
 ####################################################################################################
 
@@ -39,7 +40,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0b3"
+scriptVersion="2.4.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -261,7 +262,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0b3"
+scriptVersion="2.4.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -465,6 +466,27 @@ function error()        { updateScriptLog "[ERROR]           ${1}"; let errorCou
 function warning()      { updateScriptLog "[WARNING]         ${1}"; let errorCount++; }
 function fatal()        { updateScriptLog "[FATAL ERROR]     ${1}"; exit 1; }
 function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# DDM Version Validation
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isValidDDMVersionString() {
+    local value="${1}"
+    local ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
+
+    if [[ -z "${value}" ]]; then
+        return 1
+    fi
+
+    if [[ "${value}" =~ ${ddmVersionRegex} ]]; then
+        return 0
+    fi
+
+    return 1
+}
 
 
 
@@ -862,6 +884,14 @@ installedOSvsDDMenforcedOS() {
     # Parse enforced date and version
     ddmEnforcedInstallDate="${${ddmLogEntry##*|EnforcedInstallDate:}%%|*}"
     ddmVersionString="${${ddmLogEntry##*|VersionString:}%%|*}"
+    
+    if ! isValidDDMVersionString "${ddmVersionString}"; then
+        warning "Invalid DDM-enforced OS Version format. Log entry: ${ddmLogEntry}"
+        warning "Invalid DDM-enforced OS Version: ${ddmVersionString}"
+        versionComparisonResult="Invalid DDM version string; suppressing reminder dialog."
+        quitOut "Invalid DDM version string; exiting quietly."
+        return
+    fi
 
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"

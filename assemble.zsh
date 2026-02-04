@@ -29,7 +29,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.4.0b3"
+scriptVersion="2.4.0b4"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"

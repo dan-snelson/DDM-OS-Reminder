@@ -2,9 +2,10 @@
 
 ## Changelog
 
-## Version 2.4.0b3 (03-Feb-2026)
+## Version 2.4.0b4 (04-Feb-2026)
 - Added space-delimited list of `acceptableAssertionApplicationNames` (Feature Request #67; thanks for the suggestion, @yassermkh!)
 - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
+- Added DDM version validation to suppress reminders on invalid VersionString formats (thanks for the idea, @nessts!)
 
 ## Version 2.3.1 (28-Jan-2026)
 - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past

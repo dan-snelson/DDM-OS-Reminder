@@ -29,7 +29,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
-| acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | (empty) | Timing |
+| acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | [URL] | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | (empty) | Branding |
@@ -303,7 +303,7 @@ pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySle
 
 **Script Default**:
 ```bash
-["acceptableAssertionApplicationNames"]="string|"
+["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
 ```
 
 **Configuration Profile**:
@@ -1164,6 +1164,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
 | `{scriptVersion}` | System | Script version | 2.3.0 |
+
+**Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. Invalid formats suppress reminder dialogs and emit a `[WARNING]` log entry.
 
 ### Placeholder Modifiers
 

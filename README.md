@@ -26,7 +26,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins a powerf
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
-- **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive — it checks whether a user is in an online meeting before displaying — so users can remain productive while still being reminded to update.
+- **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive — it checks whether a user is in an online meeting before displaying — so users can remain productive while still being reminded to update. Meeting detection uses display sleep assertions with an allowlist (`acceptableAssertionApplicationNames`) so non-meeting apps don't block reminders by default.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`
 

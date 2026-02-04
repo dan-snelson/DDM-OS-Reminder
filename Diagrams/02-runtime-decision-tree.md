@@ -172,7 +172,8 @@ flowchart TD
 - **Filtering**: 
   - **Layer 1**: Excludes `coreaudiod` (system daemon, always present)
   - **Layer 2**: If `acceptableAssertionApplicationNames` is configured, only assertions from apps **on the allowlist** trigger deferral; assertions from other apps are ignored
-  - **Default behavior** (empty allowlist): All non-coreaudiod assertions trigger deferral
+  - **Default behavior** (shipped allowlist: `MSTeams zoom.us Webex`): Only those apps trigger deferral
+  - **Legacy/explicit empty allowlist**: All non-coreaudiod assertions trigger deferral
 - **Exception**: Ignored if <24 hours to deadline
 - **Action if**: Delay 75 minutes and retry (not exit)
 
@@ -243,7 +244,7 @@ Key preferences that affect decision tree:
 | `daysBeforeDeadlineHidingButton2` | 21 | Button 2 disable/hide |
 | `daysOfExcessiveUptimeWarning` | 0 (disabled) | Uptime warning threshold |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
-| `acceptableAssertionApplicationNames` | (empty) | Meeting app allowlist filter |
+| `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |
 | `minimumDiskFreePercentage` | 99 (disabled) | Disk space warning |
 | `disableButton2InsteadOfHide` | YES | Button 2 behavior (disabled vs hidden) |
 

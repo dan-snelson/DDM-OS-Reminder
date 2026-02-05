@@ -13,107 +13,15 @@
 #####################################################################################################
 #
 # Usage:
-#   Method 1 - With all parameters:
-#     zsh script.zsh "https://yourserver.jamfcloud.com" "apiUser" "apiPassword" "computers.csv"
 #
-#   Method 2 - With lane selection:
-#     zsh script.zsh --lane
-#     (Will prompt to select Development, Stage, or Production environment)
-#
-#   Method 3 - Interactive mode (will prompt for missing parameters):
-#     zsh script.zsh
-#
-#   Optional Flags:
-#     --help      Display help information
-#     --lane      Prompt for lane selection (Dev/Stage/Prod)
-#     --debug     Enable debug mode with verbose logging
+# zsh Jamf-getDDMstatusFromCSV.zsh --help
 #
 ####################################################################################################
 #
 # HISTORY
 #
-# Version 0.0.1, 22-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Original version
-#
-# Version 0.0.2, 22-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Integrated features from policy-editor-lite-2.0.3.bash:
-#   • Added lane selection function for Development/Stage/Production environments
-#   • Added interactive prompts for missing API credentials (URL, Username, Password)
-#   • Added interactive prompt for missing CSV filename
-#   • Added color-coded output for better visibility
-#   • Added --help flag with usage instructions
-#   • Added --lane flag for lane selection
-#   • Added --debug flag for enhanced debugging
-#   • Enhanced logging with Mac Health Check-style logging functions
-#   • Improved user experience with step-by-step progress indicators
-#   • Help displays automatically when no parameters are provided
-#
-# Version 0.0.3, 22-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Enhanced token refresh mechanism:
-#   • Added fallback to getBearerToken if keep-alive refresh fails
-#   • Improved error handling in token refresh scenarios
-#   • Better handling of completely expired tokens during long-running operations
-#
-# Version 0.0.4, 23-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Updated usage instructions (removed redundant Method 4)
-# - Masked credentials in debug logs for improved security
-# - Added CSV format validation (single or multi-column with "JSS Computer ID" header)
-# - Enhanced multi-column CSV support for Jamf Pro exports
-# - Fixed zsh array syntax and multibyte character handling (LC_ALL=C)
-# - Standardized date format to YYYY-MM-DD-HHMMSS
-# - Standardized DEBUG format to [DEBUG] throughout
-# - Added comprehensive DEBUG logging for authentication, CSV processing, API calls, and DDM parsing
-# - Fixed formatting consistency (single line return after step headers)
-# - Added --output-dir flag to specify custom output directory
-# - Added CSV encoding validation with warnings for unusual encodings
-# - Added retry logic with exponential backoff for API failures
-# - Enhanced CSV validation error messages to show what was found vs. expected
-# - Added trap to cleanup temporary files on interrupt/exit
-# - Added summary statistics showing DDM enabled/disabled, failed blueprints, pending updates, errors, not found
-# - Improved progress tracking with elapsed time display for each computer
-# - Optimized log format for improved readability (compact prefix)
-#
-# Version 0.0.5, 23-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Added ability to lookup a single Serial Number via command-line argument
-#
-# Version 0.0.6, 25-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Thanks for the suggestions, @TechTrekkie!
-#   • Fixed argument parsing to support position-independent flags (addresses issue where -d flag consumed CSV filename)
-#   • Simplified interactive prompts by removing Y/N confirmations (now directly prompts for values, CTRL-C to exit; )
-#   • Enhanced CSV format documentation in help text and validation function
-#   • Improved error handling for unknown flags (fail-fast)
-# - Thanks for the bug report and suggestions, @ScottEKendall!
-#   • Added automatic token refresh to prevent API authentication failures during long-running operations
-#   • Token is now automatically refreshed every 4 minutes (before the 5-minute OAuth expiration)
-#   • Added token age tracking with proactive refresh before API calls
-#   • Experimental Parallel Processing (inspired by Scott's multitasking implementation in his GetDDMInfo.sh script)
-#      • Added optional parallel processing (--parallel flag) to dramatically speed up execution
-#      • Parallel processing runs up to 10 computers concurrently (configurable with --max-jobs flag)
-#
-# Version 0.0.7, 05-Feb-2026, Dan K. Snelson (@dan-snelson)
-# - Reliability fixes:
-#   • Validate `defaults read` output before using as API URL
-#   • Preserve cleanup on EXIT in parallel mode
-#   • Remove corrupted duplicate parallel merge block
-#   • Remove invalid `local` usage in main loop
-# - CSV handling improvements:
-#   • Parse multi-column exports with quoted newlines using ruby when available
-#   • Accept 'JSS Computer ID' or 'Jamf Pro Computer ID' header
-#   • Improve CSV sanitization to prevent malformed output
-#   • Add CSV sanity check for row/column mismatches and empty IDs
-# - Parallel processing:
-#   • Add diagnostics summary for job output counts and elapsed time
-#   • Track job PIDs to ensure merges occur after all jobs complete
-#   • Route per-record output to temp logs in parallel mode
-#   • Note in debug output that per-record details go to the log
-# - Log and CSV cleanup:
-#   • Preserve commas in CSV fields (avoid altering model identifiers)
-#   • Strip ANSI color codes when merging parallel logs
-# - Statistics:
-#   • Parse output CSV with Ruby to correctly count fields containing commas
-# - Output:
-#   • Add --no-open flag to skip auto-opening log/CSV
-#   • Show CSV row count vs. extracted IDs in summary
+# Version 1.0.0, 05-Feb-2026, Dan K. Snelson (@dan-snelson)
+# - First "official" release
 #
 ####################################################################################################
 
@@ -130,7 +38,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 [[ -o interactive ]] && setopt monitor
 
 # Script Version
-scriptVersion="0.0.7"
+scriptVersion="1.0.0"
 
 # Elapsed Time
 SECONDS="0"

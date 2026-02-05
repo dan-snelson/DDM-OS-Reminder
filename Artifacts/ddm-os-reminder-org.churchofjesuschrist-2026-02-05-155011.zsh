@@ -22,7 +22,7 @@
 # HISTORY
 #
 #
-# Version 2.4.0rc1, 04-Feb-2026, Dan K. Snelson (@dan-snelson)
+# Version 2.4.0rc2, 04-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - Added space-delimited list of `acceptableAssertionApplicationNames` (Feature Request #67; thanks for the suggestion, @yassermkh!)
 # - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
 # - Added DDM version validation to suppress reminders on invalid VersionString formats (thanks for the idea, @nessts!)
@@ -40,7 +40,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0rc1"
+scriptVersion="2.4.0rc2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -262,7 +262,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0rc1"
+scriptVersion="2.4.0rc2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

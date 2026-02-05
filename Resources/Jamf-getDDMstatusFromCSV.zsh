@@ -242,6 +242,7 @@ function displayHelp() {
     echo "
 ${scriptDisplayName} (${scriptVersion})
 by Dan K. Snelson (@dan-snelson)
+https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
 
     Usage:
         zsh ${scriptName} [OPTIONS] [apiURL] [apiUsername] [apiPassword] [csvFilename]

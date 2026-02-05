@@ -27,7 +27,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.3.0)
+🧩 Assemble DDM OS Reminder (2.4.0)
 ===============================================================
 
 Full Paths:
@@ -144,6 +144,7 @@ You can deploy the assembled, self-extracting script to your Macs using your MDM
 ### 3. Create `.plist` (Optional)
 
 > **Note:** This step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files in the `Artifacts/` folder.
+> **Note:** The ProfileManifests manifest for this project is maintained in the [ProfileManifests repo](https://github.com/ProfileManifests/ProfileManifests/blob/master/Manifests/ManagedPreferencesApplications/org.churchofjesuschrist.dorm.plist) and is not sourced from this directory.
 
 The [`createPlist.zsh`](createPlist.zsh) script extracts default values from the **original** `reminderDialog.zsh` file to generate `.plist` and `.mobileconfig` files.
 

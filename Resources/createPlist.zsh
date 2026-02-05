@@ -105,6 +105,7 @@ daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlu
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
 meetingDelay=$(extract_from_preference_map meetingDelay)
+acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
 swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
 minimumDiskFreePercentage=$(extract_from_preference_map minimumDiskFreePercentage)
@@ -131,6 +132,7 @@ defaultButton1text=$(extract_from_preference_map button1text)
 defaultButton2text=$(extract_from_preference_map button2text)
 defaultInfobuttontext=$(extract_from_preference_map infobuttontext)
 defaultOverlayiconURL=$(extract_from_preference_map organizationOverlayiconURL)
+defaultOverlayiconURLdark=$(extract_from_preference_map organizationOverlayiconURLdark)
 defaultSupportTeamName=$(extract_from_preference_map supportTeamName)
 defaultSupportTeamPhone=$(extract_from_preference_map supportTeamPhone)
 defaultSupportTeamEmail=$(extract_from_preference_map supportTeamEmail)
@@ -167,6 +169,8 @@ button2text_xml=$(process "$defaultButton2text")
 infobuttontext_xml=$(printf "%s" "$resolvedInfobuttontext" | xml_escape)
 
 overlayicon_xml=$(process "$defaultOverlayiconURL")
+overlayiconDark_xml=$(process "$defaultOverlayiconURLdark")
+acceptableAssertionApplicationNames_xml=$(process "$acceptableAssertionApplicationNames")
 supportTeamName_xml=$(process "$defaultSupportTeamName")
 supportTeamPhone_xml=$(process "$defaultSupportTeamPhone")
 supportTeamEmail_xml=$(process "$defaultSupportTeamEmail")
@@ -207,12 +211,16 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysOfExcessiveUptimeWarning}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
+    <key>AcceptableAssertionApplicationNames</key>
+    <string>${acceptableAssertionApplicationNames_xml}</string>
     <key>MinimumDiskFreePercentage</key>
     <integer>${minimumDiskFreePercentage}</integer>
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>
     <string>${overlayicon_xml}</string>
+    <key>OrganizationOverlayIconURLdark</key>
+    <string>${overlayiconDark_xml}</string>
     <key>SwapOverlayAndLogo</key>
     ${swapOverlayAndLogo_xml}
     <key>DateFormatDeadlineHumanReadable</key>
@@ -306,9 +314,14 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
+                                <key>AcceptableAssertionApplicationNames</key>
+                                <string>${acceptableAssertionApplicationNames_xml}</string>
                                 <key>MinimumDiskFreePercentage</key>
-                                <integer>${minimumDiskFreePercentage}</integer>                                <key>OrganizationOverlayIconURL</key>
+                                <integer>${minimumDiskFreePercentage}</integer>
+                                <key>OrganizationOverlayIconURL</key>
                                 <string>${overlayicon_xml}</string>
+                                <key>OrganizationOverlayIconURLdark</key>
+                                <string>${overlayiconDark_xml}</string>
                                 <key>SwapOverlayAndLogo</key>
                                 ${swapOverlayAndLogo_xml}
                                 <key>DateFormatDeadlineHumanReadable</key>

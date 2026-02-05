@@ -5,7 +5,7 @@
 #
 # Jamf-getDDMstatusFromCSV.zsh
 #
-# https://snelson.us
+# https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
 #
 # Inspired by:
 #   - @ScottEKendall
@@ -90,6 +90,31 @@
 #      • Added optional parallel processing (--parallel flag) to dramatically speed up execution
 #      • Parallel processing runs up to 10 computers concurrently (configurable with --max-jobs flag)
 #
+# Version 0.0.7, 05-Feb-2026, Dan K. Snelson (@dan-snelson)
+# - Reliability fixes:
+#   • Validate `defaults read` output before using as API URL
+#   • Preserve cleanup on EXIT in parallel mode
+#   • Remove corrupted duplicate parallel merge block
+#   • Remove invalid `local` usage in main loop
+# - CSV handling improvements:
+#   • Parse multi-column exports with quoted newlines using ruby when available
+#   • Accept 'JSS Computer ID' or 'Jamf Pro Computer ID' header
+#   • Improve CSV sanitization to prevent malformed output
+#   • Add CSV sanity check for row/column mismatches and empty IDs
+# - Parallel processing:
+#   • Add diagnostics summary for job output counts and elapsed time
+#   • Track job PIDs to ensure merges occur after all jobs complete
+#   • Route per-record output to temp logs in parallel mode
+#   • Note in debug output that per-record details go to the log
+# - Log and CSV cleanup:
+#   • Preserve commas in CSV fields (avoid altering model identifiers)
+#   • Strip ANSI color codes when merging parallel logs
+# - Statistics:
+#   • Parse output CSV with Ruby to correctly count fields containing commas
+# - Output:
+#   • Add --no-open flag to skip auto-opening log/CSV
+#   • Show CSV row count vs. extracted IDs in summary
+#
 ####################################################################################################
 
 
@@ -105,7 +130,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 [[ -o interactive ]] && setopt monitor
 
 # Script Version
-scriptVersion="0.0.6"
+scriptVersion="0.0.7"
 
 # Elapsed Time
 SECONDS="0"
@@ -118,6 +143,11 @@ scriptLog=""
 
 # CSV Output (will be updated after outputDir is set)
 csvOutput=""
+
+# CSV format tracking
+csvFormat="single"
+csvDelimiter=""
+csvDelimiterLabel="none"
 
 # Divider Line
 dividerLine="\n--------------------------------------------------------------------------------------------------------|\n"
@@ -150,6 +180,7 @@ apiUser=""
 apiPassword=""
 filename=""
 outputDir="$HOME/Desktop"           # Default output directory
+noOpen="false"                      # Skip opening log/CSV files
 
 # Debug Mode [ true | false ]
 debugMode="false"                    # Set to "true" to enable debug logging
@@ -161,6 +192,9 @@ failedBlueprintsCount=0
 pendingUpdatesCount=0
 errorCount=0
 notFoundCount=0
+
+# Parallel processing job tracking
+declare -a jobPids=()
 
 # Script Display Name (for help and headers)
 scriptDisplayName="Jamf Pro: Get DDM Status from CSV"
@@ -217,16 +251,29 @@ function interrupt_handler() {
     
     # Kill all background jobs spawned by this script
     if [[ "${parallelProcessing}" == "true" ]]; then
-        local jobPids=$(jobs -p 2>/dev/null)
-        if [[ -n "${jobPids}" ]]; then
+        local backgroundJobPids=$(jobs -p 2>/dev/null)
+        if [[ -n "${backgroundJobPids}" ]]; then
             if [[ "${debugMode}" == "true" ]]; then
-                debug "Killing background jobs: ${jobPids}"
+                debug "Killing background jobs: ${backgroundJobPids}"
             fi
-            echo "${jobPids}" | xargs kill 2>/dev/null
+            echo "${backgroundJobPids}" | xargs kill 2>/dev/null
             # Give jobs a moment to terminate gracefully
             sleep 0.5
             # Force kill any remaining jobs
-            echo "${jobPids}" | xargs kill -9 2>/dev/null
+            echo "${backgroundJobPids}" | xargs kill -9 2>/dev/null
+        fi
+        
+        if [[ ${#jobPids[@]} -gt 0 ]]; then
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Killing tracked background jobs: ${jobPids[*]}"
+            fi
+            for pid in "${jobPids[@]}"; do
+                kill "${pid}" 2>/dev/null
+            done
+            sleep 0.5
+            for pid in "${jobPids[@]}"; do
+                kill -9 "${pid}" 2>/dev/null
+            done
         fi
     fi
     
@@ -297,8 +344,9 @@ by Dan K. Snelson (@dan-snelson)
         -l, --lane [LANE]     Select lane: dev, stage, or prod (prompts if omitted)
         -d, --debug           Enable debug mode with verbose logging
         --output-dir PATH     Specify output directory (default: ~/Desktop)
-        --parallel            Enable parallel processing for faster execution
+        --parallel            Enable parallel processing for faster execution (per-record details go to log)
         --max-jobs N          Set maximum parallel jobs (default: 10, requires --parallel)
+        --no-open             Do not open the log and CSV output files
         -h, --help            Display this help information
 
     CSV Format Requirements:
@@ -307,10 +355,14 @@ by Dan K. Snelson (@dan-snelson)
                           456
                           789
         
-        Multi-column:     Must include 'JSS Computer ID' header (case-sensitive)
+        Multi-column:     Must include 'JSS Computer ID', 'Jamf Pro Computer ID', or 'Computer ID' header
                           Computer Name,JSS Computer ID,Serial Number
                           Mac1,123,C02ABC
                           Mac2,456,C02DEF
+        
+    Notes:
+        • For CSVs with quoted newlines, ruby (if available) is used for reliable parsing.
+        • Without ruby, multiline CSV fields may be misread.
 
     Examples:
         # CSV batch processing with lane
@@ -436,31 +488,42 @@ function promptAPIurl() {
 
         if [[ -e "/Library/Preferences/com.jamfsoftware.jamf.plist" ]]; then
             
-            apiUrl=$( /usr/bin/defaults read "/Library/Preferences/com.jamfsoftware.jamf.plist" jss_url 2>&1 | sed 's|/$||' )
+            apiUrl=$( /usr/bin/defaults read "/Library/Preferences/com.jamfsoftware.jamf.plist" jss_url 2>/dev/null | sed 's|/$||' )
+            local defaultsExitCode=$?
             
-            printf "\nThe API URL has been read from the Jamf preferences: ${apiUrl}\n"
-            printf "Press ENTER to use this URL, or type a different URL: "
-            read userInput
-            
-            if [[ -n "${userInput}" ]]; then
-                apiUrl="${userInput}"
-                # Remove quotes if user added them
-                apiUrl="${apiUrl//\"/}"
-                apiUrl="${apiUrl//\'/}"
+            if [[ ${defaultsExitCode} -ne 0 ]] || [[ -z "${apiUrl}" ]] || [[ "${apiUrl}" != http* ]]; then
                 if [[ "${debugMode}" == "true" ]]; then
-                    debug "Raw URL input: ${apiUrl}"
+                    debug "Unable to read valid API URL from JAMF plist (exit: ${defaultsExitCode}, value: '${apiUrl}')"
                 fi
-                apiUrl=$( echo "${apiUrl}" | sed 's|/$||' )
-                if [[ "${debugMode}" == "true" ]]; then
-                    debug "URL after trailing slash removal: ${apiUrl}"
-                fi
-                info "User entered API URL: ${apiUrl}"
+                info "Unable to read a valid API URL from JAMF plist; prompting user ..."
+                apiUrl=""
             else
-                info "Using URL from JAMF plist: ${apiUrl}"
+                printf "\nThe API URL has been read from the Jamf preferences: ${apiUrl}\n"
+                printf "Press ENTER to use this URL, or type a different URL: "
+                read userInput
+                
+                if [[ -n "${userInput}" ]]; then
+                    apiUrl="${userInput}"
+                    # Remove quotes if user added them
+                    apiUrl="${apiUrl//\"/}"
+                    apiUrl="${apiUrl//\'/}"
+                    if [[ "${debugMode}" == "true" ]]; then
+                        debug "Raw URL input: ${apiUrl}"
+                    fi
+                    apiUrl=$( echo "${apiUrl}" | sed 's|/$||' )
+                    if [[ "${debugMode}" == "true" ]]; then
+                        debug "URL after trailing slash removal: ${apiUrl}"
+                    fi
+                    info "User entered API URL: ${apiUrl}"
+                else
+                    info "Using URL from JAMF plist: ${apiUrl}"
+                fi
+                printf "${green}✓${resetColor} API URL set to: ${apiUrl}\n"
             fi
-            printf "${green}✓${resetColor} API URL set to: ${apiUrl}\n"
 
-        else
+        fi
+
+        if [[ -z "${apiUrl}" ]]; then
 
             info "No API URL is specified in the script; prompt user ..."
             
@@ -864,8 +927,11 @@ function invalidateBearerToken() {
 
 function sanitizeForCsv() {
     local data="${1}"
-    # Replace commas with semicolons for CSV safety
-    printf "%s" "${data}" | sed 's/,/;/g'
+    # Normalize for CSV safety (preserve content while avoiding malformed rows)
+    data="${data//$'\r'/ }"
+    data="${data//$'\n'/ }"
+    data="${data//\"/\"\"}"
+    printf "%s" "${data}"
 }
 
 
@@ -897,14 +963,14 @@ function maskCredential() {
 #    456
 #    789
 # 
-# 2. Multi-column CSV (MUST include 'JSS Computer ID' header - case-sensitive):
+# 2. Multi-column CSV (MUST include 'JSS Computer ID' or 'Jamf Pro Computer ID' header):
 #    Computer Name,JSS Computer ID,Serial Number,OS Version
 #    Mac1,123,C02ABC,14.5
 #    Mac2,456,C02DEF,14.6
 # 
 # When exporting from Jamf Pro:
 # - Include the "Jamf Pro Computer ID" column in your export
-# - The column header must be exactly: JSS Computer ID
+# - The column header must be either: JSS Computer ID or Jamf Pro Computer ID
 # - Other columns are optional and will be ignored
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -913,40 +979,178 @@ function validateCsvFormat() {
     
     # Read first line to check for headers
     local firstLine=$(head -n 1 "${csvFile}" | tr -d '\r')
+    local firstLineLower="${firstLine:l}"
+    local delimiter=""
+    local delimiterLabel="none"
+    local hasIdHeader="false"
     
     if [[ "${debugMode}" == "true" ]]; then
         debug "CSV first line: ${firstLine}" >&2
     fi
     
-    # If first line contains commas (multi-column CSV)
+    # Determine delimiter for multi-column CSVs
     if [[ "${firstLine}" == *","* ]]; then
-        # Check if it has a "JSS Computer ID" column
-        if [[ "${firstLine}" == *"JSS Computer ID"* ]]; then
-            info "Detected multi-column CSV with 'JSS Computer ID' header; will extract ID column" >&2
-            return 0
-        else
-            # Multi-column but no JSS Computer ID header
-            local columnCount=$(( $(echo "${firstLine}" | grep -o ',' | wc -l) + 1 ))
-            local headers=$(echo "${firstLine}" | sed 's/,/, /g')
-            if [[ "${debugMode}" == "true" ]]; then
-                debug "Detected ${columnCount} columns without required 'JSS Computer ID' header" >&2
-                debug "Found headers: ${headers}" >&2
-            fi
-            error "Invalid CSV format detected: File contains ${columnCount} columns without 'JSS Computer ID' header" >&2
-            printf "\n${red}ERROR:${resetColor} Invalid CSV format detected\n" >&2
-            printf "\n${cyan}What was found:${resetColor}" >&2
-            printf "\n  • ${columnCount} columns" >&2
-            printf "\n  • Headers: ${headers}" >&2
-            printf "\n\n${cyan}What is required:${resetColor}" >&2
-            printf "\n  • A single-column CSV with Jamf Pro Computer IDs" >&2
-            printf "\n  • A multi-column CSV with a 'JSS Computer ID' header column" >&2
-            printf "\n\nPlease export a valid format from Jamf Pro and try again.\n\n" >&2
-            return 1
-        fi
+        delimiter=","
+        delimiterLabel="comma"
+    elif [[ "${firstLine}" == *$'\t'* ]]; then
+        delimiter=$'\t'
+        delimiterLabel="tab"
+    elif [[ "${firstLine}" == *";"* ]]; then
+        delimiter=";"
+        delimiterLabel="semicolon"
     fi
+    
+    if [[ "${firstLineLower}" == *"jss computer id"* ]] || [[ "${firstLineLower}" == *"jamf pro computer id"* ]] || [[ "${firstLineLower}" == *"computer id"* ]]; then
+        hasIdHeader="true"
+    fi
+    
+    # Multi-column CSV validation
+    if [[ -n "${delimiter}" ]]; then
+        csvFormat="multi"
+        csvDelimiter="${delimiter}"
+        csvDelimiterLabel="${delimiterLabel}"
+        
+        if [[ "${hasIdHeader}" == "true" ]]; then
+            info "Detected multi-column CSV with computer ID header; will extract ID column" >&2
+            return 0
+        fi
+        
+        # Multi-column but no recognized computer ID header
+        local columnCount=""
+        local headers="${firstLine}"
+        
+        case "${delimiter}" in
+            ",")
+                columnCount=$(printf "%s" "${firstLine}" | awk -F',' '{print NF}')
+                headers=$(printf "%s" "${firstLine}" | sed 's/,/, /g')
+                ;;
+            $'\t')
+                columnCount=$(printf "%s" "${firstLine}" | awk -F'\t' '{print NF}')
+                headers=$(printf "%s" "${firstLine}" | tr '\t' ',' | sed 's/,/, /g')
+                ;;
+            ";")
+                columnCount=$(printf "%s" "${firstLine}" | awk -F';' '{print NF}')
+                headers=$(printf "%s" "${firstLine}" | sed 's/;/; /g')
+                ;;
+        esac
+        
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Detected ${columnCount} columns without required computer ID header" >&2
+            debug "Found headers: ${headers}" >&2
+        fi
+        error "Invalid CSV format detected: File contains ${columnCount} columns without a computer ID header" >&2
+        printf "\n${red}ERROR:${resetColor} Invalid CSV format detected\n" >&2
+        printf "\n${cyan}What was found:${resetColor}" >&2
+        printf "\n  • ${columnCount} columns" >&2
+        printf "\n  • Headers: ${headers}" >&2
+        printf "\n\n${cyan}What is required:${resetColor}" >&2
+        printf "\n  • A single-column CSV with Jamf Pro Computer IDs" >&2
+        printf "\n  • A multi-column CSV with a 'JSS Computer ID' or 'Jamf Pro Computer ID' header column" >&2
+        printf "\n\nPlease export a valid format from Jamf Pro and try again.\n\n" >&2
+        return 1
+    fi
+    
+    csvFormat="single"
+    csvDelimiter=""
+    csvDelimiterLabel="none"
     
     # Single column format is valid
     return 0
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# CSV Sanity Check (multi-column only)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function csvSanityCheck() {
+    local csvFile="${1}"
+    local delimiter="${csvDelimiter}"
+    
+    if [[ "${csvFormat}" != "multi" ]]; then
+        return 0
+    fi
+    
+    if ! command -v ruby >/dev/null 2>&1; then
+        warning "Ruby not found; skipping CSV sanity check (multiline fields may be misread)"
+        return 0
+    fi
+    
+    local sanityResults
+    sanityResults=$(/usr/bin/ruby -rcsv -e '
+csv_path = ARGV[0]
+col_sep = ARGV[1]
+col_sep = "," if col_sep.nil? || col_sep.empty?
+
+header_candidates = ["jss computer id", "jamf pro computer id", "computer id"]
+
+csv = CSV.open(csv_path, "r:BOM|UTF-8", headers: true, col_sep: col_sep)
+first_row = csv.shift
+exit 1 if first_row.nil?
+
+headers = first_row.headers || []
+normalized_headers = headers.map { |h| h.to_s.sub(/\A\xEF\xBB\xBF/, "").strip.gsub(/\A"|"\z/, "").downcase }
+
+column_index = nil
+header_candidates.each do |candidate|
+  idx = normalized_headers.index(candidate)
+  if idx
+    column_index = idx
+    break
+  end
+end
+exit 2 if column_index.nil?
+
+header_count = headers.length
+mismatch_count = 0
+empty_id_count = 0
+total_rows = 0
+
+total_rows += 1
+mismatch_count += 1 if first_row.size != header_count
+value = first_row[column_index].to_s.strip.gsub(/\A"|"\z/, "")
+empty_id_count += 1 if value.empty?
+
+csv.each do |row|
+  total_rows += 1
+  mismatch_count += 1 if row.size != header_count
+  value = row[column_index].to_s.strip.gsub(/\A"|"\z/, "")
+  empty_id_count += 1 if value.empty?
+end
+
+puts [total_rows, header_count, mismatch_count, empty_id_count].join("|")
+csv.close
+' "${csvFile}" "${delimiter}")
+    
+    local sanityExitCode=$?
+    if [[ ${sanityExitCode} -ne 0 ]]; then
+        warning "CSV sanity check failed (exit: ${sanityExitCode}); continuing"
+        return 0
+    fi
+    
+    local totalRows=""
+    local headerCount=""
+    local mismatchCount=""
+    local emptyIdCount=""
+    IFS='|' read -r totalRows headerCount mismatchCount emptyIdCount <<< "${sanityResults}"
+    
+    if [[ -z "${totalRows}" ]] || [[ -z "${headerCount}" ]]; then
+        warning "CSV sanity check returned unexpected output; continuing"
+        return 0
+    fi
+    
+    if [[ "${mismatchCount}" -gt 0 ]]; then
+        warning "CSV sanity check: ${mismatchCount} rows have ${headerCount} mismatch (out of ${totalRows})"
+    fi
+    
+    if [[ "${emptyIdCount}" -gt 0 ]]; then
+        warning "CSV sanity check: ${emptyIdCount} rows have empty Computer IDs (out of ${totalRows})"
+    fi
+    
+    if [[ "${mismatchCount}" -eq 0 ]] && [[ "${emptyIdCount}" -eq 0 ]]; then
+        info "CSV sanity check passed (${totalRows} rows, ${headerCount} columns)"
+    fi
 }
 
 
@@ -958,56 +1162,137 @@ function validateCsvFormat() {
 function extractJssIdColumn() {
     local csvFile="${1}"
     local tempFile="${csvFile}.jssids.tmp"
+    local extractExitCode=1
     
     # Read first line to check for header
     local firstLine=$(head -n 1 "${csvFile}" | tr -d '\r')
+    local firstLineLower="${firstLine:l}"
+    local delimiter="${csvDelimiter}"
+    local hasIdHeader="false"
     
-    # Check if first line contains "JSS Computer ID" header
-    if [[ "${firstLine}" == *"JSS Computer ID"* ]]; then
-        info "Detected CSV with 'JSS Computer ID' header; extracting IDs …" >&2
+    if [[ -z "${delimiter}" ]]; then
+        if [[ "${firstLine}" == *","* ]]; then
+            delimiter=","
+        elif [[ "${firstLine}" == *$'\t'* ]]; then
+            delimiter=$'\t'
+        elif [[ "${firstLine}" == *";"* ]]; then
+            delimiter=";"
+        fi
+    fi
+    
+    if [[ "${firstLineLower}" == *"jss computer id"* ]] || [[ "${firstLineLower}" == *"jamf pro computer id"* ]] || [[ "${firstLineLower}" == *"computer id"* ]]; then
+        hasIdHeader="true"
+    fi
+    
+    # Check if first line contains a Computer ID header
+    if [[ "${hasIdHeader}" == "true" ]]; then
+        info "Detected CSV with computer ID header; extracting IDs …" >&2
         
         # Determine if this is multi-column CSV
-        if [[ "${firstLine}" == *","* ]]; then
-            # Multi-column CSV - find the column index for "JSS Computer ID"
-            info "Multi-column CSV detected; locating 'JSS Computer ID' column …" >&2
-            
-            # Convert header line to array and find column index
-            local columnIndex=1
-            local currentIndex=1
-            local -a headers
-            IFS=',' read -A headers <<< "${firstLine}"
-            
-            for header in "${headers[@]}"; do
-                # Clean up header (remove quotes and whitespace)
-                header=$(echo "${header}" | sed 's/^[[:space:]]*"\{0,1\}//;s/"\{0,1\}[[:space:]]*$//')
+        if [[ -n "${delimiter}" ]]; then
+            # Multi-column CSV - parse with a CSV-aware parser if available
+            if command -v ruby >/dev/null 2>&1; then
                 if [[ "${debugMode}" == "true" ]]; then
-                    debug "Column ${currentIndex}: '${header}'" >&2
+                    debug "Using ruby CSV parser for reliable extraction" >&2
                 fi
-                if [[ "${header}" == "JSS Computer ID" ]]; then
-                    columnIndex=${currentIndex}
-                    info "Found 'JSS Computer ID' in column ${columnIndex}" >&2
-                    break
+                
+                /usr/bin/ruby -rcsv -e '
+csv_path = ARGV[0]
+out_path = ARGV[1]
+col_sep = ARGV[2]
+col_sep = "," if col_sep.nil? || col_sep.empty?
+
+header_candidates = ["jss computer id", "jamf pro computer id", "computer id"]
+
+csv = CSV.open(csv_path, "r:BOM|UTF-8", headers: true, col_sep: col_sep)
+first_row = csv.shift
+exit 1 if first_row.nil?
+
+headers = (first_row.headers || []).map { |h| h.to_s.sub(/\A\xEF\xBB\xBF/, "").strip.gsub(/\A"|"\z/, "").downcase }
+
+column_index = nil
+header_candidates.each do |candidate|
+  idx = headers.index(candidate)
+  if idx
+    column_index = idx
+    break
+  end
+end
+
+exit 2 if column_index.nil?
+
+File.open(out_path, "w") do |out|
+  value = first_row[column_index].to_s.strip.gsub(/\A"|"\z/, "")
+  out.puts(value) if value =~ /\A\d+\z/
+
+  csv.each do |row|
+    value = row[column_index].to_s.strip.gsub(/\A"|"\z/, "")
+    out.puts(value) if value =~ /\A\d+\z/
+  end
+end
+
+csv.close
+' "${csvFile}" "${tempFile}" "${delimiter}"
+                extractExitCode=$?
+                if [[ ${extractExitCode} -ne 0 ]]; then
+                    error "Ruby CSV parsing failed (exit: ${extractExitCode})" >&2
+                    return 1
                 fi
-                (( currentIndex++ ))
-            done
-            
-            # Extract the specific column (skip header, extract column by index)
-            # Set LC_ALL=C to handle multibyte characters in other columns
-            if [[ "${debugMode}" == "true" ]]; then
-                debug "Extracting column ${columnIndex} using awk with LC_ALL=C" >&2
+            else
+                info "ruby not found; falling back to awk parsing (multiline fields may be misread)" >&2
+                
+                # Convert header line to array and find column index
+                local columnIndex=0
+                local currentIndex=1
+                local -a headers
+                local IFS="${delimiter}"
+                read -r -A headers <<< "${firstLine}"
+                
+                for header in "${headers[@]}"; do
+                    # Clean up header (remove quotes and whitespace)
+                    header=$(printf "%s" "${header}" | sed 's/^[[:space:]]*"\{0,1\}//;s/"\{0,1\}[[:space:]]*$//')
+                    local headerLower="${header:l}"
+                    if [[ "${debugMode}" == "true" ]]; then
+                        debug "Column ${currentIndex}: '${header}'" >&2
+                    fi
+                    if [[ "${headerLower}" == "jss computer id" ]] || [[ "${headerLower}" == "jamf pro computer id" ]] || [[ "${headerLower}" == "computer id" ]]; then
+                        columnIndex=${currentIndex}
+                        info "Found computer ID header in column ${columnIndex}" >&2
+                        break
+                    fi
+                    (( currentIndex++ ))
+                done
+                
+                if [[ ${columnIndex} -le 0 ]]; then
+                    error "Failed to locate a computer ID column in CSV header" >&2
+                    return 1
+                fi
+                
+                # Extract the specific column (skip header, extract column by index)
+                # Set LC_ALL=C to handle multibyte characters in other columns
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "Extracting column ${columnIndex} using awk with LC_ALL=C" >&2
+                fi
+                
+                local awkDelimiter="${delimiter}"
+                case "${delimiter}" in
+                    $'\t') awkDelimiter='\t' ;;
+                esac
+                
+                tail -n +2 "${csvFile}" | LC_ALL=C awk -F"${awkDelimiter}" -v col="${columnIndex}" '{
+                    # Remove quotes and whitespace from the field
+                    gsub(/^[[:space:]]*"*|"*[[:space:]]*$/, "", $col);
+                    if ($col ~ /^[0-9]+$/) print $col
+                }' > "${tempFile}"
+                extractExitCode=$?
             fi
-            tail -n +2 "${csvFile}" | LC_ALL=C awk -F',' -v col="${columnIndex}" '{
-                # Remove quotes and whitespace from the field
-                gsub(/^[[:space:]]*"*|"*[[:space:]]*$/, "", $col);
-                if (length($col) > 0) print $col
-            }' > "${tempFile}"
-            
         else
             # Single-column CSV with header - just skip the header
-            tail -n +2 "${csvFile}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk '/./ {print; }' > "${tempFile}"
+            tail -n +2 "${csvFile}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk '/^[0-9]+$/ {print; }' > "${tempFile}"
+            extractExitCode=$?
         fi
         
-        if [[ $? -eq 0 ]] && [[ -f "${tempFile}" ]]; then
+        if [[ ${extractExitCode} -eq 0 ]] && [[ -f "${tempFile}" ]]; then
             # Count non-empty lines more reliably
             local extractedCount=$(grep -c . "${tempFile}" 2>/dev/null || echo "0")
             info "Extracted ${extractedCount} JSS Computer IDs from CSV" >&2
@@ -1037,10 +1322,12 @@ function extractJssIdColumn() {
 function getComputerById() {
     local computerId="${1}"
     local rawResponse
+    local responseWithCode
+    local httpStatus
     local computerInfo
-    
-    # Check and refresh token if needed before API call
-    checkAndRefreshToken
+    local attempt=1
+    local maxAttempts=3
+    local delay=2
     
     # Validate that identifier is numeric
     if [[ ! "${computerId}" =~ ^[0-9]+$ ]]; then
@@ -1055,40 +1342,81 @@ function getComputerById() {
         debug "API endpoint: ${apiUrl}/api/v1/computers-inventory-detail/${computerId}" >&2
     fi
     
-    # Get raw JSON and extract only the fields we need immediately
-    # This avoids storing the full response with extension attributes
-    rawResponse=$(
-        curl -H "Authorization: Bearer ${apiBearerToken}" \
-             -H "Accept: application/json" \
-             --max-time 30 \
-             -sfk \
-             "${apiUrl}/api/v1/computers-inventory-detail/${computerId}?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM" \
-             -X GET 2>/dev/null
-    )
-    
-    if [[ "${debugMode}" == "true" ]]; then
-        local responseSize=${#rawResponse}
-        debug "Raw API response size: ${responseSize} bytes" >&2
-    fi
-    
-    # Extract only the fields we need using jq on the raw response
-    # This filters out extension attributes and other bloat before we store it
-    computerInfo=$(printf "%s" "${rawResponse}" | jq -c '{id: .id, general: {name: .general.name, managementId: .general.managementId, declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled, lastContactTime: .general.lastContactTime}, hardware: {serialNumber: .hardware.serialNumber, modelIdentifier: .hardware.modelIdentifier}, operatingSystem: {version: .operatingSystem.version}}' 2>/dev/null)
-    
-    if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
+    while [[ ${attempt} -le ${maxAttempts} ]]; do
+        # Check and refresh token if needed before API call
+        checkAndRefreshToken
+        
+        responseWithCode=$(
+            curl -H "Authorization: Bearer ${apiBearerToken}" \
+                 -H "Accept: application/json" \
+                 --max-time 30 \
+                 -sfk -w "%{http_code}" \
+                 "${apiUrl}/api/v1/computers-inventory-detail/${computerId}?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM" \
+                 -X GET 2>/dev/null
+        )
+        
+        httpStatus="${responseWithCode: -3}"
+        rawResponse="${responseWithCode%???}"
+        
         if [[ "${debugMode}" == "true" ]]; then
-            debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
-            local filteredSize=${#computerInfo}
-            debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
+            local responseSize=${#rawResponse}
+            debug "Computer detail HTTP status: ${httpStatus}" >&2
+            debug "Raw API response size: ${responseSize} bytes" >&2
         fi
-        echo "${computerInfo}"
-        return 0
-    fi
+        
+        if [[ "${httpStatus}" == "200" ]]; then
+            # Extract only the fields we need using jq on the raw response
+            # This filters out extension attributes and other bloat before we store it
+            computerInfo=$(printf "%s" "${rawResponse}" | jq -c '{id: .id, general: {name: .general.name, managementId: .general.managementId, declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled, lastContactTime: .general.lastContactTime}, hardware: {serialNumber: .hardware.serialNumber, modelIdentifier: .hardware.modelIdentifier}, operatingSystem: {version: .operatingSystem.version}}' 2>/dev/null)
+            
+            if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
+                    local filteredSize=${#computerInfo}
+                    debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
+                fi
+                echo "${computerInfo}"
+                return 0
+            fi
+            
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Failed to parse JSON for Computer ID ${computerId}" >&2
+            fi
+            return 1
+        fi
+        
+        if [[ "${httpStatus}" == "401" ]]; then
+            info "Token expired during computer lookup; refreshing …" >&2
+            if refreshBearerToken; then
+                (( attempt++ ))
+                continue
+            fi
+            return 1
+        fi
+        
+        if [[ "${httpStatus}" == "404" ]]; then
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Computer ID ${computerId} not found (HTTP 404)" >&2
+            fi
+            return 2
+        fi
+        
+        if [[ "${httpStatus}" == "429" ]] || [[ "${httpStatus}" =~ ^5 ]]; then
+            if [[ ${attempt} -lt ${maxAttempts} ]]; then
+                warning "Computer lookup failed with HTTP ${httpStatus}; retrying in ${delay} seconds (attempt ${attempt}/${maxAttempts})" >&2
+                sleep ${delay}
+                delay=$((delay * 2))
+                (( attempt++ ))
+                continue
+            fi
+        fi
+        
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Computer ID ${computerId} not found or API error (HTTP ${httpStatus})" >&2
+        fi
+        return 1
+    done
     
-    # Not found or error
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "Computer ID ${computerId} not found or API error" >&2
-    fi
     return 1
 }
 
@@ -1101,10 +1429,12 @@ function getComputerById() {
 function getComputerIdBySerialNumber() {
     local serialNumber="${1}"
     local rawResponse
+    local responseWithCode
+    local httpStatus
     local computerId
-    
-    # Check and refresh token if needed before API call
-    checkAndRefreshToken
+    local attempt=1
+    local maxAttempts=3
+    local delay=2
     
     if [[ -z "${serialNumber}" ]]; then
         if [[ "${debugMode}" == "true" ]]; then
@@ -1118,46 +1448,82 @@ function getComputerIdBySerialNumber() {
         debug "API endpoint: ${apiUrl}/api/v1/computers-inventory" >&2
     fi
     
-    # Use Modern API with filter to find computer by serial number
-    rawResponse=$(
-        curl -H "Authorization: Bearer ${apiBearerToken}" \
-             -H "Accept: application/json" \
-             --max-time 30 \
-             -sfk \
-             "${apiUrl}/api/v1/computers-inventory?section=GENERAL&page=0&page-size=1&filter=hardware.serialNumber%3D%3D%22${serialNumber}%22" \
-             -X GET 2>/dev/null
-    )
-    
-    if [[ "${debugMode}" == "true" ]]; then
-        local responseSize=${#rawResponse}
-        debug "Raw API response size: ${responseSize} bytes" >&2
-    fi
-    
-    # Check if we got results
-    local totalCount=$(printf "%s" "${rawResponse}" | jq -r '.totalCount // 0' 2>/dev/null)
-    
-    if [[ "${totalCount}" -eq 0 ]]; then
+    while [[ ${attempt} -le ${maxAttempts} ]]; do
+        # Check and refresh token if needed before API call
+        checkAndRefreshToken
+        
+        # Use Modern API with filter to find computer by serial number
+        responseWithCode=$(
+            curl -H "Authorization: Bearer ${apiBearerToken}" \
+                 -H "Accept: application/json" \
+                 --max-time 30 \
+                 -sfk -w "%{http_code}" \
+                 "${apiUrl}/api/v1/computers-inventory?section=GENERAL&page=0&page-size=1&filter=hardware.serialNumber%3D%3D%22${serialNumber}%22" \
+                 -X GET 2>/dev/null
+        )
+        
+        httpStatus="${responseWithCode: -3}"
+        rawResponse="${responseWithCode%???}"
+        
         if [[ "${debugMode}" == "true" ]]; then
-            debug "No computer found with Serial Number: ${serialNumber}" >&2
+            local responseSize=${#rawResponse}
+            debug "Computer lookup HTTP status: ${httpStatus}" >&2
+            debug "Raw API response size: ${responseSize} bytes" >&2
+        fi
+        
+        if [[ "${httpStatus}" == "200" ]]; then
+            # Check if we got results
+            local totalCount=$(printf "%s" "${rawResponse}" | jq -r '.totalCount // 0' 2>/dev/null)
+            
+            if [[ "${totalCount}" -eq 0 ]]; then
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "No computer found with Serial Number: ${serialNumber}" >&2
+                fi
+                return 2
+            fi
+            
+            # Extract the computer ID from the first result
+            computerId=$(printf "%s" "${rawResponse}" | jq -r '.results[0].id // empty' 2>/dev/null)
+            
+            if [[ -n "${computerId}" ]] && [[ "${computerId}" != "null" ]]; then
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "Successfully resolved Serial Number ${serialNumber} to Computer ID ${computerId}" >&2
+                fi
+                echo "${computerId}"
+                return 0
+            fi
+            
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Failed to resolve Serial Number ${serialNumber} to Computer ID" >&2
+            fi
+            return 1
+        fi
+        
+        if [[ "${httpStatus}" == "401" ]]; then
+            info "Token expired during serial lookup; refreshing …" >&2
+            if refreshBearerToken; then
+                (( attempt++ ))
+                continue
+            fi
+            return 1
+        fi
+        
+        if [[ "${httpStatus}" == "429" ]] || [[ "${httpStatus}" =~ ^5 ]]; then
+            if [[ ${attempt} -lt ${maxAttempts} ]]; then
+                warning "Serial lookup failed with HTTP ${httpStatus}; retrying in ${delay} seconds (attempt ${attempt}/${maxAttempts})" >&2
+                sleep ${delay}
+                delay=$((delay * 2))
+                (( attempt++ ))
+                continue
+            fi
+        fi
+        
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "Failed to resolve Serial Number ${serialNumber} to Computer ID (HTTP ${httpStatus})" >&2
         fi
         return 1
-    fi
+    done
     
-    # Extract the computer ID from the first result
-    computerId=$(printf "%s" "${rawResponse}" | jq -r '.results[0].id // empty' 2>/dev/null)
-    
-    if [[ -n "${computerId}" ]] && [[ "${computerId}" != "null" ]]; then
-        if [[ "${debugMode}" == "true" ]]; then
-            debug "Successfully resolved Serial Number ${serialNumber} to Computer ID ${computerId}" >&2
-        fi
-        echo "${computerId}"
-        return 0
-    fi
-    
-    # Not found or error
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "Failed to resolve Serial Number ${serialNumber} to Computer ID" >&2
-    fi
     return 1
 }
 
@@ -1214,72 +1580,80 @@ function getDdmStatusItems() {
     local ddmStatusAndCode
     local httpStatus
     local ddmStatus
-    
-    # Check and refresh token if needed before API call
-    checkAndRefreshToken
+    local attempt=1
+    local maxAttempts=3
+    local delay=2
     
     if [[ "${debugMode}" == "true" ]]; then
         debug "Calling DDM status endpoint for Management ID: ${managementId}" >&2
         debug "API endpoint: ${apiUrl}/api/v1/ddm/${managementId}/status-items" >&2
     fi
     
-    ddmStatusAndCode=$(
-        curl -H "Authorization: Bearer ${apiBearerToken}" \
-             -H "Accept: application/json" \
-             --max-time 30 \
-             -sfk -w "%{http_code}" \
-             "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
-             -X GET 2>/dev/null
-    )
-    
-    httpStatus="${ddmStatusAndCode: -3}"
-    ddmStatus="${ddmStatusAndCode%???}"
-    
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "DDM status HTTP response: ${httpStatus}" >&2
-        if [[ "${httpStatus}" == "200" ]]; then
-            local statusItemCount=$(printf "%s" "${ddmStatus}" | grep -o '"key":' | wc -l | tr -d ' ')
-            debug "DDM status items count: ${statusItemCount}" >&2
-        fi
-    fi
-    
-    # Handle 401 with token refresh
-    if [[ "${httpStatus}" == "401" ]]; then
-        info "Token expired during DDM status retrieval; refreshing …" >&2
-        if refreshBearerToken; then
-            info "Token refreshed successfully. Retrying DDM status retrieval for Management ID ${managementId} …" >&2
-            ddmStatusAndCode=$(
-                curl -H "Authorization: Bearer ${apiBearerToken}" \
-                     -H "Accept: application/json" \
-                     --max-time 30 \
-                     -sfk -w "%{http_code}" \
-                     "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
-                     -X GET 2>/dev/null
-            )
-            httpStatus="${ddmStatusAndCode: -3}"
-            ddmStatus="${ddmStatusAndCode%???}"
-        else
-            error "Failed to refresh token during DDM status retrieval for Management ID ${managementId}" >&2
-            return 1
-        fi
-    fi
-    
-    if [[ "${httpStatus}" == "200" ]]; then
-        echo "${ddmStatus}"
-        return 0
-    fi
-    
-    # Handle 404 - no status items available yet (not an error)
-    if [[ "${httpStatus}" == "404" ]]; then
+    while [[ ${attempt} -le ${maxAttempts} ]]; do
+        # Check and refresh token if needed before API call
+        checkAndRefreshToken
+        
+        ddmStatusAndCode=$(
+            curl -H "Authorization: Bearer ${apiBearerToken}" \
+                 -H "Accept: application/json" \
+                 --max-time 30 \
+                 -sfk -w "%{http_code}" \
+                 "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
+                 -X GET 2>/dev/null
+        )
+        
+        httpStatus="${ddmStatusAndCode: -3}"
+        ddmStatus="${ddmStatusAndCode%???}"
+        
         if [[ "${debugMode}" == "true" ]]; then
-            debug "No DDM status items available (HTTP 404) for Management ID: ${managementId}" >&2
+            debug "DDM status HTTP response: ${httpStatus}" >&2
+            if [[ "${httpStatus}" == "200" ]]; then
+                local statusItemCount=$(printf "%s" "${ddmStatus}" | grep -o '"key":' | wc -l | tr -d ' ')
+                debug "DDM status items count: ${statusItemCount}" >&2
+            fi
         fi
-        return 2  # Special return code for "no data available"
-    fi
-    
-    if [[ "${debugMode}" == "true" ]]; then
-        debug "DDM status retrieval failed with HTTP ${httpStatus} for Management ID: ${managementId}" >&2
-    fi
+        
+        if [[ "${httpStatus}" == "200" ]]; then
+            echo "${ddmStatus}"
+            return 0
+        fi
+        
+        # Handle 404 - no status items available yet (not an error)
+        if [[ "${httpStatus}" == "404" ]]; then
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "No DDM status items available (HTTP 404) for Management ID: ${managementId}" >&2
+            fi
+            return 2  # Special return code for "no data available"
+        fi
+        
+        # Handle 401 with token refresh
+        if [[ "${httpStatus}" == "401" ]]; then
+            info "Token expired during DDM status retrieval; refreshing …" >&2
+            if refreshBearerToken; then
+                info "Token refreshed successfully. Retrying DDM status retrieval for Management ID ${managementId} …" >&2
+                (( attempt++ ))
+                continue
+            else
+                error "Failed to refresh token during DDM status retrieval for Management ID ${managementId}" >&2
+                return 1
+            fi
+        fi
+        
+        if [[ "${httpStatus}" == "429" ]] || [[ "${httpStatus}" =~ ^5 ]]; then
+            if [[ ${attempt} -lt ${maxAttempts} ]]; then
+                warning "DDM status retrieval failed with HTTP ${httpStatus}; retrying in ${delay} seconds (attempt ${attempt}/${maxAttempts})" >&2
+                sleep ${delay}
+                delay=$((delay * 2))
+                (( attempt++ ))
+                continue
+            fi
+        fi
+        
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "DDM status retrieval failed with HTTP ${httpStatus} for Management ID: ${managementId}" >&2
+        fi
+        return 1
+    done
     
     return 1
 }
@@ -1573,6 +1947,10 @@ while [[ $# -gt 0 ]]; do
                 die "Error: --max-jobs requires a numeric argument"
             fi
             ;;
+        --no-open)
+            noOpen="true"
+            shift
+            ;;
         -*)
             # Unknown flag - fail fast
             die "Error: Unknown flag '$1'. Use --help for usage information."
@@ -1784,11 +2162,18 @@ if [[ "${singleLookupMode}" != "yes" ]]; then
         info "The filename '${filename}' contains ${filenameNumberOfLines} lines; proceeding …"
         printf "${green}✓${resetColor} CSV file contains ${filenameNumberOfLines} lines\n"
         
-        # Validate CSV format (single column only)
+        # Validate CSV format (single or multi-column with Computer ID header)
         if ! validateCsvFormat "${filename}"; then
-            die "CSV format validation failed. Please provide a single-column CSV file."
+            die "CSV format validation failed. Please provide a valid CSV file with computer IDs."
         fi
-        printf "${green}✓${resetColor} CSV format validated (single column)\n"
+        if [[ "${csvFormat}" == "multi" ]]; then
+            printf "${green}✓${resetColor} CSV format validated (multi-column; delimiter: ${csvDelimiterLabel})\n"
+        else
+            printf "${green}✓${resetColor} CSV format validated (single column)\n"
+        fi
+
+        # Optional sanity check for multi-column CSVs
+        csvSanityCheck "${filename}"
         
         # Extract JSS Computer ID column if CSV has headers
         processedFilename=$(extractJssIdColumn "${filename}")
@@ -2230,6 +2615,45 @@ waitForJobs() {
 }
 
 
+function pruneJobPids() {
+    local -a alivePids=()
+    
+    for pid in "${jobPids[@]}"; do
+        if kill -0 "${pid}" 2>/dev/null; then
+            alivePids+=("${pid}")
+        fi
+    done
+    
+    jobPids=("${alivePids[@]}")
+}
+
+
+function waitForAvailableJobSlot() {
+    local maxJobs="${1}"
+    
+    while true; do
+        pruneJobPids
+        
+        if [[ ${#jobPids[@]} -lt ${maxJobs} ]]; then
+            break
+        fi
+        
+        sleep 0.1
+    done
+}
+
+
+function waitForAllJobPids() {
+    pruneJobPids
+    
+    for pid in "${jobPids[@]}"; do
+        wait "${pid}" 2>/dev/null
+    done
+    
+    jobPids=()
+}
+
+
 
 ####################################################################################################
 #
@@ -2246,10 +2670,10 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     ################################################################################################
     
     info "Starting parallel processing with ${maxParallelJobs} concurrent jobs"
+    parallelStartTime="${SECONDS}"
     
     # Create temporary directory for parallel job results
     tempDir=$(mktemp -d "${TMPDIR:-/tmp}/jamf-ddm-parallel.XXXXXX")
-    trap "rm -rf '${tempDir}'" EXIT
     
     # Read all identifiers into array
     declare -a identifiers
@@ -2262,13 +2686,19 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     
     totalRecords="${#identifiers[@]}"
     info "Processing ${totalRecords} computers in parallel mode"
+    if [[ "${debugMode}" == "true" ]]; then
+        printf "${cyan}[DEBUG]${resetColor} Parallel mode: per-record details are written to the log\n"
+    fi
     
     # Process each computer in parallel
     for identifier in "${identifiers[@]}"; do
         (( counter++ ))
         
         # Wait if we've reached the max parallel jobs
-        waitForJobs "${maxParallelJobs}"
+        waitForAvailableJobSlot "${maxParallelJobs}"
+        
+        local progressPercent=$((counter * 100 / totalRecords))
+        printf "${blue}[ ${counter}/${totalRecords} (${progressPercent}%%) ]${resetColor} Processing Jamf Pro Computer ID: ${identifier} …\n"
         
         # Launch background job with its own temp files
         tempCsvFile="${tempDir}/result_${counter}.csv"
@@ -2277,7 +2707,9 @@ if [[ "${parallelProcessing}" == "true" ]]; then
         (
             scriptLog="${tempLogFile}"
             processComputer "${identifier}" "${counter}" "${totalRecords}" "${tempCsvFile}"
-        ) &!
+        ) > "${tempLogFile}" 2>&1 &
+        
+        jobPids+=("$!")
         
         if [[ "${debugMode}" == "true" ]]; then
             debug "Launched background job ${counter} (PID: $!) for identifier: ${identifier}"
@@ -2286,7 +2718,21 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     
     # Wait for all remaining jobs to complete
     info "Waiting for all parallel jobs to complete …"
-    waitForJobs 0
+    waitForAllJobPids
+    
+    # Parallel diagnostics (before merge)
+    resultFileCount=$(find "${tempDir}" -maxdepth 1 -name 'result_*.csv' 2>/dev/null | wc -l | tr -d ' ')
+    logFileCount=$(find "${tempDir}" -maxdepth 1 -name 'log_*.txt' 2>/dev/null | wc -l | tr -d ' ')
+    info "Parallel diagnostics: total=${totalRecords}, maxJobs=${maxParallelJobs}, resultFiles=${resultFileCount}, logFiles=${logFileCount}"
+    if [[ "${debugMode}" == "true" ]]; then
+        printf "${cyan}[DEBUG]${resetColor} Parallel diagnostics: total=${totalRecords}, maxJobs=${maxParallelJobs}, resultFiles=${resultFileCount}, logFiles=${logFileCount}\n"
+    fi
+    if [[ "${resultFileCount}" != "${totalRecords}" ]]; then
+        warning "Parallel diagnostics: expected ${totalRecords} result files; found ${resultFileCount}"
+        if [[ "${debugMode}" == "true" ]]; then
+            printf "${yellow}⚠${resetColor} Parallel diagnostics: expected ${totalRecords} result files; found ${resultFileCount}\n"
+        fi
+    fi
     
     info "All parallel jobs completed. Merging results …"
     
@@ -2302,37 +2748,18 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     for ((i=1; i<=totalRecords; i++)); do
         tempLogFile="${tempDir}/log_${i}.txt"
         if [[ -f "${tempLogFile}" ]]; then
-            cat "${tempLogFile}" >> "${scriptLog}"
+            /usr/bin/sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g' "${tempLogFile}" >> "${scriptLog}"
             rm "${tempLogFile}"
         fi
     done
     
-    info "Results merged successfully"
+    parallelElapsed=$((SECONDS - parallelStartTime))
+    parallelElapsedFormatted=$(printf '%dh:%dm:%ds' $((parallelElapsed/3600)) $((parallelElapsed%3600/60)) $((parallelElapsed%60)))
+    info "Results merged successfully (parallel elapsed: ${parallelElapsedFormatted})"
+    if [[ "${debugMode}" == "true" ]]; then
+        printf "${cyan}[DEBUG]${resetColor} Parallel elapsed time: ${parallelElapsedFormatted}\n"
+    fi
 
-    # Wait for all remaining jobs to complete
-    info "Waiting for all parallel jobs to complete …"
-    waitForJobs 0
-    
-    info "All parallel jobs completed. Merging results …"
-    
-    # Merge all temporary CSV files in order
-    for ((i=1; i<=totalRecords; i++)); do
-        tempCsvFile="$$   {tempDir}/result_   $${i}.csv"
-        if [[ -f "${tempCsvFile}" ]]; then
-            cat "$$   {tempCsvFile}" >> "   $${csvOutput}"
-        fi
-    done
-
-    # Merge per-job log files in order (prevents interleaved log entries)
-    for ((i=1; i<=totalRecords; i++)); do
-        tempLogFile="$$   {tempDir}/log_   $${i}.txt"
-        if [[ -f "${tempLogFile}" ]]; then
-            cat "$$   {tempLogFile}" >> "   $${scriptLog}"
-        fi
-    done
-    
-    info "Results merged successfully"
-    
 else
     
     ################################################################################################
@@ -2342,8 +2769,6 @@ else
     # Process each line in the CSV as a Jamf Pro Computer ID
     while IFS= read -r identifier; do
         
-        local recordStartTime="${SECONDS}"
-
         # Strip CR and BOM (in case of UTF-8 BOM in the file)
         identifier=$(printf "%s" "${identifier}" | tr -d '\r' | sed 's/^\xEF\xBB\xBF//')
         
@@ -2371,12 +2796,66 @@ fi
 info "Calculating statistics from results …"
 
 # Count various conditions from the CSV (skip header line)
-ddmEnabledCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$10 == "\"true\""' | wc -l | tr -d ' ')
-ddmDisabledCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$10 == "\"false\"" || $10 == "\"DDM Disabled\""' | wc -l | tr -d ' ')
-failedBlueprintsCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$12 != "\"None\"" && $12 != "\"\"" && $12 != "\"DDM Disabled\"" && $12 != "\"No status items\"" && $12 != "\"API Error\""' | wc -l | tr -d ' ')
-pendingUpdatesCount=$(tail -n +2 "${csvOutput}" | awk -F',' '$7 != "\"None\"" && $7 != "\"\"" && $7 != "\"DDM Disabled\"" && $7 != "\"No status items\"" && $7 != "\"API Error\""' | wc -l | tr -d ' ')
-errorCount=$(tail -n +2 "${csvOutput}" | grep -c '"API Error"')
-notFoundCount=$(tail -n +2 "${csvOutput}" | grep -c '"Not Found"')
+if command -v ruby >/dev/null 2>&1; then
+    statsResults=$(/usr/bin/ruby -rcsv -e '
+csv_path = ARGV[0]
+
+counts = {
+  ddm_enabled: 0,
+  ddm_disabled: 0,
+  failed_blueprints: 0,
+  pending_updates: 0,
+  api_errors: 0,
+  not_found: 0
+}
+
+CSV.foreach(csv_path, headers: true) do |row|
+  ddm = row["DDM Enabled"].to_s
+  if ddm == "true"
+    counts[:ddm_enabled] += 1
+  elsif ddm == "false" || ddm == "DDM Disabled"
+    counts[:ddm_disabled] += 1
+  end
+
+  failed = row["Failed Blueprints"].to_s
+  if !failed.empty? && failed != "None" && failed != "DDM Disabled" && failed != "No status items" && failed != "API Error"
+    counts[:failed_blueprints] += 1
+  end
+
+  pending = row["Pending Updates"].to_s
+  if !pending.empty? && pending != "None" && pending != "DDM Disabled" && pending != "No status items" && pending != "API Error"
+    counts[:pending_updates] += 1
+  end
+
+  if row.fields.any? { |v| v.to_s.include?("API Error") }
+    counts[:api_errors] += 1
+  end
+
+  if row.fields.any? { |v| v.to_s == "Not Found" }
+    counts[:not_found] += 1
+  end
+end
+
+puts [
+  counts[:ddm_enabled],
+  counts[:ddm_disabled],
+  counts[:failed_blueprints],
+  counts[:pending_updates],
+  counts[:api_errors],
+  counts[:not_found]
+].join("|")
+' "${csvOutput}")
+    
+    IFS='|' read -r ddmEnabledCount ddmDisabledCount failedBlueprintsCount pendingUpdatesCount errorCount notFoundCount <<< "${statsResults}"
+else
+    warning "Ruby not found; statistics may be inaccurate"
+    ddmEnabledCount=0
+    ddmDisabledCount=0
+    failedBlueprintsCount=0
+    pendingUpdatesCount=0
+    errorCount=0
+    notFoundCount=0
+fi
 
 # Ensure counts are valid numbers
 ddmEnabledCount=${ddmEnabledCount:-0}
@@ -2413,9 +2892,13 @@ printf "\n"
 info "\n\n\nProcessing complete!"
 info "Processed ${counter} records."
 info "CSV output saved to: ${csvOutput}"
+info "CSV rows: ${counter} (extracted IDs: ${filenameNumberOfLines:-0})"
 
 printf "${green}✓${resetColor} Processing complete!\n"
 printf "${green}✓${resetColor} Processed ${counter} records\n"
+if [[ -n "${filenameNumberOfLines}" ]]; then
+    printf "${cyan}CSV rows:${resetColor} ${counter} (extracted IDs: ${filenameNumberOfLines})\n"
+fi
 
 # Display summary statistics
 printf "${cyan}\nSummary Statistics:${resetColor}\n"
@@ -2434,6 +2917,7 @@ info "  Computers with Failed Blueprints: ${failedBlueprintsCount}"
 info "  Computers with Pending Updates: ${pendingUpdatesCount}"
 info "  API Errors: ${errorCount}"
 info "  Not Found: ${notFoundCount}"
+info "  CSV rows: ${counter} (extracted IDs: ${filenameNumberOfLines:-0})"
 info "  Total Elapsed Time: $(printf '%dh:%dm:%ds' $((SECONDS/3600)) $((SECONDS%3600/60)) $((SECONDS%60)))"
 
 printf "${green}✓${resetColor} CSV output saved to: ${csvOutput}\n\n"
@@ -2453,14 +2937,19 @@ if [[ "${processedFilename}" != "${filename}" ]] && [[ -f "${processedFilename}"
 fi
 
 # Open log and CSV files (single lookup mode exits early, so this is only for batch mode)
-info "\n\nOpening log and CSV files …\n\n"
-printf "Opening log and CSV files …\n\n"
-if [[ "${debugMode}" == "true" ]]; then
-    debug "Opening log file: ${scriptLog}"
-    debug "Opening CSV file: ${csvOutput}"
+if [[ "${noOpen}" == "true" ]]; then
+    info "Skipping auto-open of log and CSV files (--no-open specified)"
+    printf "Skipping auto-open of log and CSV files (--no-open specified)\n\n"
+else
+    info "\n\nOpening log and CSV files …\n\n"
+    printf "Opening log and CSV files …\n\n"
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Opening log file: ${scriptLog}"
+        debug "Opening CSV file: ${csvOutput}"
+    fi
+    open "${scriptLog}" >/dev/null 2>&1 &!
+    open "${csvOutput}" >/dev/null 2>&1 &!
 fi
-open "${scriptLog}" >/dev/null 2>&1 &!
-open "${csvOutput}" >/dev/null 2>&1 &!
 
 printf "${dividerLine}\n\n"
 

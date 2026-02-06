@@ -9,19 +9,20 @@ gantt
     axisFormat %b %d
     
     section User Experience
-    Normal Mac Usage            :done, normal, 2026-01-01, 30d
-    Standard Dialog             :active, standard, 2026-01-31, 15d
-    Blurscreen Dialog           :crit, blur, 2026-02-15, 42d
-    Urgent Dialog               :urgent, 2026-03-29, 3d
-    Apple Forces Update         :milestone, force, 2026-04-01, 1d
+    Normal Mac Usage            :done, normal, 2026-05-03, 30d
+    Standard Dialog             :active, standard, 2026-06-02, 15d
+    Blurscreen Dialog           :crit, blur, 2026-06-17, 24d
+    Urgent Dialog               :urgent, 2026-07-11, 21d
+    Apple Forces Update         :milestone, force, 2026-08-01, 1d
     
     section Key Milestones
-    First Reminder              :milestone, m1, 2026-01-31, 0d
-    Blurscreen Activates        :milestone, m2, 2026-02-15, 0d
-    Button Hidden               :milestone, m3, 2026-03-11, 0d
-    Ignores Meetings            :milestone, m4, 2026-03-31, 0d
-    DDM Deadline                :milestone, m5, 2026-04-01, 0d
+    First Reminder              :milestone, m1, 2026-06-02, 0d
+    Blurscreen Activates        :milestone, m2, 2026-06-17, 0d
+    Button Disabled/Hidden      :milestone, m3, 2026-07-11, 0d
+    DDM Deadline                :milestone, m4, 2026-08-01, 0d
 ```
+
+**Note**: Dates above are an illustrative example only, not tied to a specific enforcement schedule.
 
 ## Timeline Phases
 
@@ -64,7 +65,7 @@ gantt
 - ℹ️ Informational tone
 - 📅 Shows days remaining
 - 🔄 Displayed 2x daily (8am, 4pm)
-- 🤝 Respects Focus mode and meetings
+- 🤝 Respects meeting detection
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
@@ -78,7 +79,7 @@ gantt
 ---
 
 ### Phase 3: Blurscreen Warnings (Escalating Urgency)
-**Timeline**: 44 to 3 days before deadline (configurable range)
+**Timeline**: 44 to 21 days before deadline (configurable range)
 
 **Dialog Appearance**:
 ```
@@ -90,7 +91,7 @@ gantt
 ║  ⚠️  Only 14 days remaining!                    ║
 ║                                                 ║
 ║  Your Mac will automatically restart and        ║
-║  update on Fri, 31-Mar-2026 if not updated.    ║
+║  update on Sat, 01-Aug-2026 if not updated.    ║
 ║                                                 ║
 ║  [Open Software Update]  [Remind Me Later]     ║
 ║                                                 ║
@@ -104,7 +105,7 @@ gantt
 - 🔴 Visual urgency increased
 - 📅 Emphasizes days remaining
 - 🔄 Still 2x daily
-- 🤝 Still respects Focus mode and meetings (if >24hrs remaining)
+- 🤝 Respects meeting detection
 
 **Visual Effect**:
 - Background desktop blurred/dimmed
@@ -123,7 +124,7 @@ gantt
 ---
 
 ### Phase 4: Urgent/Critical (Deadline Imminent)
-**Timeline**: 3 days or less before deadline (configurable)
+**Timeline**: 21 days or less before deadline (configurable)
 
 **Dialog Appearance**:
 ```
@@ -135,7 +136,7 @@ gantt
 ║  🚨 CRITICAL: Only 2 days remaining!            ║
 ║                                                 ║
 ║  Your Mac WILL automatically restart and        ║
-║  update on Wed, 01-Apr-2026, 8:00 AM            ║
+║  update on Sat, 01-Aug-2026, 8:00 AM            ║
 ║  if you do not update before the deadline.      ║
 ║                                                 ║
 ║  [Open Software Update]  [Remind Me Later] ❌  ║
@@ -151,8 +152,6 @@ gantt
 - 🚨 Urgent/critical messaging
 - ⏰ Shows specific deadline date/time
 - 🔄 Still 2x daily (may increase frequency in custom config)
-- 🚫 **Ignores Focus mode** if <24 hours
-- 🚫 **Ignores meeting detection** if <24 hours
 
 **Key Change**: User can no longer postpone
 
@@ -195,14 +194,13 @@ gantt
 
 ## Configuration Matrix
 
-| Days to Deadline | Blurscreen | Button 2 | Ignores Focus | Ignores Meetings | Frequency |
-|------------------|------------|----------|---------------|------------------|-----------|
-| 60+ days         | ❌ No      | ✅ Enabled | ❌ No         | ❌ No            | None (too early) |
-| 45-60 days       | ❌ No      | ✅ Enabled | ❌ No         | ❌ No            | 2x daily |
-| 3-44 days        | ✅ Yes     | ✅ Enabled | ❌ No         | ❌ No            | 2x daily |
-| 1-3 days         | ✅ Yes     | ❌ Disabled | ❌ No         | ❌ No            | 2x daily |
-| <24 hours        | ✅ Yes     | ❌ Disabled | ✅ Yes        | ✅ Yes           | 2x daily |
-| 0 (deadline)     | N/A        | N/A      | N/A           | N/A              | Apple forces update |
+| Days to Deadline | Blurscreen | Button 2 | Meeting Deferral | Frequency |
+|------------------|------------|----------|------------------|-----------|
+| 60+ days         | ❌ No      | ✅ Enabled | N/A              | None (too early) |
+| 45-60 days       | ❌ No      | ✅ Enabled | ✅ Yes           | 2x daily |
+| 21-44 days       | ✅ Yes     | ✅ Enabled | ✅ Yes           | 2x daily |
+| 1-21 days        | ✅ Yes     | ❌ Disabled | ✅ Yes          | 2x daily |
+| 0 (deadline)     | N/A        | N/A      | N/A              | Apple forces update |
 
 ## Customizing the Timeline
 
@@ -266,23 +264,12 @@ DaysBeforeDeadlineHidingButton2 = 21
 - 1.5-month blurscreen
 - 3-week urgency escalation
 
-## Visual Progression Examples
+## Visual Examples (See `images/`)
 
-### Day -60: First Reminder
-![Standard Dialog](../images/standard-dialog-example.png)
-*Clean, informational dialog with both buttons enabled*
-
-### Day -30: Blurscreen Active
-![Blurscreen Dialog](../images/blurscreen-dialog-example.png)
-*Background dimmed, increased visual urgency*
-
-### Day -2: Urgent/Critical
-![Urgent Dialog](../images/urgent-dialog-example.png)
-*"Remind Me Later" button disabled/hidden, critical messaging*
-
-### Day 0: Apple Enforcement
-![Apple Update Screen](../images/apple-enforcement.png)
-*Apple's forced update process begins*
+- `images/ddmOSReminder_swiftDialog_1.png` — Primary reminder dialog example
+- `images/ddmOSReminder_swiftDialog_2.png` — Support info dialog example
+- `images/ddmOSReminder_Demo.png` — Demo mode example
+- `images/ddmOSReminder_Notification.png` — macOS notification comparison
 
 ---
 
@@ -311,7 +298,7 @@ If free disk space below threshold:
 Between dialog displays (same day):
 - Prevents excessive nagging
 - Enforces minimum time between reminders
-- Typically several hours
+- Default: 76 minutes
 - Configurable per organization
 
 ---
@@ -319,7 +306,7 @@ Between dialog displays (same day):
 ## FAQ
 
 **Q: Can users bypass the reminders?**  
-A: During early phases (>3 days), yes—users can postpone. In urgent phase (<3 days), Button 2 is disabled. At deadline (Day 0), Apple DDM forces the update regardless.
+A: During early phases (>21 days), yes—users can postpone. In urgent phase (<21 days), Button 2 is disabled. At deadline (Day 0), Apple DDM forces the update regardless.
 
 **Q: What if user is on vacation during deadline?**  
 A: Mac will update automatically at deadline per Apple DDM enforcement. User returns to updated Mac. This is why early reminders (60 days) are important.

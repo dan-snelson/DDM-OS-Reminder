@@ -60,7 +60,7 @@ flowchart TD
     DeployTestProfile --> RunTestScript[▶️ Execute Script<br/>on Test Mac]
     RunTestScript --> VerifyTest[✅ Verify Installation<br/>- LaunchDaemon loaded?<br/>- Script in place?<br/>- Logs created?]
     
-    VerifyTest --> TriggerTest["🎬 Trigger Test Display<br>Option 1: Wait for schedule<br>Option 2: Manual sudo zsh path/dor.zsh demo"]
+    VerifyTest --> TriggerTest["🎬 Trigger Test Display<br>Option 1: Wait for schedule<br>Option 2: zsh reminderDialog.zsh demo"]
     
     TriggerTest --> ReviewDialog{Dialog Displays<br/>Correctly?}
     
@@ -85,7 +85,7 @@ flowchart TD
     CreatePolicy --> DeployProdProfile[⬆️ Deploy Config Profile<br/>to Production Scope]
     DeployProdProfile --> ProdComplete
     
-    SelfExtract --> RunDeploy[▶️ Run .deployDDMOSReminder.zsh<br/>Creates self-contained script]
+    SelfExtract --> RunDeploy[▶️ Run Resources/createSelfExtracting.zsh<br/>Creates self-contained script]
     RunDeploy --> UploadSelfExtract[⬆️ Upload Self-Extracting Script]
     UploadSelfExtract --> CreateSEPolicy[📝 Create Policy for<br/>Self-Extracting Script]
     CreateSEPolicy --> DeployProdProfile
@@ -275,7 +275,7 @@ zsh assemble.zsh
 2. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.3.0)
+🧩 Assemble DDM OS Reminder (2.4.0)
 ===============================================================
 
 Full Paths:
@@ -384,7 +384,7 @@ tail -50 /var/log/org.churchofjesuschrist.log
 
 Expected output:
 ```
-[PRE-FLIGHT]      DDM OS Reminder (2.3.0)
+[PRE-FLIGHT]      DDM OS Reminder (2.4.0)
 [PRE-FLIGHT]      Initiating …
 [NOTICE]          Reset All Configuration Files …
 [NOTICE]          Create 'DDM OS Reminder' script
@@ -393,12 +393,13 @@ Expected output:
 
 #### 4.5 Test Dialog Display
 
-**Option 1: Wait for Schedule** (8am or 4pm)
+**Option 1: Wait for Schedule** (RunAtLoad, 8am, or 4pm)
 
 **Option 2: Manual Trigger** (Immediate)
 ```bash
-sudo zsh /Library/Management/org.churchofjesuschrist/dor.zsh demo
+zsh reminderDialog.zsh demo
 ```
+Note: Demo mode is removed during `assemble.zsh`, so use the source script for demo.
 
 **Option 3: Force Run** (Respects all logic)
 ```bash
@@ -483,7 +484,7 @@ tail -f /var/log/org.churchofjesuschrist.log
 **Step 1: Generate Self-Extracting Script**
 ```bash
 cd /path/to/DDM-OS-Reminder
-zsh .deployDDMOSReminder.zsh
+zsh Resources/createSelfExtracting.zsh
 ```
 
 **Step 2: Upload Self-Extracting Script**

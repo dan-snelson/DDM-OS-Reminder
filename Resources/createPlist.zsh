@@ -11,11 +11,17 @@
 
 set -euo pipefail
 
-scriptVersion="2.3.0"
+scriptVersion="2.4.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
 [[ -f "$SOURCE_SCRIPT" ]] || { echo "ERROR: Cannot find reminderDialog.zsh at ${SOURCE_SCRIPT}"; exit 1; }
+
+testingMode="no"
+if [[ "${1:-}" == "--testing" ]]; then
+    testingMode="yes"
+    shift
+fi
 
 reverseDomainNameNotation=$(awk -F'"' '/^reverseDomainNameNotation=/{print $2}' "$SOURCE_SCRIPT")
 organizationScriptName=$(awk -F'"' '/^organizationScriptName=/{print $2}' "$SOURCE_SCRIPT")
@@ -26,7 +32,7 @@ datestamp=$(date '+%Y-%m-%d-%H%M%S')
 # IMPORTANT: You must customize reminderDialog.zsh BEFORE running this script.
 # Change reverseDomainNameNotation from "org.churchofjesuschrist" to your organization's value.
 # ─────────────────────────────────────────────────────────────
-if [[ "$reverseDomainNameNotation" == "org.churchofjesuschrist" ]]; then
+if [[ "$reverseDomainNameNotation" == "org.churchofjesuschrist" ]] && [[ "${testingMode}" != "yes" ]]; then
     echo "ERROR: Please customize 'reminderDialog.zsh' before executing this script."
     echo "       Change reverseDomainNameNotation to your organization's value (e.g., us.snelson)."
     echo "       Then run this script again to generate configs from your customized values."
@@ -35,14 +41,13 @@ fi
 
 # Target Output Files
 OUTPUT_PLIST_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.plist"
-# OUTPUT_MOBILECONFIG_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}.mobileconfig"
-OUTPUT_MOBILECONFIG_FILE="${SCRIPT_DIR}/DDM OS Reminder-${datestamp}-unsigned.mobileconfig"
+OUTPUT_MOBILECONFIG_FILE="${SCRIPT_DIR}/${reverseDomainNameNotation}.${organizationScriptName}-${datestamp}-unsigned.mobileconfig"
 
 # Generate UUIDs for the profile and the ManagedClient payload
 PROFILE_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
 MANAGEDCLIENT_PAYLOAD_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
 
-echo "Generating default plist → $OUTPUT_PLIST_FILE"
+echo "Extracting preference values from ${SOURCE_SCRIPT#${SCRIPT_DIR}/} → $OUTPUT_PLIST_FILE"
 
 # ─────────────────────────────────────────────────────────────
 # Extract value from preferenceConfiguration map (v2.3.0+ format)
@@ -105,13 +110,20 @@ daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlu
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
 meetingDelay=$(extract_from_preference_map meetingDelay)
+acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
 swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
+hideStagedInfo_raw=$(extract_from_preference_map hideStagedInfo)
 minimumDiskFreePercentage=$(extract_from_preference_map minimumDiskFreePercentage)
 
 case "${swapOverlayAndLogo_raw:u}" in
     YES|TRUE|1) swapOverlayAndLogo_xml="<true/>" ;;
     *)          swapOverlayAndLogo_xml="<false/>" ;;
+esac
+
+case "${hideStagedInfo_raw:u}" in
+    YES|TRUE|1) hideStagedInfo_xml="<true/>" ;;
+    *)          hideStagedInfo_xml="<false/>" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────
@@ -131,6 +143,7 @@ defaultButton1text=$(extract_from_preference_map button1text)
 defaultButton2text=$(extract_from_preference_map button2text)
 defaultInfobuttontext=$(extract_from_preference_map infobuttontext)
 defaultOverlayiconURL=$(extract_from_preference_map organizationOverlayiconURL)
+defaultOverlayiconURLdark=$(extract_from_preference_map organizationOverlayiconURLdark)
 defaultSupportTeamName=$(extract_from_preference_map supportTeamName)
 defaultSupportTeamPhone=$(extract_from_preference_map supportTeamPhone)
 defaultSupportTeamEmail=$(extract_from_preference_map supportTeamEmail)
@@ -145,7 +158,7 @@ supportKB="$defaultSupportKB"
 eval "resolvedInfobuttonaction=\"${defaultInfobuttonaction}\""
 infobuttonaction="$resolvedInfobuttonaction"
 eval "resolvedSupportKBURL=\"${defaultSupportKBURL}\""
-resolvedInfobuttontext="$defaultSupportKB"
+resolvedInfobuttontext="$defaultInfobuttontext"
 
 # ---------------------------------------------------------------------
 # Process strings
@@ -164,9 +177,11 @@ button1text_xml=$(process "$defaultButton1text")
 button2text_xml=$(process "$defaultButton2text")
 
 # Info button pieces use resolved defaults (already evaluated)
-infobuttontext_xml=$(printf "%s" "$resolvedInfobuttontext" | xml_escape)
+infobuttontext_xml=$(process "$resolvedInfobuttontext")
 
 overlayicon_xml=$(process "$defaultOverlayiconURL")
+overlayiconDark_xml=$(process "$defaultOverlayiconURLdark")
+acceptableAssertionApplicationNames_xml=$(process "$acceptableAssertionApplicationNames")
 supportTeamName_xml=$(process "$defaultSupportTeamName")
 supportTeamPhone_xml=$(process "$defaultSupportTeamPhone")
 supportTeamEmail_xml=$(process "$defaultSupportTeamEmail")
@@ -207,12 +222,16 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysOfExcessiveUptimeWarning}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
+    <key>AcceptableAssertionApplicationNames</key>
+    <string>${acceptableAssertionApplicationNames_xml}</string>
     <key>MinimumDiskFreePercentage</key>
     <integer>${minimumDiskFreePercentage}</integer>
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>
     <string>${overlayicon_xml}</string>
+    <key>OrganizationOverlayIconURLdark</key>
+    <string>${overlayiconDark_xml}</string>
     <key>SwapOverlayAndLogo</key>
     ${swapOverlayAndLogo_xml}
     <key>DateFormatDeadlineHumanReadable</key>
@@ -254,7 +273,7 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <key>PendingDownloadMessage</key>
     <string>${pendingDownloadMessage_xml}</string>
     <key>HideStagedUpdateInfo</key>
-    <false/>
+    ${hideStagedInfo_xml}
     <key>Message</key>
     <string>${message_xml}</string>
 
@@ -271,8 +290,10 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
 </plist>
 EOF
 
-echo "SUCCESS! plist generated:"
+echo "SUCCESS! .plist generated:"
 echo "   → $OUTPUT_PLIST_FILE"
+echo ""
+echo "Extracting preference values from ${SOURCE_SCRIPT#${SCRIPT_DIR}/} → $OUTPUT_MOBILECONFIG_FILE"
 
 # ─────────────────────────────────────────────────────────────
 # Generate mobileconfig
@@ -306,9 +327,14 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
+                                <key>AcceptableAssertionApplicationNames</key>
+                                <string>${acceptableAssertionApplicationNames_xml}</string>
                                 <key>MinimumDiskFreePercentage</key>
-                                <integer>${minimumDiskFreePercentage}</integer>                                <key>OrganizationOverlayIconURL</key>
+                                <integer>${minimumDiskFreePercentage}</integer>
+                                <key>OrganizationOverlayIconURL</key>
                                 <string>${overlayicon_xml}</string>
+                                <key>OrganizationOverlayIconURLdark</key>
+                                <string>${overlayiconDark_xml}</string>
                                 <key>SwapOverlayAndLogo</key>
                                 ${swapOverlayAndLogo_xml}
                                 <key>DateFormatDeadlineHumanReadable</key>
@@ -346,7 +372,7 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <key>PendingDownloadMessage</key>
                                 <string>${pendingDownloadMessage_xml}</string>
                                 <key>HideStagedUpdateInfo</key>
-                                <false/>
+                                ${hideStagedInfo_xml}
                                 <key>Message</key>
                                 <string>${message_xml}</string>
                                 <key>InfoBox</key>
@@ -398,5 +424,5 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
 </plist>
 EOF
 
-echo "SUCCESS! mobileconfig generated:"
+echo "SUCCESS! .mobileconfig generated:"
 echo "   → ${OUTPUT_MOBILECONFIG_FILE}"

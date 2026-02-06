@@ -18,17 +18,6 @@
 # to comply with DDM-enforced macOS update deadlines.
 #
 ####################################################################################################
-#
-# HISTORY
-#
-# Version 2.3.0, 19-Jan-2026, Dan K. Snelson (@dan-snelson)
-# - Refactored Update Required logic to address Feature Request #55
-# - Updated "Organization Variables" (i.e., removed redundant variable declarations)
-# - Refactored `OrganizationOverlayIconURL` logic to address Bug Report #56 (thanks, @walkintom!)
-# - Added hard-coded `disableButton2InsteadOfHide` variable to disable `button2`, instead of only hiding it (Inspired by Bug Report #58, thanks @ScottEKendall!)
-# - Replaced `defaults read` with PlistBuddy for prefs (Pull Request #61; thanks, @huexley!)
-#
-####################################################################################################
 
 
 
@@ -41,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0"
+scriptVersion="2.4.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -263,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.3.0"
+scriptVersion="2.4.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -366,10 +355,12 @@ declare -A preferenceConfiguration=(
     ["daysBeforeDeadlineHidingButton2"]="numeric|21"
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
     ["meetingDelay"]="numeric|75"
+    ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
     
     # Branding
-    ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_4804203ac36cbd7c83607487f4719bd4707f2e283500f54428153af17da082e2"
+    ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
     
@@ -411,8 +402,10 @@ declare -A plistKeyMap=(
     ["daysBeforeDeadlineHidingButton2"]="DaysBeforeDeadlineHidingButton2"
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
     ["meetingDelay"]="MeetingDelay"
+    ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
+    ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["supportTeamName"]="SupportTeamName"
@@ -467,6 +460,27 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# DDM Version Validation
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isValidDDMVersionString() {
+    local value="${1}"
+    local ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
+
+    if [[ -z "${value}" ]]; then
+        return 1
+    fi
+
+    if [[ "${value}" =~ ${ddmVersionRegex} ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Preference Loading and Management
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -492,6 +506,25 @@ function setPreferenceValue() {
         chosenValue="${localValue}"
     else
         chosenValue="${defaultValue}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${chosenValue}"
+}
+
+function setAllowlistPreferenceValue() {
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local managedKeyExists="${3}"
+    local localValue="${4}"
+    local localKeyExists="${5}"
+    local defaultValue="${6}"
+    local chosenValue="${defaultValue}"
+
+    # Preserve intentional empty-string overrides for this specific key.
+    if [[ "${managedKeyExists}" == "true" ]]; then
+        chosenValue="${managedValue}"
+    elif [[ "${localKeyExists}" == "true" ]]; then
+        chosenValue="${localValue}"
     fi
 
     printf -v "${targetVariable}" '%s' "${chosenValue}"
@@ -574,14 +607,22 @@ function loadPreferenceOverrides() {
         
         # Read managed value
         local managedValue=""
+        local managedKeyExists="false"
         if [[ "${hasManagedPrefs}" == "true" ]]; then
-            managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+            if /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
+                managedKeyExists="true"
+                managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+            fi
         fi
         
         # Read local value
         local localValue=""
+        local localKeyExists="false"
         if [[ "${hasLocalPrefs}" == "true" ]]; then
-            localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+            if /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" >/dev/null 2>&1; then
+                localKeyExists="true"
+                localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+            fi
         fi
         
         # Apply the preference based on type
@@ -593,7 +634,11 @@ function loadPreferenceOverrides() {
                 setBooleanPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
                 ;;
             string|*)
-                setPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                if [[ "${prefKey}" == "acceptableAssertionApplicationNames" ]]; then
+                    setAllowlistPreferenceValue "${prefKey}" "${managedValue}" "${managedKeyExists}" "${localValue}" "${localKeyExists}" "${defaultValue}"
+                else
+                    setPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                fi
                 ;;
         esac
     done
@@ -860,6 +905,14 @@ installedOSvsDDMenforcedOS() {
     # Parse enforced date and version
     ddmEnforcedInstallDate="${${ddmLogEntry##*|EnforcedInstallDate:}%%|*}"
     ddmVersionString="${${ddmLogEntry##*|VersionString:}%%|*}"
+    
+    if ! isValidDDMVersionString "${ddmVersionString}"; then
+        warning "Invalid DDM-enforced OS Version format. Log entry: ${ddmLogEntry}"
+        warning "Invalid DDM-enforced OS Version: ${ddmVersionString}"
+        versionComparisonResult="Invalid DDM version string; suppressing reminder dialog."
+        quitOut "Invalid DDM version string; exiting quietly."
+        return
+    fi
 
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
@@ -881,25 +934,83 @@ installedOSvsDDMenforcedOS() {
         # Enforcement deadline passed
         notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
 
-        # Read Apple’s internal padded enforcement date from install.log
+        # Read Apple's internal padded enforcement date from install.log
+        # Wait up to five minutes for setPastDuePaddedEnforcementDate if it’s in the past
+        local maxWaitSeconds=300  # 5 minutes
+        local checkIntervalSeconds=10
+        local elapsedSeconds=0
+        local paddedDateRaw=""
+        local paddedEpoch=""
+        
+        while (( elapsedSeconds < maxWaitSeconds )); do
         pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
+            
         if [[ -n "$pastDueDeadline" ]]; then
             paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
             paddedEpoch=$( date -jf "%a %b %d %H:%M:%S %Y" "$paddedDateRaw" "+%s" 2>/dev/null )
-            info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw:-Unparseable}"
+                
+                if [[ -n "$paddedEpoch" ]]; then
+                    local nowEpoch=$(date +%s)
+                    
+                    # Check if the padded date is in the future
+                    if (( paddedEpoch > nowEpoch )); then
+                        info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw} (valid future date)"
+                        break
+                    else
+                        # Padded date is in the past - this is the race condition
+                        local minutesAgo=$(( (nowEpoch - paddedEpoch) / 60 ))
+                        warning "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw} (${minutesAgo} minutes in the past)"
+                        
+                        if (( elapsedSeconds == 0 )); then
+                            notice "Waiting up to 5 minutes for macOS to update setPastDuePaddedEnforcementDate …"
+                        fi
+                        
+                        # Wait and retry
+                        sleep ${checkIntervalSeconds}
+                        elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+                        
+                        if (( elapsedSeconds >= maxWaitSeconds )); then
+                            warning "Timed out waiting for valid setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+                            warning "Proceeding with current value despite it being in the past"
+                        else
+                            info "Retrying (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
+                        fi
+                    fi
+                else
+                    warning "Unable to parse setPastDuePaddedEnforcementDate: ${paddedDateRaw}"
+                    break
+                fi
+            else
+                # No setPastDuePaddedEnforcementDate found yet
+                if (( elapsedSeconds == 0 )); then
+                    notice "No setPastDuePaddedEnforcementDate found; waiting up to 5 minutes …"
+                fi
+                
+                sleep ${checkIntervalSeconds}
+                elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+                
+                if (( elapsedSeconds >= maxWaitSeconds )); then
+                    warning "Timed out waiting for setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+                    break
+                else
+                    info "Retrying (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
+                fi
+            fi
+        done
 
+        # Process the final result
             if [[ -n "$paddedEpoch" ]]; then
                 ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
                 if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
                     ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
                 fi
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
+        else
+            if [[ -z "$pastDueDeadline" ]]; then
+                warning "No setPastDuePaddedEnforcementDate found in install.log after waiting"
             else
                 warning "Unable to parse padded enforcement date from install.log"
-                ddmEnforcedInstallDateHumanReadable="Unavailable"
             fi
-        else
-            warning "No setPastDuePaddedEnforcementDate found in install.log"
             ddmEnforcedInstallDateHumanReadable="Unavailable"
         fi
 
@@ -985,6 +1096,18 @@ function checkUserDisplaySleepAssertions() {
     local intervalMinutes=$(( intervalSeconds / 60 ))
     local maxChecks=$(( meetingDelay * 60 / intervalSeconds ))
     local checkCount=0
+    local userDisplaySleepAssertions="FALSE"
+
+    if (( maxChecks <= 0 )); then
+        info "Meeting delay is set to ${meetingDelay} minute(s); skipping Display Sleep Assertion retry loop."
+        return 0
+    fi
+
+    # Plist-sourced meeting-app allowlist (space-delimited string → array)
+    local -a acceptableApps=( ${(s: :)acceptableAssertionApplicationNames} )
+    if [[ ${#acceptableApps} -gt 0 ]]; then
+        info "Acceptable assertion application names (allowlist): ${acceptableAssertionApplicationNames}"
+    fi
 
     while (( checkCount < maxChecks )); do
         local previousIFS="${IFS}"
@@ -992,6 +1115,32 @@ function checkUserDisplaySleepAssertions() {
 
         local displayAssertionsArray
         displayAssertionsArray=( $(pmset -g assertions | awk '/NoDisplaySleepAssertion | PreventUserIdleDisplaySleep/ && match($0,/\(.+\)/) && ! /coreaudiod/ {gsub(/^\ +/,"",$0); print};') )
+
+        # Layer 2: keep only assertions from allowlisted meeting/presentation apps
+        if [[ ${#acceptableApps} -gt 0 ]]; then
+            local -a filteredAssertions=()
+            local hadAssertionsBeforeFiltering=false
+            [[ ${#displayAssertionsArray} -gt 0 ]] && hadAssertionsBeforeFiltering=true
+            
+            for displayAssertion in "${displayAssertionsArray[@]}"; do
+                local isAllowlisted=false
+                for app in "${acceptableApps[@]}"; do
+                    if echo "${displayAssertion}" | grep -qiF "${app}"; then
+                        isAllowlisted=true
+                        info "Assertion line matches allowlist entry '${app}'; deferring."
+                        break
+                    fi
+                done
+                [[ "${isAllowlisted}" == "true" ]] && filteredAssertions+=( "${displayAssertion}" )
+            done
+            
+            # Troubleshooting tip when allowlist is populated but no assertions matched
+            if [[ "${hadAssertionsBeforeFiltering}" == "true" ]] && [[ ${#filteredAssertions} -eq 0 ]] && [[ ${#displayAssertionsArray} -gt 0 ]]; then
+                info "Assertions detected but none matched allowlist entries; proceeding. To verify exact app names, run: pmset -g assertions | grep -E 'NoDisplaySleepAssertion|PreventUserIdleDisplaySleep'"
+            fi
+            
+            displayAssertionsArray=( "${filteredAssertions[@]}" )
+        fi
 
         if [[ -n "${displayAssertionsArray[*]}" ]]; then
             userDisplaySleepAssertions="TRUE"
@@ -1012,7 +1161,7 @@ function checkUserDisplaySleepAssertions() {
 
     if [[ "${userDisplaySleepAssertions}" == "TRUE" ]]; then
         info "Presentation delay limit (${meetingDelay} min) reached after ${maxChecks} checks. Proceeding with reminder."
-        return 1  # Presentation still active after full delay
+        return 0  # Proceed after full delay
     fi
 
 }
@@ -1023,37 +1172,68 @@ function checkUserDisplaySleepAssertions() {
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+function detectDarkMode() {
+    local interfaceStyle
+    local globalPreferencesPath="${loggedInUserHomeDirectory}/Library/Preferences/.GlobalPreferences.plist"
+    
+    if [[ -z "${loggedInUserHomeDirectory}" ]]; then
+        globalPreferencesPath="/Users/${loggedInUser}/Library/Preferences/.GlobalPreferences.plist"
+    fi
+    
+    interfaceStyle=$( defaults read "${globalPreferencesPath}" AppleInterfaceStyle 2>/dev/null )
+    if [[ "${interfaceStyle}" == "Dark" ]]; then
+        echo "Dark"
+    else
+        echo "Light"
+    fi
+}
+
 function downloadBrandingAssets() {
+    # Detect dark mode and choose appropriate icon URL
+    local appearanceMode=$(detectDarkMode)
+    local overlayIconURL="${organizationOverlayiconURL}"
+    
+    if [[ "${appearanceMode}" == "Dark" && -n "${organizationOverlayiconURLdark}" ]]; then
+        notice "Dark mode detected; using dark mode overlay icon"
+        overlayIconURL="${organizationOverlayiconURLdark}"
+    else
+        if [[ "${appearanceMode}" == "Dark" ]]; then
+            notice "Dark mode detected but no dark mode icon URL configured; using standard overlay icon"
+        else
+            notice "Light mode detected; using standard overlay icon"
+        fi
+    fi
+    
     # Download overlay icon
-    if [[ -n "${organizationOverlayiconURL}" ]]; then
-        notice "Processing overlay icon from '${organizationOverlayiconURL}'"
+    if [[ -n "${overlayIconURL}" ]]; then
+        notice "Processing overlay icon from '${overlayIconURL}'"
         
         # Check if it's a local file path (file or directory/bundle)
-        if [[ -e "${organizationOverlayiconURL}" ]]; then
+        if [[ -e "${overlayIconURL}" ]]; then
             info "Overlay icon is a local path; using directly"
-            overlayicon="${organizationOverlayiconURL}"
+            overlayicon="${overlayIconURL}"
             info "Successfully configured overlay icon"
         
         # Check if it's a file:// URI
-        elif [[ "${organizationOverlayiconURL}" =~ ^file:// ]]; then
+        elif [[ "${overlayIconURL}" =~ ^file:// ]]; then
             info "Overlay icon is a file:// URI; converting to path"
-            local filePath="${organizationOverlayiconURL#file://}"
+            local filePath="${overlayIconURL#file://}"
             if [[ -e "${filePath}" ]]; then
                 overlayicon="${filePath}"
                 info "Successfully configured overlay icon from file:// URI"
             else
-                error "Path not found: '${filePath}' (from URI '${organizationOverlayiconURL}')"
+                error "Path not found: '${filePath}' (from URI '${overlayIconURL}')"
                 overlayicon="/System/Library/CoreServices/Finder.app"
             fi
         
         # Assume it's a remote URL
         else
             info "Overlay icon appears to be a remote URL; downloading with curl"
-            if curl -o "/var/tmp/overlayicon.png" "${organizationOverlayiconURL}" --silent --show-error --fail --max-time 10; then
+            if curl -o "/var/tmp/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
                 overlayicon="/var/tmp/overlayicon.png"
                 info "Successfully downloaded overlay icon"
             else
-                error "Failed to download overlay icon from '${organizationOverlayiconURL}'"
+                error "Failed to download overlay icon from '${overlayIconURL}'"
                 overlayicon="/System/Library/CoreServices/Finder.app"
             fi
         fi
@@ -1087,9 +1267,13 @@ function downloadBrandingAssets() {
 
 function computeDynamicWarnings() {
     # Excessive uptime warning
-    local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
-    if (( upTimeMin < allowedUptimeMinutes )); then
+    if (( daysOfExcessiveUptimeWarning <= 0 )); then
         excessiveUptimeWarningMessage=""
+    else
+        local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
+        if (( upTimeMin < allowedUptimeMinutes )); then
+            excessiveUptimeWarningMessage=""
+        fi
     fi
     
     # Disk Space Warning
@@ -1145,8 +1329,9 @@ function displayReminderDialog() {
         --infobox "${infobox}"
         --button1text "${button1text}"
         --messagefont "size=14"
+        --quitkey "k"
         --width 800
-        --height 625
+        --height 650
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )
@@ -1218,6 +1403,11 @@ function displayReminderDialog() {
 
         4)  ## Process exit code 4 scenario here
             notice "User allowed timer to expire"
+            quitScript "0"
+            ;;
+
+        10) ## Process exit code 10 scenario here
+            notice "User quit the dialog with keyboard shortcut"
             quitScript "0"
             ;;
 
@@ -1338,6 +1528,7 @@ done
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
+loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
 preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
 
 
@@ -1395,9 +1586,10 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Return Code 2: User clicked Button 2 (Remind Me Later)
     # Return Code 3: User clicked Info Button
     # Return Code 4: User allowed timer to expire
+    # Return Code 10: User quit dialog with keyboard shortcut
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
 
-    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4)' "${scriptLog}" | \
+    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | \
         tail -1 | \
         sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 

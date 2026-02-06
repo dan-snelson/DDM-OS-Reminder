@@ -4,10 +4,10 @@ This flowchart shows the complete decision logic executed each time the LaunchDa
 
 ```mermaid
 flowchart TD
-    Start([LaunchDaemon Triggers<br/>8am or 4pm]) --> LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
+    Start([LaunchDaemon Triggers<br/>RunAtLoad or 8am/4pm]) --> LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
     
-    LoadPrefs --> CheckUser{Logged-in<br/>User Found?}
-    CheckUser -->|No| Exit1[Exit Silently<br/>Log: No user]
+    LoadPrefs --> CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
+    CheckUser -->|No| Exit1[FATAL ERROR<br/>No user after 120s]
     CheckUser -->|Yes| CheckRoot{Running<br/>as Root?}
     
     CheckRoot -->|No| Fatal1[FATAL ERROR<br/>Must run as root]
@@ -26,12 +26,9 @@ flowchart TD
     CheckWindow -->|Yes| CheckQuiet{Within Quiet<br/>Period?<br/>Last shown < interval}
     
     CheckQuiet -->|Yes| Exit5[Exit Silently<br/>Log: Quiet period active]
-    CheckQuiet -->|No| CheckFocus{Focus Mode<br/>Active?}
+    CheckQuiet -->|No| CheckMeeting{Display Sleep<br/>Assertions?<br/>User in meeting}
     
-    CheckFocus -->|Yes, ≥24hrs to deadline| Exit6[Exit Silently<br/>Log: Respecting Focus mode]
-    CheckFocus -->|No or <24hrs| CheckMeeting{Display Sleep<br/>Assertions?<br/>User in meeting}
-    
-    CheckMeeting -->|Yes, ≥24hrs to deadline| Delay[Delay Execution<br/>Sleep 75 min, then retry]
+    CheckMeeting -->|Yes, ≥24hrs to deadline| Delay[Delay Execution<br/>Sleep meetingDelay, then retry]
     CheckMeeting -->|No or <24hrs| CheckDisk[Check Free<br/>Disk Space]
     
     Delay --> CheckMeeting
@@ -58,8 +55,8 @@ flowchart TD
     BuildDialog --> CheckDeadline{Days Until<br/>Deadline?}
     
     CheckDeadline -->|≥ Blurscreen Threshold<br/>default: 45 days| Standard[Standard Dialog<br/>✓ Button 2 enabled<br/>✗ No blurscreen]
-    CheckDeadline -->|< Blurscreen Threshold<br/>≥ Hide Button Threshold<br/>default: 3-44 days| Blur[Blurscreen Dialog<br/>✓ Button 2 enabled<br/>✓ Blurscreen active]
-    CheckDeadline -->|< Hide Button Threshold<br/>default: <3 days| Urgent[Urgent Dialog<br/>✗ Button 2 disabled/hidden<br/>✓ Blurscreen active]
+    CheckDeadline -->|< Blurscreen Threshold<br/>≥ Hide Button Threshold<br/>default: 21-44 days| Blur[Blurscreen Dialog<br/>✓ Button 2 enabled<br/>✓ Blurscreen active]
+    CheckDeadline -->|< Hide Button Threshold<br/>default: <21 days| Urgent[Urgent Dialog<br/>✗ Button 2 disabled/hidden<br/>✓ Blurscreen active]
     
     Standard --> Display[Display swiftDialog]
     Blur --> Display
@@ -71,6 +68,7 @@ flowchart TD
     UserAction -->|Button 2:<br/>Remind Me Later| LogRemind[Log Entry:<br/>User postponed]
     UserAction -->|Info Button:<br/>Support Info| ShowHelp[Display Help Dialog<br/>with support details]
     UserAction -->|Dialog Closed/Timeout| LogClose[Log Entry:<br/>Dialog closed]
+    UserAction -->|Return code 20:<br/>DND active| Exit6[Exit<br/>DND active]
     
     OpenSU --> LogOpen[Log Entry:<br/>Opened Software Update]
     LogOpen --> Exit7[Exit<br/>User taking action]
@@ -101,7 +99,6 @@ flowchart TD
     style CompareVersions fill:#ffecb3
     style CheckWindow fill:#ffecb3
     style CheckQuiet fill:#ffecb3
-    style CheckFocus fill:#ffecb3
     style CheckMeeting fill:#ffecb3
     style DiskOK fill:#ffecb3
     style UptimeOK fill:#ffecb3
@@ -109,7 +106,7 @@ flowchart TD
     style CheckDeadline fill:#ff9800
     style UserAction fill:#4caf50
     
-    style Exit1 fill:#cfd8dc
+    style Exit1 fill:#ef5350
     style Exit2 fill:#cfd8dc
     style Exit3 fill:#cfd8dc
     style Exit4 fill:#cfd8dc
@@ -131,9 +128,9 @@ flowchart TD
 ## Decision Points Explained
 
 ### 1. User Validation
-- **Check**: Is a user logged in (not loginwindow)?
+- **Check**: Is a user logged in (not loginwindow), waiting up to 120 seconds?
 - **Why**: Dialog requires an active user session
-- **Exit if**: No user found
+- **Exit if**: No user found after 120 seconds (fatal error)
 
 ### 2. Root Privileges
 - **Check**: Is script running as root?
@@ -160,17 +157,21 @@ flowchart TD
 - **Why**: Prevent excessive nagging within same day
 - **Exit if**: Recently displayed
 
-### 7. Focus Mode
-- **Check**: Is user in Focus/Do Not Disturb mode?
-- **Why**: Respect user's concentration time
-- **Exception**: Ignored if <24 hours to deadline
-- **Exit if**: Focus active and deadline not imminent
+### 7. Do Not Disturb / Focus (swiftDialog)
+- **Check**: swiftDialog returns exit code 20 after the dialog attempt
+- **Why**: swiftDialog signals DND/Focus state via return code
+- **Exit if**: Return code 20 (logged and exits)
 
 ### 8. Meeting Detection
 - **Check**: Are display sleep assertions active (pmset)?
 - **Why**: User likely in video call or presentation
-- **Exception**: Ignored if <24 hours to deadline
-- **Action if**: Delay 75 minutes and retry (not exit)
+- **Filtering**: 
+  - **Layer 1**: Excludes `coreaudiod` (system daemon, always present)
+  - **Layer 2**: If `acceptableAssertionApplicationNames` is configured, only assertions from apps **on the allowlist** trigger deferral; assertions from other apps are ignored
+  - **Default behavior** (shipped allowlist: `MSTeams zoom.us Webex`): Only those apps trigger deferral
+  - **Legacy/explicit empty allowlist**: All non-coreaudiod assertions trigger deferral
+- **Exception**: Ignored if ≤24 hours to deadline
+- **Action if**: Delay up to `meetingDelay` and retry; proceed when delay limit reached
 
 ### 9. Disk Space Check
 - **Check**: Is free disk space below minimum threshold?
@@ -195,16 +196,15 @@ Based on days remaining until deadline:
 - Blurscreen: **Disabled**
 - Urgency: Low
 
-#### Blurscreen Dialog (3-44 days, configurable)
+#### Blurscreen Dialog (21-44 days, configurable)
 - Button 2: **Enabled** ("Remind Me Later")
 - Blurscreen: **Enabled** (background dimmed)
 - Urgency: Medium
 
-#### Urgent Dialog (<3 days, configurable)
+#### Urgent Dialog (<21 days, configurable)
 - Button 2: **Disabled or Hidden** (can't postpone)
 - Blurscreen: **Enabled**
 - Urgency: High
-- Display assertions: **Ignored** (shows even in meetings)
 
 ### 13. User Actions
 After dialog displays, user can:
@@ -228,6 +228,10 @@ After dialog displays, user can:
    - Logs dismissal
    - Exits (will remind again at next schedule)
 
+5. **DND/Focus Active (swiftDialog Return Code 20)**:
+   - Logs DND/Focus state
+   - Exits
+
 ## Configuration Parameters
 
 Key preferences that affect decision tree:
@@ -239,28 +243,30 @@ Key preferences that affect decision tree:
 | `daysBeforeDeadlineHidingButton2` | 21 | Button 2 disable/hide |
 | `daysOfExcessiveUptimeWarning` | 0 (disabled) | Uptime warning threshold |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
-| `minimumDiskFreePercentage` | 99 (disabled) | Disk space warning |
+| `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |
+| `minimumDiskFreePercentage` | 99 | Disk space warning |
 | `disableButton2InsteadOfHide` | YES | Button 2 behavior (disabled vs hidden) |
 
 ## Exit Points
 
-The script has **9 exit points** (plus 1 fatal error):
+The script has **8 exit points** (plus 2 fatal errors):
 
-1. **No logged-in user** - Wait for next scheduled run
-2. **No DDM enforcement** - Nothing to remind about
-3. **macOS up to date** - Update already completed
-4. **Outside reminder window** - Too early to remind
-5. **Within quiet period** - Recently reminded
-6. **Focus mode active** - Respecting user's concentration
-7. **After opening Software Update** - User taking action
-8. **After "Remind Me Later"** - User postponed
-9. **After dialog close** - User dismissed
+1. **No DDM enforcement** - Nothing to remind about
+2. **macOS up to date** - Update already completed
+3. **Outside reminder window** - Too early to remind
+4. **Within quiet period** - Recently reminded
+5. **DND/Focus active (swiftDialog return code 20)** - Dialog attempt exits
+6. **After opening Software Update** - User taking action
+7. **After "Remind Me Later"** - User postponed
+8. **After dialog close** - User dismissed
 
 Each exit logs appropriate message to `/var/log/{RDNN}.log` for troubleshooting.
 
+Fatal errors include no logged-in user after 120 seconds and running without root privileges.
+
 ## Timing
 
-**Default Schedule**: 8:00 AM and 4:00 PM daily
+**Default Schedule**: RunAtLoad plus 8:00 AM and 4:00 PM daily
 
 This ensures:
 - Morning reminder catches users starting their day

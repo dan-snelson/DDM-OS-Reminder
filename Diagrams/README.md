@@ -1,6 +1,6 @@
 # DDM OS Reminder - Documentation Diagrams
 
-This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/2025/12/ddm-os-reminder-2-1-0/).
+This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
 ## 📊 Available Diagrams
 
@@ -77,7 +77,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 ---
 
 ### 6. [Configuration Reference](06-configuration-reference.md)
-**Purpose**: Complete reference for all 31 configurable preferences
+**Purpose**: Complete reference for all 33 configurable preferences
 
 **Shows**:
 - Quick reference table (all variables at a glance)
@@ -89,14 +89,16 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 **Best For**: Customizing DDM OS Reminder, looking up specific variables
 
+**Note**: Text reference only (no Mermaid diagram to render)
+
 ---
 
 ## 🎨 Rendering Diagrams
 
-All diagrams use **Mermaid.js** syntax for maximum portability and version control.
+All Mermaid diagrams (01–05) use **Mermaid.js** syntax for maximum portability and version control. The configuration reference (06) is text-only and does not export to an image.
 
 ### View on GitHub
-All `.md` files render automatically on GitHub with live Mermaid diagrams.
+Mermaid blocks render automatically on GitHub inside `.md` files. Text-only files render as standard Markdown.
 
 **Direct viewing**:
 ```
@@ -122,13 +124,13 @@ https://github.com/dan-snelson/DDM-OS-Reminder/blob/main/Diagrams/01-system-arch
 npm install -g @mermaid-js/mermaid-cli
 
 # Render to PNG
-mmdc -i 01-system-architecture.md -o system-architecture.png
+mmdc -i 01-system-architecture.md -o 01-system-architecture.png
 
 # Render to SVG
-mmdc -i 01-system-architecture.md -o system-architecture.svg
+mmdc -i 01-system-architecture.md -o 01-system-architecture.svg
 
-# Render all diagrams
-for file in *.md; do
+# Render all Mermaid diagrams (01–05)
+for file in 0[1-5]-*.md; do
     mmdc -i "$file" -o "${file%.md}.png"
 done
 ```
@@ -138,27 +140,27 @@ done
 #### As PNG Images (Recommended for blog posts)
 ```bash
 # High resolution PNG (300 DPI)
-mmdc -i 01-system-architecture.md -o system-architecture.png -w 2400
+mmdc -i 01-system-architecture.md -o 01-system-architecture.png -w 2400
 
 # Standard resolution
-mmdc -i 01-system-architecture.md -o system-architecture.png
+mmdc -i 01-system-architecture.md -o 01-system-architecture.png
 ```
 
 #### As SVG (Recommended for scaling)
 ```bash
-mmdc -i 01-system-architecture.md -o system-architecture.svg
+mmdc -i 01-system-architecture.md -o 01-system-architecture.svg
 ```
 
 #### Embed in Markdown
 ```markdown
 <!-- Mermaid (renders on GitHub) -->
-```mermaid
+~~~mermaid
 graph TD
     A --> B
-```
+~~~
 
 <!-- Image (works everywhere) -->
-![System Architecture](diagrams/system-architecture.png)
+![System Architecture](Diagrams/01-system-architecture.png)
 ```
 
 #### Embed in HTML
@@ -187,6 +189,8 @@ Examples:
 02-runtime-decision-tree.md
 03-deadline-timeline.md
 ```
+
+PNG exports mirror the `.md` base name (for example, `01-system-architecture.png`).
 
 ### Markdown Structure
 ```markdown
@@ -245,13 +249,13 @@ Embed key diagrams inline:
 ```markdown
 ## How It Works
 
-![System Architecture](Diagrams/system-architecture.png)
+![System Architecture](Diagrams/01-system-architecture.png)
 
 DDM OS Reminder consists of three main components...
 
 ## Deployment
 
-![Deployment Workflow](Diagrams/deployment-workflow.png)
+![Deployment Workflow](Diagrams/04-deployment-workflow.png)
 
 Follow these steps to deploy DDM OS Reminder...
 ```
@@ -261,7 +265,7 @@ Follow these steps to deploy DDM OS Reminder...
 Export diagrams as high-resolution PNG or SVG:
 ```bash
 # 4K resolution for presentations
-mmdc -i 01-system-architecture.md -o system-architecture.png -w 3840 -h 2160
+mmdc -i 01-system-architecture.md -o 01-system-architecture.png -w 3840 -h 2160
 ```
 
 ---
@@ -377,7 +381,7 @@ open https://github.com/dan-snelson/DDM-OS-Reminder/tree/main/Diagrams
 npm install -g @mermaid-js/mermaid-cli
 
 # Export all diagrams as PNG
-for file in *.md; do
+for file in 0[1-5]-*.md; do
     echo "Rendering $file..."
     mmdc -i "$file" -o "../images/${file%.md}.png" -w 2400
 done
@@ -464,6 +468,9 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.1 | 2026-02-05 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
+|       |            | - Removed legacy `*-1.png` files |
+|       |            | - Clarified 06 configuration reference is text-only |
 | 1.0.0 | 2026-01-19 | Initial diagram collection created |
 |       |            | - System Architecture |
 |       |            | - Runtime Decision Tree |
@@ -473,5 +480,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: January 19, 2026  
-**DDM OS Reminder Version**: 2.3.0
+**Last Updated**: February 5, 2026  
+**DDM OS Reminder Version**: 2.4.0

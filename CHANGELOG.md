@@ -2,6 +2,16 @@
 
 ## Changelog
 
+## Version 2.4.0 (06-Feb-2026)
+- Added space-delimited list of `acceptableAssertionApplicationNames` ([Feature Request #67](https://github.com/dan-snelson/DDM-OS-Reminder/issues/67); thanks for the suggestion, @yassermkh!)
+- Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
+- Added DDM version validation to suppress reminders on invalid VersionString formats (thanks for the idea, @nessts!)
+- Added deployment mode selection [ --dev | --test | --prod ] to `assemble.zsh` for improved artifact clarity during assembly
+- Added `quitkey` option to swiftDialog invocation to allow users to dismiss the dialog via keyboard shortcut (thanks for the suggestion, @Jadah!)
+
+## Version 2.3.1 (28-Jan-2026)
+- Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
+
 ## Version 2.3.0 (19-Jan-2026)
 - Refactored Update Required logic to address [Feature Request #55](https://github.com/dan-snelson/DDM-OS-Reminder/issues/55)
 - Updated "Organization Variables" (i.e., removed redundant variable declarations)

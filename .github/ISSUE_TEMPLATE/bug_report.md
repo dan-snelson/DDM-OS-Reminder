@@ -7,11 +7,11 @@ assignees: 'dan-snelson'
 
 ---
 
-> Before submitting a bug report, please [download a fresh copy of the `main` branch](https://github.com/dan-snelson/DDM-OS-Reminder/archive/main.zip) and confirm you can replicate the unexpected behavior. (You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/), [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).)
+> Before submitting a bug report, please [download a fresh copy of the `main` branch](https://github.com/dan-snelson/DDM-OS-Reminder/archive/main.zip) and confirm you can replicate the unexpected behavior. (You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/), [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) Channel.)
 > 
-> If you're able to replicate the unexpected behavior on-demand, please complete the remainder of this template to help us troubleshoot:
+> If you’re able to replicate the unexpected behavior on-demand, please complete the remainder of this template to aid in troubleshooting:
 > 
-> 1. In **new**, _elevated_ Terminal window, execute the following command, substituting your organization's **Reverse Domain Name Notation**:
+> 1. In a **new**, _elevated_ Terminal window, execute the following command, substituting your organization's **Reverse Domain Name Notation**:
 ```zsh
 zsh -c 'PS4=" → "; zsh -x "$1"' -- /Library/Management/org.churchofjesuschrist/dor.zsh
 ```
@@ -23,22 +23,21 @@ plutil -p /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 ```
 > 
 > 
-> Finally, please review the [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues) to help determine the source of the issue.
+> **Optional:** Review [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues).
 
 ---
 
-**Describe the bug**
+**Describe the Bug**
 A clear, concise description of the bug.
 
 **To Reproduce**
- - Please describe how the script was executed (i.e., via macOS Terminal, via in a Jamf Pro Self Service policy, etc.).
- - Please detail any modififications.
+ - Please describe how the script was executed (i.e., via macOS Terminal, via an MDM policy, etc.).
  
-**Expected behavior**
+**Expected Behavior**
 A clear, concise description of what you expected to happen.
 
-**Code/log output**
-Please supply the full command used, and if applicable, add full output from Terminal. Either upload the log, or paste the output in a code block (triple backticks at the start and end of the code block, please!).
+**Code / Log Output**
+Please include both your client-side `scriptLog` and `/var/log/install.log` as a compressed archive (i.e., a `.zip` or `.tar.gz` file). If pasting output, please use a code block — triple backticks — at the start and end.
 
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
@@ -46,7 +45,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment (please complete the following information):**
  - OS version (i.e., 26.2)
  - swiftDialog version (i.e., 3.0.0)
- - Script version (i.e., 2.0.0) - please upgrade to the latest version before submitting a bug report.
+ - Script version (i.e., 2.4.0) - please upgrade to the [latest version](https://github.com/dan-snelson/DDM-OS-Reminder/releases) before submitting a bug report.
 
 **Additional context**
 Add any other context about the problem here.

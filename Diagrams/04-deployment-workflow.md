@@ -275,7 +275,7 @@ zsh assemble.zsh
 2. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.4.0rc4)
+🧩 Assemble DDM OS Reminder (2.4.0)
 ===============================================================
 
 Full Paths:
@@ -384,7 +384,7 @@ tail -50 /var/log/org.churchofjesuschrist.log
 
 Expected output:
 ```
-[PRE-FLIGHT]      DDM OS Reminder (2.4.0rc4)
+[PRE-FLIGHT]      DDM OS Reminder (2.4.0)
 [PRE-FLIGHT]      Initiating …
 [NOTICE]          Reset All Configuration Files …
 [NOTICE]          Create 'DDM OS Reminder' script

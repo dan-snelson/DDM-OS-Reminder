@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0rc4"
+scriptVersion="2.4.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0rc4"
+scriptVersion="2.4.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1292,6 +1292,7 @@ function displayReminderDialog() {
         --infobox "${infobox}"
         --button1text "${button1text}"
         --messagefont "size=14"
+        --quitkey "k"
         --width 800
         --height 650
         "${blurscreen}"
@@ -1365,6 +1366,11 @@ function displayReminderDialog() {
 
         4)  ## Process exit code 4 scenario here
             notice "User allowed timer to expire"
+            quitScript "0"
+            ;;
+
+        10) ## Process exit code 10 scenario here
+            notice "User quit the dialog with keyboard shortcut"
             quitScript "0"
             ;;
 
@@ -1543,9 +1549,10 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Return Code 2: User clicked Button 2 (Remind Me Later)
     # Return Code 3: User clicked Info Button
     # Return Code 4: User allowed timer to expire
+    # Return Code 10: User quit dialog with keyboard shortcut
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
 
-    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4)' "${scriptLog}" | \
+    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | \
         tail -1 | \
         sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 

@@ -35,7 +35,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.4.0rc4"
+scriptVersion="2.4.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -358,9 +358,9 @@ if [[ "${skipModePrompt}" == false ]]; then
   echo "Select Deployment Mode:"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo
-  echo "  1) Development  - Keep placeholder text for local testing"
-  echo "  2) Testing      - Replace placeholder text with 'TEST' for staging"
-  echo "  3) Production   - Remove placeholder text for clean deployment"
+  echo "  1) Development - Keep placeholder text for local testing"
+  echo "  2) Testing     - Replace placeholder text with 'TEST' for staging"
+  echo "  3) Production  - Remove placeholder text for clean deployment"
   echo
   echo "  [Press ‘X’ to exit]"
   echo

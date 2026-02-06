@@ -44,9 +44,9 @@
                                     <key>DateFormatDeadlineHumanReadable</key>
                                     <string>+%a, %d-%b-%Y, %-l:%M %p</string>
                                     <key>SupportTeamName</key>
-                                    <string>IT Support</string>
+                                    <string>Assembled IT Support</string>
                                     <key>SupportTeamPhone</key>
-                                    <string>+1 (801) 555-1212</string>
+                                    <string>Assembled +1 (801) 555-1212</string>
                                     <key>SupportTeamEmail</key>
                                     <string>rescue@company.com</string>
                                     <key>SupportTeamWebsite</key>
@@ -58,31 +58,31 @@
                                     <key>SupportKBURL</key>
                                     <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
                                     <key>Title</key>
-                                    <string>macOS {titleMessageUpdateOrUpgrade} Required</string>
+                                    <string>Assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
                                     <key>Button1Text</key>
-                                    <string>Open Software Update</string>
+                                    <string>Assembled Open Software Update</string>
                                     <key>Button2Text</key>
-                                    <string>Remind Me Later</string>
+                                    <string>Assembled Remind Me Later</string>
                                     <key>InfoButtonText</key>
-                                    <string>Update macOS on Mac</string>
+                                    <string>Assembled Update macOS on Mac</string>
                                     <key>ExcessiveUptimeWarningMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
                                     <key>DiskSpaceWarningMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
                                     <key>StagedUpdateMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
                                     <key>PartiallyStagedUpdateMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
                                     <key>PendingDownloadMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;Your Mac will begin downloading the update shortly.</string>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac will begin downloading the update shortly.</string>
                                     <key>HideStagedUpdateInfo</key>
                                     <false/>
                                     <key>Message</key>
-                                    <string>**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+                                    <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
                                     <key>InfoBox</key>
-                                    <string>&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**Last Restart:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**Last Restart:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
                                     <key>HelpMessage</key>
-                                    <string>&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
                                     <key>HelpImage</key>
                                     <string>qr={infobuttonaction}</string>
                             </dict>
@@ -93,26 +93,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>53436F10-060C-428C-B3F9-EEB9D99F99DF</string>
+            <string>7D7B28A3-88FA-4B84-BF67-C58BF9611CED</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>53436F10-060C-428C-B3F9-EEB9D99F99DF</string>
+            <string>7D7B28A3-88FA-4B84-BF67-C58BF9611CED</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.4.0rc4) to org.churchofjesuschrist standards. Created: 2026-02-06-092431</string>
+    <string>Configures DDM OS Reminder (2.4.0) to org.churchofjesuschrist standards. Created: 2026-02-06-152957</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>080EFE48-D89C-45F1-9DB0-419CEBA60CBE</string>
+    <string>3D4DF0E6-F2E3-48CD-AA59-FD92E1680317</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -122,7 +122,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>080EFE48-D89C-45F1-9DB0-419CEBA60CBE</string>
+    <string>3D4DF0E6-F2E3-48CD-AA59-FD92E1680317</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

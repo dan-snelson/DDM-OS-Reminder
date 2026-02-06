@@ -511,6 +511,25 @@ function setPreferenceValue() {
     printf -v "${targetVariable}" '%s' "${chosenValue}"
 }
 
+function setAllowlistPreferenceValue() {
+    local targetVariable="${1}"
+    local managedValue="${2}"
+    local managedKeyExists="${3}"
+    local localValue="${4}"
+    local localKeyExists="${5}"
+    local defaultValue="${6}"
+    local chosenValue="${defaultValue}"
+
+    # Preserve intentional empty-string overrides for this specific key.
+    if [[ "${managedKeyExists}" == "true" ]]; then
+        chosenValue="${managedValue}"
+    elif [[ "${localKeyExists}" == "true" ]]; then
+        chosenValue="${localValue}"
+    fi
+
+    printf -v "${targetVariable}" '%s' "${chosenValue}"
+}
+
 function setNumericPreferenceValue() {
     local targetVariable="${1}"
     local managedValue="${2}"
@@ -588,14 +607,22 @@ function loadPreferenceOverrides() {
         
         # Read managed value
         local managedValue=""
+        local managedKeyExists="false"
         if [[ "${hasManagedPrefs}" == "true" ]]; then
-            managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+            if /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
+                managedKeyExists="true"
+                managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+            fi
         fi
         
         # Read local value
         local localValue=""
+        local localKeyExists="false"
         if [[ "${hasLocalPrefs}" == "true" ]]; then
-            localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+            if /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" >/dev/null 2>&1; then
+                localKeyExists="true"
+                localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+            fi
         fi
         
         # Apply the preference based on type
@@ -607,7 +634,11 @@ function loadPreferenceOverrides() {
                 setBooleanPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
                 ;;
             string|*)
-                setPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                if [[ "${prefKey}" == "acceptableAssertionApplicationNames" ]]; then
+                    setAllowlistPreferenceValue "${prefKey}" "${managedValue}" "${managedKeyExists}" "${localValue}" "${localKeyExists}" "${defaultValue}"
+                else
+                    setPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                fi
                 ;;
         esac
     done
@@ -1065,6 +1096,12 @@ function checkUserDisplaySleepAssertions() {
     local intervalMinutes=$(( intervalSeconds / 60 ))
     local maxChecks=$(( meetingDelay * 60 / intervalSeconds ))
     local checkCount=0
+    local userDisplaySleepAssertions="FALSE"
+
+    if (( maxChecks <= 0 )); then
+        info "Meeting delay is set to ${meetingDelay} minute(s); skipping Display Sleep Assertion retry loop."
+        return 0
+    fi
 
     # Plist-sourced meeting-app allowlist (space-delimited string → array)
     local -a acceptableApps=( ${(s: :)acceptableAssertionApplicationNames} )

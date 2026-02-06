@@ -282,17 +282,17 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `AcceptableAssertionApplicationNames`  
 **Type**: String  
 **Default**: `MSTeams zoom.us Webex`  
-**Valid Format**: Space-delimited list of app names
+**Valid Format**: Space-delimited list of tokens to match assertion owner names
 
-**Description**: Space-delimited list of meeting/presentation application names whose Display Sleep Assertions should be tolerated. When populated, only assertions from apps **on this list** will trigger the `meetingDelay` retry loop. Assertions from apps **not** on the list allow the reminder to proceed immediately.
+**Description**: Space-delimited list of meeting/presentation application names (or distinctive substrings of those names) whose Display Sleep Assertions should be tolerated. When populated, only assertions from apps whose owner names **match one of these tokens** trigger the `meetingDelay` retry loop. Assertions from apps **not** matching any token in the list allow the reminder to proceed immediately.
 
 **Impact**:
-- Default (`MSTeams zoom.us Webex`) = only these apps trigger deferral
-- Empty = all non-coreaudiod assertions trigger deferral (legacy behavior)
-- Any other populated value = only listed apps trigger deferral
-- Uses exact app name matching (case-sensitive)
+- Default (`MSTeams zoom.us Webex`) = only assertions whose owner names contain one of these tokens trigger deferral
+- Empty or whitespace-only = allowlist filtering is disabled (legacy behavior: all non-coreaudiod assertions trigger deferral)
+- Any other populated value = only assertions whose owner names match one of the listed tokens trigger deferral
+- Matching uses case-insensitive fixed-string (substring) checks
 - Helps filter out non-meeting apps that hold assertions
-To find exact app names while the application is active, run in Terminal:
+To find assertion owner names while the application is active, run in Terminal:
 ```bash
 pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"
 ```

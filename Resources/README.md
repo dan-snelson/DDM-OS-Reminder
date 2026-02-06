@@ -22,6 +22,8 @@ zsh assemble.zsh --help
 zsh assemble.zsh us.snelson --lane prod --interactive
 ```
 
+> **Automation note:** `assemble.zsh` is intentionally interactive by default. For unattended/non-interactive runs, provide both the RDNN argument and `--lane` explicitly.
+
 The artifacts will be saved as shown below:
 
 ```

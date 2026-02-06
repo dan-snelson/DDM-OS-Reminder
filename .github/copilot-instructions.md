@@ -9,7 +9,7 @@
 ## Critical Conventions
 - **RDNN must match everywhere**: `reminderDialog.zsh`, `launchDaemonManagement.zsh`, and generated plist/mobileconfig. Default placeholder is `org.churchofjesuschrist`. Mismatch causes silent preference-loading failures. `assemble.zsh` is the enforcement point.
 - Preference hierarchy is **Managed Preferences → Local Preferences → Defaults** (`preferenceConfiguration` array). Reads use `PlistBuddy`, not `defaults read` (deliberate decision for nested value reliability).
-- Key parameters: `DaysBeforeDeadlineDisplayReminder` (14), `DaysBeforeDeadlineBlurscreen` (3), `DaysBeforeDeadlineHidingButton2` (1), `MeetingDelay` (75 min).
+- Key parameters (script defaults): `DaysBeforeDeadlineDisplayReminder` (60), `DaysBeforeDeadlineBlurscreen` (45), `DaysBeforeDeadlineHidingButton2` (21), `MeetingDelay` (75 min). `Resources/sample.plist` intentionally uses shorter demo values (14/3/1) for the first three keys.
 - Logging format: `<scriptName> (<version>): <timestamp> - [<level>] <message>` with levels `[PRE-FLIGHT]`, `[NOTICE]`, `[INFO]`, `[WARNING]`, `[ERROR]`, `[FATAL]`. New deadline/suppression logic should log at `[NOTICE]` or `[WARNING]`.
 
 ## Build, Deploy, Demo

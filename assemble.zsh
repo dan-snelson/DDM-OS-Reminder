@@ -6,17 +6,23 @@
 # Automatically assemble the final DDM OS Reminder script by embedding the
 # customized end-user message (reminderDialog.zsh) into launchDaemonManagement.zsh by executing:
 #
-# zsh assemble.zsh
+# zsh assemble.zsh --help
+#
+# Common usage examples:
+#   zsh assemble.zsh us.snelson --lane prod
+#   zsh assemble.zsh us.snelson --lane prod --interactive
 #
 # Expected directory layout:
 #   DDM-OS-Reminder/
 #     assemble.zsh
 #     launchDaemonManagement.zsh
 #     reminderDialog.zsh
-#     Resources/
+#     Resources/sample.plist
 #
 # Output:
-#     Artifacts/ddm-os-reminder-<reverseDomainNameNotation>-<timestamp>.zsh
+#     Artifacts/ddm-os-reminder-<reverseDomainNameNotation>-<timestamp>[-dev|-test|-prod].zsh
+#     Artifacts/<reverseDomainNameNotation>.<organizationScriptName>-<timestamp>[-dev|-test|-prod].plist
+#     Artifacts/<reverseDomainNameNotation>.<organizationScriptName>-<timestamp>[-dev|-test|-prod]-unsigned.mobileconfig
 #
 # http://snelson.us/ddm
 #
@@ -29,7 +35,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.4.0rc3"
+scriptVersion="2.4.0rc4"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -49,7 +55,22 @@ newOrgScriptName=""
 # Deployment mode (dev, test, prod)
 deploymentMode="prod"  # default to production mode
 modeSuffix=""
-explicitProdMode=false  # track if --prod flag was explicitly used
+interactiveMode=false
+
+placeholderMarker="Assembled"
+legacyPlaceholderMarker="Sample"
+
+# IT Support & Branding (interactive prompts)
+supportTeamName=""
+supportTeamPhone=""
+supportTeamEmail=""
+supportTeamWebsite=""
+supportKB=""
+infoButtonAction=""
+supportKBURL=""
+organizationOverlayIconURL=""
+organizationOverlayIconURLdark=""
+swapOverlayAndLogo=""
 
 
 
@@ -135,38 +156,38 @@ fi
 echo
 
 # Parse command-line arguments
-# Usage: zsh assemble.zsh [RDNN] [--mode dev|test|prod] or [--dev|--test|--prod]
+# Usage: zsh assemble.zsh [RDNN] [--lane dev|test|prod] [--interactive] [--help]
 skipRDNNPrompt=false
 skipModePrompt=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --mode)
+    --help|-h)
+      echo
+      echo "Usage:"
+      echo "  zsh assemble.zsh [RDNN] [--lane dev|test|prod] [--interactive] [--help]"
+      echo
+      echo "Options:"
+      echo "  --lane <dev|test|prod>       Select deployment mode"
+      echo "  --interactive                Prompt for IT support and branding values"
+      echo "  --help, -h                    Show this help"
+      echo
+      exit 0
+      ;;
+    --interactive)
+      interactiveMode=true
+      shift
+      ;;
+    --lane)
       if [[ -n "${2:-}" ]] && [[ "${2}" =~ ^(dev|test|prod)$ ]]; then
         deploymentMode="${2}"
         skipModePrompt=true
         shift 2
       else
-        echo "⚠️  Invalid mode: '${2:-}'. Valid options: dev, test, prod"
+        echo "⚠️  Invalid lane: '${2:-}'. Valid options: dev, test, prod"
         echo "    Defaulting to interactive prompt."
         shift
       fi
-      ;;
-    --dev|--development)
-      deploymentMode="dev"
-      skipModePrompt=true
-      shift
-      ;;
-    --test|--testing)
-      deploymentMode="test"
-      skipModePrompt=true
-      shift
-      ;;
-    --prod|--production)
-      deploymentMode="prod"
-      explicitProdMode=true
-      skipModePrompt=true
-      shift
       ;;
     -*)
       echo "⚠️  Unknown flag: ${1}"
@@ -187,9 +208,9 @@ done
 # Prompt ONLY if not provided via argument
 if [[ "${skipRDNNPrompt}" == false ]]; then
   if [[ -n "${currentRDNN}" ]]; then
-    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or 'X' to exit): " userRDNN
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or ‘X’ to exit): " userRDNN
 
-    # Allow 'X' to exit
+    # Allow ‘X’ to exit
     if [[ "${userRDNN}" == [Xx] ]]; then
       echo "Exiting at user request."
       exit 0
@@ -197,9 +218,9 @@ if [[ "${skipRDNNPrompt}" == false ]]; then
 
     newRDNN="${userRDNN:-${currentRDNN}}"
   else
-    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or 'X' to exit): " newRDNN
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or ‘X’ to exit): " newRDNN
 
-    # Allow 'X' to exit
+    # Allow ‘X’ to exit
     if [[ "${newRDNN}" == [Xx] ]]; then
       echo "Exiting at user request."
       exit 0
@@ -222,6 +243,110 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo
 
 
+
+####################################################################################################
+# Optional Interactive Prompts (IT Support & Branding)
+####################################################################################################
+
+function rdnnToDomain() {
+  local rdnnValue="${1}"
+  local -a parts reversed
+  local domainValue=""
+
+  parts=(${(s:.:)rdnnValue})
+
+  if (( ${#parts[@]} == 0 )); then
+    echo ""
+    return
+  fi
+
+  for (( i=${#parts[@]}; i>=1; i-- )); do
+    reversed+=("${parts[i]}")
+  done
+
+  domainValue="${(j:.:)reversed}"
+  echo "${domainValue}"
+}
+
+function promptWithDefault() {
+  local promptText="${1}"
+  local defaultValue="${2}"
+  local variableName="${3}"
+  local inputValue=""
+
+  read -r "?${promptText} [${defaultValue}] (or ‘X’ to exit): " inputValue
+
+  if [[ "${inputValue}" == [Xx] ]]; then
+    echo "Exiting at user request."
+    exit 0
+  fi
+
+  if [[ -z "${inputValue}" ]]; then
+    inputValue="${defaultValue}"
+  fi
+
+  typeset -g "${variableName}=${inputValue}"
+}
+
+function normalizeBoolean() {
+  local value="${1}"
+
+  case "${value:l}" in
+    1|true|yes|y) echo "true" ;;
+    0|false|no|n) echo "false" ;;
+    *)            echo "" ;;
+  esac
+}
+
+if [[ "${interactiveMode}" == true ]]; then
+  derivedDomain="$(rdnnToDomain "${newRDNN}")"
+  if [[ -z "${derivedDomain}" ]]; then
+    derivedDomain="company.com"
+  fi
+
+  echo
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "IT Support & Branding (Interactive)"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo
+
+  defaultSupportTeamName="IT Support"
+  defaultSupportTeamPhone="+1 (801) 555-1212"
+  defaultSupportTeamEmail="rescue@${derivedDomain}"
+  defaultSupportTeamWebsite="https://support.${derivedDomain}"
+  defaultSupportKB="Update macOS on Mac"
+  defaultInfoButtonAction="${defaultSupportTeamWebsite}"
+  defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
+  defaultOrganizationOverlayIconURL="https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+  defaultOrganizationOverlayIconURLdark="https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
+  defaultSwapOverlayAndLogo="NO"
+
+  promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
+  promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
+  promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
+  promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
+  promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
+
+  supportKbSlug="${supportKB// /-}"
+  defaultInfoButtonAction="${defaultSupportTeamWebsite}/${supportKbSlug}"
+  promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
+
+  defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
+  promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+
+  promptWithDefault "Overlay Icon URL (Light)" "${defaultOrganizationOverlayIconURL}" "organizationOverlayIconURL"
+  promptWithDefault "Overlay Icon URL (Dark)" "${defaultOrganizationOverlayIconURLdark}" "organizationOverlayIconURLdark"
+
+  promptWithDefault "Swap Overlay and Logo (YES/NO)" "${defaultSwapOverlayAndLogo}" "swapOverlayAndLogo"
+  swapOverlayAndLogo="$(normalizeBoolean "${swapOverlayAndLogo}")"
+  if [[ -z "${swapOverlayAndLogo}" ]]; then
+    echo "⚠️  Invalid input for SwapOverlayAndLogo; defaulting to ${defaultSwapOverlayAndLogo}"
+    swapOverlayAndLogo="$(normalizeBoolean "${defaultSwapOverlayAndLogo}")"
+  fi
+fi
+
+
+
 ####################################################################################################
 # Deployment Mode Selection
 ####################################################################################################
@@ -233,12 +358,11 @@ if [[ "${skipModePrompt}" == false ]]; then
   echo "Select Deployment Mode:"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo
-  echo "  1) Development  - Keep 'assembled' text for local testing"
-  echo "  2) Testing      - Replace 'assembled' with 'TEST' for staging"
-  echo "  3) Production   - Remove 'Sample' text for clean deployment"
+  echo "  1) Development  - Keep placeholder text for local testing"
+  echo "  2) Testing      - Replace placeholder text with 'TEST' for staging"
+  echo "  3) Production   - Remove placeholder text for clean deployment"
   echo
-  echo "  [Press 'X' to exit]"
-  echo "  [Use --prod flag for clean output without replacement]"
+  echo "  [Press ‘X’ to exit]"
   echo
   read -r "?Enter mode [1/2/3]: " modeChoice
 
@@ -247,7 +371,6 @@ if [[ "${skipModePrompt}" == false ]]; then
     2) deploymentMode="test" ;;
     3)
       deploymentMode="prod"
-      explicitProdMode=true
       ;;
     [Xx])
       echo "Exiting at user request."
@@ -272,7 +395,7 @@ case "${deploymentMode}" in
     modeSuffix="-test"
     ;;
   prod)
-    modeSuffix=""
+    modeSuffix="-prod"
     ;;
 esac
 
@@ -431,26 +554,30 @@ if [[ -f "${plistSample}" ]]; then
   echo
   echo "    🔧 Updating internal plist content …"
 
-  # Replace "sample" text based on deployment mode
+  # Replace placeholder text based on deployment mode
   case "${deploymentMode}" in
     dev)
-      echo "    ℹ️  Development mode: keeping 'sample' text unchanged"
-      # No replacement needed
+      echo "    ℹ️  Development mode: replacing legacy 'Sample' → '${placeholderMarker}'"
+      sed -i.bak \
+        -e "s/${legacyPlaceholderMarker}/${placeholderMarker}/gI" \
+        "${plistOutput}"
       ;;
     test)
-      echo "    🧪 Testing mode: replacing 'sample' → 'TEST'"
-      sed -i.bak 's/sample/TEST/gI' "${plistOutput}"
+      echo "    🧪 Testing mode: replacing placeholder text → 'TEST'"
+      sed -i.bak \
+        -e "s/${placeholderMarker}/TEST/gI" \
+        -e "s/${legacyPlaceholderMarker}/TEST/gI" \
+        "${plistOutput}"
       ;;
     prod)
-      if [[ "${explicitProdMode}" == true ]]; then
-        echo "    🔓 Production mode (explicit): removing 'sample' text for clean deployment"
-        # Remove "sample " (with trailing space), then standalone "sample"
-        sed -i.bak -E -e 's/sample[[:space:]]+//gI' -e 's/sample//gI' "${plistOutput}"
-      else
-        echo "    🔒 Production mode: replacing 'sample' → 'assembled'"
-        sed -i.bak 's/sample/assembled/gI' "${plistOutput}"
-        echo "    ⚠️  REMINDER: You must customize all 'assembled' values before deployment!"
-      fi
+      echo "    🔓 Production mode: removing placeholder text for clean deployment"
+      # Remove "<marker> " (with trailing space), then standalone marker
+      sed -i.bak -E \
+        -e "s/${placeholderMarker}[[:space:]]+//gI" \
+        -e "s/${placeholderMarker}//gI" \
+        -e "s/${legacyPlaceholderMarker}[[:space:]]+//gI" \
+        -e "s/${legacyPlaceholderMarker}//gI" \
+        "${plistOutput}"
       ;;
   esac
 
@@ -467,6 +594,20 @@ if [[ -f "${plistSample}" ]]; then
     s|<key>ScriptLog</key>.*<string>/var/log/org\.churchofjesuschrist\.log</string>|<key>ScriptLog</key>\
     <string>/var/log/'${newRDNN}'.log</string>|
 }' "$plistOutput"
+
+  if [[ "${interactiveMode}" == true ]]; then
+    echo "    🔧 Applying IT support and branding values …"
+    /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
+    /usr/bin/plutil -replace SupportTeamPhone -string "${supportTeamPhone}" "${plistOutput}"
+    /usr/bin/plutil -replace SupportTeamEmail -string "${supportTeamEmail}" "${plistOutput}"
+    /usr/bin/plutil -replace SupportTeamWebsite -string "${supportTeamWebsite}" "${plistOutput}"
+    /usr/bin/plutil -replace SupportKB -string "${supportKB}" "${plistOutput}"
+    /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
+    /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
+    /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
+    /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
+    /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
+  fi
 
   # Cleanup
   rm -f "${plistOutput}.bak" 2>/dev/null || true
@@ -648,38 +789,35 @@ echo
 case "${deploymentMode}" in
   dev)
     echo "  Development Artifacts Generated:"
-    echo "    - All 'sample' text preserved for testing"
+    echo "    - Legacy 'Sample' placeholders replaced with '${placeholderMarker}'"
     echo "    - Safe to deploy for local validation"
     echo "    - NOT suitable for production use"
     ;;
   test)
     echo "  Testing Artifacts Generated:"
-    echo "    - All 'sample' text replaced with 'TEST'"
+    echo "    - All placeholder text replaced with 'TEST'"
     echo "    - Suitable for staging/QA environments"
     echo "    - NOT suitable for production use"
     ;;
   prod)
-    if [[ "${explicitProdMode}" == true ]]; then
-      echo "  Production Artifacts Generated (Clean):"
-      echo "    - All 'sample' text removed (empty strings)"
-      echo "    - Ready for deployment with your custom values"
-      echo "    - Ensure you've customized the source files before assembly"
+    echo "  Production Artifacts Generated:"
+    echo "    - All placeholder text removed (clean output)"
+    if [[ "${interactiveMode}" == true ]]; then
+      echo "    - IT support and branding values applied from prompts"
     else
-      echo "  Production Artifacts Generated:"
-      echo "    - All 'sample' text replaced with 'assembled'"
-      echo
-      echo "  ⚠️  REQUIRED ACTION:"
-      echo "    1. Open the generated .plist or .mobileconfig file"
-      echo "    2. Search for 'assembled' (case-insensitive)"
-      echo "    3. Replace each instance with your organization's values:"
-      echo "         - Support team name, phone, email, website"
-      echo "         - Button labels and dialog messages"
-      echo "    4. Deploy only after ALL 'assembled' values are customized"
-      echo
-      echo "  Files to review:"
-      echo "    - ${plistOutput#$projectDir/}"
-      echo "    - ${mobileconfigOutput#$projectDir/}"
+      echo "    - Ensure you've customized values before deployment"
+      echo "      (re-run with --interactive or update source defaults)"
     fi
+    echo
+    echo "  Recommended review items:"
+    echo "    - Support team name, phone, email, website"
+    echo "    - Support KB title/link and Info button URL"
+    echo "    - Organization overlay icon URLs"
+    echo "    - Button labels and dialog messages"
+    echo
+    echo "  Files to review:"
+    echo "    - ${plistOutput#$projectDir/}"
+    echo "    - ${mobileconfigOutput#$projectDir/}"
     ;;
 esac
 

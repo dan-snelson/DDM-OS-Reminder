@@ -1,4 +1,4 @@
-# Contributing to DDM OS Reminder (2.4.0rc2)
+# Contributing to DDM OS Reminder (2.4.0rc3)
 
 First, thank you for your interest in contributing to **DDM OS Reminder**! Community contributions have already greatly improved this project.
 

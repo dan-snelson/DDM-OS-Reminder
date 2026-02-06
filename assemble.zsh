@@ -29,7 +29,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="2.4.0rc2"
+scriptVersion="2.4.0rc3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -45,6 +45,11 @@ currentRDNN=""
 currentOrgScriptName=""
 newRDNN=""
 newOrgScriptName=""
+
+# Deployment mode (dev, test, prod)
+deploymentMode="prod"  # default to production mode
+modeSuffix=""
+explicitProdMode=false  # track if --prod flag was explicitly used
 
 
 
@@ -129,14 +134,55 @@ fi
 
 echo
 
-# Optional command-line override: allow "zsh assemble.zsh newRDNN"
-if [[ -n "${1:-}" ]]; then
-  echo "📥 RDNN provided via command-line argument: '${1}'"
-  newRDNN="${1}"
-  skipRDNNPrompt=true
-else
-  skipRDNNPrompt=false
-fi
+# Parse command-line arguments
+# Usage: zsh assemble.zsh [RDNN] [--mode dev|test|prod] or [--dev|--test|--prod]
+skipRDNNPrompt=false
+skipModePrompt=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --mode)
+      if [[ -n "${2:-}" ]] && [[ "${2}" =~ ^(dev|test|prod)$ ]]; then
+        deploymentMode="${2}"
+        skipModePrompt=true
+        shift 2
+      else
+        echo "⚠️  Invalid mode: '${2:-}'. Valid options: dev, test, prod"
+        echo "    Defaulting to interactive prompt."
+        shift
+      fi
+      ;;
+    --dev|--development)
+      deploymentMode="dev"
+      skipModePrompt=true
+      shift
+      ;;
+    --test|--testing)
+      deploymentMode="test"
+      skipModePrompt=true
+      shift
+      ;;
+    --prod|--production)
+      deploymentMode="prod"
+      explicitProdMode=true
+      skipModePrompt=true
+      shift
+      ;;
+    -*)
+      echo "⚠️  Unknown flag: ${1}"
+      shift
+      ;;
+    *)
+      # Non-flag argument assumed to be RDNN
+      if [[ -z "${newRDNN}" ]]; then
+        echo "📥 RDNN provided via command-line argument: '${1}'"
+        newRDNN="${1}"
+        skipRDNNPrompt=true
+      fi
+      shift
+      ;;
+  esac
+done
 
 # Prompt ONLY if not provided via argument
 if [[ "${skipRDNNPrompt}" == false ]]; then
@@ -173,6 +219,63 @@ echo
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo
+
+
+####################################################################################################
+# Deployment Mode Selection
+####################################################################################################
+
+# Prompt for deployment mode if not specified via CLI
+if [[ "${skipModePrompt}" == false ]]; then
+  echo
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Select Deployment Mode:"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo
+  echo "  1) Development  - Keep 'assembled' text for local testing"
+  echo "  2) Testing      - Replace 'assembled' with 'TEST' for staging"
+  echo "  3) Production   - Remove 'Sample' text for clean deployment"
+  echo
+  echo "  [Press 'X' to exit]"
+  echo "  [Use --prod flag for clean output without replacement]"
+  echo
+  read -r "?Enter mode [1/2/3]: " modeChoice
+
+  case "${modeChoice}" in
+    1) deploymentMode="dev" ;;
+    2) deploymentMode="test" ;;
+    3)
+      deploymentMode="prod"
+      explicitProdMode=true
+      ;;
+    [Xx])
+      echo "Exiting at user request."
+      exit 0
+      ;;
+    *)
+      echo "⚠️  Invalid selection. Defaulting to 'production' mode."
+      deploymentMode="prod"
+      ;;
+  esac
+fi
+
+echo
+echo "📦 Deployment Mode: ${deploymentMode}"
+
+# Set mode suffix for artifact naming
+case "${deploymentMode}" in
+  dev)
+    modeSuffix="-dev"
+    ;;
+  test)
+    modeSuffix="-test"
+    ;;
+  prod)
+    modeSuffix=""
+    ;;
+esac
+
 echo
 
 
@@ -321,15 +424,35 @@ fi
 echo
 echo "🗂  Generating LaunchDaemon plist …"
 if [[ -f "${plistSample}" ]]; then
-  plistOutput="${artifactsDir}/${newRDNN}.${newOrgScriptName}-${timestamp}.plist"
+  plistOutput="${artifactsDir}/${newRDNN}.${newOrgScriptName}-${timestamp}${modeSuffix}.plist"
 
   echo "    🗂  Creating ${newRDNN}.${newOrgScriptName} plist from ${plistSample} …"
   cp "${plistSample}" "${plistOutput}"
   echo
   echo "    🔧 Updating internal plist content …"
 
-  # Replace "sample" → "assembled" globally
-  sed -i.bak 's/sample/assembled/gI' "${plistOutput}"
+  # Replace "sample" text based on deployment mode
+  case "${deploymentMode}" in
+    dev)
+      echo "    ℹ️  Development mode: keeping 'sample' text unchanged"
+      # No replacement needed
+      ;;
+    test)
+      echo "    🧪 Testing mode: replacing 'sample' → 'TEST'"
+      sed -i.bak 's/sample/TEST/gI' "${plistOutput}"
+      ;;
+    prod)
+      if [[ "${explicitProdMode}" == true ]]; then
+        echo "    🔓 Production mode (explicit): removing 'sample' text for clean deployment"
+        # Remove "sample " (with trailing space), then standalone "sample"
+        sed -i.bak -E -e 's/sample[[:space:]]+//gI' -e 's/sample//gI' "${plistOutput}"
+      else
+        echo "    🔒 Production mode: replacing 'sample' → 'assembled'"
+        sed -i.bak 's/sample/assembled/gI' "${plistOutput}"
+        echo "    ⚠️  REMINDER: You must customize all 'assembled' values before deployment!"
+      fi
+      ;;
+  esac
 
   # Update XML comments
   sed -i '' \
@@ -386,7 +509,7 @@ payloadUUID=$(uuidgen)
 profileUUID=$(uuidgen)
 
 # Output filename
-mobileconfigOutput="${artifactsDir}/${newRDNN}.${newOrgScriptName}-${timestamp}-unsigned.mobileconfig"
+mobileconfigOutput="${artifactsDir}/${newRDNN}.${newOrgScriptName}-${timestamp}${modeSuffix}-unsigned.mobileconfig"
 
 cat > "${mobileconfigOutput}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -474,7 +597,7 @@ fi
 
 echo
 echo "🔁 Renaming assembled script …"
-newOutputScript="${artifactsDir}/ddm-os-reminder-${newRDNN}-${timestamp}.zsh"
+newOutputScript="${artifactsDir}/ddm-os-reminder-${newRDNN}-${timestamp}${modeSuffix}.zsh"
 mv "${outputScript}" "${newOutputScript}" || {
   echo "❌ Failed to rename assembled script."
   exit 1
@@ -515,6 +638,51 @@ echo "Deployment Artifacts:"
 echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
+echo
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚠️  Important Next Steps:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo
+
+case "${deploymentMode}" in
+  dev)
+    echo "  Development Artifacts Generated:"
+    echo "    - All 'sample' text preserved for testing"
+    echo "    - Safe to deploy for local validation"
+    echo "    - NOT suitable for production use"
+    ;;
+  test)
+    echo "  Testing Artifacts Generated:"
+    echo "    - All 'sample' text replaced with 'TEST'"
+    echo "    - Suitable for staging/QA environments"
+    echo "    - NOT suitable for production use"
+    ;;
+  prod)
+    if [[ "${explicitProdMode}" == true ]]; then
+      echo "  Production Artifacts Generated (Clean):"
+      echo "    - All 'sample' text removed (empty strings)"
+      echo "    - Ready for deployment with your custom values"
+      echo "    - Ensure you've customized the source files before assembly"
+    else
+      echo "  Production Artifacts Generated:"
+      echo "    - All 'sample' text replaced with 'assembled'"
+      echo
+      echo "  ⚠️  REQUIRED ACTION:"
+      echo "    1. Open the generated .plist or .mobileconfig file"
+      echo "    2. Search for 'assembled' (case-insensitive)"
+      echo "    3. Replace each instance with your organization's values:"
+      echo "         - Support team name, phone, email, website"
+      echo "         - Button labels and dialog messages"
+      echo "    4. Deploy only after ALL 'assembled' values are customized"
+      echo
+      echo "  Files to review:"
+      echo "    - ${plistOutput#$projectDir/}"
+      echo "    - ${mobileconfigOutput#$projectDir/}"
+    fi
+    ;;
+esac
+
 echo
 echo "==============================================================="
 echo

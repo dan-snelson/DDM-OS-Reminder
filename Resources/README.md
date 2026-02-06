@@ -18,16 +18,17 @@ The [`assemble.zsh`](../assemble.zsh) script creates **combined, deployable** ar
 **1.1.** Execute the assembly script
 
 ```zsh
-zsh assemble.zsh
+zsh assemble.zsh --help
+zsh assemble.zsh us.snelson --lane prod --interactive
 ```
 
 The artifacts will be saved as shown below:
 
 ```
-❯ zsh assemble.zsh
+❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.4.0)
+🧩 Assemble DDM OS Reminder (2.4.0rc4)
 ===============================================================
 
 Full Paths:
@@ -48,32 +49,51 @@ LaunchDaemon Management: ~/DDM-OS-Reminder/launchDaemonManagement.zsh
         organizationScriptName    = dor
 
 
-Enter Your Organization’s Reverse Domain Name Notation [org.churchofjesuschrist] (or 'X' to exit): us.snelson
+📥 RDNN provided via command-line argument: 'us.snelson'
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Using 'us.snelson' as the Reverse Domain Name Notation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IT Support & Branding (Interactive)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Support Team Name [IT Support] (or 'X' to exit):
+Support Team Phone [+1 (801) 555-1212] (or 'X' to exit): +1 (937) 681-1122
+Support Team Email [rescue@snelson.us] (or 'X' to exit):
+Support Team Website [https://support.snelson.us] (or 'X' to exit):
+Support KB Title [Update macOS on Mac] (or 'X' to exit): KB8675309
+Info Button Action [https://support.snelson.us/KB8675309] (or 'X' to exit):
+Support KB Markdown Link [[KB8675309](https://support.snelson.us/KB8675309)] (or 'X' to exit):
+Overlay Icon URL (Light) [https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d] (or 'X' to exit):
+Overlay Icon URL (Dark) [https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39] (or 'X' to exit):
+Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
+
+📦 Deployment Mode: prod
+
 🔧 Inserting reminderDialog.zsh into launchDaemonManagement.zsh  …
 
-✅ Assembly complete [2026-01-08-054323]
-   → Resources/ddm-os-reminder-assembled-2026-01-08-054323.zsh
+✅ Assembly complete [2026-02-06-092404]
+   → Artifacts/ddm-os-reminder-assembled-2026-02-06-092404.zsh
 
 🔁 Updating reverseDomainNameNotation to 'us.snelson' in assembled script …
 
-🔍 Performing syntax check on 'Resources/ddm-os-reminder-assembled-2026-01-08-054323.zsh' …
+🔍 Performing syntax check on 'Artifacts/ddm-os-reminder-assembled-2026-02-06-092404.zsh' …
     ✅ Syntax check passed.
 
 🗂  Generating LaunchDaemon plist …
     🗂  Creating us.snelson.dorm plist from Resources/sample.plist …
 
     🔧 Updating internal plist content …
-   → Resources/us.snelson.dorm-2026-01-08-054323.plist
+    🔓 Production mode: removing placeholder text for clean deployment
+    🔧 Applying IT support and branding values …
+   → Artifacts/us.snelson.dorm-2026-02-06-092404-prod.plist
 
 🧩 Generating Configuration Profile (.mobileconfig) …
-   → Resources/us.snelson.dorm-2026-01-08-054323-unsigned.mobileconfig
+   → Artifacts/us.snelson.dorm-2026-02-06-092404-prod-unsigned.mobileconfig
 
-🔍 Performing syntax check on 'Resources/us.snelson.dorm-2026-01-08-054323-unsigned.mobileconfig' …
+🔍 Performing syntax check on 'Artifacts/us.snelson.dorm-2026-02-06-092404-prod-unsigned.mobileconfig' …
     ✅ Profile syntax check passed.
 
 🔁 Renaming assembled script …
@@ -83,9 +103,9 @@ Using 'us.snelson' as the Reverse Domain Name Notation
 🏁 Done.
 
 Deployment Artifacts:
-        Assembled Script: Artifacts/ddm-os-reminder-us.snelson-2026-01-08-054323.zsh
-    Organizational Plist: Artifacts/us.snelson.dorm-2026-01-08-054323.plist
-   Configuration Profile: Artifacts/us.snelson.dorm-2026-01-08-054323-unsigned.mobileconfig
+        Assembled Script: Artifacts/ddm-os-reminder-us.snelson-2026-02-06-092404-prod.zsh
+    Organizational Plist: Artifacts/us.snelson.dorm-2026-02-06-092404-prod.plist
+   Configuration Profile: Artifacts/us.snelson.dorm-2026-02-06-092404-prod-unsigned.mobileconfig
 
 ===============================================================
 ```
@@ -97,11 +117,12 @@ The `assemble.zsh` script creates **all three files you need for deployment**:
 - **`.plist`** (for plist-based preference management)
 - **`.mobileconfig`** (for Configuration Profile deployment)
 
-All artifacts are saved to the `Artifacts/` folder.
+All artifacts are saved to the `Artifacts/` folder and include the lane suffix:
+`-dev`, `-test`, or `-prod`.
 
 After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
 
-> **Note:** The [Create `.plist`](#3-create-plist) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
+> **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
 ---
 

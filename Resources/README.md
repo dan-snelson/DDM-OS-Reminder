@@ -30,7 +30,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.4.0)
+🧩 Assemble DDM OS Reminder (3.0.0a1)
 ===============================================================
 
 Full Paths:
@@ -125,6 +125,8 @@ All artifacts are saved to the `Artifacts/` folder and include the lane suffix:
 After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
 
 > **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
+
+> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`) plus localized keys such as `TitleLocalized_*`, `MessageLocalized_*`, `HelpMessageLocalized_*`, localized button labels, warning fragments (`ExcessiveUptimeWarningMessageLocalized_*`, `DiskSpaceWarningMessageLocalized_*`), and staging fragments (`StagedUpdateMessageLocalized_*`, `PartiallyStagedUpdateMessageLocalized_*`, `PendingDownloadMessageLocalized_*`). With `LanguageOverride=auto`, the script reads `AppleLanguages:0` for the logged-in user; unsupported locales normalize to English, and missing localized fields fall back to the scalar key.
 
 ---
 

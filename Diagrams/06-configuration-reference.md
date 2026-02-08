@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Complete reference guide for all configurable preferences in DDM OS Reminder.
+Complete reference guide for all 67 configurable preferences in DDM OS Reminder.
 
 ## Table of Contents
 
@@ -10,8 +10,10 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
   - [Timing & Thresholds](#2-timing--thresholds)
   - [Branding & Appearance](#3-branding--appearance)
   - [Support Team Information](#4-support-team-information)
-  - [Dialog UI Text](#5-dialog-ui-text)
-  - [Update Staging Messages](#6-update-staging-messages)
+  - [Localization & Language Selection](#5-localization--language-selection)
+  - [Dialog UI Text](#6-dialog-ui-text)
+  - [Update Staging Messages](#7-update-staging-messages)
+  - [Warning Messages](#8-warning-messages)
 - [Placeholder Reference](#placeholder-reference)
 - [Common Configuration Scenarios](#common-configuration-scenarios)
 - [Configuration Methods](#configuration-methods)
@@ -42,19 +44,53 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | supportKB | SupportKB | String | Update macOS on Mac | Support |
 | infobuttonaction | InfoButtonAction | String | https://support.apple.com/108382 | Support |
 | supportKBURL | SupportKBURL | String | [Markdown link] | Support |
+| languageOverride | LanguageOverride | String | auto | Localization |
 | title | Title | String | macOS {placeholder} Required | UI Text |
+| titleLocalizedEn | TitleLocalized_en | String | [English title] | Localization |
+| titleLocalizedDe | TitleLocalized_de | String | [German title] | Localization |
+| titleLocalizedFr | TitleLocalized_fr | String | [French title] | Localization |
 | button1text | Button1Text | String | Open Software Update | UI Text |
+| button1textLocalizedEn | Button1TextLocalized_en | String | [English button] | Localization |
+| button1textLocalizedDe | Button1TextLocalized_de | String | [German button] | Localization |
+| button1textLocalizedFr | Button1TextLocalized_fr | String | [French button] | Localization |
 | button2text | Button2Text | String | Remind Me Later | UI Text |
+| button2textLocalizedEn | Button2TextLocalized_en | String | [English button] | Localization |
+| button2textLocalizedDe | Button2TextLocalized_de | String | [German button] | Localization |
+| button2textLocalizedFr | Button2TextLocalized_fr | String | [French button] | Localization |
 | infobuttontext | InfoButtonText | String | Update macOS on Mac | UI Text |
+| infobuttontextLocalizedEn | InfoButtonTextLocalized_en | String | [English button] | Localization |
+| infobuttontextLocalizedDe | InfoButtonTextLocalized_de | String | [German button] | Localization |
+| infobuttontextLocalizedFr | InfoButtonTextLocalized_fr | String | [French button] | Localization |
 | excessiveUptimeWarningMessage | ExcessiveUptimeWarningMessage | String | [HTML message] | UI Text |
+| excessiveUptimeWarningMessageLocalizedEn | ExcessiveUptimeWarningMessageLocalized_en | String | [English warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedDe | ExcessiveUptimeWarningMessageLocalized_de | String | [German warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedFr | ExcessiveUptimeWarningMessageLocalized_fr | String | [French warning] | Localization |
 | diskSpaceWarningMessage | DiskSpaceWarningMessage | String | [HTML message] | UI Text |
+| diskSpaceWarningMessageLocalizedEn | DiskSpaceWarningMessageLocalized_en | String | [English warning] | Localization |
+| diskSpaceWarningMessageLocalizedDe | DiskSpaceWarningMessageLocalized_de | String | [German warning] | Localization |
+| diskSpaceWarningMessageLocalizedFr | DiskSpaceWarningMessageLocalized_fr | String | [French warning] | Localization |
 | stagedUpdateMessage | StagedUpdateMessage | String | [HTML message] | Staging |
+| stagedUpdateMessageLocalizedEn | StagedUpdateMessageLocalized_en | String | [English staging] | Localization |
+| stagedUpdateMessageLocalizedDe | StagedUpdateMessageLocalized_de | String | [German staging] | Localization |
+| stagedUpdateMessageLocalizedFr | StagedUpdateMessageLocalized_fr | String | [French staging] | Localization |
 | partiallyStagedUpdateMessage | PartiallyStagedUpdateMessage | String | [HTML message] | Staging |
+| partiallyStagedUpdateMessageLocalizedEn | PartiallyStagedUpdateMessageLocalized_en | String | [English staging] | Localization |
+| partiallyStagedUpdateMessageLocalizedDe | PartiallyStagedUpdateMessageLocalized_de | String | [German staging] | Localization |
+| partiallyStagedUpdateMessageLocalizedFr | PartiallyStagedUpdateMessageLocalized_fr | String | [French staging] | Localization |
 | pendingDownloadMessage | PendingDownloadMessage | String | [HTML message] | Staging |
+| pendingDownloadMessageLocalizedEn | PendingDownloadMessageLocalized_en | String | [English staging] | Localization |
+| pendingDownloadMessageLocalizedDe | PendingDownloadMessageLocalized_de | String | [German staging] | Localization |
+| pendingDownloadMessageLocalizedFr | PendingDownloadMessageLocalized_fr | String | [French staging] | Localization |
 | hideStagedInfo | HideStagedUpdateInfo | Boolean | NO | Staging |
 | message | Message | String | [Full dialog message] | UI Text |
+| messageLocalizedEn | MessageLocalized_en | String | [English message] | Localization |
+| messageLocalizedDe | MessageLocalized_de | String | [German message] | Localization |
+| messageLocalizedFr | MessageLocalized_fr | String | [French message] | Localization |
 | infobox | InfoBox | String | [System info display] | UI Text |
 | helpmessage | HelpMessage | String | [Support contact info] | UI Text |
+| helpmessageLocalizedEn | HelpMessageLocalized_en | String | [English help] | Localization |
+| helpmessageLocalizedDe | HelpMessageLocalized_de | String | [German help] | Localization |
+| helpmessageLocalizedFr | HelpMessageLocalized_fr | String | [French help] | Localization |
 | helpimage | HelpImage | String | qr={infobuttonaction} | UI Text |
 
 **Note**: The sample profile in `Resources/sample.plist` uses shorter timing values (for example, 14/3/1 days) intentionally for demo-friendly behavior and does not reflect script defaults. Managed or local preferences override the script defaults in production.
@@ -702,12 +738,63 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-### 5. Dialog UI Text
+### 5. Localization & Language Selection
+
+#### languageOverride
+**Plist Key**: `LanguageOverride`  
+**Type**: String  
+**Default**: `auto`  
+**Supported Values**: `auto`, `en`, `de`, `fr`
+
+**Description**: Controls the language used for localized dialog fields.
+
+**Behavior**:
+- `auto`: read logged-in user `AppleLanguages:0` and normalize to `en`, `de`, or `fr`
+- explicit (`en`, `de`, `fr`): force language regardless of user locale
+- unsupported values normalize to `en`
+
+**Script Default**:
+```bash
+["languageOverride"]="string|auto"
+```
+
+**Configuration Profile**:
+```xml
+<key>LanguageOverride</key>
+<string>fr</string>
+```
+
+#### Localized Key Families
+
+Localized keys are available for the following base fields:
+
+- `Title`
+- `Button1Text`
+- `Button2Text`
+- `InfoButtonText`
+- `Message`
+- `HelpMessage`
+- `ExcessiveUptimeWarningMessage`
+- `DiskSpaceWarningMessage`
+- `StagedUpdateMessage`
+- `PartiallyStagedUpdateMessage`
+- `PendingDownloadMessage`
+
+Each family supports suffixes `_en`, `_de`, and `_fr` in plist/profile keys.
+
+**Fallback Chain**:
+1. Selected language key (for example, `MessageLocalized_de`)
+2. Scalar key (for example, `Message`)
+
+---
+
+### 6. Dialog UI Text
 
 #### title
 **Plist Key**: `Title`  
 **Type**: String  
 **Default**: `macOS {titleMessageUpdateOrUpgrade} Required`
+**Localized Keys**: `TitleLocalized_en`, `TitleLocalized_de`, `TitleLocalized_fr`
 
 **Description**: Main title displayed at the top of the dialog window.
 
@@ -736,6 +823,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `Button1Text`  
 **Type**: String  
 **Default**: `Open Software Update`
+**Localized Keys**: `Button1TextLocalized_en`, `Button1TextLocalized_de`, `Button1TextLocalized_fr`
 
 **Description**: Label for the primary action button (Button 1) that opens System Settings → Software Update.
 
@@ -764,6 +852,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `Button2Text`  
 **Type**: String  
 **Default**: `Remind Me Later`
+**Localized Keys**: `Button2TextLocalized_en`, `Button2TextLocalized_de`, `Button2TextLocalized_fr`
 
 **Description**: Label for the secondary button (Button 2) that dismisses the dialog for later reminder.
 
@@ -789,6 +878,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `InfoButtonText`  
 **Type**: String  
 **Default**: `Update macOS on Mac`
+**Localized Keys**: `InfoButtonTextLocalized_en`, `InfoButtonTextLocalized_de`, `InfoButtonTextLocalized_fr`
 
 **Description**: Tooltip text displayed when hovering over the info button (?).
 
@@ -817,6 +907,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `Message`  
 **Type**: String  
 **Default**: [Full message text with placeholders]
+**Localized Keys**: `MessageLocalized_en`, `MessageLocalized_de`, `MessageLocalized_fr`
 
 **Description**: Main body text of the dialog. Supports HTML formatting and extensive placeholder substitution.
 
@@ -894,6 +985,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `HelpMessage`  
 **Type**: String  
 **Default**: [Support contact information]
+**Localized Keys**: `HelpMessageLocalized_en`, `HelpMessageLocalized_de`, `HelpMessageLocalized_fr`
 
 **Description**: Content displayed when user clicks the info (?) button, providing support contact details and system information.
 
@@ -959,12 +1051,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-### 6. Update Staging Messages
+### 7. Update Staging Messages
 
 #### stagedUpdateMessage
 **Plist Key**: `StagedUpdateMessage`  
 **Type**: String  
 **Default**: [Message about fully staged update]
+**Localized Keys**: `StagedUpdateMessageLocalized_en`, `StagedUpdateMessageLocalized_de`, `StagedUpdateMessageLocalized_fr`
 
 **Description**: Message inserted into main dialog when script detects that the macOS update has been fully downloaded and staged in the Preboot volume (ready for quick installation).
 
@@ -992,6 +1085,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `PartiallyStagedUpdateMessage`  
 **Type**: String  
 **Default**: [Message about partial staging]
+**Localized Keys**: `PartiallyStagedUpdateMessageLocalized_en`, `PartiallyStagedUpdateMessageLocalized_de`, `PartiallyStagedUpdateMessageLocalized_fr`
 
 **Description**: Message inserted when update is partially downloaded but not yet complete.
 
@@ -1019,6 +1113,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `PendingDownloadMessage`  
 **Type**: String  
 **Default**: [Message about pending download]
+**Localized Keys**: `PendingDownloadMessageLocalized_en`, `PendingDownloadMessageLocalized_de`, `PendingDownloadMessageLocalized_fr`
 
 **Description**: Message inserted when no staged update is detected (update will need to download when user clicks Update).
 
@@ -1073,12 +1168,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-### 7. Warning Messages
+### 8. Warning Messages
 
 #### excessiveUptimeWarningMessage
 **Plist Key**: `ExcessiveUptimeWarningMessage`  
 **Type**: String  
 **Default**: [Warning about excessive uptime]
+**Localized Keys**: `ExcessiveUptimeWarningMessageLocalized_en`, `ExcessiveUptimeWarningMessageLocalized_de`, `ExcessiveUptimeWarningMessageLocalized_fr`
 
 **Description**: Warning message inserted into dialog when Mac has been running for excessive days without restart (threshold set by `daysOfExcessiveUptimeWarning`).
 
@@ -1105,6 +1201,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `DiskSpaceWarningMessage`  
 **Type**: String  
 **Default**: [Warning about low disk space]
+**Localized Keys**: `DiskSpaceWarningMessageLocalized_en`, `DiskSpaceWarningMessageLocalized_de`, `DiskSpaceWarningMessageLocalized_fr`
 
 **Description**: Warning message inserted when free disk space falls below `minimumDiskFreePercentage` threshold.
 
@@ -1162,7 +1259,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.4.0 |
+| `{scriptVersion}` | System | Script version | 3.0.0a1 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1439,6 +1536,10 @@ sudo defaults write "$PLIST" SupportTeamEmail -string "help@company.com"
 # Branding
 sudo defaults write "$PLIST" OrganizationOverlayIconURL -string "https://cdn.company.com/icon.png"
 sudo defaults write "$PLIST" SwapOverlayAndLogo -bool NO
+
+# Localization
+sudo defaults write "$PLIST" LanguageOverride -string "de"
+sudo defaults write "$PLIST" MessageLocalized_de -string "**Eine erforderliche macOS-Aktualisierung ist jetzt verfugbar**"
 ```
 
 ---
@@ -1454,7 +1555,7 @@ sudo defaults write "$PLIST" SwapOverlayAndLogo -bool NO
 - Ensuring script always has valid configuration
 - One-time deployment without ongoing management
 
-**Customization Location**: [reminderDialog.zsh](../reminderDialog.zsh) lines ~150-210
+**Customization Location**: [reminderDialog.zsh](../reminderDialog.zsh) `preferenceConfiguration` map
 
 **Format**:
 ```bash
@@ -1506,6 +1607,31 @@ grep "Reading preference overrides" /var/log/org.churchofjesuschrist.log
 ```
 
 **Solution**: Remember precedence order: Managed → Local → Default
+
+---
+
+### Localization Not Applying
+
+**Problem**: Dialog still renders English text when localized keys are configured
+
+**Diagnosis**:
+```bash
+# Check effective language override
+sudo /usr/libexec/PlistBuddy -c "Print :LanguageOverride" \
+    /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
+
+# Check localized key exists for selected language
+sudo /usr/libexec/PlistBuddy -c "Print :MessageLocalized_de" \
+    /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
+
+# Inspect language resolution in script log
+grep "LanguageOverride\\|Detected logged-in user language" /var/log/org.churchofjesuschrist.log
+```
+
+**Solution**:
+1. Confirm `LanguageOverride` is `auto`, `en`, `de`, or `fr`.
+2. Provide localized key for selected language (for example, `MessageLocalized_de`).
+3. If selected language key is intentionally omitted, confirm the scalar key (for example, `Message`) has the desired fallback text.
 
 ---
 
@@ -1639,10 +1765,11 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
-| 2.4.0 | 2026-02-04 | Updated defaults, placeholder documentation, and timing behavior |
+| 3.0.0a1 | 2026-02-04 | Updated defaults, placeholder documentation, and timing behavior |
+| 3.0.0a1 | 2026-02-07 | Added profile-backed localization keys, language override behavior, and updated full key inventory |
 
 ---
 
-**Last Updated**: February 4, 2026  
-**DDM OS Reminder Version**: 2.4.0  
-**Variables Documented**: 33 configurable preferences
+**Last Updated**: February 7, 2026  
+**DDM OS Reminder Version**: 3.0.0a1  
+**Variables Documented**: 67 configurable preferences

@@ -23,7 +23,8 @@ graph TB
         
         ApplyValues --> ValidateTypes[🔧 Validate Data Types<br/>String, Numeric, Boolean]
         ValidateTypes --> BuildVars[🏗️ Build Runtime Variables]
-        BuildVars --> ReplacePlaceholders[🔄 Replace Placeholders<br/>Multi-pass resolution]
+        BuildVars --> ResolveLocalized[🌐 Resolve Language + Localized Keys<br/>Override/Auto + fallback chain]
+        ResolveLocalized --> ReplacePlaceholders[🔄 Replace Placeholders<br/>Multi-pass resolution]
         ReplacePlaceholders --> Ready([✅ Configuration Ready])
         
         style Start fill:#e3f2fd
@@ -108,6 +109,11 @@ ELSE:
 ```
 
 **Note**: `preferenceDomain` is `${reverseDomainNameNotation}.${organizationScriptName}` (for example, `org.example.dorm`).
+
+**Localization Resolution**:
+1. `LanguageOverride` (if not `auto`) sets the active language directly.
+2. Otherwise the script reads logged-in user `AppleLanguages:0` and normalizes to `en`, `de`, or `fr`.
+3. For each localized field, fallback is `selected language` → scalar key.
 
 ---
 
@@ -206,6 +212,12 @@ ELSE:
     <!-- Logging -->
     <key>ScriptLog</key>
     <string>/var/log/com.enterprise.log</string>
+
+    <!-- Localization -->
+    <key>LanguageOverride</key>
+    <string>de</string>
+    <key>MessageLocalized_de</key>
+    <string>**Eine erforderliche macOS-Aktualisierung ist jetzt verfugbar**</string>
 </dict>
 ```
 
@@ -234,6 +246,10 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 # Set branding
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     OrganizationOverlayIconURL -string "https://local-server/icon.png"
+
+# Set localization behavior
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    LanguageOverride -string "fr"
 
 # Set boolean preference
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
@@ -318,7 +334,7 @@ declare -A preferenceConfiguration=(
     ["button1text"]="string|Open Software Update"
     ["button2text"]="string|Remind Me Later"
     
-    # ... 40+ total preferences
+    # ... 67 total preferences
 )
 ```
 
@@ -378,7 +394,7 @@ function loadDefaultPreferences() {
 }
 ```
 
-**Result**: All 40+ preferences have baseline values.
+**Result**: All 67 preferences have baseline values.
 
 #### Step 2: Check for Managed Preferences
 ```bash
@@ -469,6 +485,7 @@ function setBooleanPreferenceValue() {
 ```bash
 function updateRequiredVariables() {
     # Use loaded preferences to build final variables
+    applyLocalizedDialogText
     supportTeamInfo="${supportTeamName}"
     dialogTitle="${title}"
     # ... etc

@@ -60,12 +60,13 @@ graph TB
         CLILD -->|RunAtLoad + schedule<br/>8am & 4pm daily| CLISCRIPT
         
         CLISCRIPT -->|1. Loads preferences| MGDPREF
-        CLISCRIPT -->|2. Checks for user| USER{"Logged-in<br>User?"}
+        CLISCRIPT -->|2. Resolves language| LANG["Language Selection<br>LanguageOverride or AppleLanguages"]
         CLISCRIPT -->|3. Parses install log| INSTLOG["/var/log/install.log<br>DDM enforcement data"]
         CLISCRIPT -->|4. Compares versions| OSVER["macOS Version<br>Check"]
         CLISCRIPT -->|5. Checks context| CONTEXT["User Context<br>Focus/Meetings"]
-        CLISCRIPT -->|6. Displays dialog| SD
+        CLISCRIPT -->|6. Displays localized dialog| SD
         
+        LANG --> USER{"Logged-in<br>User?"}
         USER -->|Yes| INSTLOG
         USER -->|No| EXIT1[Exit Silently]
         
@@ -79,6 +80,7 @@ graph TB
         SD -->|"User clicks<br>Open Software Update"| SU["System Settings<br>Software Update"]
         SD -->|"User clicks<br>Remind Me Later"| LOG["Log Entry<br>& Exit"]
         
+        style LANG fill:#b2dfdb
         style USER fill:#ffccbc
         style INSTLOG fill:#b2dfdb
         style OSVER fill:#b2dfdb
@@ -111,7 +113,7 @@ graph TB
 - **reminderDialog.zsh**: Core logic for end-user messaging, preference management, and dialog display
 - **launchDaemonManagement.zsh**: Handles deployment, LaunchDaemon creation, and swiftDialog installation
 - **assemble.zsh**: Combines the above scripts into a single deployable artifact
-- **sample.plist**: Template configuration file with all customizable preferences
+- **sample.plist**: Template configuration file with all customizable preferences, including localization keys
 
 ### Assembly Process
 - Harmonizes Reverse Domain Name Notation (RDNN) across files
@@ -137,12 +139,13 @@ graph TB
 ### Runtime Execution
 1. **LaunchDaemon triggers** at load and on scheduled times (default: 8am, 4pm)
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
-3. **User validation** ensures someone is logged in
-4. **Log parsing** extracts DDM enforcement dates from install.log
-5. **Version comparison** determines if update is required
-6. **Context checking** respects user's Focus mode and meetings
-7. **Dialog display** with deadline-appropriate behavior (blurscreen, button visibility)
-8. **User interaction** leads to Software Update or delayed reminder
+3. **Language selection** chooses localized text (`LanguageOverride` or logged-in user locale)
+4. **User validation** ensures someone is logged in
+5. **Log parsing** extracts DDM enforcement dates from install.log
+6. **Version comparison** determines if update is required
+7. **Context checking** respects user's Focus mode and meetings
+8. **Dialog display** with deadline-appropriate behavior (blurscreen, button visibility)
+9. **User interaction** leads to Software Update or delayed reminder
 
 ### Apple Integration
 - **DDM** enforces update deadlines and writes enforcement data to install.log

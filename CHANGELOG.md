@@ -2,6 +2,13 @@
 
 ## Changelog
 
+## Version 3.0.0a1 (07-Feb-2026)
+- Added multi-language support ([Feature Request #25](https://github.com/dan-snelson/DDM-OS-Reminder/issues/25); thanks for the suggestion, @Thrawnium!)
+    - Added profile-backed localization keys for dialog title/message/buttons/help text (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`)
+    - Added `LanguageOverride` preference (`auto` | `en` | `de` | `fr`) with fallback to detected logged-in user language and English default
+    - Added localized warning/staging fragment keys so injected message content can match selected language
+    - Localized dynamic update/upgrade wording and weekday placeholder resolution by selected language
+
 ## Version 2.4.0 (06-Feb-2026)
 - Added space-delimited list of `acceptableAssertionApplicationNames` ([Feature Request #67](https://github.com/dan-snelson/DDM-OS-Reminder/issues/67); thanks for the suggestion, @yassermkh!)
 - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)

@@ -23,6 +23,8 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 **Purpose**: Complete decision logic executed each time the LaunchDaemon triggers
 
 **Shows**:
+- Language resolution (`LanguageOverride` vs user locale auto-detect)
+- Localized dialog text fallback behavior (`selected language` → `English` → scalar key)
 - User validation checks
 - DDM enforcement date parsing
 - Version comparison logic
@@ -77,11 +79,12 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 ---
 
 ### 6. [Configuration Reference](06-configuration-reference.md)
-**Purpose**: Complete reference for all 33 configurable preferences
+**Purpose**: Complete reference for all 67 configurable preferences
 
 **Shows**:
 - Quick reference table (all variables at a glance)
 - Detailed documentation by category
+- Localization keys and language selection behavior
 - Complete placeholder reference
 - Configuration methods and examples
 - Common deployment scenarios
@@ -468,6 +471,9 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.2 | 2026-02-07 | Updated diagram markdown to document profile-backed localization flow and expanded key inventory |
+|       |            | - Added language resolution/fallback coverage in runtime and architecture docs |
+|       |            | - Updated configuration reference to 67 preferences including localized key families |
 | 1.0.1 | 2026-02-05 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
 |       |            | - Removed legacy `*-1.png` files |
 |       |            | - Clarified 06 configuration reference is text-only |
@@ -480,5 +486,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: February 5, 2026  
-**DDM OS Reminder Version**: 2.4.0
+**Last Updated**: February 7, 2026  
+**DDM OS Reminder Version**: 3.0.0a1

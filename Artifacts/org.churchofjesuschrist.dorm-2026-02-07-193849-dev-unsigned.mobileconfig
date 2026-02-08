@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadContent</key>
+            <dict>
+                <key>org.churchofjesuschrist.dorm</key>
+                <dict>
+                    <key>Forced</key>
+                    <array>
+                        <dict>
+                            <key>mcx_preference_settings</key>
+                            <dict>
+                                    <key>ScriptLog</key>
+                                    <string>/var/log/org.churchofjesuschrist.log</string>
+                                    <key>DaysBeforeDeadlineDisplayReminder</key>
+                                    <integer>14</integer>
+                                    <key>DaysBeforeDeadlineBlurscreen</key>
+                                    <integer>3</integer>
+                                    <key>DaysBeforeDeadlineHidingButton2</key>
+                                    <integer>1</integer>
+                                    <key>DaysOfExcessiveUptimeWarning</key>
+                                    <integer>7</integer>
+                                    <key>MinimumDiskFreePercentage</key>
+                                    <integer>10</integer>
+                                    <key>MeetingDelay</key>
+                                    <integer>75</integer>
+                                    <!-- Space-delimited list of meeting/presentation apps whose Display Sleep
+                                         Assertions should be tolerated (reminder defers via MeetingDelay).
+                                         To find the names please run `pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"`
+                                         in Terminal while the application is open and running.
+                                         Example: MSTeams zoom.us Webex -->
+                                    <key>AcceptableAssertionApplicationNames</key>
+                                    <string>MSTeams zoom.us Webex</string>
+                                    <key>OrganizationOverlayIconURL</key>
+                                    <string>https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d</string>
+                                    <key>OrganizationOverlayIconURLdark</key>
+                                    <string>https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39</string>
+                                    <key>SwapOverlayAndLogo</key>
+                                    <false/>
+                                    <key>DateFormatDeadlineHumanReadable</key>
+                                    <string>+%a, %d-%b-%Y, %-l:%M %p</string>
+                                    <key>SupportTeamName</key>
+                                    <string>Assembled IT Support</string>
+                                    <key>SupportTeamPhone</key>
+                                    <string>Assembled +1 (801) 555-1212</string>
+                                    <key>SupportTeamEmail</key>
+                                    <string>rescue@company.com</string>
+                                    <key>SupportTeamWebsite</key>
+                                    <string>https://support.company.com</string>
+                                    <key>SupportKB</key>
+                                    <string>Update macOS on Mac</string>
+                                    <key>InfoButtonAction</key>
+                                    <string>https://support.apple.com/108382</string>
+                                    <key>SupportKBURL</key>
+                                    <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
+                                    <key>LanguageOverride</key>
+                                    <string>auto</string>
+                                    <key>Title</key>
+                                    <string>Assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
+                                    <key>TitleLocalized_en</key>
+                                    <string>Assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
+                                    <key>TitleLocalized_de</key>
+                                    <string>Assembled macOS {titleMessageUpdateOrUpgrade} erforderlich</string>
+                                    <key>TitleLocalized_fr</key>
+                                    <string>Assembled mise a jour macOS obligatoire</string>
+                                    <key>Button1Text</key>
+                                    <string>Assembled Open Software Update</string>
+                                    <key>Button1TextLocalized_en</key>
+                                    <string>Assembled Open Software Update</string>
+                                    <key>Button1TextLocalized_de</key>
+                                    <string>Assembled Softwareupdate oeffnen</string>
+                                    <key>Button1TextLocalized_fr</key>
+                                    <string>Assembled Ouvrir Mise a jour de logiciels</string>
+                                    <key>Button2Text</key>
+                                    <string>Assembled Remind Me Later</string>
+                                    <key>Button2TextLocalized_en</key>
+                                    <string>Assembled Remind Me Later</string>
+                                    <key>Button2TextLocalized_de</key>
+                                    <string>Assembled Spaeter erinnern</string>
+                                    <key>Button2TextLocalized_fr</key>
+                                    <string>Assembled Me le rappeler plus tard</string>
+                                    <key>InfoButtonText</key>
+                                    <string>Assembled Update macOS on Mac</string>
+                                    <key>InfoButtonTextLocalized_en</key>
+                                    <string>Assembled Update macOS on Mac</string>
+                                    <key>InfoButtonTextLocalized_de</key>
+                                    <string>Assembled macOS auf Mac aktualisieren</string>
+                                    <key>InfoButtonTextLocalized_fr</key>
+                                    <string>Assembled Mettre a jour macOS sur Mac</string>
+                                    <key>ExcessiveUptimeWarningMessage</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
+                                    <key>ExcessiveUptimeWarningMessageLocalized_en</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
+                                    <key>ExcessiveUptimeWarningMessageLocalized_de</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Hinweis:** Ihr Mac laeuft seit **{uptimeHumanReadable}**. Starten Sie ihn fuer zuverlaessigere Ergebnisse bitte manuell neu.</string>
+                                    <key>ExcessiveUptimeWarningMessageLocalized_fr</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note :** Votre Mac est allume depuis **{uptimeHumanReadable}**. Redemarrez-le manuellement pour de meilleurs resultats.</string>
+                                    <key>DiskSpaceWarningMessage</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
+                                    <key>DiskSpaceWarningMessageLocalized_en</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
+                                    <key>DiskSpaceWarningMessageLocalized_de</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Hinweis:** Ihr Mac hat nur **{diskSpaceHumanReadable}** frei. Dadurch kann dieses macOS-{titleMessageUpdateOrUpgrade:l} scheitern.</string>
+                                    <key>DiskSpaceWarningMessageLocalized_fr</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Note :** Votre Mac ne dispose que de **{diskSpaceHumanReadable}**, ce qui peut empecher cette {titleMessageUpdateOrUpgrade:l} macOS.</string>
+                                    <key>StagedUpdateMessage</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
+                                    <key>StagedUpdateMessageLocalized_en</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
+                                    <key>StagedUpdateMessageLocalized_de</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Gute Nachricht!** Das macOS-{ddmVersionString}-Update wurde bereits geladen. Die Installation startet schnell, wenn Sie **{button1text}** klicken.</string>
+                                    <key>StagedUpdateMessageLocalized_fr</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled **Bonne nouvelle !** La mise a jour macOS {ddmVersionString} est deja telechargee. L&apos;installation sera rapide apres clic sur **{button1text}**.</string>
+                                    <key>PartiallyStagedUpdateMessage</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
+                                    <key>PartiallyStagedUpdateMessageLocalized_en</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
+                                    <key>PartiallyStagedUpdateMessageLocalized_de</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Ihr Mac laedt bereits erforderliche macOS-Update-Komponenten herunter und bereitet sie vor. Die Installation wird danach schneller sein.</string>
+                                    <key>PartiallyStagedUpdateMessageLocalized_fr</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Votre Mac a commence a telecharger et preparer les composants requis de mise a jour macOS. L&apos;installation sera ensuite plus rapide.</string>
+                                    <key>PendingDownloadMessage</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac will begin downloading the update shortly.</string>
+                                    <key>PendingDownloadMessageLocalized_en</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac will begin downloading the update shortly.</string>
+                                    <key>PendingDownloadMessageLocalized_de</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Ihr Mac beginnt in Kuerze mit dem Download des Updates.</string>
+                                    <key>PendingDownloadMessageLocalized_fr</key>
+                                    <string>&lt;br&gt;&lt;br&gt;Assembled Votre Mac commencera bientot a telecharger la mise a jour.</string>
+                                    <key>HideStagedUpdateInfo</key>
+                                    <false/>
+                                    <key>Message</key>
+                                    <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+                                    <key>MessageLocalized_en</key>
+                                    <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+                                    <key>MessageLocalized_de</key>
+                                    <string>Assembled **Ein erforderliches macOS-{titleMessageUpdateOrUpgrade:l} ist jetzt verfuegbar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Bitte {titleMessageUpdateOrUpgrade:l} Sie auf macOS **{ddmVersionString}**, damit Ihr Mac sicher bleibt und den organisatorischen Richtlinien entspricht.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Um die {titleMessageUpdateOrUpgrade:l} jetzt durchzufuehren, klicken Sie auf **{button1text}**, folgen Sie den Anweisungen auf dem Bildschirm und klicken Sie dann auf **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Wenn Sie diese {titleMessageUpdateOrUpgrade:l} jetzt nicht durchfuehren koennen, klicken Sie auf **{button2text}**, um spaeter erneut erinnert zu werden (diese Option wird deaktiviert, wenn die Frist unmittelbar bevorsteht).&lt;br&gt;&lt;br&gt;Ihr Geraet **wird jedoch automatisch neu gestartet und {titleMessageUpdateOrUpgrade:l}t** am **{ddmEnforcedInstallDateHumanReadable}**, wenn Sie die {titleMessageUpdateOrUpgrade:l} nicht vor Ablauf der Frist abgeschlossen haben.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;Wenn Sie Unterstuetzung benoetigen, kontaktieren Sie bitte **{supportTeamName}**, indem Sie unten rechts auf die (?) Schaltflaeche klicken.</string>
+                                    <key>MessageLocalized_fr</key>
+                                    <string>Assembled **Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**&lt;br&gt;&lt;br&gt;Bonjour, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin de maintenir la securite et la conformite de votre Mac aux politiques de votre organisation.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions a l&apos;ecran, puis cliquez sur **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un nouveau rappel plus tard (ce bouton est desactive lorsque l&apos;echeance est imminente).&lt;br&gt;&lt;br&gt;Cependant, votre appareil **redemarrera automatiquement et effectuera la {titleMessageUpdateOrUpgrade:l}** le **{ddmEnforcedInstallDateHumanReadable}** si vous ne l&apos;avez pas effectuee avant l&apos;echeance.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;Pour obtenir de l&apos;aide, veuillez contacter **{supportTeamName}** en cliquant sur le bouton (?) en bas a droite.</string>
+                                    <key>InfoBox</key>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
+                                    <key>HelpMessage</key>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+                                    <key>HelpMessageLocalized_en</key>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+                                    <key>HelpMessageLocalized_de</key>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;Bei Fragen wenden Sie sich bitte an: **{supportTeamName}**&lt;br&gt;- **Telefon:** {supportTeamPhone}&lt;br&gt;- **E-Mail:** {supportTeamEmail}&lt;br&gt;- **Webseite:** {supportTeamWebsite}&lt;br&gt;- **Knowledge-Base-Artikel:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Benutzerinformationen:**&lt;br&gt;- **Vollstaendiger Name:** {userfullname}&lt;br&gt;- **Benutzername:** {username}&lt;br&gt;&lt;br&gt;**Computerinformationen:**&lt;br&gt;- **Computername:** {computername}&lt;br&gt;- **Seriennummer:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Skriptinformationen:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Skript:** {scriptVersion}&lt;br&gt;</string>
+                                    <key>HelpMessageLocalized_fr</key>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;Pour obtenir de l&apos;aide, veuillez contacter : **{supportTeamName}**&lt;br&gt;- **Telephone :** {supportTeamPhone}&lt;br&gt;- **E-mail :** {supportTeamEmail}&lt;br&gt;- **Site web :** {supportTeamWebsite}&lt;br&gt;- **Article de la base de connaissances :** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informations utilisateur :**&lt;br&gt;- **Nom complet :** {userfullname}&lt;br&gt;- **Nom d&apos;utilisateur :** {username}&lt;br&gt;&lt;br&gt;**Informations de l&apos;ordinateur :**&lt;br&gt;- **Nom de l&apos;ordinateur :** {computername}&lt;br&gt;- **Numero de serie :** {serialnumber}&lt;br&gt;- **macOS :** {osversion}&lt;br&gt;&lt;br&gt;**Informations du script :**&lt;br&gt;- **Dialog :** {dialogVersion}&lt;br&gt;- **Script :** {scriptVersion}&lt;br&gt;</string>
+                                    <key>HelpImage</key>
+                                    <string>qr={infobuttonaction}</string>
+                            </dict>
+                        </dict>
+                    </array>
+                </dict>
+            </dict>
+            <key>PayloadDisplayName</key>
+            <string>Custom Settings</string>
+            <key>PayloadIdentifier</key>
+            <string>DE585D3C-22A3-4E7D-BDA9-1EF350AFE59B</string>
+            <key>PayloadOrganization</key>
+            <string>dorm</string>
+            <key>PayloadType</key>
+            <string>com.apple.ManagedClient.preferences</string>
+            <key>PayloadUUID</key>
+            <string>DE585D3C-22A3-4E7D-BDA9-1EF350AFE59B</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+        </dict>
+    </array>
+
+    <key>PayloadDescription</key>
+    <string>Configures DDM OS Reminder (3.0.0a1) to org.churchofjesuschrist standards. Created: 2026-02-07-193849</string>
+    <key>PayloadDisplayName</key>
+    <string>DDM OS Reminder: org.churchofjesuschrist</string>
+    <key>PayloadEnabled</key>
+    <true/>
+    <key>PayloadIdentifier</key>
+    <string>A829FF69-73DE-4926-B529-5AACD853693D</string>
+    <key>PayloadOrganization</key>
+    <string>dorm</string>
+    <key>PayloadRemovalDisallowed</key>
+    <true/>
+    <key>PayloadScope</key>
+    <string>System</string>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>A829FF69-73DE-4926-B529-5AACD853693D</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>

@@ -6,7 +6,11 @@ This flowchart shows the complete decision logic executed each time the LaunchDa
 flowchart TD
     Start([LaunchDaemon Triggers<br/>RunAtLoad or 8am/4pm]) --> LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
     
-    LoadPrefs --> CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
+    LoadPrefs --> ResolveLanguage{LanguageOverride<br/>set to non-auto?}
+    ResolveLanguage -->|Yes| UseOverride[Normalize override<br/>en/de/fr fallback]
+    ResolveLanguage -->|No| DetectLocale[Read AppleLanguages:0<br/>from logged-in user]
+    UseOverride --> CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
+    DetectLocale --> CheckUser
     CheckUser -->|No| Exit1[FATAL ERROR<br/>No user after 120s]
     CheckUser -->|Yes| CheckRoot{Running<br/>as Root?}
     
@@ -48,9 +52,10 @@ flowchart TD
     StagedFound -->|Partially Staged| SetPartialStaged[Set Partial Staged<br/>Message]
     StagedFound -->|Not Staged| SetPending[Set Pending Download<br/>Message]
     
-    SetFullStaged --> BuildDialog
-    SetPartialStaged --> BuildDialog
-    SetPending --> BuildDialog[Build Dialog<br/>with Placeholders]
+    SetFullStaged --> ApplyLocalized[Apply localized fields<br/>Selected language → en → scalar key]
+    SetPartialStaged --> ApplyLocalized
+    SetPending --> ApplyLocalized
+    ApplyLocalized --> BuildDialog[Build Dialog<br/>with Placeholders]
     
     BuildDialog --> CheckDeadline{Days Until<br/>Deadline?}
     
@@ -93,6 +98,9 @@ flowchart TD
     
     style Start fill:#e3f2fd
     style LoadPrefs fill:#fff9c4
+    style ResolveLanguage fill:#ffecb3
+    style UseOverride fill:#fff9c4
+    style DetectLocale fill:#fff9c4
     style CheckUser fill:#ffecb3
     style CheckRoot fill:#ffecb3
     style CheckDDM fill:#ffecb3
@@ -137,32 +145,37 @@ flowchart TD
 - **Why**: Required for LaunchDaemon management and system-level operations
 - **Exit if**: Not root (fatal error)
 
-### 3. DDM Enforcement
+### 3. Language Selection (Localization)
+- **Check**: Is `languageOverride` set to `en`, `de`, or `fr` (instead of `auto`)?
+- **Why**: Supports fixed-language deployments and auto-detected user locale behavior.
+- **Fallback Chain**: Selected language localized value → scalar key.
+
+### 4. DDM Enforcement
 - **Check**: Are DDM enforcement dates present in `/var/log/install.log`?
 - **Why**: Script relies on Apple DDM data to determine deadlines
 - **Exit if**: No enforcement dates found
 
-### 4. Version Comparison
+### 5. Version Comparison
 - **Check**: Is installed macOS version older than DDM-required version?
 - **Why**: Only display reminder if update is actually needed
 - **Exit if**: Mac is up to date
 
-### 5. Reminder Window
+### 6. Reminder Window
 - **Check**: Are we within configured days before deadline (default: 60 days)?
 - **Why**: Don't annoy users too early
 - **Exit if**: Deadline too far in future
 
-### 6. Quiet Period
+### 7. Quiet Period
 - **Check**: Has dialog been shown recently (based on last display timestamp)?
 - **Why**: Prevent excessive nagging within same day
 - **Exit if**: Recently displayed
 
-### 7. Do Not Disturb / Focus (swiftDialog)
+### 8. Do Not Disturb / Focus (swiftDialog)
 - **Check**: swiftDialog returns exit code 20 after the dialog attempt
 - **Why**: swiftDialog signals DND/Focus state via return code
 - **Exit if**: Return code 20 (logged and exits)
 
-### 8. Meeting Detection
+### 9. Meeting Detection
 - **Check**: Are display sleep assertions active (pmset)?
 - **Why**: User likely in video call or presentation
 - **Filtering**: 
@@ -173,22 +186,22 @@ flowchart TD
 - **Exception**: Ignored if ≤24 hours to deadline
 - **Action if**: Delay up to `meetingDelay` and retry; proceed when delay limit reached
 
-### 9. Disk Space Check
+### 10. Disk Space Check
 - **Check**: Is free disk space below minimum threshold?
 - **Why**: Update may fail with insufficient space
 - **Action**: Adds warning message to dialog (doesn't block display)
 
-### 10. Uptime Check
+### 11. Uptime Check
 - **Check**: Has Mac been on for excessive days without restart?
 - **Why**: Restarts improve update reliability
 - **Action**: Adds warning message to dialog (doesn't block display)
 
-### 11. Staged Update Detection
+### 12. Staged Update Detection
 - **Check**: Is update already downloaded to Preboot volume?
 - **Why**: Installation is faster if already staged
 - **Action**: Adds appropriate message (fully staged, partially staged, or pending)
 
-### 12. Deadline-Based Behavior
+### 13. Deadline-Based Behavior
 Based on days remaining until deadline:
 
 #### Standard Dialog (≥45 days, configurable)
@@ -206,7 +219,7 @@ Based on days remaining until deadline:
 - Blurscreen: **Enabled**
 - Urgency: High
 
-### 13. User Actions
+### 14. User Actions
 After dialog displays, user can:
 
 1. **Open Software Update**: 
@@ -241,6 +254,8 @@ Key preferences that affect decision tree:
 | `daysBeforeDeadlineDisplayReminder` | 60 | Reminder Window check |
 | `daysBeforeDeadlineBlurscreen` | 45 | Blurscreen activation |
 | `daysBeforeDeadlineHidingButton2` | 21 | Button 2 disable/hide |
+| `languageOverride` | auto | Language selection path (override vs auto locale) |
+| `*Localized_*` key families | mirror scalar values | Localized field selection before placeholder resolution |
 | `daysOfExcessiveUptimeWarning` | 0 (disabled) | Uptime warning threshold |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
 | `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |

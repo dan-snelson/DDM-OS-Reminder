@@ -31,7 +31,11 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 
-<img src="images/ddmOSReminder_Demo.png" alt="A built-in 'demo' mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease." width="500"/>
+> Version `3.0.0`, currently in its first _alpha_ release, will support multiple languages:
+
+<img width="333" alt="Screenshot 2026-02-07 at 7 12 10 PM" src="https://github.com/user-attachments/assets/174b20e8-834c-4345-a978-1ce93f6ee362" />
+<img width="333" alt="Screenshot 2026-02-07 at 7 11 36 PM" src="https://github.com/user-attachments/assets/8929227c-5b6d-4198-90f3-02e99cd147c6" />
+<img width="333" alt="Screenshot 2026-02-07 at 7 11 11 PM" src="https://github.com/user-attachments/assets/860667bb-8fd1-41a9-b834-afd59d04faf4" />
 
 ## Support
 

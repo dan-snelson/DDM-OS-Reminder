@@ -1674,8 +1674,13 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         humanReadablePause="${sleepSeconds} second(s)"
     fi
 
-    info "Pausing for ${humanReadablePause} …"
-    sleep "${sleepSeconds}"
+    # Skip sleep pause for beta / RC builds
+    if [[ "${scriptVersion}" =~ [a-zA-Z] ]]; then
+        notice "Beta / RC build detected (${scriptVersion}); skipping pause"
+    else
+        info "Pausing for ${humanReadablePause} …"
+        sleep "${sleepSeconds}"
+    fi
 
 
 

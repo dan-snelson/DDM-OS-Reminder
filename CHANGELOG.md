@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 2.5.0b2 (11-Feb-2026)
+- Updated reminder body text to use swiftDialog markdown color rendering so the automatic restart/update deadline sentence is displayed in red
+- Added runtime fallback so older swiftDialog versions render the same enforcement sentence without color markdown
+
 ### Version 2.5.0b1 (11-Feb-2026)
 - Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))
 - Added graceful quiet-exit behavior when staged metadata is unavailable during partially/fully staged states, with automatic re-evaluation on later runs

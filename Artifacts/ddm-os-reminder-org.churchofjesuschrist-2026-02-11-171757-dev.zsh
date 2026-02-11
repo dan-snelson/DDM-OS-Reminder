@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0"
+scriptVersion="2.5.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.4.0"
+scriptVersion="2.5.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -774,6 +774,66 @@ function currentLoggedInUser() {
 
 
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Read Staged macOS Version from cryptex1 Metadata
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function readStagedMacOSVersion() {
+
+    local basePath="${1}"
+    local candidatePath=""
+    local stagedVersion=""
+    local stagedBuild=""
+    local cryptexBasePath=""
+    local -a candidatePlists=()
+
+    stagedProposedVersion=""
+    stagedProposedBuild=""
+
+    if [[ -z "${basePath}" ]]; then
+        return 1
+    fi
+
+    cryptexBasePath="${basePath}"
+    if [[ "${cryptexBasePath:t}" != "cryptex1" ]]; then
+        cryptexBasePath="${basePath}/cryptex1"
+    fi
+
+    candidatePlists+=("${cryptexBasePath}/proposed/SystemVersion.plist")
+    candidatePlists+=("${cryptexBasePath}/proposed/BuildManifest.plist")
+
+    for candidatePath in "${candidatePlists[@]}"; do
+        if [[ ! -f "${candidatePath}" ]]; then
+            continue
+        fi
+
+        stagedVersion=$( /usr/libexec/PlistBuddy -c "Print :ProductVersion" "${candidatePath}" 2>/dev/null )
+        stagedBuild=$( /usr/libexec/PlistBuddy -c "Print :ProductBuildVersion" "${candidatePath}" 2>/dev/null )
+
+        # Some staged plists can fail PlistBuddy parsing; fall back to plutil output parsing.
+        if [[ -z "${stagedVersion}" ]]; then
+            local plistDump=""
+            plistDump=$( /usr/bin/plutil -p "${candidatePath}" 2>/dev/null )
+
+            if [[ -n "${plistDump}" ]]; then
+                stagedVersion=$( echo "${plistDump}" | awk -F'=> ' '/"ProductVersion"/ { gsub(/[",]/, "", $2); gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' )
+                stagedBuild=$( echo "${plistDump}" | awk -F'=> ' '/"ProductBuildVersion"/ { gsub(/[",]/, "", $2); gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit }' )
+            fi
+        fi
+
+        if isValidDDMVersionString "${stagedVersion}"; then
+            stagedProposedVersion="${stagedVersion}"
+            stagedProposedBuild="${stagedBuild}"
+            notice "Detected staged proposed macOS version ${stagedProposedVersion}${stagedProposedBuild:+ (${stagedProposedBuild})} from ${candidatePath}."
+            return 0
+        fi
+    done
+
+    return 1
+
+}
+
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Detect Staged macOS Updates
@@ -870,6 +930,28 @@ function detectStagedUpdate() {
         fi
     fi
     
+    # Attempt to surface staged target version/build metadata when update assets are present.
+    if [[ "${stagedUpdateStatus}" == "Partially staged" || "${stagedUpdateStatus}" == "Fully staged" ]]; then
+        local stagedMetadataPath="${stagedUpdateLocation}"
+        if [[ "${stagedMetadataPath}" == "Not detected" ]]; then
+            stagedMetadataPath="${prebootPath}"
+        fi
+        if readStagedMacOSVersion "${stagedMetadataPath}"; then
+            if isValidDDMVersionString "${ddmVersionString}"; then
+                if is-at-least "${ddmVersionString}" "${stagedProposedVersion}" && is-at-least "${stagedProposedVersion}" "${ddmVersionString}"; then
+                    notice "Staged proposed macOS version ${stagedProposedVersion} matches DDM-enforced version ${ddmVersionString}."
+                else
+                    warning "Staged proposed macOS version ${stagedProposedVersion} does not match DDM-enforced version ${ddmVersionString}; treating staged status as Pending download."
+                    stagedUpdateStatus="Pending download"
+                    stagedUpdateSize="0"
+                    stagedUpdateLocation="Not detected"
+                fi
+            fi
+        else
+            info "No staged proposed macOS version metadata detected."
+        fi
+    fi
+
     # Export variables for use in dialog
     updateStagedSize="${stagedUpdateSize}"
     updateStagedLocation="${stagedUpdateLocation}"
@@ -1064,6 +1146,14 @@ installedOSvsDDMenforcedOS() {
         else
             notice "Checking for staged macOS updates …"
             detectStagedUpdate
+
+            # If staging has begun but proposed version metadata is not available yet,
+            # exit quietly and allow a later run to re-evaluate.
+            if [[ "${updateStagingStatus}" == "Partially staged" || "${updateStagingStatus}" == "Fully staged" ]] && [[ -z "${stagedProposedVersion}" ]]; then
+                versionComparisonResult="Update Required (Awaiting Staged Metadata)"
+                notice "${updateStagingStatus} macOS update is missing proposed version metadata; exiting quietly."
+                return
+            fi
         fi
 
         # Determine if an "Update" or an "Upgrade" is needed

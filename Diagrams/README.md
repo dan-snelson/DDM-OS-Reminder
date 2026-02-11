@@ -481,4 +481,4 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 ---
 
 **Last Updated**: February 5, 2026  
-**DDM OS Reminder Version**: 2.5.0b1
+**DDM OS Reminder Version**: 2.5.0b2

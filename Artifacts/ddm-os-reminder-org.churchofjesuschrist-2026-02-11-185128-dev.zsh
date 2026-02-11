@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.5.0b1"
+scriptVersion="2.5.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.5.0b1"
+scriptVersion="2.5.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -388,7 +388,7 @@ declare -A preferenceConfiguration=(
     ["hideStagedInfo"]="boolean|NO"
     
     # Complex UI Text
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** {ddmVersionStringDaysRemaining}<br><br>**Last Restart:** {uptimeHumanReadable}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -677,6 +677,7 @@ function buildPlaceholderMap() {
         [diskSpaceHumanReadable]="${diskSpaceHumanReadable}"
         [diskSpaceWarningMessage]="${diskSpaceWarningMessage}"
         [softwareUpdateButtonText]="${softwareUpdateButtonText}"
+        [deadlineEnforcementMessage]="${deadlineEnforcementMessage}"
         [button1text]="${button1text}"
         [button2text]="${button2text}"
         [supportTeamName]="${supportTeamName}"
@@ -686,7 +687,7 @@ function buildPlaceholderMap() {
         [supportKBURL]="${supportKBURL}"
         [supportKB]="${supportKB}"
         [infobuttonaction]="${infobuttonaction}"
-        [dialogVersion]="$(/usr/local/bin/dialog -v 2>/dev/null)"
+        [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
     )
 }
@@ -747,6 +748,7 @@ function updateRequiredVariables() {
     
     computeDynamicWarnings
     computeUpdateStagingMessage
+    computeDeadlineEnforcementMessage
     buildPlaceholderMap
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
@@ -949,6 +951,15 @@ function detectStagedUpdate() {
             fi
         else
             info "No staged proposed macOS version metadata detected."
+
+            # If there are no update snapshots and no proposed metadata, this is likely stale
+            # cryptex content; treat as pending so reminder flow can proceed normally.
+            if [[ "${updateSnapshots}" == "0" ]]; then
+                notice "No update snapshots and no staged proposed metadata detected; treating staged update status as Pending download."
+                stagedUpdateStatus="Pending download"
+                stagedUpdateSize="0"
+                stagedUpdateLocation="Not detected"
+            fi
         fi
     fi
 
@@ -1398,6 +1409,21 @@ function computeUpdateStagingMessage() {
     esac
 }
 
+function computeDeadlineEnforcementMessage() {
+    local markdownColorMinimumVersion="3.0.0.4928"
+    local baseDeadlineEnforcementMessage="However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline."
+
+    dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
+
+    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
+        deadlineEnforcementMessage=":red[${baseDeadlineEnforcementMessage}]"
+        info "swiftDialog ${dialogVersion} supports markdown color; rendering enforcement sentence in red."
+    else
+        deadlineEnforcementMessage="${baseDeadlineEnforcementMessage}"
+        info "swiftDialog ${dialogVersion:-Unknown} does not support markdown color; rendering enforcement sentence without color."
+    fi
+}
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1782,8 +1808,13 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         humanReadablePause="${sleepSeconds} second(s)"
     fi
 
-    info "Pausing for ${humanReadablePause} …"
-    sleep "${sleepSeconds}"
+    # Skip sleep pause for beta / RC builds
+    if [[ "${scriptVersion}" =~ [a-zA-Z] ]]; then
+        notice "Beta / RC build detected (${scriptVersion}); skipping pause"
+    else
+        info "Pausing for ${humanReadablePause} …"
+        sleep "${sleepSeconds}"
+    fi
 
 
 

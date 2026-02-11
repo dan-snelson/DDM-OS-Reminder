@@ -717,6 +717,15 @@ function detectStagedUpdate() {
             fi
         else
             info "No staged proposed macOS version metadata detected."
+
+            # If there are no update snapshots and no proposed metadata, this is likely stale
+            # cryptex content; treat as pending so reminder flow can proceed normally.
+            if [[ "${updateSnapshots}" == "0" ]]; then
+                notice "No update snapshots and no staged proposed metadata detected; treating staged update status as Pending download."
+                stagedUpdateStatus="Pending download"
+                stagedUpdateSize="0"
+                stagedUpdateLocation="Not detected"
+            fi
         fi
     fi
 

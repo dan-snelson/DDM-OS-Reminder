@@ -20,6 +20,12 @@
 #
 # HISTORY
 #
+# Version 1.1.0, 12-Feb-2026, Dan K. Snelson (@dan-snelson)
+# - Added Computer Record security context fields (Bootstrap Token, FileVault2, local user security indicators).
+# - Added Secure Token and Volume Owner extraction via operating system fields and EA fallback (ID/name configurable).
+# - Improved API lookup resilience with fallback section handling and retry/backoff behavior.
+# - Added clearer troubleshooting diagnostics for computer lookup and data parsing failures.
+#
 # Version 1.0.0, 06-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - First "official" release
 #
@@ -38,7 +44,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 [[ -o interactive ]] && setopt monitor
 
 # Script Version
-scriptVersion="1.0.0"
+scriptVersion="1.1.0"
 
 # Elapsed Time
 SECONDS="0"
@@ -89,6 +95,10 @@ apiPassword=""
 filename=""
 outputDir="$HOME/Desktop"           # Default output directory
 noOpen="false"                      # Skip opening log/CSV files
+secureTokenUsersEaId="52"           # Secure Token Users EA ID (set to your Jamf Pro environment; blank to disable)
+volumeOwnerUsersEaId="156"          # Volume Owner Users EA ID (set to your Jamf Pro environment; blank to disable)
+secureTokenUsersEaName="Secure Token Users"  # EA name fallback if ID field shape differs
+volumeOwnerUsersEaName="Volume Owners"       # EA name fallback if ID field shape differs
 
 # Debug Mode [ true | false ]
 debugMode="false"                    # Set to "true" to enable debug logging
@@ -100,6 +110,11 @@ failedBlueprintsCount=0
 pendingUpdatesCount=0
 errorCount=0
 notFoundCount=0
+
+# One-time API field availability notices
+secureTokenExposureNoticeLogged="false"
+volumeOwnerExposureNoticeLogged="false"
+lastComputerLookupError=""
 
 # Parallel processing job tracking
 declare -a jobPids=()
@@ -255,6 +270,8 @@ https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
         --output-dir PATH     Specify output directory (default: ~/Desktop)
         --parallel            Enable parallel processing for faster execution (per-record details go to log)
         --max-jobs N          Set maximum parallel jobs (default: 10, requires --parallel)
+        --secure-token-ea-id N  Secure Token Users EA ID for fallback when API omits token details (default: 52)
+        --volume-owner-ea-id N  Volume Owner Users EA ID for fallback when API omits volume owner details (default: 156)
         --no-open             Do not open the log and CSV output files
         -h, --help            Display this help information
 
@@ -674,20 +691,9 @@ function getBearerToken() {
     fi
 
     # Extract token with plutil (handles both access_token and token fields)
-    if command -v plutil >/dev/null 2>&1; then
-        # Try OAuth token field first
-        apiBearerToken=$(printf "%s" "${tokenJson}" | plutil -extract access_token raw - 2>/dev/null)
-        # Fall back to basic auth token field
-        if [[ -z "${apiBearerToken}" ]] || [[ "${apiBearerToken}" == "null" ]]; then
-            apiBearerToken=$(printf "%s" "${tokenJson}" | plutil -extract token raw - 2>/dev/null)
-        fi
-    else
-        # Fallback parsing for OAuth
-        apiBearerToken=$(printf "%s" "${tokenJson}" | sed -n 's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-        # Fall back to basic auth
-        if [[ -z "${apiBearerToken}" ]]; then
-            apiBearerToken=$(printf "%s" "${tokenJson}" | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-        fi
+    apiBearerToken=$(printf "%s" "${tokenJson}" | plutil -extract access_token raw - 2>/dev/null)
+    if [[ -z "${apiBearerToken}" ]] || [[ "${apiBearerToken}" == "null" ]]; then
+        apiBearerToken=$(printf "%s" "${tokenJson}" | plutil -extract token raw - 2>/dev/null)
     fi
 
     if [[ -z "${apiBearerToken}" ]]; then
@@ -1225,6 +1231,171 @@ csv.close
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Get Extension Attribute fallback values by computer ID
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function getEaFallbackValuesByComputerId() {
+    local computerId="${1}"
+    local responseWithCode
+    local httpStatus
+    local rawResponse
+    local endpoint="${apiUrl}/api/v1/computers-inventory/${computerId}?section=OPERATING_SYSTEM&section=EXTENSION_ATTRIBUTES"
+    local attempt=1
+    local maxAttempts=3
+    local delay=2
+    local extractedValues=""
+
+    while [[ ${attempt} -le ${maxAttempts} ]]; do
+        checkAndRefreshToken
+
+        responseWithCode=$(
+            curl -H "Authorization: Bearer ${apiBearerToken}" \
+                 -H "Accept: application/json" \
+                 --max-time 30 \
+                 -sfk -w "%{http_code}" \
+                 "${endpoint}" \
+                 -X GET 2>/dev/null
+        )
+
+        httpStatus="${responseWithCode: -3}"
+        rawResponse="${responseWithCode%???}"
+
+        if [[ "${httpStatus}" == "200" ]]; then
+            extractedValues=$(printf "%s" "${rawResponse}" | jq -r --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" '
+                def normalize_ea_container:
+                    if . == null then []
+                    elif type == "array" then .
+                    elif type == "object" and has("results") then (.results // [])
+                    else []
+                    end;
+
+                def ea_list:
+                    (
+                        (.extensionAttributes | normalize_ea_container)
+                        + (.computerExtensionAttributes | normalize_ea_container)
+                        + (.extensionAttributeValues | normalize_ea_container)
+                        + (.operatingSystem.extensionAttributes | normalize_ea_container)
+                        + (.operatingSystem.extensionAttributeValues | normalize_ea_container)
+                    );
+
+                def ea_name:
+                    (
+                        .name
+                        // .displayName
+                        // .extensionAttributeName
+                        // .definitionName
+                        // .definition.name
+                        // .extensionAttributeDefinition.name
+                        // ""
+                    )
+                    | tostring;
+
+                def ea_id:
+                    (
+                        .definitionId
+                        // .id
+                        // .extensionAttributeId
+                        // .extensionAttributeDefinitionId
+                        // .computerExtensionAttributeDefinitionId
+                        // .definition.id
+                        // .extensionAttributeDefinition.id
+                        // ""
+                    )
+                    | tostring;
+
+                def ea_value_text:
+                    if . == null then
+                        ""
+                    elif type == "object" then
+                        (.value // .name // .username // .displayName // tostring)
+                    else
+                        tostring
+                    end;
+
+                def ea_values:
+                    if (.values | type) == "array" then
+                        [ .values[]? | ea_value_text ]
+                    elif (.values | type) == "string" then
+                        [ .values ]
+                    elif (.values | type) == "object" then
+                        [ (.values | ea_value_text) ]
+                    elif (type == "object" and (.value // null) != null) then
+                        [ (.value | tostring) ]
+                    else
+                        []
+                    end
+                    | map(select(. != null and . != "" and . != "null"));
+
+                def ea_value_by($targetId; $targetName):
+                    (
+                        ea_list
+                        | map(
+                            select(
+                                (($targetId | length) > 0 and (ea_id == $targetId))
+                                or ((ea_name | ascii_downcase) == ($targetName | ascii_downcase))
+                            )
+                            | ea_values
+                            | join("; ")
+                        )
+                        | map(select(length > 0))
+                        | first
+                    ) // "";
+
+                def first_non_empty($values):
+                    (
+                        [ $values[] | select(. != null and ((. | tostring) | length) > 0) | tostring ]
+                        | first
+                    ) // "";
+
+                [
+                    first_non_empty([
+                        ea_value_by($secureTokenEaId; $secureTokenEaName),
+                        .operatingSystem.secureTokenUsers,
+                        .operatingSystem.secureTokenUser,
+                        .operatingSystem["Secure Token Users"],
+                        .operatingSystem["Secure Token User"]
+                    ]),
+                    first_non_empty([
+                        ea_value_by($volumeOwnerEaId; $volumeOwnerEaName),
+                        .operatingSystem.volumeOwners,
+                        .operatingSystem.volumeOwnerUsers,
+                        .operatingSystem.volumeOwner,
+                        .operatingSystem["Volume Owners"],
+                        .operatingSystem["Volume Owner"]
+                    ])
+                ] | join("|")
+            ' 2>/dev/null)
+
+            echo "${extractedValues}"
+            return 0
+        fi
+
+        if [[ "${httpStatus}" == "401" ]]; then
+            if refreshBearerToken; then
+                (( attempt++ ))
+                continue
+            fi
+            return 1
+        fi
+
+        if [[ "${httpStatus}" == "429" ]] || [[ "${httpStatus}" =~ ^5 ]]; then
+            if [[ ${attempt} -lt ${maxAttempts} ]]; then
+                sleep ${delay}
+                delay=$((delay * 2))
+                (( attempt++ ))
+                continue
+            fi
+        fi
+
+        return 1
+    done
+
+    return 1
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Get computer information by JSS Computer ID
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -1234,12 +1405,26 @@ function getComputerById() {
     local responseWithCode
     local httpStatus
     local computerInfo
+    local secureTokenEaCurrent=""
+    local volumeOwnerEaCurrent=""
+    local secureTokenEaFallback=""
+    local volumeOwnerEaFallback=""
+    local eaFallbackPair=""
+    local baseDetailSections="section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM&section=SECURITY&section=LOCAL_USER_ACCOUNTS&section=SOFTWARE_UPDATES"
+    local detailSections="${baseDetailSections}"
+    local computerDetailEndpoint=""
+    local retriedWithoutEaSection="false"
+    local jqErrorFile=""
+    local jqErrorMessage=""
+    local jqExitCode=0
     local attempt=1
     local maxAttempts=3
     local delay=2
+    lastComputerLookupError=""
     
     # Validate that identifier is numeric
     if [[ ! "${computerId}" =~ ^[0-9]+$ ]]; then
+        lastComputerLookupError="Invalid Computer ID '${computerId}' (must be numeric)."
         if [[ "${debugMode}" == "true" ]]; then
             debug "Invalid Computer ID: '${computerId}' (must be numeric)" >&2
         fi
@@ -1248,7 +1433,15 @@ function getComputerById() {
     
     if [[ "${debugMode}" == "true" ]]; then
         debug "Looking up computer by ID: ${computerId}" >&2
-        debug "API endpoint: ${apiUrl}/api/v1/computers-inventory-detail/${computerId}" >&2
+    fi
+
+    if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]; then
+        detailSections="${detailSections}&section=EXTENSION_ATTRIBUTES"
+    fi
+    computerDetailEndpoint="${apiUrl}/api/v1/computers-inventory-detail/${computerId}?${detailSections}"
+
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "API endpoint: ${computerDetailEndpoint}" >&2
     fi
     
     while [[ ${attempt} -le ${maxAttempts} ]]; do
@@ -1260,7 +1453,7 @@ function getComputerById() {
                  -H "Accept: application/json" \
                  --max-time 30 \
                  -sfk -w "%{http_code}" \
-                 "${apiUrl}/api/v1/computers-inventory-detail/${computerId}?section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM" \
+                 "${computerDetailEndpoint}" \
                  -X GET 2>/dev/null
         )
         
@@ -1275,26 +1468,190 @@ function getComputerById() {
         
         if [[ "${httpStatus}" == "200" ]]; then
             # Extract only the fields we need using jq on the raw response
-            # This filters out extension attributes and other bloat before we store it
-            computerInfo=$(printf "%s" "${rawResponse}" | jq -c '{id: .id, general: {name: .general.name, managementId: .general.managementId, declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled, lastContactTime: .general.lastContactTime}, hardware: {serialNumber: .hardware.serialNumber, modelIdentifier: .hardware.modelIdentifier}, operatingSystem: {version: .operatingSystem.version}}' 2>/dev/null)
+            # We keep a narrow set of fields plus optional EA fallback data.
+            jqErrorFile=$(mktemp "/tmp/ddm-jq-error.XXXXXX" 2>/dev/null)
+            computerInfo=$(printf "%s" "${rawResponse}" | jq -c --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" '
+                def normalize_ea_container:
+                    if . == null then []
+                    elif type == "array" then .
+                    elif type == "object" and has("results") then (.results // [])
+                    else []
+                    end;
+
+                def ea_list:
+                    (
+                        (.extensionAttributes | normalize_ea_container)
+                        + (.computerExtensionAttributes | normalize_ea_container)
+                        + (.extensionAttributeValues | normalize_ea_container)
+                        + (.operatingSystem.extensionAttributes | normalize_ea_container)
+                        + (.operatingSystem.extensionAttributeValues | normalize_ea_container)
+                    );
+
+                def ea_name:
+                    (
+                        .name
+                        // .displayName
+                        // .extensionAttributeName
+                        // .definitionName
+                        // .definition.name
+                        // .extensionAttributeDefinition.name
+                        // ""
+                    )
+                    | tostring;
+
+                def ea_id:
+                    (
+                        .definitionId
+                        // .id
+                        // .extensionAttributeId
+                        // .extensionAttributeDefinitionId
+                        // .computerExtensionAttributeDefinitionId
+                        // .definition.id
+                        // .extensionAttributeDefinition.id
+                        // ""
+                    )
+                    | tostring;
+
+                def ea_value_text:
+                    if . == null then
+                        ""
+                    elif type == "object" then
+                        (.value // .name // .username // .displayName // tostring)
+                    else
+                        tostring
+                    end;
+
+                def ea_values:
+                    if (.values | type) == "array" then
+                        [ .values[]? | ea_value_text ]
+                    elif (.values | type) == "string" then
+                        [ .values ]
+                    elif (.values | type) == "object" then
+                        [ (.values | ea_value_text) ]
+                    elif (type == "object" and (.value // null) != null) then
+                        [ (.value | tostring) ]
+                    else
+                        []
+                    end
+                    | map(select(. != null and . != "" and . != "null"));
+
+                def ea_value_by($targetId; $targetName):
+                    (
+                        ea_list
+                        | map(
+                            select(
+                                (($targetId | length) > 0 and (ea_id == $targetId))
+                                or ((ea_name | ascii_downcase) == ($targetName | ascii_downcase))
+                            )
+                            | ea_values
+                            | join("; ")
+                        )
+                        | map(select(length > 0))
+                        | first
+                    ) // "";
+
+                def first_non_empty($values):
+                    (
+                        [ $values[] | select(. != null and ((. | tostring) | length) > 0) | tostring ]
+                        | first
+                    ) // "";
+
+                {
+                id: .id,
+                general: {
+                    name: .general.name,
+                    managementId: .general.managementId,
+                    declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled,
+                    lastContactTime: .general.lastContactTime
+                },
+                hardware: {
+                    serialNumber: .hardware.serialNumber,
+                    modelIdentifier: .hardware.modelIdentifier
+                },
+                operatingSystem: {
+                    version: .operatingSystem.version,
+                    fileVault2Status: .operatingSystem.fileVault2Status,
+                    softwareUpdateDeviceId: .operatingSystem.softwareUpdateDeviceId,
+                    secureTokenUsers: first_non_empty([
+                        .operatingSystem.secureTokenUsers,
+                        .operatingSystem.secureTokenUser,
+                        .operatingSystem.secureTokenEnabledUsers,
+                        .operatingSystem.secureTokenEnabledUser,
+                        ea_value_by($secureTokenEaId; $secureTokenEaName)
+                    ]),
+                    volumeOwners: first_non_empty([
+                        .operatingSystem.volumeOwners,
+                        .operatingSystem.volumeOwnerUsers,
+                        .operatingSystem.volumeOwner,
+                        ea_value_by($volumeOwnerEaId; $volumeOwnerEaName)
+                    ])
+                },
+                security: {
+                    bootstrapTokenAllowed: .security.bootstrapTokenAllowed,
+                    bootstrapTokenEscrowedStatus: .security.bootstrapTokenEscrowedStatus
+                },
+                extensionAttributes: {
+                    secureTokenUsersEaId: $secureTokenEaId,
+                    secureTokenUsersEaName: $secureTokenEaName,
+                    secureTokenUsersEaValue: ea_value_by($secureTokenEaId; $secureTokenEaName),
+                    volumeOwnerUsersEaId: $volumeOwnerEaId,
+                    volumeOwnerUsersEaName: $volumeOwnerEaName,
+                    volumeOwnerUsersEaValue: ea_value_by($volumeOwnerEaId; $volumeOwnerEaName)
+                },
+                localUserAccounts: (.localUserAccounts // []),
+                softwareUpdates: (.softwareUpdates // [])
+            }' 2>"${jqErrorFile}")
+            jqExitCode=$?
+            if [[ -n "${jqErrorFile}" ]] && [[ -f "${jqErrorFile}" ]]; then
+                jqErrorMessage=$(cat "${jqErrorFile}" 2>/dev/null)
+                rm -f "${jqErrorFile}" 2>/dev/null
+                jqErrorFile=""
+            fi
+            if [[ ${jqExitCode} -ne 0 ]]; then
+                lastComputerLookupError="jq parse failure while processing computer detail response (exit ${jqExitCode}): ${jqErrorMessage:-Unknown jq error}"
+            fi
             
             if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
-                if [[ "${debugMode}" == "true" ]]; then
-                    debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
-                    local filteredSize=${#computerInfo}
-                    debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
+                secureTokenEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.secureTokenUsersEaValue // ""' 2>/dev/null)
+                volumeOwnerEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.volumeOwnerUsersEaValue // ""' 2>/dev/null)
+
+                if ([[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]) && ([[ -z "${secureTokenEaCurrent}" ]] || [[ -z "${volumeOwnerEaCurrent}" ]]); then
+                    eaFallbackPair=$(getEaFallbackValuesByComputerId "${computerId}")
+                    if [[ $? -eq 0 ]] && [[ -n "${eaFallbackPair}" ]]; then
+                        IFS='|' read -r secureTokenEaFallback volumeOwnerEaFallback <<< "${eaFallbackPair}"
+                        computerInfo=$(printf "%s" "${computerInfo}" | jq -c --arg secureTokenEaFallback "${secureTokenEaFallback}" --arg volumeOwnerEaFallback "${volumeOwnerEaFallback}" '
+                            .extensionAttributes.secureTokenUsersEaValue = (if ($secureTokenEaFallback | length) > 0 then $secureTokenEaFallback else .extensionAttributes.secureTokenUsersEaValue end)
+                            | .extensionAttributes.volumeOwnerUsersEaValue = (if ($volumeOwnerEaFallback | length) > 0 then $volumeOwnerEaFallback else .extensionAttributes.volumeOwnerUsersEaValue end)
+                        ' 2>/dev/null)
+                    fi
                 fi
+
+                    if [[ "${debugMode}" == "true" ]]; then
+                        if [[ -n "${secureTokenEaFallback}" ]] || [[ -n "${volumeOwnerEaFallback}" ]]; then
+                            debug "EA secondary fallback values applied - Secure Token Users: '${secureTokenEaFallback:-empty}', Volume Owners: '${volumeOwnerEaFallback:-empty}'" >&2
+                        fi
+                        debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
+                        local filteredSize=${#computerInfo}
+                        debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
+                    fi
                 echo "${computerInfo}"
                 return 0
             fi
             
+            if [[ -z "${lastComputerLookupError}" ]]; then
+                lastComputerLookupError="Computer detail response parsed to empty/invalid payload."
+            fi
             if [[ "${debugMode}" == "true" ]]; then
                 debug "Failed to parse JSON for Computer ID ${computerId}" >&2
+                if [[ -n "${lastComputerLookupError}" ]]; then
+                    debug "${lastComputerLookupError}" >&2
+                fi
             fi
             return 1
         fi
         
         if [[ "${httpStatus}" == "401" ]]; then
+            lastComputerLookupError="HTTP 401 while retrieving computer detail."
             info "Token expired during computer lookup; refreshing …" >&2
             if refreshBearerToken; then
                 (( attempt++ ))
@@ -1302,8 +1659,20 @@ function getComputerById() {
             fi
             return 1
         fi
+
+        if ([[ "${httpStatus}" == "400" ]] || [[ "${httpStatus}" == "403" ]]) && [[ "${retriedWithoutEaSection}" == "false" ]] && [[ "${detailSections}" == *"section=EXTENSION_ATTRIBUTES"* ]]; then
+            retriedWithoutEaSection="true"
+            detailSections="${baseDetailSections}"
+            computerDetailEndpoint="${apiUrl}/api/v1/computers-inventory-detail/${computerId}?${detailSections}"
+            info "Computer detail lookup returned HTTP ${httpStatus} with EXTENSION_ATTRIBUTES; retrying without EXTENSION_ATTRIBUTES section …" >&2
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Fallback API endpoint: ${computerDetailEndpoint}" >&2
+            fi
+            continue
+        fi
         
         if [[ "${httpStatus}" == "404" ]]; then
+            lastComputerLookupError="HTTP 404: computer ID ${computerId} not found."
             if [[ "${debugMode}" == "true" ]]; then
                 debug "Computer ID ${computerId} not found (HTTP 404)" >&2
             fi
@@ -1320,12 +1689,16 @@ function getComputerById() {
             fi
         fi
         
+        lastComputerLookupError="Computer detail API error (HTTP ${httpStatus})."
         if [[ "${debugMode}" == "true" ]]; then
             debug "Computer ID ${computerId} not found or API error (HTTP ${httpStatus})" >&2
         fi
         return 1
     done
     
+    if [[ -z "${lastComputerLookupError}" ]]; then
+        lastComputerLookupError="Computer detail lookup exhausted retries."
+    fi
     return 1
 }
 
@@ -1785,6 +2158,141 @@ function parsePendingSoftwareUpdates() {
 
 ####################################################################################################
 #
+# Build local user security summary from Computer Record payload
+#
+####################################################################################################
+
+function buildLocalUserSecuritySummary() {
+    local computerInfo="${1}"
+    local accountCount="0"
+    local localAdminUsers=""
+    local localAdminCount="0"
+    local fileVaultUsers=""
+    local fileVaultCount="0"
+    local secureTokenUsers=""
+    local secureTokenCount="0"
+    local volumeOwnerUsers=""
+    local volumeOwnerCount="0"
+    local secureTokenFieldCount="0"
+    local volumeOwnerFieldCount="0"
+    local osSecureTokenUsersValue=""
+    local osVolumeOwnersValue=""
+    local secureTokenUsersEaValue=""
+    local secureTokenUsersEaValueLower=""
+    local volumeOwnerUsersEaValue=""
+    local volumeOwnerUsersEaValueLower=""
+
+    accountCount=$(printf "%s" "${computerInfo}" | jq -r '(.localUserAccounts // []) | length' 2>/dev/null)
+    localAdminUsers=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select(.admin == true) | .username] | join("; ")' 2>/dev/null)
+    localAdminCount=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select(.admin == true)] | length' 2>/dev/null)
+    fileVaultUsers=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select(.fileVault2Enabled == true) | .username] | join("; ")' 2>/dev/null)
+    fileVaultCount=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select(.fileVault2Enabled == true)] | length' 2>/dev/null)
+    secureTokenUsers=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select((.secureToken // .hasSecureToken // .secureTokenEnabled // false) == true) | .username] | join("; ")' 2>/dev/null)
+    secureTokenCount=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select((.secureToken // .hasSecureToken // .secureTokenEnabled // false) == true)] | length' 2>/dev/null)
+    volumeOwnerUsers=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select((.volumeOwner // .isVolumeOwner // .userIsVolumeOwner // false) == true) | .username] | join("; ")' 2>/dev/null)
+    volumeOwnerCount=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select((.volumeOwner // .isVolumeOwner // .userIsVolumeOwner // false) == true)] | length' 2>/dev/null)
+    secureTokenFieldCount=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select(has("secureToken") or has("hasSecureToken") or has("secureTokenEnabled"))] | length' 2>/dev/null)
+    volumeOwnerFieldCount=$(printf "%s" "${computerInfo}" | jq -r '[.localUserAccounts[]? | select(has("volumeOwner") or has("isVolumeOwner") or has("userIsVolumeOwner"))] | length' 2>/dev/null)
+    osSecureTokenUsersValue=$(printf "%s" "${computerInfo}" | jq -r '.operatingSystem.secureTokenUsers // ""' 2>/dev/null)
+    osVolumeOwnersValue=$(printf "%s" "${computerInfo}" | jq -r '.operatingSystem.volumeOwners // ""' 2>/dev/null)
+    secureTokenUsersEaValue=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.secureTokenUsersEaValue // ""' 2>/dev/null)
+    volumeOwnerUsersEaValue=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.volumeOwnerUsersEaValue // ""' 2>/dev/null)
+
+    accountCount="${accountCount:-0}"
+    localAdminCount="${localAdminCount:-0}"
+    fileVaultCount="${fileVaultCount:-0}"
+    secureTokenCount="${secureTokenCount:-0}"
+    volumeOwnerCount="${volumeOwnerCount:-0}"
+    secureTokenFieldCount="${secureTokenFieldCount:-0}"
+    volumeOwnerFieldCount="${volumeOwnerFieldCount:-0}"
+
+    if [[ "${accountCount}" == "0" ]]; then
+        localAdminUsers="No local accounts"
+        fileVaultUsers="No local accounts"
+        secureTokenUsers="No local accounts"
+        volumeOwnerUsers="No local accounts"
+    else
+        if [[ -z "${localAdminUsers}" ]]; then
+            localAdminUsers="None"
+        fi
+        if [[ -z "${fileVaultUsers}" ]]; then
+            fileVaultUsers="None"
+        fi
+
+        if [[ "${secureTokenFieldCount}" == "0" ]]; then
+            if [[ -n "${osSecureTokenUsersValue}" ]]; then
+                secureTokenUsers="${osSecureTokenUsersValue}"
+                if [[ "${osSecureTokenUsersValue}" == *";"* ]]; then
+                    secureTokenCount=$(printf "%s" "${osSecureTokenUsersValue}" | awk -F';' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                elif [[ "${osSecureTokenUsersValue}" == *","* ]]; then
+                    secureTokenCount=$(printf "%s" "${osSecureTokenUsersValue}" | awk -F',' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                else
+                    secureTokenCount="1"
+                fi
+            elif [[ -n "${secureTokenUsersEaValue}" ]]; then
+                secureTokenUsersEaValueLower="${secureTokenUsersEaValue:l}"
+                if [[ "${secureTokenUsersEaValueLower}" == "none" ]] || [[ "${secureTokenUsersEaValueLower}" == "n/a" ]] || [[ "${secureTokenUsersEaValueLower}" == "na" ]] || [[ "${secureTokenUsersEaValueLower}" == "unknown" ]] || [[ "${secureTokenUsersEaValueLower}" == "no" ]]; then
+                    secureTokenUsers="None"
+                    secureTokenCount="0"
+                else
+                    secureTokenUsers="${secureTokenUsersEaValue}"
+                    if [[ "${secureTokenUsersEaValue}" == *";"* ]]; then
+                        secureTokenCount=$(printf "%s" "${secureTokenUsersEaValue}" | awk -F';' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                    elif [[ "${secureTokenUsersEaValue}" == *","* ]]; then
+                        secureTokenCount=$(printf "%s" "${secureTokenUsersEaValue}" | awk -F',' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                    else
+                        secureTokenCount="1"
+                    fi
+                fi
+            else
+                secureTokenUsers="Not exposed by API"
+                secureTokenCount="Unknown"
+            fi
+        elif [[ -z "${secureTokenUsers}" ]]; then
+            secureTokenUsers="None"
+        fi
+
+        if [[ "${volumeOwnerFieldCount}" == "0" ]]; then
+            if [[ -n "${osVolumeOwnersValue}" ]]; then
+                volumeOwnerUsers="${osVolumeOwnersValue}"
+                if [[ "${osVolumeOwnersValue}" == *";"* ]]; then
+                    volumeOwnerCount=$(printf "%s" "${osVolumeOwnersValue}" | awk -F';' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                elif [[ "${osVolumeOwnersValue}" == *","* ]]; then
+                    volumeOwnerCount=$(printf "%s" "${osVolumeOwnersValue}" | awk -F',' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                else
+                    volumeOwnerCount="1"
+                fi
+            elif [[ -n "${volumeOwnerUsersEaValue}" ]]; then
+                volumeOwnerUsersEaValueLower="${volumeOwnerUsersEaValue:l}"
+                if [[ "${volumeOwnerUsersEaValueLower}" == "none" ]] || [[ "${volumeOwnerUsersEaValueLower}" == "n/a" ]] || [[ "${volumeOwnerUsersEaValueLower}" == "na" ]] || [[ "${volumeOwnerUsersEaValueLower}" == "unknown" ]] || [[ "${volumeOwnerUsersEaValueLower}" == "no" ]]; then
+                    volumeOwnerUsers="None"
+                    volumeOwnerCount="0"
+                else
+                    volumeOwnerUsers="${volumeOwnerUsersEaValue}"
+                    if [[ "${volumeOwnerUsersEaValue}" == *";"* ]]; then
+                        volumeOwnerCount=$(printf "%s" "${volumeOwnerUsersEaValue}" | awk -F';' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                    elif [[ "${volumeOwnerUsersEaValue}" == *","* ]]; then
+                        volumeOwnerCount=$(printf "%s" "${volumeOwnerUsersEaValue}" | awk -F',' '{count=0; for(i=1;i<=NF;i++){gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i); if($i!="") count++} print count}')
+                    else
+                        volumeOwnerCount="1"
+                    fi
+                fi
+            else
+                volumeOwnerUsers="no data"
+                volumeOwnerCount="no data"
+            fi
+        elif [[ -z "${volumeOwnerUsers}" ]]; then
+            volumeOwnerUsers="None"
+        fi
+    fi
+
+    echo "${localAdminCount}|${localAdminUsers}|${fileVaultCount}|${fileVaultUsers}|${secureTokenCount}|${secureTokenUsers}|${volumeOwnerCount}|${volumeOwnerUsers}"
+}
+
+
+
+####################################################################################################
+#
 # Pre-flight Checks
 #
 ####################################################################################################
@@ -1856,6 +2364,24 @@ while [[ $# -gt 0 ]]; do
                 die "Error: --max-jobs requires a numeric argument"
             fi
             ;;
+        --secure-token-ea-id)
+            shift
+            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
+                secureTokenUsersEaId="$1"
+                shift
+            else
+                die "Error: --secure-token-ea-id requires a numeric argument"
+            fi
+            ;;
+        --volume-owner-ea-id)
+            shift
+            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
+                volumeOwnerUsersEaId="$1"
+                shift
+            else
+                die "Error: --volume-owner-ea-id requires a numeric argument"
+            fi
+            ;;
         --no-open)
             noOpen="true"
             shift
@@ -1895,7 +2421,7 @@ fi
 if [[ "${debugMode}" == "true" ]]; then
     debug "Collected ${#positionalArgs[@]} positional parameters"
     debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
-    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}"
+    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, secureTokenUsersEaName=${secureTokenUsersEaName:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}, volumeOwnerUsersEaName=${volumeOwnerUsersEaName:-disabled}"
 fi
 
 # Initialize output paths now that outputDir is set
@@ -2030,6 +2556,18 @@ else
     info "API credentials available; proceeding to validation …"
 fi
 
+if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]]; then
+    notice "Secure Token Users EA fallback enabled (EA ID: ${secureTokenUsersEaId}, EA Name: ${secureTokenUsersEaName})."
+else
+    notice "Secure Token Users EA fallback disabled (secureTokenUsersEaId is blank/non-numeric)."
+fi
+
+if [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]; then
+    notice "Volume Owner Users EA fallback enabled (EA ID: ${volumeOwnerUsersEaId}, EA Name: ${volumeOwnerUsersEaName})."
+else
+    notice "Volume Owner Users EA fallback disabled (volumeOwnerUsersEaId is blank/non-numeric)."
+fi
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -2137,7 +2675,7 @@ if [[ "${singleLookupMode}" != "yes" ]]; then
     if [[ "${debugMode}" == "true" ]]; then
         debug "Creating CSV with header row"
     fi
-    echo "Jamf Pro Computer ID,Jamf Pro Link,Name,Serial Number,Last Inventory Update,Current OS,Pending Updates,Model,Management ID,DDM Enabled,Active Blueprints,Failed Blueprints,Software Update Errors" > "${csvOutput}"
+    echo "Jamf Pro Computer ID,Jamf Pro Link,Name,Serial Number,Last Inventory Update,Current OS,Pending Updates,Model,Management ID,DDM Enabled,Bootstrap Token Escrowed,Bootstrap Token Allowed,FileVault2 Status,Local Admin User Count,Local Admin Users,FileVault Enabled User Count,FileVault Enabled Users,Secure Token User Count,Secure Token Users,Volume Owner User Count,Volume Owner Users,Software Update Device ID,Active Blueprints,Failed Blueprints,Software Update Errors" > "${csvOutput}"
     if [[ "${debugMode}" == "true" ]]; then
         debug "CSV file created successfully at: ${csvOutput}"
     fi
@@ -2186,11 +2724,23 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     
     # Retrieve computer information
     info "Retrieving computer information for Computer ID ${computerId} …"
-    computerInfoRaw=$(retryWithBackoff getComputerById "${computerId}")
+    computerInfoRaw=""
+    singleLookupComputerInfoFile=""
+    singleLookupComputerInfoFile=$(mktemp "/tmp/ddm-computer-info-single.XXXXXX" 2>/dev/null)
+    retryWithBackoff getComputerById "${computerId}" > "${singleLookupComputerInfoFile}"
+    singleLookupExitCode=$?
+    if [[ ${singleLookupExitCode} -eq 0 ]] && [[ -s "${singleLookupComputerInfoFile}" ]]; then
+        computerInfoRaw=$(cat "${singleLookupComputerInfoFile}" 2>/dev/null)
+    fi
+    rm -f "${singleLookupComputerInfoFile}" 2>/dev/null
     
-    if [[ $? -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
+    if [[ ${singleLookupExitCode} -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
         printf "${red}✗${resetColor} Failed to retrieve computer information\n\n"
         error "Failed to retrieve computer information for Computer ID ${computerId}"
+        if [[ -n "${lastComputerLookupError}" ]]; then
+            printf "${yellow}Reason:${resetColor} ${lastComputerLookupError}\n\n"
+            error "Computer lookup reason: ${lastComputerLookupError}"
+        fi
         invalidateBearerToken
         printf "${dividerLine}\n\n"
         exit 1
@@ -2204,6 +2754,13 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     computerModelIdentifier=$(printf "%s" "${computerInfoRaw}" | jq -r '.hardware.modelIdentifier // "Unknown"')
     managementId=$(printf "%s" "${computerInfoRaw}" | jq -r '.general.managementId // "Unknown"')
     ddmEnabled=$(printf "%s" "${computerInfoRaw}" | jq -r '.general.declarativeDeviceManagementEnabled // false')
+    bootstrapTokenEscrowedStatus=$(printf "%s" "${computerInfoRaw}" | jq -r '.security.bootstrapTokenEscrowedStatus // "Unknown"')
+    bootstrapTokenAllowed=$(printf "%s" "${computerInfoRaw}" | jq -r '.security.bootstrapTokenAllowed // "Unknown"')
+    fileVault2Status=$(printf "%s" "${computerInfoRaw}" | jq -r '.operatingSystem.fileVault2Status // "Unknown"')
+    softwareUpdateDeviceId=$(printf "%s" "${computerInfoRaw}" | jq -r '.operatingSystem.softwareUpdateDeviceId // "Unknown"')
+    
+    localUserSummary=$(buildLocalUserSecuritySummary "${computerInfoRaw}")
+    IFS='|' read -r localAdminUserCount localAdminUsers fileVaultEnabledUserCount fileVaultEnabledUsers secureTokenUserCount secureTokenUsers volumeOwnerUserCount volumeOwnerUsers <<< "${localUserSummary}"
     
     # Display computer information
     printf "${cyan}Computer Information:${resetColor}\n"
@@ -2215,13 +2772,39 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     printf "  • Current OS: ${computerOsVersion}\n"
     printf "  • Model: ${computerModelIdentifier}\n"
     printf "  • DDM Enabled: ${ddmEnabled}\n\n"
+    printf "  • Bootstrap Token Escrowed: ${bootstrapTokenEscrowedStatus}\n"
+    printf "  • Bootstrap Token Allowed: ${bootstrapTokenAllowed}\n"
+    printf "  • FileVault2 Status: ${fileVault2Status}\n"
+    printf "  • Local Admin Users: ${localAdminUserCount} (${localAdminUsers})\n"
+    printf "  • FileVault Enabled Users: ${fileVaultEnabledUserCount} (${fileVaultEnabledUsers})\n"
+    printf "  • Secure Token Users: ${secureTokenUserCount} (${secureTokenUsers})\n"
+    printf "  • Volume Owner Users: ${volumeOwnerUserCount} (${volumeOwnerUsers})\n"
+    printf "  • Software Update Device ID: ${softwareUpdateDeviceId}\n\n"
     
     info "Computer Name: ${computerName}"
     info "Serial Number: ${computerSerialNumber}"
     info "Computer ID: ${computerId}"
     info "Management ID: ${managementId}"
     info "DDM Enabled: ${ddmEnabled}"
-    
+    info "Bootstrap Token Escrowed: ${bootstrapTokenEscrowedStatus}"
+    info "Bootstrap Token Allowed: ${bootstrapTokenAllowed}"
+    info "FileVault2 Status: ${fileVault2Status}"
+    if [[ "${volumeOwnerUsers}" == "no data" ]]; then
+        if [[ "${volumeOwnerExposureNoticeLogged}" != "true" ]]; then
+            notice "Volume Owner user attributes were not returned from local account fields, operating system fields, or EA fallback (EA ID: ${volumeOwnerUsersEaId:-disabled}); reporting 'no data'."
+            volumeOwnerExposureNoticeLogged="true"
+        fi
+    else
+        info "Volume Owner Users: ${volumeOwnerUsers}"
+    fi
+    if [[ "${secureTokenUsers}" == "Not exposed by API" ]]; then
+        if [[ "${secureTokenExposureNoticeLogged}" != "true" ]]; then
+            notice "Secure Token user attributes were not returned from local account fields, operating system fields, or EA fallback (EA ID: ${secureTokenUsersEaId:-disabled}); reporting 'Not exposed by API'."
+            secureTokenExposureNoticeLogged="true"
+        fi
+    else
+        info "Secure Token Users: ${secureTokenUsers}"
+    fi
     # Check DDM status if enabled
     if [[ "${ddmEnabled}" == "true" ]]; then
         
@@ -2325,13 +2908,34 @@ processComputer() {
     # Retrieve computer information by JSS Computer ID
     ################################################################################################
     
-    computerInfoRaw=$(getComputerById "${identifier}")
+    computerInfoRaw=""
+    local recordComputerInfoFile=""
+    local recordLookupExitCode=1
+    recordComputerInfoFile=$(mktemp "/tmp/ddm-computer-info-record.XXXXXX" 2>/dev/null)
+    getComputerById "${identifier}" > "${recordComputerInfoFile}"
+    recordLookupExitCode=$?
+    if [[ ${recordLookupExitCode} -eq 0 ]] && [[ -s "${recordComputerInfoFile}" ]]; then
+        computerInfoRaw=$(cat "${recordComputerInfoFile}" 2>/dev/null)
+    fi
+    rm -f "${recordComputerInfoFile}" 2>/dev/null
     
-    if [[ $? -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
+    if [[ ${recordLookupExitCode} -ne 0 ]] || [[ -z "${computerInfoRaw}" ]]; then
         error "Computer '${identifier}' not found in Jamf Pro; skipping …"
         printf "  ${red}✗${resetColor} Computer not found in Jamf Pro\n"
+        if [[ -n "${lastComputerLookupError}" ]]; then
+            info "Computer '${identifier}' lookup reason: ${lastComputerLookupError}"
+            if [[ "${debugMode}" == "true" ]]; then
+                debug "Computer '${identifier}' lookup reason: ${lastComputerLookupError}"
+            fi
+        fi
         # Write "Not Found" row to temp CSV
-        echo "\"${identifier}\",\"\",\"Not Found\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"" >> "${tempCsvFile}"
+        local emptyColumns=""
+        local index=1
+        while [[ ${index} -le 22 ]]; do
+            emptyColumns="${emptyColumns},\"\""
+            (( index++ ))
+        done
+        echo "\"${identifier}\",\"\",\"Not Found\"${emptyColumns}" >> "${tempCsvFile}"
         local recordTime=$((SECONDS - recordStartTime))
         info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))"
         return 1
@@ -2339,22 +2943,40 @@ processComputer() {
     
     # Extract all fields from the retrieved computer data
     # Parse the filtered JSON with jq
-    fieldData=$(printf "%s" "${computerInfoRaw}" | jq -r '[.id // "", .general.name // "", .hardware.serialNumber // "", .general.managementId // "", .general.declarativeDeviceManagementEnabled // "", .operatingSystem.version // "", .hardware.modelIdentifier // "", .general.lastContactTime // ""] | join("|")' 2>/dev/null)
+    fieldData=$(printf "%s" "${computerInfoRaw}" | jq -r '[.id // "", .general.name // "", .hardware.serialNumber // "", .general.managementId // "", .general.declarativeDeviceManagementEnabled // "", .operatingSystem.version // "", .hardware.modelIdentifier // "", .general.lastContactTime // "", .security.bootstrapTokenEscrowedStatus // "Unknown", .security.bootstrapTokenAllowed // "Unknown", .operatingSystem.fileVault2Status // "Unknown", .operatingSystem.softwareUpdateDeviceId // "Unknown"] | join("|")' 2>/dev/null)
     
-    if [[ -z "${fieldData}" ]] || [[ "${fieldData}" == "|||||||" ]]; then
+    if [[ -z "${fieldData}" ]] || [[ "${fieldData}" == "|||||||||||" ]]; then
         error "Failed to parse JSON for identifier: ${identifier}"
         printf "${red}✗${resetColor} Failed to parse computer data for: ${identifier}\n\n"
-        echo "\"${identifier}\",\"${apiUrl}/computers.html?id=${identifier}&o=r\",\"Parse Error\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"" >> "${tempCsvFile}"
+        local emptyColumns=""
+        local index=1
+        while [[ ${index} -le 22 ]]; do
+            emptyColumns="${emptyColumns},\"\""
+            (( index++ ))
+        done
+        echo "\"${identifier}\",\"${apiUrl}/computers.html?id=${identifier}&o=r\",\"Parse Error\"${emptyColumns}" >> "${tempCsvFile}"
         local recordTime=$((SECONDS - recordStartTime))
         info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))"
         return 1
     fi
     
     # Parse the pipe-separated values
-    IFS='|' read -r computerId computerName computerSerialNumber managementId ddmEnabled currentOsVersion modelIdentifier lastContactTime <<< "${fieldData}"
+    IFS='|' read -r computerId computerName computerSerialNumber managementId ddmEnabled currentOsVersion modelIdentifier lastContactTime bootstrapTokenEscrowedStatus bootstrapTokenAllowed fileVault2Status softwareUpdateDeviceId <<< "${fieldData}"
+    
+    local localUserSummary=""
+    local localAdminUserCount=""
+    local localAdminUsers=""
+    local fileVaultEnabledUserCount=""
+    local fileVaultEnabledUsers=""
+    local secureTokenUserCount=""
+    local secureTokenUsers=""
+    local volumeOwnerUserCount=""
+    local volumeOwnerUsers=""
+    localUserSummary=$(buildLocalUserSecuritySummary "${computerInfoRaw}")
+    IFS='|' read -r localAdminUserCount localAdminUsers fileVaultEnabledUserCount fileVaultEnabledUsers secureTokenUserCount secureTokenUsers volumeOwnerUserCount volumeOwnerUsers <<< "${localUserSummary}"
     
     if [[ "${debugMode}" == "true" ]]; then
-        debug "Extracted values - ID: '${computerId}' Name: '${computerName}' Serial: '${computerSerialNumber}' MgmtID: '${managementId}' DDM: '${ddmEnabled}' OS: '${currentOsVersion}' Model: '${modelIdentifier}' LastContact: '${lastContactTime}'"
+        debug "Extracted values - ID: '${computerId}' Name: '${computerName}' Serial: '${computerSerialNumber}' MgmtID: '${managementId}' DDM: '${ddmEnabled}' OS: '${currentOsVersion}' Model: '${modelIdentifier}' LastContact: '${lastContactTime}' BootstrapToken: '${bootstrapTokenEscrowedStatus}' VolumeOwners: '${volumeOwnerUsers}'"
         printf "${cyan}[DEBUG]${resetColor} Extracted values:\n"
         printf "  - ID: '${computerId}'\n"
         printf "  - Name: '${computerName}'\n"
@@ -2363,6 +2985,11 @@ processComputer() {
         printf "  - DDM Enabled: '${ddmEnabled}'\n"
         printf "  - OS Version: '${currentOsVersion}'\n"
         printf "  - Model: '${modelIdentifier}'\n"
+        printf "  - Bootstrap Token Escrowed: '${bootstrapTokenEscrowedStatus}'\n"
+        printf "  - Bootstrap Token Allowed: '${bootstrapTokenAllowed}'\n"
+        printf "  - FileVault2 Status: '${fileVault2Status}'\n"
+        printf "  - Volume Owner Users: '${volumeOwnerUsers}'\n"
+        printf "  - Secure Token Users: '${secureTokenUsers}'\n"
         printf "  - Last Inventory Update: '${lastContactTime}'\n\n"
     fi
     
@@ -2379,6 +3006,25 @@ processComputer() {
     info "• Management ID: ${managementId}"
     info "• DDM Enabled: ${ddmEnabled}"
     info "• Current OS: ${currentOsVersion}"
+    info "• Bootstrap Token Escrowed: ${bootstrapTokenEscrowedStatus}"
+    info "• Bootstrap Token Allowed: ${bootstrapTokenAllowed}"
+    info "• FileVault2 Status: ${fileVault2Status}"
+    if [[ "${volumeOwnerUsers}" == "no data" ]]; then
+        if [[ "${volumeOwnerExposureNoticeLogged}" != "true" ]]; then
+            notice "Volume Owner user attributes were not returned from local account fields, operating system fields, or EA fallback (EA ID: ${volumeOwnerUsersEaId:-disabled}); reporting 'no data'."
+            volumeOwnerExposureNoticeLogged="true"
+        fi
+    else
+        info "• Volume Owner Users: ${volumeOwnerUsers}"
+    fi
+    if [[ "${secureTokenUsers}" == "Not exposed by API" ]]; then
+        if [[ "${secureTokenExposureNoticeLogged}" != "true" ]]; then
+            notice "Secure Token user attributes were not returned from local account fields, operating system fields, or EA fallback (EA ID: ${secureTokenUsersEaId:-disabled}); reporting 'Not exposed by API'."
+            secureTokenExposureNoticeLogged="true"
+        fi
+    else
+        info "• Secure Token Users: ${secureTokenUsers}"
+    fi
     info "• Last Inventory Update: ${lastContactTime}"
     
     printf "  ${green}✓${resetColor} ${computerName} (${computerSerialNumber}) - DDM: ${ddmEnabled}\n"
@@ -2463,6 +3109,18 @@ processComputer() {
     csvModelIdentifier=$(sanitizeForCsv "${modelIdentifier}")
     csvManagementId=$(sanitizeForCsv "${managementId}")
     csvDdmEnabled=$(sanitizeForCsv "${ddmEnabled}")
+    csvBootstrapTokenEscrowedStatus=$(sanitizeForCsv "${bootstrapTokenEscrowedStatus}")
+    csvBootstrapTokenAllowed=$(sanitizeForCsv "${bootstrapTokenAllowed}")
+    csvFileVault2Status=$(sanitizeForCsv "${fileVault2Status}")
+    csvLocalAdminUserCount=$(sanitizeForCsv "${localAdminUserCount}")
+    csvLocalAdminUsers=$(sanitizeForCsv "${localAdminUsers}")
+    csvFileVaultEnabledUserCount=$(sanitizeForCsv "${fileVaultEnabledUserCount}")
+    csvFileVaultEnabledUsers=$(sanitizeForCsv "${fileVaultEnabledUsers}")
+    csvSecureTokenUserCount=$(sanitizeForCsv "${secureTokenUserCount}")
+    csvSecureTokenUsers=$(sanitizeForCsv "${secureTokenUsers}")
+    csvVolumeOwnerUserCount=$(sanitizeForCsv "${volumeOwnerUserCount}")
+    csvVolumeOwnerUsers=$(sanitizeForCsv "${volumeOwnerUsers}")
+    csvSoftwareUpdateDeviceId=$(sanitizeForCsv "${softwareUpdateDeviceId}")
     csvCurrentOsVersion=$(sanitizeForCsv "${currentOsVersion}")
     csvLastContactTime=$(sanitizeForCsv "${lastContactTime}")
     csvActiveBlueprints=$(sanitizeForCsv "${activeBlueprints}")
@@ -2476,7 +3134,7 @@ processComputer() {
         jamfProLink="${apiUrl}/computers.html?id=${computerId}&o=r"
     fi
     
-    echo "\"${csvIdentifier}\",\"${jamfProLink}\",\"${csvComputerName}\",\"${csvSerialNumber}\",\"${csvLastContactTime}\",\"${csvCurrentOsVersion}\",\"${csvPendingUpdates}\",\"${csvModelIdentifier}\",\"${csvManagementId}\",\"${csvDdmEnabled}\",\"${csvActiveBlueprints}\",\"${csvFailedBlueprints}\",\"${csvSoftwareUpdateErrors}\"" >> "${tempCsvFile}"
+    echo "\"${csvIdentifier}\",\"${jamfProLink}\",\"${csvComputerName}\",\"${csvSerialNumber}\",\"${csvLastContactTime}\",\"${csvCurrentOsVersion}\",\"${csvPendingUpdates}\",\"${csvModelIdentifier}\",\"${csvManagementId}\",\"${csvDdmEnabled}\",\"${csvBootstrapTokenEscrowedStatus}\",\"${csvBootstrapTokenAllowed}\",\"${csvFileVault2Status}\",\"${csvLocalAdminUserCount}\",\"${csvLocalAdminUsers}\",\"${csvFileVaultEnabledUserCount}\",\"${csvFileVaultEnabledUsers}\",\"${csvSecureTokenUserCount}\",\"${csvSecureTokenUsers}\",\"${csvVolumeOwnerUserCount}\",\"${csvVolumeOwnerUsers}\",\"${csvSoftwareUpdateDeviceId}\",\"${csvActiveBlueprints}\",\"${csvFailedBlueprints}\",\"${csvSoftwareUpdateErrors}\"" >> "${tempCsvFile}"
     
     local recordTime=$((SECONDS - recordStartTime))
     local recordTimeFormatted=$(printf '%dh:%dm:%ds' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))

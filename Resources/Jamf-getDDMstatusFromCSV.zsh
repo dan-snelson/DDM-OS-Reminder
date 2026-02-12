@@ -20,6 +20,13 @@
 #
 # HISTORY
 #
+# Version 1.2.0, 12-Feb-2026, Dan K. Snelson (@dan-snelson)
+# - Added MDM communications diagnostics fields (profile expiration/identifier/topic, supervision, enrollment method).
+# - Added MDM command completion summary via Jamf Pro command-status API lookup by management ID.
+# - Added heuristic MDM profile topic-to-identifier match result for rapid triage.
+# - Added optional EA fallback IDs for MDM Profile Identifier and MDM Profile Topic (for client-side-only inventory).
+# - Suppressed MDM fields that resolve to Unknown in terminal/log output and export them as blank CSV cells.
+#
 # Version 1.1.0, 12-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - Added Computer Record security context fields (Bootstrap Token, FileVault2, local user security indicators).
 # - Added Secure Token and Volume Owner extraction via operating system fields and EA fallback (ID/name configurable).
@@ -44,7 +51,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 [[ -o interactive ]] && setopt monitor
 
 # Script Version
-scriptVersion="1.1.0"
+scriptVersion="1.2.0"
 
 # Elapsed Time
 SECONDS="0"
@@ -83,6 +90,9 @@ parallelProcessing="false"          # Enable parallel processing for faster exec
 maxParallelJobs=10                  # Number of concurrent background jobs (default: 10)
 export parallelProcessing
 
+# MDM command summary settings
+mdmCommandPageSize=50
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Script Parameters
@@ -97,8 +107,12 @@ outputDir="$HOME/Desktop"           # Default output directory
 noOpen="false"                      # Skip opening log/CSV files
 secureTokenUsersEaId="52"           # Secure Token Users EA ID (set to your Jamf Pro environment; blank to disable)
 volumeOwnerUsersEaId="156"          # Volume Owner Users EA ID (set to your Jamf Pro environment; blank to disable)
+mdmProfileIdentifierEaId=""         # MDM Profile Identifier EA ID (optional; set if your inventory captures client-side profileIdentifier)
+mdmProfileTopicEaId=""              # MDM Profile Topic EA ID (optional; set if your inventory captures client-side profile topic)
 secureTokenUsersEaName="Secure Token Users"  # EA name fallback if ID field shape differs
 volumeOwnerUsersEaName="Volume Owners"       # EA name fallback if ID field shape differs
+mdmProfileIdentifierEaName="MDM Profile Identifier"  # EA name fallback when ID shape differs
+mdmProfileTopicEaName="MDM Profile Topic"            # EA name fallback when ID shape differs
 
 # Debug Mode [ true | false ]
 debugMode="false"                    # Set to "true" to enable debug logging
@@ -272,6 +286,8 @@ https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
         --max-jobs N          Set maximum parallel jobs (default: 10, requires --parallel)
         --secure-token-ea-id N  Secure Token Users EA ID for fallback when API omits token details (default: 52)
         --volume-owner-ea-id N  Volume Owner Users EA ID for fallback when API omits volume owner details (default: 156)
+        --mdm-profile-identifier-ea-id N  MDM Profile Identifier EA ID fallback (optional; useful for client-side-only profileIdentifier)
+        --mdm-profile-topic-ea-id N       MDM Profile Topic EA ID fallback (optional; useful for client-side-only profile topic)
         --no-open             Do not open the log and CSV output files
         -h, --help            Display this help information
 
@@ -289,6 +305,9 @@ https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
     Notes:
         • For CSVs with quoted newlines, ruby (if available) is used for reliable parsing.
         • Without ruby, multiline CSV fields may be misread.
+        • MDM command completion uses /api/v1/mdm/commands by management ID when the Jamf Pro role permits access.
+        • MDM profile topic-to-identifier matching is heuristic and intended for triage.
+        • If MDM profile identifier/topic are client-side only in your environment, capture them via Extension Attributes and pass EA IDs.
 
     Examples:
         # CSV batch processing with lane
@@ -852,6 +871,85 @@ function sanitizeForCsv() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Unknown-value helpers (suppress noisy placeholders in output)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isUnknownValue() {
+    local value="${1}"
+    local normalized=""
+
+    normalized=$(printf "%s" "${value}" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+    if [[ -z "${normalized}" ]] || [[ "${normalized}" == "unknown" ]] || [[ "${normalized}" == "null" ]] || [[ "${normalized}" == "n/a" ]] || [[ "${normalized}" == "na" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+
+function blankIfUnknown() {
+    local value="${1}"
+
+    if isUnknownValue "${value}"; then
+        printf ""
+    else
+        printf "%s" "${value}"
+    fi
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Compare MDM profile identifier and topic values (heuristic)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function evaluateMdmTopicIdentifierMatch() {
+    local mdmProfileIdentifier="${1}"
+    local mdmProfileTopic="${2}"
+    local normalizedIdentifier=""
+    local normalizedTopic=""
+    local identifierDomain=""
+    local topicDomain=""
+
+    if [[ -z "${mdmProfileIdentifier}" ]] || [[ "${mdmProfileIdentifier:l}" == "unknown" ]] || [[ "${mdmProfileIdentifier:l}" == "null" ]]; then
+        echo "Unknown"
+        return 0
+    fi
+
+    if [[ -z "${mdmProfileTopic}" ]] || [[ "${mdmProfileTopic:l}" == "unknown" ]] || [[ "${mdmProfileTopic:l}" == "null" ]]; then
+        echo "Unknown"
+        return 0
+    fi
+
+    normalizedIdentifier=$(printf "%s" "${mdmProfileIdentifier}" | tr '[:upper:]' '[:lower:]')
+    normalizedTopic=$(printf "%s" "${mdmProfileTopic}" | tr '[:upper:]' '[:lower:]')
+
+    if [[ "${normalizedIdentifier}" == "${normalizedTopic}" ]]; then
+        echo "Exact match"
+        return 0
+    fi
+
+    if [[ "${normalizedTopic}" == *"${normalizedIdentifier}"* ]] || [[ "${normalizedIdentifier}" == *"${normalizedTopic}"* ]]; then
+        echo "Likely match"
+        return 0
+    fi
+
+    identifierDomain=$(printf "%s" "${normalizedIdentifier}" | awk -F'.' 'NF>=2 {print $(NF-1)"."$NF; exit}')
+    topicDomain=$(printf "%s" "${normalizedTopic}" | awk -F'.' 'NF>=2 {print $(NF-1)"."$NF; exit}')
+
+    if [[ -n "${identifierDomain}" ]] && [[ -n "${topicDomain}" ]] && [[ "${identifierDomain}" == "${topicDomain}" ]]; then
+        echo "Possible match (domain)"
+        return 0
+    fi
+
+    echo "Mismatch"
+    return 0
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Mask credentials for display
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -1261,7 +1359,7 @@ function getEaFallbackValuesByComputerId() {
         rawResponse="${responseWithCode%???}"
 
         if [[ "${httpStatus}" == "200" ]]; then
-            extractedValues=$(printf "%s" "${rawResponse}" | jq -r --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" '
+            extractedValues=$(printf "%s" "${rawResponse}" | jq -r --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" --arg mdmProfileIdentifierEaId "${mdmProfileIdentifierEaId}" --arg mdmProfileIdentifierEaName "${mdmProfileIdentifierEaName}" --arg mdmProfileTopicEaId "${mdmProfileTopicEaId}" --arg mdmProfileTopicEaName "${mdmProfileTopicEaName}" '
                 def normalize_ea_container:
                     if . == null then []
                     elif type == "array" then .
@@ -1343,7 +1441,28 @@ function getEaFallbackValuesByComputerId() {
 
                 def first_non_empty($values):
                     (
-                        [ $values[] | select(. != null and ((. | tostring) | length) > 0) | tostring ]
+                        [ $values[]
+                            | if . == null then
+                                ""
+                              elif (type == "object") then
+                                (
+                                    .objectName
+                                    // .name
+                                    // .displayName
+                                    // .identifier
+                                    // .topic
+                                    // .id
+                                    // .uuid
+                                    // .value
+                                    // ""
+                                )
+                              else
+                                tostring
+                              end
+                            | tostring
+                            | gsub("^\\s+|\\s+$"; "")
+                            | select(length > 0 and . != "null" and . != "{}" and . != "[]")
+                        ]
                         | first
                     ) // "";
 
@@ -1362,6 +1481,19 @@ function getEaFallbackValuesByComputerId() {
                         .operatingSystem.volumeOwner,
                         .operatingSystem["Volume Owners"],
                         .operatingSystem["Volume Owner"]
+                    ]),
+                    first_non_empty([
+                        ea_value_by($mdmProfileIdentifierEaId; $mdmProfileIdentifierEaName),
+                        .operatingSystem.mdmProfileIdentifier,
+                        .operatingSystem["MDM Profile Identifier"],
+                        .operatingSystem["profileIdentifier"]
+                    ]),
+                    first_non_empty([
+                        ea_value_by($mdmProfileTopicEaId; $mdmProfileTopicEaName),
+                        .operatingSystem.mdmProfileTopic,
+                        .operatingSystem.apnsTopic,
+                        .operatingSystem["MDM Profile Topic"],
+                        .operatingSystem["APNS Topic"]
                     ])
                 ] | join("|")
             ' 2>/dev/null)
@@ -1407,8 +1539,12 @@ function getComputerById() {
     local computerInfo
     local secureTokenEaCurrent=""
     local volumeOwnerEaCurrent=""
+    local mdmProfileIdentifierEaCurrent=""
+    local mdmProfileTopicEaCurrent=""
     local secureTokenEaFallback=""
     local volumeOwnerEaFallback=""
+    local mdmProfileIdentifierEaFallback=""
+    local mdmProfileTopicEaFallback=""
     local eaFallbackPair=""
     local baseDetailSections="section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM&section=SECURITY&section=LOCAL_USER_ACCOUNTS&section=SOFTWARE_UPDATES"
     local detailSections="${baseDetailSections}"
@@ -1435,7 +1571,7 @@ function getComputerById() {
         debug "Looking up computer by ID: ${computerId}" >&2
     fi
 
-    if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]; then
+    if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${mdmProfileIdentifierEaId}" =~ ^[0-9]+$ ]] || [[ "${mdmProfileTopicEaId}" =~ ^[0-9]+$ ]]; then
         detailSections="${detailSections}&section=EXTENSION_ATTRIBUTES"
     fi
     computerDetailEndpoint="${apiUrl}/api/v1/computers-inventory-detail/${computerId}?${detailSections}"
@@ -1470,7 +1606,7 @@ function getComputerById() {
             # Extract only the fields we need using jq on the raw response
             # We keep a narrow set of fields plus optional EA fallback data.
             jqErrorFile=$(mktemp "/tmp/ddm-jq-error.XXXXXX" 2>/dev/null)
-            computerInfo=$(printf "%s" "${rawResponse}" | jq -c --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" '
+            computerInfo=$(printf "%s" "${rawResponse}" | jq -c --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" --arg mdmProfileIdentifierEaId "${mdmProfileIdentifierEaId}" --arg mdmProfileIdentifierEaName "${mdmProfileIdentifierEaName}" --arg mdmProfileTopicEaId "${mdmProfileTopicEaId}" --arg mdmProfileTopicEaName "${mdmProfileTopicEaName}" '
                 def normalize_ea_container:
                     if . == null then []
                     elif type == "array" then .
@@ -1552,7 +1688,28 @@ function getComputerById() {
 
                 def first_non_empty($values):
                     (
-                        [ $values[] | select(. != null and ((. | tostring) | length) > 0) | tostring ]
+                        [ $values[]
+                            | if . == null then
+                                ""
+                              elif (type == "object") then
+                                (
+                                    .objectName
+                                    // .name
+                                    // .displayName
+                                    // .identifier
+                                    // .topic
+                                    // .id
+                                    // .uuid
+                                    // .value
+                                    // ""
+                                )
+                              else
+                                tostring
+                              end
+                            | tostring
+                            | gsub("^\\s+|\\s+$"; "")
+                            | select(length > 0 and . != "null" and . != "{}" and . != "[]")
+                        ]
                         | first
                     ) // "";
 
@@ -1562,7 +1719,61 @@ function getComputerById() {
                     name: .general.name,
                     managementId: .general.managementId,
                     declarativeDeviceManagementEnabled: .general.declarativeDeviceManagementEnabled,
-                    lastContactTime: .general.lastContactTime
+                    lastContactTime: .general.lastContactTime,
+                    enrollmentMethod: first_non_empty([
+                        .general.enrollmentMethod.objectName,
+                        .general.enrollmentMethod.name,
+                        .general.enrollmentMethod.displayName,
+                        .general.enrollmentMethod,
+                        .general.enrollmentType,
+                        .general.enrollmentSource,
+                        .general.managementStatus
+                    ]),
+                    supervised: first_non_empty([
+                        .general.supervised,
+                        .general.isSupervised,
+                        .security.supervised,
+                        .security.isSupervised
+                    ]),
+                    userApprovedMdm: first_non_empty([
+                        .general.userApprovedMdm,
+                        .general.userApprovedEnrollment,
+                        .security.userApprovedMdm,
+                        .security.userApprovedEnrollment
+                    ]),
+                    mdmProfileExpiration: first_non_empty([
+                        .general.mdmProfileExpiration,
+                        .general.mdmProfileExpirationDate,
+                        .general.mdmProfileExpires,
+                        .general.mdmProfileExpirationUtc,
+                        .general.mdmCertificateExpiration,
+                        .security.mdmProfileExpiration,
+                        .security.mdmCertificateExpiration
+                    ]),
+                    mdmProfileIdentifier: first_non_empty([
+                        .general.mdmProfile.identifier,
+                        .general.mdmProfile.profileIdentifier,
+                        .general.mdmProfile.identifierValue,
+                        .general.mdmProfileIdentifier,
+                        .general.mdmProfileId,
+                        .general.mdmProfileUuid,
+                        .general.mobileDeviceManagementProfileIdentifier,
+                        .security.mdmProfile.identifier,
+                        .security.mdmProfileIdentifier,
+                        ea_value_by($mdmProfileIdentifierEaId; $mdmProfileIdentifierEaName)
+                    ]),
+                    mdmProfileTopic: first_non_empty([
+                        .general.mdmProfile.topic,
+                        .general.mdmTopic,
+                        .general.apnsTopic,
+                        .general.pushTopic,
+                        .general.mdmProfileTopic,
+                        .general.pushNotificationTopic,
+                        .general.managementTopic,
+                        .security.mdmProfile.topic,
+                        .security.apnsTopic,
+                        ea_value_by($mdmProfileTopicEaId; $mdmProfileTopicEaName)
+                    ])
                 },
                 hardware: {
                     serialNumber: .hardware.serialNumber,
@@ -1596,7 +1807,13 @@ function getComputerById() {
                     secureTokenUsersEaValue: ea_value_by($secureTokenEaId; $secureTokenEaName),
                     volumeOwnerUsersEaId: $volumeOwnerEaId,
                     volumeOwnerUsersEaName: $volumeOwnerEaName,
-                    volumeOwnerUsersEaValue: ea_value_by($volumeOwnerEaId; $volumeOwnerEaName)
+                    volumeOwnerUsersEaValue: ea_value_by($volumeOwnerEaId; $volumeOwnerEaName),
+                    mdmProfileIdentifierEaId: $mdmProfileIdentifierEaId,
+                    mdmProfileIdentifierEaName: $mdmProfileIdentifierEaName,
+                    mdmProfileIdentifierEaValue: ea_value_by($mdmProfileIdentifierEaId; $mdmProfileIdentifierEaName),
+                    mdmProfileTopicEaId: $mdmProfileTopicEaId,
+                    mdmProfileTopicEaName: $mdmProfileTopicEaName,
+                    mdmProfileTopicEaValue: ea_value_by($mdmProfileTopicEaId; $mdmProfileTopicEaName)
                 },
                 localUserAccounts: (.localUserAccounts // []),
                 softwareUpdates: (.softwareUpdates // [])
@@ -1614,21 +1831,33 @@ function getComputerById() {
             if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
                 secureTokenEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.secureTokenUsersEaValue // ""' 2>/dev/null)
                 volumeOwnerEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.volumeOwnerUsersEaValue // ""' 2>/dev/null)
+                mdmProfileIdentifierEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.mdmProfileIdentifierEaValue // ""' 2>/dev/null)
+                mdmProfileTopicEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.mdmProfileTopicEaValue // ""' 2>/dev/null)
 
-                if ([[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]) && ([[ -z "${secureTokenEaCurrent}" ]] || [[ -z "${volumeOwnerEaCurrent}" ]]); then
+                if ([[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] && [[ -z "${secureTokenEaCurrent}" ]]) || ([[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]] && [[ -z "${volumeOwnerEaCurrent}" ]]) || ([[ "${mdmProfileIdentifierEaId}" =~ ^[0-9]+$ ]] && [[ -z "${mdmProfileIdentifierEaCurrent}" ]]) || ([[ "${mdmProfileTopicEaId}" =~ ^[0-9]+$ ]] && [[ -z "${mdmProfileTopicEaCurrent}" ]]); then
                     eaFallbackPair=$(getEaFallbackValuesByComputerId "${computerId}")
                     if [[ $? -eq 0 ]] && [[ -n "${eaFallbackPair}" ]]; then
-                        IFS='|' read -r secureTokenEaFallback volumeOwnerEaFallback <<< "${eaFallbackPair}"
-                        computerInfo=$(printf "%s" "${computerInfo}" | jq -c --arg secureTokenEaFallback "${secureTokenEaFallback}" --arg volumeOwnerEaFallback "${volumeOwnerEaFallback}" '
+                        IFS='|' read -r secureTokenEaFallback volumeOwnerEaFallback mdmProfileIdentifierEaFallback mdmProfileTopicEaFallback <<< "${eaFallbackPair}"
+                        computerInfo=$(printf "%s" "${computerInfo}" | jq -c --arg secureTokenEaFallback "${secureTokenEaFallback}" --arg volumeOwnerEaFallback "${volumeOwnerEaFallback}" --arg mdmProfileIdentifierEaFallback "${mdmProfileIdentifierEaFallback}" --arg mdmProfileTopicEaFallback "${mdmProfileTopicEaFallback}" '
+                            def is_blank:
+                                . == null
+                                or ((tostring | gsub("^\\s+|\\s+$"; "")) | length == 0)
+                                or ((tostring | ascii_downcase) == "unknown")
+                                or ((tostring | ascii_downcase) == "null");
+
                             .extensionAttributes.secureTokenUsersEaValue = (if ($secureTokenEaFallback | length) > 0 then $secureTokenEaFallback else .extensionAttributes.secureTokenUsersEaValue end)
                             | .extensionAttributes.volumeOwnerUsersEaValue = (if ($volumeOwnerEaFallback | length) > 0 then $volumeOwnerEaFallback else .extensionAttributes.volumeOwnerUsersEaValue end)
+                            | .extensionAttributes.mdmProfileIdentifierEaValue = (if ($mdmProfileIdentifierEaFallback | length) > 0 then $mdmProfileIdentifierEaFallback else .extensionAttributes.mdmProfileIdentifierEaValue end)
+                            | .extensionAttributes.mdmProfileTopicEaValue = (if ($mdmProfileTopicEaFallback | length) > 0 then $mdmProfileTopicEaFallback else .extensionAttributes.mdmProfileTopicEaValue end)
+                            | .general.mdmProfileIdentifier = (if ($mdmProfileIdentifierEaFallback | length) > 0 and (.general.mdmProfileIdentifier | is_blank) then $mdmProfileIdentifierEaFallback else .general.mdmProfileIdentifier end)
+                            | .general.mdmProfileTopic = (if ($mdmProfileTopicEaFallback | length) > 0 and (.general.mdmProfileTopic | is_blank) then $mdmProfileTopicEaFallback else .general.mdmProfileTopic end)
                         ' 2>/dev/null)
                     fi
                 fi
 
                     if [[ "${debugMode}" == "true" ]]; then
-                        if [[ -n "${secureTokenEaFallback}" ]] || [[ -n "${volumeOwnerEaFallback}" ]]; then
-                            debug "EA secondary fallback values applied - Secure Token Users: '${secureTokenEaFallback:-empty}', Volume Owners: '${volumeOwnerEaFallback:-empty}'" >&2
+                        if [[ -n "${secureTokenEaFallback}" ]] || [[ -n "${volumeOwnerEaFallback}" ]] || [[ -n "${mdmProfileIdentifierEaFallback}" ]] || [[ -n "${mdmProfileTopicEaFallback}" ]]; then
+                            debug "EA secondary fallback values applied - Secure Token Users: '${secureTokenEaFallback:-empty}', Volume Owners: '${volumeOwnerEaFallback:-empty}', MDM Profile Identifier: '${mdmProfileIdentifierEaFallback:-empty}', MDM Profile Topic: '${mdmProfileTopicEaFallback:-empty}'" >&2
                         fi
                         debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
                         local filteredSize=${#computerInfo}
@@ -1937,6 +2166,280 @@ function getDdmStatusItems() {
         return 1
     done
     
+    return 1
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Get MDM command completion summary by management ID
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function getMdmCommandSummaryByManagementId() {
+    local managementId="${1}"
+    local commandResponseAndCode=""
+    local commandResponse=""
+    local commandSummary=""
+    local trimmedResponse=""
+    local httpStatus=""
+    local endpoint=""
+    local attempt=1
+    local maxAttempts=3
+    local delay=2
+    local jqExitCode=0
+
+    if [[ -z "${managementId}" ]] || [[ "${managementId:l}" == "unknown" ]] || [[ "${managementId:l}" == "null" ]]; then
+        echo "Management ID unavailable"
+        return 3
+    fi
+
+    endpoint="${apiUrl}/api/v1/mdm/commands?client-management-id=${managementId}&page=0&page-size=${mdmCommandPageSize}"
+
+    if [[ "${debugMode}" == "true" ]]; then
+        debug "Calling MDM commands endpoint for Management ID: ${managementId}" >&2
+        debug "API endpoint: ${endpoint}" >&2
+    fi
+
+    while [[ ${attempt} -le ${maxAttempts} ]]; do
+        checkAndRefreshToken
+
+        commandResponseAndCode=$(
+            curl -H "Authorization: Bearer ${apiBearerToken}" \
+                 -H "Accept: application/json" \
+                 --max-time 30 \
+                 -sfk -w "%{http_code}" \
+                 "${endpoint}" \
+                 -X GET 2>/dev/null
+        )
+
+        httpStatus="${commandResponseAndCode: -3}"
+        commandResponse="${commandResponseAndCode%???}"
+
+        if [[ "${debugMode}" == "true" ]]; then
+            debug "MDM commands HTTP response: ${httpStatus}" >&2
+        fi
+
+        if [[ "${httpStatus}" == "200" ]]; then
+            trimmedResponse=$(printf "%s" "${commandResponse}" | tr -d '[:space:]')
+            if [[ -z "${trimmedResponse}" ]]; then
+                echo "No commands reported (empty response)"
+                return 2
+            fi
+
+            commandSummary=$(printf "%s" "${commandResponse}" | jq -r '
+                def command_list:
+                    if type == "array" then
+                        .
+                    elif (.results | type) == "array" then
+                        .results
+                    elif (.commands | type) == "array" then
+                        .commands
+                    elif (.items | type) == "array" then
+                        .items
+                    elif (.data | type) == "array" then
+                        .data
+                    elif (.commandHistory | type) == "array" then
+                        .commandHistory
+                    elif (.results | type) == "object" and (.results.items | type) == "array" then
+                        .results.items
+                    else
+                        []
+                    end;
+
+                def scalar_text:
+                    if . == null then
+                        ""
+                    elif type == "boolean" then
+                        if . then "true" else "false" end
+                    elif type == "number" then
+                        tostring
+                    elif type == "string" then
+                        .
+                    else
+                        tostring
+                    end;
+
+                def clean_text:
+                    scalar_text
+                    | tostring
+                    | gsub("^\\s+|\\s+$"; "");
+
+                def has_nonempty_value($item; $patterns):
+                    if ($item | type) != "object" then
+                        false
+                    else
+                        (
+                            [
+                                $item
+                                | to_entries[]?
+                                | select(
+                                    [ $patterns[] as $pattern | (.key | ascii_downcase | test($pattern)) ]
+                                    | any
+                                )
+                                | .value
+                                | clean_text
+                                | select(
+                                    length > 0
+                                    and (. | ascii_downcase) != "null"
+                                    and (. | ascii_downcase) != "false"
+                                    and . != "0"
+                                )
+                            ]
+                            | length
+                        ) > 0
+                    end;
+
+                def status_candidates($item):
+                    if ($item | type) != "object" then
+                        []
+                    else
+                        [
+                            $item.commandStatus,
+                            $item.status,
+                            $item.state,
+                            $item.commandResult,
+                            $item.result,
+                            $item.completedStatus,
+                            $item.command.commandStatus,
+                            $item.command.status,
+                            $item.command.state,
+                            $item.command.result,
+                            (if (($item.completed // false) == true) then "completed" else "" end),
+                            (if (($item.failed // false) == true) then "failed" else "" end),
+                            (if (($item.error // false) == true) then "error" else "" end),
+                            (if (($item.acknowledged // false) == true) then "acknowledged" else "" end),
+                            (if (($item.cancelled // false) == true) then "cancelled" else "" end),
+                            (if has_nonempty_value($item; ["acknowledg", "completed", "success", "succeed", "finish", "done"]) then "acknowledged" else "" end),
+                            (if has_nonempty_value($item; ["fail", "error", "denied", "reject", "timeout", "notnow", "cancel"]) then "failed" else "" end),
+                            (if has_nonempty_value($item; ["pending", "queue", "queued", "inprogress", "sent"]) then "pending" else "" end)
+                        ]
+                        | map(clean_text | ascii_downcase | gsub("[^a-z0-9]+"; ""))
+                        | map(select(length > 0 and . != "null" and . != "unknown"))
+                    end;
+
+                def is_completed:
+                    test("complete|acknowledg|success|succeed|finish|done");
+
+                def is_failed:
+                    test("fail|error|denied|reject|timeout|timedout|cancel|invalid|notnow");
+
+                def is_pending:
+                    test("pending|queue|queued|inprogress|sent");
+
+                def normalized_status($item):
+                    (status_candidates($item)) as $candidates
+                    | if (($candidates | map(select(is_failed)) | length) > 0) then
+                        "failed"
+                      elif (($candidates | map(select(is_pending)) | length) > 0) then
+                        "pending"
+                      elif (($candidates | map(select(is_completed)) | length) > 0) then
+                        "completed"
+                      else
+                        ($candidates | first) // ""
+                      end;
+
+                command_list as $commands
+                | ($commands | length) as $total
+                | if $total == 0 then
+                    "No commands reported"
+                  else
+                    [ $commands[]? | normalized_status(.) ] as $statuses
+                    | ($statuses | map(select(length == 0)) | length) as $blank
+                    | ($statuses | map(select(length > 0 and is_completed)) | length) as $completed
+                    | ($statuses | map(select(length > 0 and is_failed)) | length) as $failed
+                    | ($statuses | map(select(length > 0 and is_pending)) | length) as $pending
+                    | ($total - $completed - $failed - $pending) as $other
+                    | ($statuses | map(select(length > 0)) | group_by(.) | map({status: .[0], count: length}) | sort_by(-.count)) as $groups
+                    | ([$groups[]? | select((((.status | is_completed) or (.status | is_failed) or (.status | is_pending)) | not)) | (.status + "=" + (.count|tostring))][0:3] | join("; ")) as $otherSummary
+                    | (if (($commands | length) > 0 and ($commands[0] | type) == "object") then (($commands[0] | keys_unsorted)[0:6] | join(",")) else "" end) as $sampleKeys
+                    | if $blank == $total then
+                        if ($sampleKeys | length) > 0 then
+                            "Command records returned without recognizable status fields (Total " + ($total | tostring) + "; Sample keys: " + $sampleKeys + ")"
+                        else
+                            "Command records returned without recognizable status fields (Total " + ($total | tostring) + ")"
+                        end
+                      elif $completed == $total then
+                        "All completed (" + ($completed | tostring) + "/" + ($total | tostring) + ")"
+                      elif $completed > 0 then
+                        "Partial completion (" + ($completed | tostring) + "/" + ($total | tostring) + "; Failed " + ($failed | tostring) + "; Pending " + ($pending | tostring) + "; Other " + ($other | tostring) + ")"
+                      elif $pending == $total then
+                        "All pending (" + ($pending | tostring) + "/" + ($total | tostring) + ")"
+                      elif ($otherSummary | length) > 0 then
+                        "No completed commands (Failed " + ($failed | tostring) + "; Pending " + ($pending | tostring) + "; Other " + ($other | tostring) + " [" + $otherSummary + "]; Total " + ($total | tostring) + ")"
+                      else
+                        "No completed commands (Failed " + ($failed | tostring) + "; Pending " + ($pending | tostring) + "; Other " + ($other | tostring) + "; Total " + ($total | tostring) + ")"
+                      end
+                  end
+            ' 2>/dev/null)
+            jqExitCode=$?
+
+            if [[ ${jqExitCode} -ne 0 ]]; then
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "MDM command summary parser returned jq exit ${jqExitCode}" >&2
+                    debug "MDM command payload sample: ${commandResponse:0:240}" >&2
+                fi
+                commandSummary=$(printf "%s" "${commandResponse}" | jq -r '
+                    if (type == "array" and length == 0) then
+                        "No commands reported"
+                    elif (type == "object" and ((.totalCount // 0) | tonumber? // 0) == 0) then
+                        "No commands reported"
+                    elif (type == "object" and ((.total // 0) | tonumber? // 0) == 0) then
+                        "No commands reported"
+                    else
+                        "MDM command summary unavailable (unexpected payload)"
+                    end
+                ' 2>/dev/null)
+            fi
+
+            if [[ -z "${commandSummary}" ]] || [[ "${commandSummary}" == "null" ]]; then
+                echo "MDM command summary unavailable"
+                return 1
+            fi
+
+            echo "${commandSummary}"
+            return 0
+        fi
+
+        if [[ "${httpStatus}" == "404" ]]; then
+            echo "No commands reported"
+            return 2
+        fi
+
+        if [[ "${httpStatus}" == "401" ]]; then
+            info "Token expired during MDM command retrieval; refreshing …" >&2
+            if refreshBearerToken; then
+                (( attempt++ ))
+                continue
+            fi
+            echo "MDM command lookup failed (authentication)"
+            return 1
+        fi
+
+        if [[ "${httpStatus}" == "400" ]]; then
+            echo "MDM command endpoint unavailable (HTTP 400)"
+            return 3
+        fi
+
+        if [[ "${httpStatus}" == "403" ]]; then
+            echo "MDM command access denied (HTTP 403; verify API role has MDM command read permission)"
+            return 3
+        fi
+
+        if [[ "${httpStatus}" == "429" ]] || [[ "${httpStatus}" =~ ^5 ]]; then
+            if [[ ${attempt} -lt ${maxAttempts} ]]; then
+                warning "MDM command retrieval failed with HTTP ${httpStatus}; retrying in ${delay} seconds (attempt ${attempt}/${maxAttempts})" >&2
+                sleep ${delay}
+                delay=$((delay * 2))
+                (( attempt++ ))
+                continue
+            fi
+        fi
+
+        echo "MDM command lookup failed (HTTP ${httpStatus})"
+        return 1
+    done
+
+    echo "MDM command lookup exhausted retries"
     return 1
 }
 
@@ -2382,6 +2885,24 @@ while [[ $# -gt 0 ]]; do
                 die "Error: --volume-owner-ea-id requires a numeric argument"
             fi
             ;;
+        --mdm-profile-identifier-ea-id)
+            shift
+            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
+                mdmProfileIdentifierEaId="$1"
+                shift
+            else
+                die "Error: --mdm-profile-identifier-ea-id requires a numeric argument"
+            fi
+            ;;
+        --mdm-profile-topic-ea-id)
+            shift
+            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
+                mdmProfileTopicEaId="$1"
+                shift
+            else
+                die "Error: --mdm-profile-topic-ea-id requires a numeric argument"
+            fi
+            ;;
         --no-open)
             noOpen="true"
             shift
@@ -2421,7 +2942,7 @@ fi
 if [[ "${debugMode}" == "true" ]]; then
     debug "Collected ${#positionalArgs[@]} positional parameters"
     debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
-    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, secureTokenUsersEaName=${secureTokenUsersEaName:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}, volumeOwnerUsersEaName=${volumeOwnerUsersEaName:-disabled}"
+    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, secureTokenUsersEaName=${secureTokenUsersEaName:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}, volumeOwnerUsersEaName=${volumeOwnerUsersEaName:-disabled}, mdmProfileIdentifierEaId=${mdmProfileIdentifierEaId:-disabled}, mdmProfileIdentifierEaName=${mdmProfileIdentifierEaName:-disabled}, mdmProfileTopicEaId=${mdmProfileTopicEaId:-disabled}, mdmProfileTopicEaName=${mdmProfileTopicEaName:-disabled}"
 fi
 
 # Initialize output paths now that outputDir is set
@@ -2675,7 +3196,7 @@ if [[ "${singleLookupMode}" != "yes" ]]; then
     if [[ "${debugMode}" == "true" ]]; then
         debug "Creating CSV with header row"
     fi
-    echo "Jamf Pro Computer ID,Jamf Pro Link,Name,Serial Number,Last Inventory Update,Current OS,Pending Updates,Model,Management ID,DDM Enabled,Bootstrap Token Escrowed,Bootstrap Token Allowed,FileVault2 Status,Local Admin User Count,Local Admin Users,FileVault Enabled User Count,FileVault Enabled Users,Secure Token User Count,Secure Token Users,Volume Owner User Count,Volume Owner Users,Software Update Device ID,Active Blueprints,Failed Blueprints,Software Update Errors" > "${csvOutput}"
+    echo "Jamf Pro Computer ID,Jamf Pro Link,Name,Serial Number,Last Inventory Update,Current OS,Pending Updates,Model,Management ID,DDM Enabled,Bootstrap Token Escrowed,Bootstrap Token Allowed,FileVault2 Status,Local Admin User Count,Local Admin Users,FileVault Enabled User Count,FileVault Enabled Users,Secure Token User Count,Secure Token Users,Volume Owner User Count,Volume Owner Users,Software Update Device ID,Active Blueprints,Failed Blueprints,Software Update Errors,MDM Profile Expiration,Supervised,User Approved MDM,Enrollment Method,MDM Commands Completion" > "${csvOutput}"
     if [[ "${debugMode}" == "true" ]]; then
         debug "CSV file created successfully at: ${csvOutput}"
     fi
@@ -2758,6 +3279,18 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     bootstrapTokenAllowed=$(printf "%s" "${computerInfoRaw}" | jq -r '.security.bootstrapTokenAllowed // "Unknown"')
     fileVault2Status=$(printf "%s" "${computerInfoRaw}" | jq -r '.operatingSystem.fileVault2Status // "Unknown"')
     softwareUpdateDeviceId=$(printf "%s" "${computerInfoRaw}" | jq -r '.operatingSystem.softwareUpdateDeviceId // "Unknown"')
+    mdmProfileExpiration=$(printf "%s" "${computerInfoRaw}" | jq -r '(.general.mdmProfileExpiration // "") | tostring | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unknown" end')
+    mdmProfileIdentifier=$(printf "%s" "${computerInfoRaw}" | jq -r '(.general.mdmProfileIdentifier // "") | tostring | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unknown" end')
+    mdmProfileTopic=$(printf "%s" "${computerInfoRaw}" | jq -r '(.general.mdmProfileTopic // "") | tostring | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unknown" end')
+    supervised=$(printf "%s" "${computerInfoRaw}" | jq -r '(.general.supervised // "") | tostring | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unknown" end')
+    userApprovedMdm=$(printf "%s" "${computerInfoRaw}" | jq -r '(.general.userApprovedMdm // "") | tostring | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unknown" end')
+    enrollmentMethod=$(printf "%s" "${computerInfoRaw}" | jq -r '(.general.enrollmentMethod // "") | tostring | gsub("^\\s+|\\s+$"; "") | if length > 0 then . else "Unknown" end')
+    mdmProfileTopicMatch=$(evaluateMdmTopicIdentifierMatch "${mdmProfileIdentifier}" "${mdmProfileTopic}")
+    mdmCommandsCompletion=$(getMdmCommandSummaryByManagementId "${managementId}")
+    mdmCommandSummaryResult=$?
+    if [[ -z "${mdmCommandsCompletion}" ]]; then
+        mdmCommandsCompletion="MDM command summary unavailable"
+    fi
     
     localUserSummary=$(buildLocalUserSecuritySummary "${computerInfoRaw}")
     IFS='|' read -r localAdminUserCount localAdminUsers fileVaultEnabledUserCount fileVaultEnabledUsers secureTokenUserCount secureTokenUsers volumeOwnerUserCount volumeOwnerUsers <<< "${localUserSummary}"
@@ -2779,7 +3312,32 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     printf "  • FileVault Enabled Users: ${fileVaultEnabledUserCount} (${fileVaultEnabledUsers})\n"
     printf "  • Secure Token Users: ${secureTokenUserCount} (${secureTokenUsers})\n"
     printf "  • Volume Owner Users: ${volumeOwnerUserCount} (${volumeOwnerUsers})\n"
-    printf "  • Software Update Device ID: ${softwareUpdateDeviceId}\n\n"
+    printf "  • Software Update Device ID: ${softwareUpdateDeviceId}\n"
+    if ! isUnknownValue "${mdmProfileExpiration}"; then
+        printf "  • MDM Profile Expiration: ${mdmProfileExpiration}\n"
+    fi
+    if ! isUnknownValue "${mdmProfileIdentifier}"; then
+        printf "  • MDM Profile Identifier: ${mdmProfileIdentifier}\n"
+    fi
+    if ! isUnknownValue "${mdmProfileTopic}"; then
+        printf "  • MDM Profile Topic: ${mdmProfileTopic}\n"
+    fi
+    if ! isUnknownValue "${mdmProfileTopicMatch}"; then
+        printf "  • MDM Profile Topic Match: ${mdmProfileTopicMatch}\n"
+    fi
+    if ! isUnknownValue "${supervised}"; then
+        printf "  • Supervised: ${supervised}\n"
+    fi
+    if ! isUnknownValue "${userApprovedMdm}"; then
+        printf "  • User Approved MDM: ${userApprovedMdm}\n"
+    fi
+    if ! isUnknownValue "${enrollmentMethod}"; then
+        printf "  • Enrollment Method: ${enrollmentMethod}\n"
+    fi
+    if ! isUnknownValue "${mdmCommandsCompletion}"; then
+        printf "  • MDM Commands Completion: ${mdmCommandsCompletion}\n"
+    fi
+    printf "\n"
     
     info "Computer Name: ${computerName}"
     info "Serial Number: ${computerSerialNumber}"
@@ -2789,6 +3347,35 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     info "Bootstrap Token Escrowed: ${bootstrapTokenEscrowedStatus}"
     info "Bootstrap Token Allowed: ${bootstrapTokenAllowed}"
     info "FileVault2 Status: ${fileVault2Status}"
+    if ! isUnknownValue "${mdmProfileExpiration}"; then
+        info "MDM Profile Expiration: ${mdmProfileExpiration}"
+    fi
+    if ! isUnknownValue "${mdmProfileIdentifier}"; then
+        info "MDM Profile Identifier: ${mdmProfileIdentifier}"
+    fi
+    if ! isUnknownValue "${mdmProfileTopic}"; then
+        info "MDM Profile Topic: ${mdmProfileTopic}"
+    fi
+    if ! isUnknownValue "${mdmProfileTopicMatch}"; then
+        info "MDM Profile Topic Match: ${mdmProfileTopicMatch}"
+    fi
+    if ! isUnknownValue "${supervised}"; then
+        info "Supervised: ${supervised}"
+    fi
+    if ! isUnknownValue "${userApprovedMdm}"; then
+        info "User Approved MDM: ${userApprovedMdm}"
+    fi
+    if ! isUnknownValue "${enrollmentMethod}"; then
+        info "Enrollment Method: ${enrollmentMethod}"
+    fi
+    if ! isUnknownValue "${mdmCommandsCompletion}"; then
+        info "MDM Commands Completion: ${mdmCommandsCompletion}"
+    fi
+    if [[ ${mdmCommandSummaryResult} -eq 3 ]]; then
+        notice "MDM command summary endpoint unavailable for Management ID ${managementId}: ${mdmCommandsCompletion}"
+    elif [[ ${mdmCommandSummaryResult} -ne 0 ]] && [[ ${mdmCommandSummaryResult} -ne 2 ]]; then
+        notice "Unable to determine MDM command completion for Management ID ${managementId}: ${mdmCommandsCompletion}"
+    fi
     if [[ "${volumeOwnerUsers}" == "no data" ]]; then
         if [[ "${volumeOwnerExposureNoticeLogged}" != "true" ]]; then
             notice "Volume Owner user attributes were not returned from local account fields, operating system fields, or EA fallback (EA ID: ${volumeOwnerUsersEaId:-disabled}); reporting 'no data'."
@@ -2931,7 +3518,7 @@ processComputer() {
         # Write "Not Found" row to temp CSV
         local emptyColumns=""
         local index=1
-        while [[ ${index} -le 22 ]]; do
+        while [[ ${index} -le 27 ]]; do
             emptyColumns="${emptyColumns},\"\""
             (( index++ ))
         done
@@ -2943,14 +3530,14 @@ processComputer() {
     
     # Extract all fields from the retrieved computer data
     # Parse the filtered JSON with jq
-    fieldData=$(printf "%s" "${computerInfoRaw}" | jq -r '[.id // "", .general.name // "", .hardware.serialNumber // "", .general.managementId // "", .general.declarativeDeviceManagementEnabled // "", .operatingSystem.version // "", .hardware.modelIdentifier // "", .general.lastContactTime // "", .security.bootstrapTokenEscrowedStatus // "Unknown", .security.bootstrapTokenAllowed // "Unknown", .operatingSystem.fileVault2Status // "Unknown", .operatingSystem.softwareUpdateDeviceId // "Unknown"] | join("|")' 2>/dev/null)
+    fieldData=$(printf "%s" "${computerInfoRaw}" | jq -r '[.id // "", .general.name // "", .hardware.serialNumber // "", .general.managementId // "", .general.declarativeDeviceManagementEnabled // "", .operatingSystem.version // "", .hardware.modelIdentifier // "", .general.lastContactTime // "", .security.bootstrapTokenEscrowedStatus // "Unknown", .security.bootstrapTokenAllowed // "Unknown", .operatingSystem.fileVault2Status // "Unknown", .operatingSystem.softwareUpdateDeviceId // "Unknown", .general.mdmProfileExpiration // "Unknown", .general.mdmProfileIdentifier // "Unknown", .general.mdmProfileTopic // "Unknown", .general.supervised // "Unknown", .general.userApprovedMdm // "Unknown", .general.enrollmentMethod // "Unknown"] | join("|")' 2>/dev/null)
     
-    if [[ -z "${fieldData}" ]] || [[ "${fieldData}" == "|||||||||||" ]]; then
+    if [[ -z "${fieldData}" ]]; then
         error "Failed to parse JSON for identifier: ${identifier}"
         printf "${red}✗${resetColor} Failed to parse computer data for: ${identifier}\n\n"
         local emptyColumns=""
         local index=1
-        while [[ ${index} -le 22 ]]; do
+        while [[ ${index} -le 27 ]]; do
             emptyColumns="${emptyColumns},\"\""
             (( index++ ))
         done
@@ -2961,7 +3548,44 @@ processComputer() {
     fi
     
     # Parse the pipe-separated values
-    IFS='|' read -r computerId computerName computerSerialNumber managementId ddmEnabled currentOsVersion modelIdentifier lastContactTime bootstrapTokenEscrowedStatus bootstrapTokenAllowed fileVault2Status softwareUpdateDeviceId <<< "${fieldData}"
+    IFS='|' read -r computerId computerName computerSerialNumber managementId ddmEnabled currentOsVersion modelIdentifier lastContactTime bootstrapTokenEscrowedStatus bootstrapTokenAllowed fileVault2Status softwareUpdateDeviceId mdmProfileExpiration mdmProfileIdentifier mdmProfileTopic supervised userApprovedMdm enrollmentMethod <<< "${fieldData}"
+
+    if [[ -z "${computerId}" ]] || [[ "${computerId}" == "null" ]]; then
+        error "Parsed computer payload is missing computer ID for identifier: ${identifier}"
+        printf "${red}✗${resetColor} Parsed payload missing computer ID for: ${identifier}\n\n"
+        local emptyColumns=""
+        local index=1
+        while [[ ${index} -le 27 ]]; do
+            emptyColumns="${emptyColumns},\"\""
+            (( index++ ))
+        done
+        echo "\"${identifier}\",\"${apiUrl}/computers.html?id=${identifier}&o=r\",\"Parse Error\"${emptyColumns}" >> "${tempCsvFile}"
+        local recordTime=$((SECONDS - recordStartTime))
+        info "Elapsed Time: $(printf '%dh:%dm:%ds\n' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))"
+        return 1
+    fi
+
+    if [[ -z "${mdmProfileExpiration}" ]] || [[ "${mdmProfileExpiration}" == "null" ]]; then
+        mdmProfileExpiration="Unknown"
+    fi
+    if [[ -z "${mdmProfileIdentifier}" ]] || [[ "${mdmProfileIdentifier}" == "null" ]]; then
+        mdmProfileIdentifier="Unknown"
+    fi
+    if [[ -z "${mdmProfileTopic}" ]] || [[ "${mdmProfileTopic}" == "null" ]]; then
+        mdmProfileTopic="Unknown"
+    fi
+    if [[ -z "${supervised}" ]] || [[ "${supervised}" == "null" ]]; then
+        supervised="Unknown"
+    fi
+    if [[ -z "${userApprovedMdm}" ]] || [[ "${userApprovedMdm}" == "null" ]]; then
+        userApprovedMdm="Unknown"
+    fi
+    if [[ -z "${enrollmentMethod}" ]] || [[ "${enrollmentMethod}" == "null" ]]; then
+        enrollmentMethod="Unknown"
+    fi
+
+    local mdmProfileTopicMatch=""
+    mdmProfileTopicMatch=$(evaluateMdmTopicIdentifierMatch "${mdmProfileIdentifier}" "${mdmProfileTopic}")
     
     local localUserSummary=""
     local localAdminUserCount=""
@@ -2988,6 +3612,27 @@ processComputer() {
         printf "  - Bootstrap Token Escrowed: '${bootstrapTokenEscrowedStatus}'\n"
         printf "  - Bootstrap Token Allowed: '${bootstrapTokenAllowed}'\n"
         printf "  - FileVault2 Status: '${fileVault2Status}'\n"
+        if ! isUnknownValue "${mdmProfileExpiration}"; then
+            printf "  - MDM Profile Expiration: '${mdmProfileExpiration}'\n"
+        fi
+        if ! isUnknownValue "${mdmProfileIdentifier}"; then
+            printf "  - MDM Profile Identifier: '${mdmProfileIdentifier}'\n"
+        fi
+        if ! isUnknownValue "${mdmProfileTopic}"; then
+            printf "  - MDM Profile Topic: '${mdmProfileTopic}'\n"
+        fi
+        if ! isUnknownValue "${mdmProfileTopicMatch}"; then
+            printf "  - MDM Profile Topic Match: '${mdmProfileTopicMatch}'\n"
+        fi
+        if ! isUnknownValue "${supervised}"; then
+            printf "  - Supervised: '${supervised}'\n"
+        fi
+        if ! isUnknownValue "${userApprovedMdm}"; then
+            printf "  - User Approved MDM: '${userApprovedMdm}'\n"
+        fi
+        if ! isUnknownValue "${enrollmentMethod}"; then
+            printf "  - Enrollment Method: '${enrollmentMethod}'\n"
+        fi
         printf "  - Volume Owner Users: '${volumeOwnerUsers}'\n"
         printf "  - Secure Token Users: '${secureTokenUsers}'\n"
         printf "  - Last Inventory Update: '${lastContactTime}'\n\n"
@@ -3009,6 +3654,27 @@ processComputer() {
     info "• Bootstrap Token Escrowed: ${bootstrapTokenEscrowedStatus}"
     info "• Bootstrap Token Allowed: ${bootstrapTokenAllowed}"
     info "• FileVault2 Status: ${fileVault2Status}"
+    if ! isUnknownValue "${mdmProfileExpiration}"; then
+        info "• MDM Profile Expiration: ${mdmProfileExpiration}"
+    fi
+    if ! isUnknownValue "${mdmProfileIdentifier}"; then
+        info "• MDM Profile Identifier: ${mdmProfileIdentifier}"
+    fi
+    if ! isUnknownValue "${mdmProfileTopic}"; then
+        info "• MDM Profile Topic: ${mdmProfileTopic}"
+    fi
+    if ! isUnknownValue "${mdmProfileTopicMatch}"; then
+        info "• MDM Profile Topic Match: ${mdmProfileTopicMatch}"
+    fi
+    if ! isUnknownValue "${supervised}"; then
+        info "• Supervised: ${supervised}"
+    fi
+    if ! isUnknownValue "${userApprovedMdm}"; then
+        info "• User Approved MDM: ${userApprovedMdm}"
+    fi
+    if ! isUnknownValue "${enrollmentMethod}"; then
+        info "• Enrollment Method: ${enrollmentMethod}"
+    fi
     if [[ "${volumeOwnerUsers}" == "no data" ]]; then
         if [[ "${volumeOwnerExposureNoticeLogged}" != "true" ]]; then
             notice "Volume Owner user attributes were not returned from local account fields, operating system fields, or EA fallback (EA ID: ${volumeOwnerUsersEaId:-disabled}); reporting 'no data'."
@@ -3034,6 +3700,8 @@ processComputer() {
     local failedBlueprints=""
     local softwareUpdateErrors=""
     local pendingUpdates=""
+    local mdmCommandsCompletion=""
+    local mdmCommandSummaryResult=1
     
     ################################################################################################
     # Retrieve DDM Status (only if DDM is enabled)
@@ -3097,6 +3765,20 @@ processComputer() {
         softwareUpdateErrors="DDM Disabled"
         pendingUpdates="DDM Disabled"
     fi
+
+    mdmCommandsCompletion=$(getMdmCommandSummaryByManagementId "${managementId}")
+    mdmCommandSummaryResult=$?
+    if [[ -z "${mdmCommandsCompletion}" ]]; then
+        mdmCommandsCompletion="MDM command summary unavailable"
+    fi
+
+    if [[ ${mdmCommandSummaryResult} -eq 0 ]] || [[ ${mdmCommandSummaryResult} -eq 2 ]]; then
+        info "• MDM Commands Completion: ${mdmCommandsCompletion}"
+    elif [[ ${mdmCommandSummaryResult} -eq 3 ]]; then
+        notice "MDM command summary endpoint unavailable for Management ID ${managementId}: ${mdmCommandsCompletion}"
+    else
+        notice "Unable to determine MDM command completion for Management ID ${managementId}: ${mdmCommandsCompletion}"
+    fi
     
     ################################################################################################
     # Write to temp CSV
@@ -3127,6 +3809,11 @@ processComputer() {
     csvFailedBlueprints=$(sanitizeForCsv "${failedBlueprints}")
     csvSoftwareUpdateErrors=$(sanitizeForCsv "${softwareUpdateErrors}")
     csvPendingUpdates=$(sanitizeForCsv "${pendingUpdates}")
+    csvMdmProfileExpiration=$(sanitizeForCsv "$(blankIfUnknown "${mdmProfileExpiration}")")
+    csvSupervised=$(sanitizeForCsv "$(blankIfUnknown "${supervised}")")
+    csvUserApprovedMdm=$(sanitizeForCsv "$(blankIfUnknown "${userApprovedMdm}")")
+    csvEnrollmentMethod=$(sanitizeForCsv "$(blankIfUnknown "${enrollmentMethod}")")
+    csvMdmCommandsCompletion=$(sanitizeForCsv "$(blankIfUnknown "${mdmCommandsCompletion}")")
     
     # Construct Jamf Pro hyperlink
     jamfProLink=""
@@ -3134,7 +3821,7 @@ processComputer() {
         jamfProLink="${apiUrl}/computers.html?id=${computerId}&o=r"
     fi
     
-    echo "\"${csvIdentifier}\",\"${jamfProLink}\",\"${csvComputerName}\",\"${csvSerialNumber}\",\"${csvLastContactTime}\",\"${csvCurrentOsVersion}\",\"${csvPendingUpdates}\",\"${csvModelIdentifier}\",\"${csvManagementId}\",\"${csvDdmEnabled}\",\"${csvBootstrapTokenEscrowedStatus}\",\"${csvBootstrapTokenAllowed}\",\"${csvFileVault2Status}\",\"${csvLocalAdminUserCount}\",\"${csvLocalAdminUsers}\",\"${csvFileVaultEnabledUserCount}\",\"${csvFileVaultEnabledUsers}\",\"${csvSecureTokenUserCount}\",\"${csvSecureTokenUsers}\",\"${csvVolumeOwnerUserCount}\",\"${csvVolumeOwnerUsers}\",\"${csvSoftwareUpdateDeviceId}\",\"${csvActiveBlueprints}\",\"${csvFailedBlueprints}\",\"${csvSoftwareUpdateErrors}\"" >> "${tempCsvFile}"
+    echo "\"${csvIdentifier}\",\"${jamfProLink}\",\"${csvComputerName}\",\"${csvSerialNumber}\",\"${csvLastContactTime}\",\"${csvCurrentOsVersion}\",\"${csvPendingUpdates}\",\"${csvModelIdentifier}\",\"${csvManagementId}\",\"${csvDdmEnabled}\",\"${csvBootstrapTokenEscrowedStatus}\",\"${csvBootstrapTokenAllowed}\",\"${csvFileVault2Status}\",\"${csvLocalAdminUserCount}\",\"${csvLocalAdminUsers}\",\"${csvFileVaultEnabledUserCount}\",\"${csvFileVaultEnabledUsers}\",\"${csvSecureTokenUserCount}\",\"${csvSecureTokenUsers}\",\"${csvVolumeOwnerUserCount}\",\"${csvVolumeOwnerUsers}\",\"${csvSoftwareUpdateDeviceId}\",\"${csvActiveBlueprints}\",\"${csvFailedBlueprints}\",\"${csvSoftwareUpdateErrors}\",\"${csvMdmProfileExpiration}\",\"${csvSupervised}\",\"${csvUserApprovedMdm}\",\"${csvEnrollmentMethod}\",\"${csvMdmCommandsCompletion}\"" >> "${tempCsvFile}"
     
     local recordTime=$((SECONDS - recordStartTime))
     local recordTimeFormatted=$(printf '%dh:%dm:%ds' $((recordTime/3600)) $((recordTime%3600/60)) $((recordTime%60)))

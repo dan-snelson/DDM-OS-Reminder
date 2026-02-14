@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.5.0b2"
+scriptVersion="2.5.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -923,14 +923,6 @@ installedOSvsDDMenforcedOS() {
         else
             notice "Checking for staged macOS updates …"
             detectStagedUpdate
-
-            # If staging has begun but proposed version metadata is not available yet,
-            # exit quietly and allow a later run to re-evaluate.
-            if [[ "${updateStagingStatus}" == "Partially staged" || "${updateStagingStatus}" == "Fully staged" ]] && [[ -z "${stagedProposedVersion}" ]]; then
-                versionComparisonResult="Update Required (Awaiting Staged Metadata)"
-                notice "${updateStagingStatus} macOS update is missing proposed version metadata; exiting quietly."
-                return
-            fi
         fi
 
         # Determine if an "Update" or an "Upgrade" is needed

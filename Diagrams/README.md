@@ -468,6 +468,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.2 | 2026-02-14 | Updated staged-update documentation in 02/06 for proposed metadata validation and pending-download normalization behavior |
 | 1.0.1 | 2026-02-05 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
 |       |            | - Removed legacy `*-1.png` files |
 |       |            | - Clarified 06 configuration reference is text-only |
@@ -480,5 +481,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: February 5, 2026  
-**DDM OS Reminder Version**: 2.5.0b2
+**Last Updated**: February 14, 2026
+**DDM OS Reminder Version**: 2.5.0b3

@@ -972,8 +972,10 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
 **Detection Criteria**:
-- Preboot volume snapshot exists
-- Update cryptex1 ≥ 8GB (indicates full download)
+- Staging signals detected (APFS update snapshots and/or Preboot staging content)
+- `cryptex1` size exceeds ~1 GB, or total Preboot staging usage exceeds ~8 GB
+- Proposed staged version metadata is readable from `cryptex1/proposed`
+- Proposed staged version matches the DDM-enforced version
 
 **Script Default**:
 ```bash
@@ -999,8 +1001,10 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
 **Detection Criteria**:
-- Preboot volume snapshot exists
-- Update cryptex1 between 1GB and 8GB (partial download)
+- APFS update snapshot(s) detected (`com.apple.os.update`)
+- Full-staged size thresholds are not met
+- Proposed staged version metadata is readable from `cryptex1/proposed`
+- Proposed staged version matches the DDM-enforced version
 
 **Script Default**:
 ```bash
@@ -1026,7 +1030,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
 **Detection Criteria**:
-- No Preboot snapshot or cryptex1 < 1GB
+- No staging signals detected, or
+- Staged proposed metadata is unavailable, or
+- Staged proposed version does not match the DDM-enforced version
 
 **Script Default**:
 ```bash
@@ -1162,7 +1168,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.5.0b2 |
+| `{scriptVersion}` | System | Script version | 2.5.0b3 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1639,10 +1645,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
-| 2.5.0b2 | 2026-02-04 | Updated defaults, placeholder documentation, and timing behavior |
+| 2.5.0b3 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 
 ---
 
-**Last Updated**: February 4, 2026  
-**DDM OS Reminder Version**: 2.5.0b2  
+**Last Updated**: February 14, 2026
+**DDM OS Reminder Version**: 2.5.0b3
 **Variables Documented**: 33 configurable preferences

@@ -43,14 +43,20 @@ flowchart TD
     UptimeOK -->|No| DetectStaged
     SetUptimeWarn --> DetectStaged[Detect Staged<br/>Updates in Preboot]
     
-    DetectStaged --> StagedFound{Update<br/>Staged?}
-    StagedFound -->|Fully Staged| SetFullStaged[Set Full Staged<br/>Message]
-    StagedFound -->|Partially Staged| SetPartialStaged[Set Partial Staged<br/>Message]
-    StagedFound -->|Not Staged| SetPending[Set Pending Download<br/>Message]
-    
+    DetectStaged --> StagedSignals{Staging Signals<br/>Detected?}
+    StagedSignals -->|No| SetPending[Set Pending Download<br/>Message]
+    StagedSignals -->|Yes| StagedMetadata{Proposed Version<br/>Metadata Readable?}
+    StagedMetadata -->|No| SetPendingFromMetadata[Normalize to Pending Download<br/>Re-check Next Run]
+    StagedMetadata -->|Yes| StagedMatch{Proposed Version<br/>Matches DDM Target?}
+    StagedMatch -->|No| SetPendingFromMismatch[Normalize to Pending Download<br/>Prevent False Ready State]
+    StagedMatch -->|Yes + Fully Staged| SetFullStaged[Set Full Staged<br/>Message]
+    StagedMatch -->|Yes + Partially Staged| SetPartialStaged[Set Partial Staged<br/>Message]
+
     SetFullStaged --> BuildDialog
     SetPartialStaged --> BuildDialog
     SetPending --> BuildDialog[Build Dialog<br/>with Placeholders]
+    SetPendingFromMetadata --> BuildDialog
+    SetPendingFromMismatch --> BuildDialog
     
     BuildDialog --> CheckDeadline{Days Until<br/>Deadline?}
     
@@ -102,7 +108,9 @@ flowchart TD
     style CheckMeeting fill:#ffecb3
     style DiskOK fill:#ffecb3
     style UptimeOK fill:#ffecb3
-    style StagedFound fill:#ffecb3
+    style StagedSignals fill:#ffecb3
+    style StagedMetadata fill:#ffecb3
+    style StagedMatch fill:#ffecb3
     style CheckDeadline fill:#ff9800
     style UserAction fill:#4caf50
     
@@ -186,7 +194,12 @@ flowchart TD
 ### 11. Staged Update Detection
 - **Check**: Is update already downloaded to Preboot volume?
 - **Why**: Installation is faster if already staged
-- **Action**: Adds appropriate message (fully staged, partially staged, or pending)
+- **Action**:
+  - Detects staging signals from APFS update snapshots and Preboot size heuristics
+  - Reads proposed target metadata from `cryptex1/proposed`
+  - Keeps staged state only when proposed version matches DDM-enforced version
+  - Normalizes to pending download if metadata is missing or mismatched
+  - Adds appropriate message (fully staged, partially staged, or pending)
 
 ### 12. Deadline-Based Behavior
 Based on days remaining until deadline:

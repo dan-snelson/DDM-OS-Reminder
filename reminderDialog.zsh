@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.5.0b3"
+scriptVersion="2.5.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -249,6 +249,62 @@ function isValidDDMVersionString() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Deadline Display Formatting
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function formatTimeHumanReadableFromEpoch() {
+    local targetEpoch="${1}"
+    local timeHumanReadable=""
+
+    if [[ -z "${targetEpoch}" ]] || ! [[ "${targetEpoch}" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    timeHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%-l:%M %p" 2>/dev/null )
+    if [[ -z "${timeHumanReadable}" ]]; then
+        return 1
+    fi
+
+    timeHumanReadable=${timeHumanReadable// AM/ a.m.}
+    timeHumanReadable=${timeHumanReadable// PM/ p.m.}
+
+    echo "${timeHumanReadable}"
+}
+
+function formatRelativeDeadlineHumanReadable() {
+    local targetEpoch="${1}"
+    local absoluteFallback="${2}"
+    local targetDate=""
+    local todayDate=""
+    local tomorrowDate=""
+    local targetTime=""
+    local relativeDeadlineHumanReadable=""
+
+    if [[ -n "${targetEpoch}" ]] && [[ "${targetEpoch}" =~ ^[0-9]+$ ]]; then
+        targetDate=$( date -jf "%s" "${targetEpoch}" "+%Y-%m-%d" 2>/dev/null )
+        todayDate=$( date "+%Y-%m-%d" )
+        tomorrowDate=$( date -v+1d "+%Y-%m-%d" )
+        targetTime=$( formatTimeHumanReadableFromEpoch "${targetEpoch}" 2>/dev/null )
+
+        if [[ -n "${targetDate}" ]] && [[ -n "${targetTime}" ]]; then
+            if [[ "${targetDate}" == "${todayDate}" ]]; then
+                relativeDeadlineHumanReadable="Today, ${targetTime}"
+            elif [[ "${targetDate}" == "${tomorrowDate}" ]]; then
+                relativeDeadlineHumanReadable="Tomorrow, ${targetTime}"
+            fi
+        fi
+    fi
+
+    if [[ -z "${relativeDeadlineHumanReadable}" ]]; then
+        relativeDeadlineHumanReadable="${absoluteFallback}"
+    fi
+
+    echo "${relativeDeadlineHumanReadable}"
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Preference Loading and Management
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -435,6 +491,7 @@ function buildPlaceholderMap() {
         [loggedInUserFirstname]="${loggedInUserFirstname}"
         [ddmVersionString]="${ddmVersionString}"
         [ddmEnforcedInstallDateHumanReadable]="${ddmEnforcedInstallDateHumanReadable}"
+        [ddmEnforcedInstallDateRelativeHumanReadable]="${ddmEnforcedInstallDateRelativeHumanReadable}"
         [installedmacOSVersion]="${installedmacOSVersion}"
         [ddmVersionStringDeadlineHumanReadable]="${ddmVersionStringDeadlineHumanReadable}"
         [ddmVersionStringDaysRemaining]="${ddmVersionStringDaysRemaining}"
@@ -779,6 +836,7 @@ installedOSvsDDMenforcedOS() {
     if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
         fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
     fi
+    ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
     # Fallback to default if format fails
     if [[ -z "${ddmVersionStringDeadlineHumanReadable}" ]]; then
@@ -863,6 +921,7 @@ installedOSvsDDMenforcedOS() {
                 if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
                     ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
                 fi
+                ddmEnforcedInstallDateEpoch="${paddedEpoch}"
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
         else
             if [[ -z "$pastDueDeadline" ]]; then
@@ -871,6 +930,7 @@ installedOSvsDDMenforcedOS() {
                 warning "Unable to parse padded enforcement date from install.log"
             fi
             ddmEnforcedInstallDateHumanReadable="Unavailable"
+            ddmEnforcedInstallDateEpoch=""
         fi
 
         info "Effective enforcement source: setPastDuePaddedEnforcementDate"
@@ -879,12 +939,20 @@ installedOSvsDDMenforcedOS() {
 
         # Deadline still in the future
         ddmEnforcedInstallDateHumanReadable="$ddmVersionStringDeadlineHumanReadable"
+        ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
 
     fi
 
     # Normalize AM/PM formatting
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
+    ddmEnforcedInstallDateRelativeHumanReadable=$( formatRelativeDeadlineHumanReadable "${ddmEnforcedInstallDateEpoch}" "${ddmEnforcedInstallDateHumanReadable}" )
+    if [[ -z "${ddmEnforcedInstallDateRelativeHumanReadable}" ]]; then
+        ddmEnforcedInstallDateRelativeHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
+    fi
+    if [[ "${ddmEnforcedInstallDateRelativeHumanReadable}" != "${ddmEnforcedInstallDateHumanReadable}" ]]; then
+        notice "Relative deadline rendering applied: ${ddmEnforcedInstallDateRelativeHumanReadable}"
+    fi
 
     # Blurscreen logic and secondary button hiding (based on precise timestamp comparison)
     nowEpoch=$(date +%s)
@@ -1169,7 +1237,16 @@ function computeUpdateStagingMessage() {
 
 function computeDeadlineEnforcementMessage() {
     local markdownColorMinimumVersion="3.0.0.4928"
-    local baseDeadlineEnforcementMessage="However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** on **${ddmEnforcedInstallDateHumanReadable}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline."
+    local deadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
+    local deadlinePreposition="on "
+    local baseDeadlineEnforcementMessage=""
+
+    # Relative deadline phrasing ("Today"/"Tomorrow") does not require "on".
+    if [[ "${deadlineDisplay}" != "${ddmEnforcedInstallDateHumanReadable}" ]]; then
+        deadlinePreposition=""
+    fi
+
+    baseDeadlineEnforcementMessage="However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** ${deadlinePreposition}**${deadlineDisplay}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline."
 
     dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
 
@@ -1465,6 +1542,7 @@ if [[ "${1}" == "demo" ]]; then
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
     deadlineEpoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "+%s" 2>/dev/null)
+    ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     nowEpoch=$(date +%s)
     secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))
     blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
@@ -1485,6 +1563,13 @@ if [[ "${1}" == "demo" ]]; then
         hideSecondaryButton="NO"
     fi
     ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
+    ddmEnforcedInstallDateRelativeHumanReadable=$( formatRelativeDeadlineHumanReadable "${ddmEnforcedInstallDateEpoch}" "${ddmEnforcedInstallDateHumanReadable}" )
+    if [[ -z "${ddmEnforcedInstallDateRelativeHumanReadable}" ]]; then
+        ddmEnforcedInstallDateRelativeHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
+    fi
+    if [[ "${ddmEnforcedInstallDateRelativeHumanReadable}" != "${ddmEnforcedInstallDateHumanReadable}" ]]; then
+        notice "Relative deadline rendering applied: ${ddmEnforcedInstallDateRelativeHumanReadable}"
+    fi
 
     # Title / update-or-upgrade logic
     # If required major != installed major → upgrade, else update

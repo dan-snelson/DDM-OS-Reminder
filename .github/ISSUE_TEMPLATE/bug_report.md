@@ -45,7 +45,7 @@ If applicable, add screenshots to help explain your problem.
 **Environment (please complete the following information):**
  - OS version (i.e., 26.2)
  - swiftDialog version (i.e., 3.0.0)
- - Script version (i.e., 2.5.0b3) - please upgrade to the [latest version](https://github.com/dan-snelson/DDM-OS-Reminder/releases) before submitting a bug report.
+ - Script version (i.e., 2.5.0b4) - please upgrade to the [latest version](https://github.com/dan-snelson/DDM-OS-Reminder/releases) before submitting a bug report.
 
 **Additional context**
 Add any other context about the problem here.

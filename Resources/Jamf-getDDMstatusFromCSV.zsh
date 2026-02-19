@@ -5,7 +5,7 @@
 #
 # Jamf-getDDMstatusFromCSV.zsh
 #
-# https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
+# https://snelson.us/ddm-status
 #
 # Inspired by:
 #   - @ScottEKendall
@@ -251,7 +251,7 @@ function displayHelp() {
     echo "
 ${scriptDisplayName} (${scriptVersion})
 by Dan K. Snelson (@dan-snelson)
-https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
+https://snelson.us/ddm-status
 
     Usage:
         zsh ${scriptName} [OPTIONS] [apiURL] [apiUsername] [apiPassword] [csvFilename]

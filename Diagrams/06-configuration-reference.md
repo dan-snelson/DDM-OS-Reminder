@@ -1170,7 +1170,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.5.0b4 |
+| `{scriptVersion}` | System | Script version | 2.5.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1647,10 +1647,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
-| 2.5.0b4 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
+| 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 
 ---
 
 **Last Updated**: February 14, 2026
-**DDM OS Reminder Version**: 2.5.0b4
+**DDM OS Reminder Version**: 2.5.0
 **Variables Documented**: 33 configurable preferences

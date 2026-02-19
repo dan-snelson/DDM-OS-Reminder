@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 2.5.0b4 (17-Feb-2026)
+### Version 2.5.0 (19-Feb-2026)
 - Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))
 - Updated staged metadata handling to normalize partially/fully staged states without proposed metadata to `Pending download`, so reminder flow continues and staging is re-evaluated on subsequent runs
 - Updated reminder body text to use swiftDialog markdown color rendering so the automatic restart/update deadline sentence is displayed in red

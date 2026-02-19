@@ -55,30 +55,46 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 [[ -o interactive ]] && setopt monitor
 
-# Script Version
+# Script Identity
 scriptVersion="1.3.0"
+scriptDisplayName="Jamf Pro: Get DDM Status from CSV"
+organizationScriptName="DDM-CSV"
+scriptName=$(basename "${0}")
+
+# User-Configurable Settings
+secureTokenUsersEaId="52"       # Secure Token Users EA ID (set to your Jamf Pro environment; blank to disable)
+volumeOwnerUsersEaId="156"      # Volume Owner Users EA ID (set to your Jamf Pro environment; blank to disable)
+outputDir="$HOME/Desktop"       # Output directory
+noOpen="false"                  # Skip opening log/CSV files after completion
+debugMode="false"               # Set to "true" to enable verbose debug logging
+
+# Advanced Settings
+parallelProcessing="false"      # Enable parallel processing for faster execution
+maxParallelJobs=10              # Number of concurrent background jobs (default: 10)
+export parallelProcessing
+mdmCommandPageSize=50           # Page size for MDM command history lookup
+tokenRefreshInterval=240        # Bearer token refresh interval in seconds (default: 4 min)
+
+# API Credentials (set via CLI or positional arguments)
+apiUrl=""
+apiUser=""
+apiPassword=""
+filename=""
+
+# Output Paths (resolved after outputDir is set)
+scriptLog=""
+csvOutput=""
 
 # Elapsed Time
 SECONDS="0"
 
-# Script Name (for help display)
-scriptName=$(basename "${0}")
-
-# Client-side Log (will be updated after outputDir is set)
-scriptLog=""
-
-# CSV Output (will be updated after outputDir is set)
-csvOutput=""
-
-# CSV format tracking
+# CSV Parsing
 csvFormat="single"
 csvDelimiter=""
 csvDelimiterLabel="none"
 
-# Divider Line
+# Display
 dividerLine="\n--------------------------------------------------------------------------------------------------------|\n"
-
-# Any Colour You Like
 red=$'\e[1;31m'
 green=$'\e[1;32m'
 yellow=$'\e[1;33m'
@@ -86,37 +102,10 @@ blue=$'\e[1;34m'
 cyan=$'\e[1;36m'
 resetColor=$'\e[0m'
 
-# Token management variables
+# Token Management
 tokenObtainedTime=0
-tokenRefreshInterval=240  # Refresh every 4 minutes (before 5-minute OAuth expiration)
 
-# Parallel processing variables (inspired by @ScottEKendall)
-parallelProcessing="false"          # Enable parallel processing for faster execution
-maxParallelJobs=10                  # Number of concurrent background jobs (default: 10)
-export parallelProcessing
-
-# MDM command summary settings
-mdmCommandPageSize=50
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Script Parameters
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-# Initialize variables
-apiUrl=""
-apiUser=""
-apiPassword=""
-filename=""
-outputDir="$HOME/Desktop"       # Default output directory
-noOpen="false"                  # Skip opening log/CSV files
-secureTokenUsersEaId="52"       # Secure Token Users EA ID (set to your Jamf Pro environment; blank to disable)
-volumeOwnerUsersEaId="156"      # Volume Owner Users EA ID (set to your Jamf Pro environment; blank to disable)
-
-# Debug Mode [ true | false ]
-debugMode="false"                    # Set to "true" to enable debug logging
-
-# Summary Statistics Counters
+# Summary Statistics
 ddmEnabledCount=0
 ddmDisabledCount=0
 failedBlueprintsCount=0
@@ -124,19 +113,11 @@ pendingUpdatesCount=0
 errorCount=0
 notFoundCount=0
 
-# One-time API field availability notices
+# Runtime State
 secureTokenExposureNoticeLogged="false"
 volumeOwnerExposureNoticeLogged="false"
 lastComputerLookupError=""
-
-# Parallel processing job tracking
 declare -a jobPids=()
-
-# Script Display Name (for help and headers)
-scriptDisplayName="Jamf Pro: Get DDM Status from CSV"
-
-# Organization Script Name (for logging)
-organizationScriptName="DDM-CSV"
 
 
 

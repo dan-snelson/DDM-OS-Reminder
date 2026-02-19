@@ -13,37 +13,31 @@ if [[ "${osMajorVersion}" -lt 10 ]] || [[ "${osMajorVersion}" -eq 10 && $(echo "
 fi
 
 # Get list of Volume Owner UUIDs
-volumeOwners=$(/usr/sbin/diskutil apfs listUsers / 2>/dev/null | /usr/bin/awk '/\+-- [-0-9A-F]+$/ {print $2}')
+volumeOwners=$(/usr/sbin/diskutil apfs listUsers / 2>/dev/null | /usr/bin/awk '/\+-- [0-9A-Fa-f-]+$/ {print $2}')
 
 if [[ -z "$volumeOwners" ]]; then
     echo "<result>Unable to determine</result>"
     exit 0
 fi
 
-# Get all non-system users (convert to array)
-AllUsers=(${(f)"$(dscl . list /Users | grep -v '^_')"})
-
 # Array to store Volume Owner usernames
-VolumeOwnerUsers=()
+volumeOwnerUsers=()
 
-# Check each user
-for EachUser in "${AllUsers[@]}"; do
-    userUUID=$(/usr/bin/dscl . -read /Users/"$EachUser" GeneratedUID 2>/dev/null | /usr/bin/awk '{print $2}')
-    
-    if [[ -n "$userUUID" ]]; then
-        # Check if this user's UUID is in the Volume Owner list
-        if echo "$volumeOwners" | /usr/bin/grep -q "$userUUID"; then
-            VolumeOwnerUsers+=("$EachUser")
-        fi
+# Resolve each APFS Volume Owner UUID to a local username
+for ownerUUID in ${(f)volumeOwners}; do
+    ownerUser=$(/usr/bin/dscl . -search /Users GeneratedUID "${ownerUUID}" 2>/dev/null | /usr/bin/awk 'NR==1 {print $1}')
+
+    if [[ -n "${ownerUser}" ]] && (( ${volumeOwnerUsers[(Ie)${ownerUser}]} == 0 )); then
+        volumeOwnerUsers+=("${ownerUser}")
     fi
 done
 
 # Output results
-if [[ ${#VolumeOwnerUsers[@]} -eq 0 ]]; then
+if [[ ${#volumeOwnerUsers[@]} -eq 0 ]]; then
     echo "<result>No Volume Owners</result>"
 else
     # Join array elements with commas
-    echo "<result>${(j:,:)VolumeOwnerUsers}</result>"
+    echo "<result>${(j:,:)volumeOwnerUsers}</result>"
 fi
 
 exit 0

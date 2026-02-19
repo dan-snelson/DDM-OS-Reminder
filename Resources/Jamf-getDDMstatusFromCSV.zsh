@@ -20,6 +20,11 @@
 #
 # HISTORY
 #
+# Version 1.3.0, 19-Feb-2026, Dan K. Snelson (@dan-snelson)
+# - Removed unused optional EA name fallback variables (secureTokenUsersEaName, volumeOwnerUsersEaName).
+# - Removed unused optional MDM Profile Identifier and MDM Profile Topic EA variables (IDs and names).
+# - Simplified ea_value_by to ID-only lookup; removed associated --mdm-profile-*-ea-id CLI flags.
+#
 # Version 1.2.0, 12-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - Added MDM communications diagnostics fields (profile expiration/identifier/topic, supervision, enrollment method).
 # - Added MDM command completion summary via Jamf Pro command-status API lookup by management ID.
@@ -51,7 +56,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 [[ -o interactive ]] && setopt monitor
 
 # Script Version
-scriptVersion="1.2.0"
+scriptVersion="1.3.0"
 
 # Elapsed Time
 SECONDS="0"
@@ -103,16 +108,10 @@ apiUrl=""
 apiUser=""
 apiPassword=""
 filename=""
-outputDir="$HOME/Desktop"           # Default output directory
-noOpen="false"                      # Skip opening log/CSV files
-secureTokenUsersEaId="52"           # Secure Token Users EA ID (set to your Jamf Pro environment; blank to disable)
-volumeOwnerUsersEaId="156"          # Volume Owner Users EA ID (set to your Jamf Pro environment; blank to disable)
-mdmProfileIdentifierEaId=""         # MDM Profile Identifier EA ID (optional; set if your inventory captures client-side profileIdentifier)
-mdmProfileTopicEaId=""              # MDM Profile Topic EA ID (optional; set if your inventory captures client-side profile topic)
-secureTokenUsersEaName="Secure Token Users"  # EA name fallback if ID field shape differs
-volumeOwnerUsersEaName="Volume Owners"       # EA name fallback if ID field shape differs
-mdmProfileIdentifierEaName="MDM Profile Identifier"  # EA name fallback when ID shape differs
-mdmProfileTopicEaName="MDM Profile Topic"            # EA name fallback when ID shape differs
+outputDir="$HOME/Desktop"       # Default output directory
+noOpen="false"                  # Skip opening log/CSV files
+secureTokenUsersEaId="52"       # Secure Token Users EA ID (set to your Jamf Pro environment; blank to disable)
+volumeOwnerUsersEaId="156"      # Volume Owner Users EA ID (set to your Jamf Pro environment; blank to disable)
 
 # Debug Mode [ true | false ]
 debugMode="false"                    # Set to "true" to enable debug logging
@@ -286,8 +285,6 @@ https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
         --max-jobs N          Set maximum parallel jobs (default: 10, requires --parallel)
         --secure-token-ea-id N  Secure Token Users EA ID for fallback when API omits token details (default: 52)
         --volume-owner-ea-id N  Volume Owner Users EA ID for fallback when API omits volume owner details (default: 156)
-        --mdm-profile-identifier-ea-id N  MDM Profile Identifier EA ID fallback (optional; useful for client-side-only profileIdentifier)
-        --mdm-profile-topic-ea-id N       MDM Profile Topic EA ID fallback (optional; useful for client-side-only profile topic)
         --no-open             Do not open the log and CSV output files
         -h, --help            Display this help information
 
@@ -307,7 +304,6 @@ https://snelson.us/2026/01/ddm-status-from-csv-0-0-6/
         • Without ruby, multiline CSV fields may be misread.
         • MDM command completion uses /api/v1/mdm/commands by management ID when the Jamf Pro role permits access.
         • MDM profile topic-to-identifier matching is heuristic and intended for triage.
-        • If MDM profile identifier/topic are client-side only in your environment, capture them via Extension Attributes and pass EA IDs.
 
     Examples:
         # CSV batch processing with lane
@@ -1359,7 +1355,7 @@ function getEaFallbackValuesByComputerId() {
         rawResponse="${responseWithCode%???}"
 
         if [[ "${httpStatus}" == "200" ]]; then
-            extractedValues=$(printf "%s" "${rawResponse}" | jq -r --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" --arg mdmProfileIdentifierEaId "${mdmProfileIdentifierEaId}" --arg mdmProfileIdentifierEaName "${mdmProfileIdentifierEaName}" --arg mdmProfileTopicEaId "${mdmProfileTopicEaId}" --arg mdmProfileTopicEaName "${mdmProfileTopicEaName}" '
+            extractedValues=$(printf "%s" "${rawResponse}" | jq -r --arg secureTokenEaId "${secureTokenUsersEaId}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" '
                 def normalize_ea_container:
                     if . == null then []
                     elif type == "array" then .
@@ -1424,13 +1420,12 @@ function getEaFallbackValuesByComputerId() {
                     end
                     | map(select(. != null and . != "" and . != "null"));
 
-                def ea_value_by($targetId; $targetName):
+                def ea_value_by($targetId):
                     (
                         ea_list
                         | map(
                             select(
-                                (($targetId | length) > 0 and (ea_id == $targetId))
-                                or ((ea_name | ascii_downcase) == ($targetName | ascii_downcase))
+                                ($targetId | length) > 0 and (ea_id == $targetId)
                             )
                             | ea_values
                             | join("; ")
@@ -1468,32 +1463,19 @@ function getEaFallbackValuesByComputerId() {
 
                 [
                     first_non_empty([
-                        ea_value_by($secureTokenEaId; $secureTokenEaName),
+                        ea_value_by($secureTokenEaId),
                         .operatingSystem.secureTokenUsers,
                         .operatingSystem.secureTokenUser,
                         .operatingSystem["Secure Token Users"],
                         .operatingSystem["Secure Token User"]
                     ]),
                     first_non_empty([
-                        ea_value_by($volumeOwnerEaId; $volumeOwnerEaName),
+                        ea_value_by($volumeOwnerEaId),
                         .operatingSystem.volumeOwners,
                         .operatingSystem.volumeOwnerUsers,
                         .operatingSystem.volumeOwner,
                         .operatingSystem["Volume Owners"],
                         .operatingSystem["Volume Owner"]
-                    ]),
-                    first_non_empty([
-                        ea_value_by($mdmProfileIdentifierEaId; $mdmProfileIdentifierEaName),
-                        .operatingSystem.mdmProfileIdentifier,
-                        .operatingSystem["MDM Profile Identifier"],
-                        .operatingSystem["profileIdentifier"]
-                    ]),
-                    first_non_empty([
-                        ea_value_by($mdmProfileTopicEaId; $mdmProfileTopicEaName),
-                        .operatingSystem.mdmProfileTopic,
-                        .operatingSystem.apnsTopic,
-                        .operatingSystem["MDM Profile Topic"],
-                        .operatingSystem["APNS Topic"]
                     ])
                 ] | join("|")
             ' 2>/dev/null)
@@ -1539,12 +1521,8 @@ function getComputerById() {
     local computerInfo
     local secureTokenEaCurrent=""
     local volumeOwnerEaCurrent=""
-    local mdmProfileIdentifierEaCurrent=""
-    local mdmProfileTopicEaCurrent=""
     local secureTokenEaFallback=""
     local volumeOwnerEaFallback=""
-    local mdmProfileIdentifierEaFallback=""
-    local mdmProfileTopicEaFallback=""
     local eaFallbackPair=""
     local baseDetailSections="section=GENERAL&section=HARDWARE&section=OPERATING_SYSTEM&section=SECURITY&section=LOCAL_USER_ACCOUNTS&section=SOFTWARE_UPDATES"
     local detailSections="${baseDetailSections}"
@@ -1571,7 +1549,7 @@ function getComputerById() {
         debug "Looking up computer by ID: ${computerId}" >&2
     fi
 
-    if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${mdmProfileIdentifierEaId}" =~ ^[0-9]+$ ]] || [[ "${mdmProfileTopicEaId}" =~ ^[0-9]+$ ]]; then
+    if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] || [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]; then
         detailSections="${detailSections}&section=EXTENSION_ATTRIBUTES"
     fi
     computerDetailEndpoint="${apiUrl}/api/v1/computers-inventory-detail/${computerId}?${detailSections}"
@@ -1606,7 +1584,7 @@ function getComputerById() {
             # Extract only the fields we need using jq on the raw response
             # We keep a narrow set of fields plus optional EA fallback data.
             jqErrorFile=$(mktemp "/tmp/ddm-jq-error.XXXXXX" 2>/dev/null)
-            computerInfo=$(printf "%s" "${rawResponse}" | jq -c --arg secureTokenEaId "${secureTokenUsersEaId}" --arg secureTokenEaName "${secureTokenUsersEaName}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" --arg volumeOwnerEaName "${volumeOwnerUsersEaName}" --arg mdmProfileIdentifierEaId "${mdmProfileIdentifierEaId}" --arg mdmProfileIdentifierEaName "${mdmProfileIdentifierEaName}" --arg mdmProfileTopicEaId "${mdmProfileTopicEaId}" --arg mdmProfileTopicEaName "${mdmProfileTopicEaName}" '
+            computerInfo=$(printf "%s" "${rawResponse}" | jq -c --arg secureTokenEaId "${secureTokenUsersEaId}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" '
                 def normalize_ea_container:
                     if . == null then []
                     elif type == "array" then .
@@ -1671,13 +1649,12 @@ function getComputerById() {
                     end
                     | map(select(. != null and . != "" and . != "null"));
 
-                def ea_value_by($targetId; $targetName):
+                def ea_value_by($targetId):
                     (
                         ea_list
                         | map(
                             select(
-                                (($targetId | length) > 0 and (ea_id == $targetId))
-                                or ((ea_name | ascii_downcase) == ($targetName | ascii_downcase))
+                                ($targetId | length) > 0 and (ea_id == $targetId)
                             )
                             | ea_values
                             | join("; ")
@@ -1759,8 +1736,7 @@ function getComputerById() {
                         .general.mdmProfileUuid,
                         .general.mobileDeviceManagementProfileIdentifier,
                         .security.mdmProfile.identifier,
-                        .security.mdmProfileIdentifier,
-                        ea_value_by($mdmProfileIdentifierEaId; $mdmProfileIdentifierEaName)
+                        .security.mdmProfileIdentifier
                     ]),
                     mdmProfileTopic: first_non_empty([
                         .general.mdmProfile.topic,
@@ -1771,8 +1747,7 @@ function getComputerById() {
                         .general.pushNotificationTopic,
                         .general.managementTopic,
                         .security.mdmProfile.topic,
-                        .security.apnsTopic,
-                        ea_value_by($mdmProfileTopicEaId; $mdmProfileTopicEaName)
+                        .security.apnsTopic
                     ])
                 },
                 hardware: {
@@ -1788,13 +1763,13 @@ function getComputerById() {
                         .operatingSystem.secureTokenUser,
                         .operatingSystem.secureTokenEnabledUsers,
                         .operatingSystem.secureTokenEnabledUser,
-                        ea_value_by($secureTokenEaId; $secureTokenEaName)
+                        ea_value_by($secureTokenEaId)
                     ]),
                     volumeOwners: first_non_empty([
                         .operatingSystem.volumeOwners,
                         .operatingSystem.volumeOwnerUsers,
                         .operatingSystem.volumeOwner,
-                        ea_value_by($volumeOwnerEaId; $volumeOwnerEaName)
+                        ea_value_by($volumeOwnerEaId)
                     ])
                 },
                 security: {
@@ -1803,17 +1778,9 @@ function getComputerById() {
                 },
                 extensionAttributes: {
                     secureTokenUsersEaId: $secureTokenEaId,
-                    secureTokenUsersEaName: $secureTokenEaName,
-                    secureTokenUsersEaValue: ea_value_by($secureTokenEaId; $secureTokenEaName),
+                    secureTokenUsersEaValue: ea_value_by($secureTokenEaId),
                     volumeOwnerUsersEaId: $volumeOwnerEaId,
-                    volumeOwnerUsersEaName: $volumeOwnerEaName,
-                    volumeOwnerUsersEaValue: ea_value_by($volumeOwnerEaId; $volumeOwnerEaName),
-                    mdmProfileIdentifierEaId: $mdmProfileIdentifierEaId,
-                    mdmProfileIdentifierEaName: $mdmProfileIdentifierEaName,
-                    mdmProfileIdentifierEaValue: ea_value_by($mdmProfileIdentifierEaId; $mdmProfileIdentifierEaName),
-                    mdmProfileTopicEaId: $mdmProfileTopicEaId,
-                    mdmProfileTopicEaName: $mdmProfileTopicEaName,
-                    mdmProfileTopicEaValue: ea_value_by($mdmProfileTopicEaId; $mdmProfileTopicEaName)
+                    volumeOwnerUsersEaValue: ea_value_by($volumeOwnerEaId)
                 },
                 localUserAccounts: (.localUserAccounts // []),
                 softwareUpdates: (.softwareUpdates // [])
@@ -1831,38 +1798,26 @@ function getComputerById() {
             if [[ -n "${computerInfo}" ]] && [[ "${computerInfo}" != "null" ]] && [[ "${computerInfo}" != *"jq: parse error"* ]]; then
                 secureTokenEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.secureTokenUsersEaValue // ""' 2>/dev/null)
                 volumeOwnerEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.volumeOwnerUsersEaValue // ""' 2>/dev/null)
-                mdmProfileIdentifierEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.mdmProfileIdentifierEaValue // ""' 2>/dev/null)
-                mdmProfileTopicEaCurrent=$(printf "%s" "${computerInfo}" | jq -r '.extensionAttributes.mdmProfileTopicEaValue // ""' 2>/dev/null)
 
-                if ([[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] && [[ -z "${secureTokenEaCurrent}" ]]) || ([[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]] && [[ -z "${volumeOwnerEaCurrent}" ]]) || ([[ "${mdmProfileIdentifierEaId}" =~ ^[0-9]+$ ]] && [[ -z "${mdmProfileIdentifierEaCurrent}" ]]) || ([[ "${mdmProfileTopicEaId}" =~ ^[0-9]+$ ]] && [[ -z "${mdmProfileTopicEaCurrent}" ]]); then
+                if ([[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]] && [[ -z "${secureTokenEaCurrent}" ]]) || ([[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]] && [[ -z "${volumeOwnerEaCurrent}" ]]); then
                     eaFallbackPair=$(getEaFallbackValuesByComputerId "${computerId}")
                     if [[ $? -eq 0 ]] && [[ -n "${eaFallbackPair}" ]]; then
-                        IFS='|' read -r secureTokenEaFallback volumeOwnerEaFallback mdmProfileIdentifierEaFallback mdmProfileTopicEaFallback <<< "${eaFallbackPair}"
-                        computerInfo=$(printf "%s" "${computerInfo}" | jq -c --arg secureTokenEaFallback "${secureTokenEaFallback}" --arg volumeOwnerEaFallback "${volumeOwnerEaFallback}" --arg mdmProfileIdentifierEaFallback "${mdmProfileIdentifierEaFallback}" --arg mdmProfileTopicEaFallback "${mdmProfileTopicEaFallback}" '
-                            def is_blank:
-                                . == null
-                                or ((tostring | gsub("^\\s+|\\s+$"; "")) | length == 0)
-                                or ((tostring | ascii_downcase) == "unknown")
-                                or ((tostring | ascii_downcase) == "null");
-
+                        IFS='|' read -r secureTokenEaFallback volumeOwnerEaFallback <<< "${eaFallbackPair}"
+                        computerInfo=$(printf "%s" "${computerInfo}" | jq -c --arg secureTokenEaFallback "${secureTokenEaFallback}" --arg volumeOwnerEaFallback "${volumeOwnerEaFallback}" '
                             .extensionAttributes.secureTokenUsersEaValue = (if ($secureTokenEaFallback | length) > 0 then $secureTokenEaFallback else .extensionAttributes.secureTokenUsersEaValue end)
                             | .extensionAttributes.volumeOwnerUsersEaValue = (if ($volumeOwnerEaFallback | length) > 0 then $volumeOwnerEaFallback else .extensionAttributes.volumeOwnerUsersEaValue end)
-                            | .extensionAttributes.mdmProfileIdentifierEaValue = (if ($mdmProfileIdentifierEaFallback | length) > 0 then $mdmProfileIdentifierEaFallback else .extensionAttributes.mdmProfileIdentifierEaValue end)
-                            | .extensionAttributes.mdmProfileTopicEaValue = (if ($mdmProfileTopicEaFallback | length) > 0 then $mdmProfileTopicEaFallback else .extensionAttributes.mdmProfileTopicEaValue end)
-                            | .general.mdmProfileIdentifier = (if ($mdmProfileIdentifierEaFallback | length) > 0 and (.general.mdmProfileIdentifier | is_blank) then $mdmProfileIdentifierEaFallback else .general.mdmProfileIdentifier end)
-                            | .general.mdmProfileTopic = (if ($mdmProfileTopicEaFallback | length) > 0 and (.general.mdmProfileTopic | is_blank) then $mdmProfileTopicEaFallback else .general.mdmProfileTopic end)
                         ' 2>/dev/null)
                     fi
                 fi
 
-                    if [[ "${debugMode}" == "true" ]]; then
-                        if [[ -n "${secureTokenEaFallback}" ]] || [[ -n "${volumeOwnerEaFallback}" ]] || [[ -n "${mdmProfileIdentifierEaFallback}" ]] || [[ -n "${mdmProfileTopicEaFallback}" ]]; then
-                            debug "EA secondary fallback values applied - Secure Token Users: '${secureTokenEaFallback:-empty}', Volume Owners: '${volumeOwnerEaFallback:-empty}', MDM Profile Identifier: '${mdmProfileIdentifierEaFallback:-empty}', MDM Profile Topic: '${mdmProfileTopicEaFallback:-empty}'" >&2
-                        fi
-                        debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
-                        local filteredSize=${#computerInfo}
-                        debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
+                if [[ "${debugMode}" == "true" ]]; then
+                    if [[ -n "${secureTokenEaFallback}" ]] || [[ -n "${volumeOwnerEaFallback}" ]]; then
+                        debug "EA secondary fallback values applied - Secure Token Users: '${secureTokenEaFallback:-empty}', Volume Owners: '${volumeOwnerEaFallback:-empty}'" >&2
                     fi
+                    debug "Successfully retrieved and filtered computer data for ID ${computerId}" >&2
+                    local filteredSize=${#computerInfo}
+                    debug "Filtered data size: ${filteredSize} bytes (reduced by $((responseSize - filteredSize)) bytes)" >&2
+                fi
                 echo "${computerInfo}"
                 return 0
             fi
@@ -2885,24 +2840,6 @@ while [[ $# -gt 0 ]]; do
                 die "Error: --volume-owner-ea-id requires a numeric argument"
             fi
             ;;
-        --mdm-profile-identifier-ea-id)
-            shift
-            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
-                mdmProfileIdentifierEaId="$1"
-                shift
-            else
-                die "Error: --mdm-profile-identifier-ea-id requires a numeric argument"
-            fi
-            ;;
-        --mdm-profile-topic-ea-id)
-            shift
-            if [[ $# -gt 0 ]] && [[ "$1" =~ ^[0-9]+$ ]]; then
-                mdmProfileTopicEaId="$1"
-                shift
-            else
-                die "Error: --mdm-profile-topic-ea-id requires a numeric argument"
-            fi
-            ;;
         --no-open)
             noOpen="true"
             shift
@@ -2942,7 +2879,7 @@ fi
 if [[ "${debugMode}" == "true" ]]; then
     debug "Collected ${#positionalArgs[@]} positional parameters"
     debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
-    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, secureTokenUsersEaName=${secureTokenUsersEaName:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}, volumeOwnerUsersEaName=${volumeOwnerUsersEaName:-disabled}, mdmProfileIdentifierEaId=${mdmProfileIdentifierEaId:-disabled}, mdmProfileIdentifierEaName=${mdmProfileIdentifierEaName:-disabled}, mdmProfileTopicEaId=${mdmProfileTopicEaId:-disabled}, mdmProfileTopicEaName=${mdmProfileTopicEaName:-disabled}"
+    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}"
 fi
 
 # Initialize output paths now that outputDir is set
@@ -3078,13 +3015,13 @@ else
 fi
 
 if [[ "${secureTokenUsersEaId}" =~ ^[0-9]+$ ]]; then
-    notice "Secure Token Users EA fallback enabled (EA ID: ${secureTokenUsersEaId}, EA Name: ${secureTokenUsersEaName})."
+    notice "Secure Token Users EA fallback enabled (EA ID: ${secureTokenUsersEaId})."
 else
     notice "Secure Token Users EA fallback disabled (secureTokenUsersEaId is blank/non-numeric)."
 fi
 
 if [[ "${volumeOwnerUsersEaId}" =~ ^[0-9]+$ ]]; then
-    notice "Volume Owner Users EA fallback enabled (EA ID: ${volumeOwnerUsersEaId}, EA Name: ${volumeOwnerUsersEaName})."
+    notice "Volume Owner Users EA fallback enabled (EA ID: ${volumeOwnerUsersEaId})."
 else
     notice "Volume Owner Users EA fallback disabled (volumeOwnerUsersEaId is blank/non-numeric)."
 fi

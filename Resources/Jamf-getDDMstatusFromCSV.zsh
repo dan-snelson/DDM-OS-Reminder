@@ -67,6 +67,7 @@ volumeOwnerUsersEaId="156"      # Volume Owner Users EA ID (set to your Jamf Pro
 outputDir="$HOME/Desktop"       # Output directory
 noOpen="false"                  # Skip opening log/CSV files after completion
 debugMode="false"               # Set to "true" to enable verbose debug logging
+allowInsecureTLS="false"        # Set to "true" only when troubleshooting trusted/self-signed TLS certificates
 
 # Advanced Settings
 parallelProcessing="false"      # Enable parallel processing for faster execution
@@ -266,6 +267,7 @@ https://snelson.us/ddm-status
         --max-jobs N          Set maximum parallel jobs (default: 10, requires --parallel)
         --secure-token-ea-id N  Secure Token Users EA ID for fallback when API omits token details (default: 52)
         --volume-owner-ea-id N  Volume Owner Users EA ID for fallback when API omits volume owner details (default: 156)
+        --insecure            Disable TLS certificate verification for Jamf API calls (temporary troubleshooting only)
         --no-open             Do not open the log and CSV output files
         -h, --help            Display this help information
 
@@ -285,6 +287,7 @@ https://snelson.us/ddm-status
         • Without ruby, multiline CSV fields may be misread.
         • MDM command completion uses /api/v1/mdm/commands by management ID when the Jamf Pro role permits access.
         • MDM profile topic-to-identifier matching is heuristic and intended for triage.
+        • TLS verification is enabled by default; use --insecure only for temporary trusted troubleshooting.
 
     Examples:
         # CSV batch processing with lane
@@ -626,6 +629,46 @@ function preflightTools() {
     done
 }
 
+function jamfCurl() {
+    if [[ "${allowInsecureTLS}" == "true" ]]; then
+        command curl --insecure "$@"
+    else
+        command curl "$@"
+    fi
+}
+
+function createSecureTempFile() {
+    local template="${1}"
+    local tempPath=""
+
+    if [[ -z "${template}" ]]; then
+        return 1
+    fi
+
+    tempPath=$(mktemp "${template}" 2>/dev/null)
+    if [[ -z "${tempPath}" ]] || [[ ! -f "${tempPath}" ]]; then
+        return 1
+    fi
+
+    echo "${tempPath}"
+}
+
+function createSecureTempDirectory() {
+    local template="${1}"
+    local tempPath=""
+
+    if [[ -z "${template}" ]]; then
+        return 1
+    fi
+
+    tempPath=$(mktemp -d "${template}" 2>/dev/null)
+    if [[ -z "${tempPath}" ]] || [[ ! -d "${tempPath}" ]]; then
+        return 1
+    fi
+
+    echo "${tempPath}"
+}
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -645,7 +688,7 @@ function getBearerToken() {
         fi
         
         # OAuth token request
-        tokenJson=$(curl -X POST --silent \
+        tokenJson=$(jamfCurl -X POST --silent \
             --url "${apiUrl}/api/oauth/token" \
             --header 'Content-Type: application/x-www-form-urlencoded' \
             --data-urlencode "client_id=${apiUser}" \
@@ -659,7 +702,7 @@ function getBearerToken() {
         fi
         
         # Basic authentication token request
-        tokenJson=$(curl -X POST --silent -u "${apiUser}:${apiPassword}" "${apiUrl}/api/v1/auth/token")
+        tokenJson=$(jamfCurl -X POST --silent -u "${apiUser}:${apiPassword}" "${apiUrl}/api/v1/auth/token")
     fi
 
     # Basic sanity check on JSON
@@ -730,7 +773,7 @@ function refreshBearerToken() {
     fi
 
     local refreshJson
-    refreshJson=$(curl --silent -X POST \
+    refreshJson=$(jamfCurl --silent -X POST \
         -H "Authorization: Bearer ${apiBearerToken}" \
         "${apiUrl}/api/v1/auth/keep-alive")
 
@@ -821,7 +864,7 @@ function invalidateBearerToken() {
     if [[ "${debugMode}" == "true" ]]; then
         debug "Calling invalidation endpoint: ${apiUrl}/api/v1/auth/invalidate-token"
     fi
-    curl --silent -X POST \
+    jamfCurl --silent -X POST \
         -H "Authorization: Bearer ${apiBearerToken}" \
         "${apiUrl}/api/v1/auth/invalidate-token" >/dev/null 2>&1
     apiBearerToken=""
@@ -1324,10 +1367,10 @@ function getEaFallbackValuesByComputerId() {
         checkAndRefreshToken
 
         responseWithCode=$(
-            curl -H "Authorization: Bearer ${apiBearerToken}" \
+            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
                  -H "Accept: application/json" \
                  --max-time 30 \
-                 -sfk -w "%{http_code}" \
+                 -sf -w "%{http_code}" \
                  "${endpoint}" \
                  -X GET 2>/dev/null
         )
@@ -1544,10 +1587,10 @@ function getComputerById() {
         checkAndRefreshToken
         
         responseWithCode=$(
-            curl -H "Authorization: Bearer ${apiBearerToken}" \
+            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
                  -H "Accept: application/json" \
                  --max-time 30 \
-                 -sfk -w "%{http_code}" \
+                 -sf -w "%{http_code}" \
                  "${computerDetailEndpoint}" \
                  -X GET 2>/dev/null
         )
@@ -1564,7 +1607,13 @@ function getComputerById() {
         if [[ "${httpStatus}" == "200" ]]; then
             # Extract only the fields we need using jq on the raw response
             # We keep a narrow set of fields plus optional EA fallback data.
-            jqErrorFile=$(mktemp "/tmp/ddm-jq-error.XXXXXX" 2>/dev/null)
+            jqErrorFile=$(createSecureTempFile "/tmp/ddm-jq-error.XXXXXX")
+            if [[ -z "${jqErrorFile}" ]]; then
+                jqErrorFile="/dev/null"
+                if [[ "${debugMode}" == "true" ]]; then
+                    debug "Unable to create temporary jq stderr capture file; using /dev/null."
+                fi
+            fi
             computerInfo=$(printf "%s" "${rawResponse}" | jq -c --arg secureTokenEaId "${secureTokenUsersEaId}" --arg volumeOwnerEaId "${volumeOwnerUsersEaId}" '
                 def normalize_ea_container:
                     if . == null then []
@@ -1767,7 +1816,7 @@ function getComputerById() {
                 softwareUpdates: (.softwareUpdates // [])
             }' 2>"${jqErrorFile}")
             jqExitCode=$?
-            if [[ -n "${jqErrorFile}" ]] && [[ -f "${jqErrorFile}" ]]; then
+            if [[ "${jqErrorFile}" != "/dev/null" ]] && [[ -f "${jqErrorFile}" ]]; then
                 jqErrorMessage=$(cat "${jqErrorFile}" 2>/dev/null)
                 rm -f "${jqErrorFile}" 2>/dev/null
                 jqErrorFile=""
@@ -1901,10 +1950,10 @@ function getComputerIdBySerialNumber() {
         
         # Use Modern API with filter to find computer by serial number
         responseWithCode=$(
-            curl -H "Authorization: Bearer ${apiBearerToken}" \
+            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
                  -H "Accept: application/json" \
                  --max-time 30 \
-                 -sfk -w "%{http_code}" \
+                 -sf -w "%{http_code}" \
                  "${apiUrl}/api/v1/computers-inventory?section=GENERAL&page=0&page-size=1&filter=hardware.serialNumber%3D%3D%22${serialNumber}%22" \
                  -X GET 2>/dev/null
         )
@@ -2041,10 +2090,10 @@ function getDdmStatusItems() {
         checkAndRefreshToken
         
         ddmStatusAndCode=$(
-            curl -H "Authorization: Bearer ${apiBearerToken}" \
+            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
                  -H "Accept: application/json" \
                  --max-time 30 \
-                 -sfk -w "%{http_code}" \
+                 -sf -w "%{http_code}" \
                  "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
                  -X GET 2>/dev/null
         )
@@ -2140,10 +2189,10 @@ function getMdmCommandSummaryByManagementId() {
         checkAndRefreshToken
 
         commandResponseAndCode=$(
-            curl -H "Authorization: Bearer ${apiBearerToken}" \
+            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
                  -H "Accept: application/json" \
                  --max-time 30 \
-                 -sfk -w "%{http_code}" \
+                 -sf -w "%{http_code}" \
                  "${endpoint}" \
                  -X GET 2>/dev/null
         )
@@ -2821,6 +2870,10 @@ while [[ $# -gt 0 ]]; do
                 die "Error: --volume-owner-ea-id requires a numeric argument"
             fi
             ;;
+        --insecure)
+            allowInsecureTLS="true"
+            shift
+            ;;
         --no-open)
             noOpen="true"
             shift
@@ -2860,7 +2913,12 @@ fi
 if [[ "${debugMode}" == "true" ]]; then
     debug "Collected ${#positionalArgs[@]} positional parameters"
     debug "Lane selection: ${laneSelectionRequested}, Single lookup: ${singleLookupMode}"
-    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}"
+    debug "Parameters: apiUrl=${apiUrl:-empty}, apiUser=${apiUser:-empty}, filename=${filename:-empty}, secureTokenUsersEaId=${secureTokenUsersEaId:-disabled}, volumeOwnerUsersEaId=${volumeOwnerUsersEaId:-disabled}, allowInsecureTLS=${allowInsecureTLS}"
+fi
+
+if [[ "${allowInsecureTLS}" == "true" ]]; then
+    notice "TLS certificate verification disabled via --insecure. Use only for temporary troubleshooting in trusted environments."
+    printf "\n${yellow}⚠${resetColor} TLS certificate verification disabled via --insecure.\n"
 fi
 
 # Initialize output paths now that outputDir is set
@@ -3165,7 +3223,14 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     info "Retrieving computer information for Computer ID ${computerId} …"
     computerInfoRaw=""
     singleLookupComputerInfoFile=""
-    singleLookupComputerInfoFile=$(mktemp "/tmp/ddm-computer-info-single.XXXXXX" 2>/dev/null)
+    singleLookupComputerInfoFile=$(createSecureTempFile "/tmp/ddm-computer-info-single.XXXXXX")
+    if [[ -z "${singleLookupComputerInfoFile}" ]]; then
+        printf "${red}✗${resetColor} Unable to create temporary file for lookup processing\n\n"
+        error "Unable to create temporary file for single lookup computer payload."
+        invalidateBearerToken
+        printf "${dividerLine}\n\n"
+        exit 1
+    fi
     retryWithBackoff getComputerById "${computerId}" > "${singleLookupComputerInfoFile}"
     singleLookupExitCode=$?
     if [[ ${singleLookupExitCode} -eq 0 ]] && [[ -s "${singleLookupComputerInfoFile}" ]]; then
@@ -3416,7 +3481,19 @@ processComputer() {
     computerInfoRaw=""
     local recordComputerInfoFile=""
     local recordLookupExitCode=1
-    recordComputerInfoFile=$(mktemp "/tmp/ddm-computer-info-record.XXXXXX" 2>/dev/null)
+    recordComputerInfoFile=$(createSecureTempFile "/tmp/ddm-computer-info-record.XXXXXX")
+    if [[ -z "${recordComputerInfoFile}" ]]; then
+        error "Unable to create temporary file for computer '${identifier}' lookup; skipping …"
+        printf "  ${red}✗${resetColor} Unable to create temporary file for computer lookup\n"
+        local emptyColumns=""
+        local index=1
+        while [[ ${index} -le 27 ]]; do
+            emptyColumns="${emptyColumns},\"\""
+            (( index++ ))
+        done
+        echo "\"${identifier}\",\"${apiUrl}/computers.html?id=${identifier}&o=r\",\"Temp File Error\"${emptyColumns}" >> "${tempCsvFile}"
+        return 1
+    fi
     getComputerById "${identifier}" > "${recordComputerInfoFile}"
     recordLookupExitCode=$?
     if [[ ${recordLookupExitCode} -eq 0 ]] && [[ -s "${recordComputerInfoFile}" ]]; then
@@ -3845,7 +3922,10 @@ if [[ "${parallelProcessing}" == "true" ]]; then
     parallelStartTime="${SECONDS}"
     
     # Create temporary directory for parallel job results
-    tempDir=$(mktemp -d "${TMPDIR:-/tmp}/jamf-ddm-parallel.XXXXXX")
+    tempDir=$(createSecureTempDirectory "${TMPDIR:-/tmp}/jamf-ddm-parallel.XXXXXX")
+    if [[ -z "${tempDir}" ]] || [[ ! -d "${tempDir}" ]]; then
+        die "Unable to create temporary directory for parallel job results."
+    fi
     
     # Read all identifiers into array
     declare -a identifiers

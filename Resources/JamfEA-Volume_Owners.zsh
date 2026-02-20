@@ -15,7 +15,7 @@ fi
 # Get list of Volume Owner UUIDs
 volumeOwners=$(/usr/sbin/diskutil apfs listUsers / 2>/dev/null | /usr/bin/awk '/\+-- [0-9A-Fa-f-]+$/ {print $2}')
 
-if [[ -z "$volumeOwners" ]]; then
+if [[ -z "${volumeOwners}" ]]; then
     echo "<result>Unable to determine</result>"
     exit 0
 fi

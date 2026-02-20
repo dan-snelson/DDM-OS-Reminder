@@ -148,7 +148,7 @@ function cleanup() {
     if [[ -n "${filename}" ]] && [[ -f "${filename}" ]]; then
         rm -f "${filename}.jssids.tmp" 2>/dev/null
     fi
-    
+
     # Clean up parallel processing temp directory if it exists
     if [[ -n "${tempDir}" ]] && [[ -d "${tempDir}" ]]; then
         rm -rf "${tempDir}" 2>/dev/null
@@ -156,7 +156,7 @@ function cleanup() {
             debug "Removed temporary directory: ${tempDir}"
         fi
     fi
-    
+
     # Clean up token lock file if it exists
     if [[ -n "${tokenLockFile}" ]] && [[ -d "${tokenLockFile}" ]]; then
         rmdir "${tokenLockFile}" 2>/dev/null
@@ -3209,10 +3209,10 @@ if [[ "${singleLookupMode}" == "yes" ]]; then
     if [[ -z "${mdmCommandsCompletion}" ]]; then
         mdmCommandsCompletion="MDM command summary unavailable"
     fi
-    
+
     localUserSummary=$(buildLocalUserSecuritySummary "${computerInfoRaw}")
     IFS='|' read -r localAdminUserCount localAdminUsers fileVaultEnabledUserCount fileVaultEnabledUsers secureTokenUserCount secureTokenUsers volumeOwnerUserCount volumeOwnerUsers <<< "${localUserSummary}"
-    
+
     # Display computer information
     printf "${cyan}Computer Information:${resetColor}\n"
     printf "  • Name: ${computerName}\n"
@@ -3504,7 +3504,7 @@ processComputer() {
 
     local mdmProfileTopicMatch=""
     mdmProfileTopicMatch=$(evaluateMdmTopicIdentifierMatch "${mdmProfileIdentifier}" "${mdmProfileTopic}")
-    
+
     local localUserSummary=""
     local localAdminUserCount=""
     local localAdminUsers=""

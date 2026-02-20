@@ -232,7 +232,7 @@ Reports the date when the DDM-enforced macOS update was executed.
 Thu Nov 13 08:59:56 2025
 ```
 
-**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)  
+**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
 Reports all local users with SecureToken enabled (comma-separated).
 
 ```
@@ -245,7 +245,7 @@ On macOS earlier than 10.13, this EA reports:
 N/A (macOS X.Y.Z)
 ```
 
-**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)  
+**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
 Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
 
 ```

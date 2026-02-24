@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
+    <!-- Version: 2.5.0 -->
+    <!-- Generated on: 2026-02-19-184900 -->
+
+    <!-- Logging -->
+    <key>ScriptLog</key>
+    <string>/var/log/org.churchofjesuschrist.log</string>
+
+    <!-- Reminder timing -->
+    <key>DaysBeforeDeadlineDisplayReminder</key>
+    <integer>14</integer>
+    <key>DaysBeforeDeadlineBlurscreen</key>
+    <integer>3</integer>
+    <key>DaysBeforeDeadlineHidingButton2</key>
+    <integer>1</integer>
+    <key>DaysOfExcessiveUptimeWarning</key>
+    <integer>7</integer>
+    <key>MinimumDiskFreePercentage</key>
+    <integer>10</integer>
+    <key>MeetingDelay</key>
+    <integer>75</integer>
+    <!-- Space-delimited list of meeting/presentation apps whose Display Sleep
+         Assertions should be tolerated (reminder defers via MeetingDelay).
+         To find the names please run `pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"`
+         in Terminal while the application is open and running.
+         Example: MSTeams zoom.us Webex -->
+    <key>AcceptableAssertionApplicationNames</key>
+    <string>MSTeams zoom.us Webex</string>
+
+    <!-- Branding -->
+    <key>OrganizationOverlayIconURL</key>
+    <string>https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d</string>
+    <key>OrganizationOverlayIconURLdark</key>
+    <string>https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39</string>
+    <key>SwapOverlayAndLogo</key>
+    <false/>
+    <key>DateFormatDeadlineHumanReadable</key>
+    <string>+%a, %d-%b-%Y, %-l:%M %p</string>
+
+    <!-- Support block -->
+    <key>SupportTeamName</key>
+    <string>Assembled IT Support</string>
+    <key>SupportTeamPhone</key>
+    <string>Assembled +1 (801) 555-1212</string>
+    <key>SupportTeamEmail</key>
+    <string>rescue@company.com</string>
+    <key>SupportTeamWebsite</key>
+    <string>https://support.company.com</string>
+    <key>SupportKB</key>
+    <string>Update macOS on Mac</string>
+    <key>InfoButtonAction</key>
+    <string>https://support.apple.com/108382</string>
+    <key>SupportKBURL</key>
+    <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
+
+    <!-- Dialog text -->
+    <key>Title</key>
+    <string>Assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
+    <key>Button1Text</key>
+    <string>Assembled Open Software Update</string>
+    <key>Button2Text</key>
+    <string>Assembled Remind Me Later</string>
+    <key>InfoButtonText</key>
+    <string>Assembled Update macOS on Mac</string>
+    <key>ExcessiveUptimeWarningMessage</key>
+    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
+    <key>DiskSpaceWarningMessage</key>
+    <string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
+    <key>StagedUpdateMessage</key>
+    <string>&lt;br&gt;&lt;br&gt;Assembled **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
+    <key>PartiallyStagedUpdateMessage</key>
+    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
+    <key>PendingDownloadMessage</key>
+    <string>&lt;br&gt;&lt;br&gt;Assembled Your Mac will begin downloading the update shortly.</string>
+    <key>HideStagedUpdateInfo</key>
+    <false/>
+
+    <key>Message</key>
+    <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+
+    <!-- Infobox -->
+    <key>InfoBox</key>
+    <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**Last Restart:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
+
+    <!-- Help section -->
+    <key>HelpMessage</key>
+    <string>Assembled&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+    <key>HelpImage</key>
+    <string>qr={infobuttonaction}</string>
+
+</dict>
+</plist>

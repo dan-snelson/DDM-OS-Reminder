@@ -30,7 +30,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.4.0)
+🧩 Assemble DDM OS Reminder (2.5.0)
 ===============================================================
 
 Full Paths:
@@ -230,4 +230,30 @@ Reports the date when the DDM-enforced macOS update was executed.
 
 ```
 Thu Nov 13 08:59:56 2025
+```
+
+**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
+Reports all local users with SecureToken enabled (comma-separated).
+
+```
+dan
+```
+
+On macOS earlier than 10.13, this EA reports:
+
+```
+N/A (macOS X.Y.Z)
+```
+
+**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
+Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
+
+```
+dan
+```
+
+On systems where APFS volume ownership cannot be determined, this EA reports:
+
+```
+Unable to determine
 ```

@@ -1,6 +1,6 @@
 # DDM OS Reminder — Agent Instructions
 
-> **Author**: Dan K. Snelson | **Version**: 2.4.0 | **Language**: zsh (Shell 100%) | **Platform**: macOS only | **License**: MIT
+> **Author**: Dan K. Snelson | **Version**: 2.5.0 | **Language**: zsh (Shell 100%) | **Platform**: macOS only | **License**: MIT
 
 ## Big picture
 - DDM OS Reminder is a macOS-only, MDM-agnostic reminder system for DDM-enforced OS update deadlines. It reads `/var/log/install.log` and shows a swiftDialog prompt via a LaunchDaemon.

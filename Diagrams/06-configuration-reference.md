@@ -790,7 +790,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: String  
 **Default**: `Update macOS on Mac`
 
-**Description**: Tooltip text displayed when hovering over the info button (?).
+**Description**: Label text displayed on the info button.
 
 **Special Value**: `hide` to completely hide the info button
 
@@ -896,7 +896,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: String  
 **Default**: [Support contact information]
 
-**Description**: Content displayed when user clicks the info (?) button, providing support contact details and system information.
+**Description**: Content displayed when user clicks the help (?) button, providing support contact details and system information.
 
 **Supports Placeholders**: Yes (all support placeholders + system info)
 

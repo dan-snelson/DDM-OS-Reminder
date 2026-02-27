@@ -659,7 +659,7 @@ function updateRequiredVariables() {
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
-    applypastDeadlineDialogOverrides
+    applyPastDeadlineDialogOverrides
     buildPlaceholderMap
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
@@ -1357,7 +1357,7 @@ function computeInfoboxHighlights() {
     fi
 }
 
-function evaluatepastDeadlineState() {
+function evaluatePastDeadlineState() {
     local nowEpochValue=$(date +%s)
     local daysPastDdmDeadline=0
     local isPastDdmDeadline="NO"
@@ -1389,7 +1389,7 @@ function isPastDeadlineForceMode() {
     [[ "${pastDeadlineRestartEffective}" == "Force" ]]
 }
 
-function applypastDeadlineDialogOverrides() {
+function applyPastDeadlineDialogOverrides() {
     if [[ "${pastDeadlineRestartEffective}" == "Off" ]]; then
         return
     fi
@@ -1819,7 +1819,7 @@ if [[ "${1}" == "demo" ]]; then
 
     # Other variables normally generated in installedOSvsDDMenforcedOS
     versionComparisonResult="Update Required"
-    evaluatepastDeadlineState
+    evaluatePastDeadlineState
 
     # Simulate the update as already being fully staged in demo mode
     updateStagingStatus="Fully staged"
@@ -1862,7 +1862,7 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 installedOSvsDDMenforcedOS
-evaluatepastDeadlineState
+evaluatePastDeadlineState
 
 
 

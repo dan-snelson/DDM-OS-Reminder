@@ -47,7 +47,7 @@
 
 ## Style and structure (observed)
 - **Variables**: lowerCamelCase exclusively. Only exception: `PLACEHOLDER_MAP` (global associative array).
-- **Functions**: Always `function name() {` with brace on same line. Control-flow uses same-line braces (`if [[ ... ]]; then`).
+- **Functions**: lowerCamelCase names only, and always `function name() {` with brace on same line. Control-flow uses same-line braces (`if [[ ... ]]; then`).
 - **Variable references**: Braced `${var}` is the default; bare `$var` only inside arithmetic `$(( ))` contexts.
 - **Whitespace**: Three blank lines between top-level sections. One blank line between logical steps inside functions. Don’t compress it.
 - **Section separators**: Hash-wall line for top-level groups (example: `####################################################################################################`).

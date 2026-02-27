@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 2.5.0 -->
-    <!-- Generated on: 2026-02-19-184900 -->
+    <!-- Version: 2.6.0b3 -->
+    <!-- Generated on: 2026-02-27-144706 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -20,6 +20,12 @@
     <integer>1</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>7</integer>
+    <!-- Past-deadline restart behavior:
+         Off | Prompt | Force -->
+    <key>PastDeadlineRestartBehavior</key>
+    <string>Off</string>
+    <key>DaysPastDeadlineRestartWorkflow</key>
+    <integer>2</integer>
     <key>MinimumDiskFreePercentage</key>
     <integer>10</integer>
     <key>MeetingDelay</key>
@@ -85,7 +91,7 @@
 
     <!-- Infobox -->
     <key>InfoBox</key>
-    <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**Last Restart:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
+    <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**Last Restart:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
 
     <!-- Help section -->
     <key>HelpMessage</key>

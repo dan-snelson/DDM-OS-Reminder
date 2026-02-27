@@ -28,6 +28,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineBlurscreen | DaysBeforeDeadlineBlurscreen | Integer | 45 | Timing |
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
+| daysPastDeadlineRestartWorkflow | DaysPastDeadlineRestartWorkflow | Integer | 2 | Timing |
+| pastDeadlineRestartBehavior | PastDeadlineRestartBehavior | String (`Off` \| `Prompt` \| `Force`) | Off | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
@@ -213,7 +215,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### daysOfExcessiveUptimeWarning
 **Plist Key**: `DaysOfExcessiveUptimeWarning`  
 **Type**: Integer  
-**Default**: 0 (disabled)  
+**Default**: 0 (immediate)  
 **Valid Range**: 0-999
 
 **Description**: Number of days without restart that triggers an uptime warning message in the dialog, recommending user restart before updating.
@@ -221,10 +223,10 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Impact**:
 - Warns users with stale system state
 - Improves update reliability
-- 0 = feature disabled
+- 0 = immediate warning trigger (any uptime)
 
 **Recommendations**:
-- **Disabled**: 0 (default)
+- **Validation / always warn**: 0 (default)
 - **Moderate**: 7 days
 - **Strict**: 3 days
 
@@ -240,6 +242,69 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Warning Message Variable**: `excessiveUptimeWarningMessage`
+
+---
+
+#### daysPastDeadlineRestartWorkflow
+**Plist Key**: `DaysPastDeadlineRestartWorkflow`  
+**Type**: Integer  
+**Default**: 2  
+**Valid Range**: 0-999
+
+**Description**: Number of whole days past the DDM enforcement deadline required before Yukon Cornelius restart workflow becomes eligible.
+
+**Impact**:
+- 2 = eligible after two full days past deadline (default)
+- Higher values delay restart workflow activation
+- Applies only when `pastDeadlineRestartBehavior` is not `Off`
+
+**Script Default**:
+```bash
+["daysPastDeadlineRestartWorkflow"]="numeric|2"
+```
+
+**Configuration Profile**:
+```xml
+<key>DaysPastDeadlineRestartWorkflow</key>
+<integer>2</integer>
+```
+
+---
+
+#### pastDeadlineRestartBehavior
+**Plist Key**: `PastDeadlineRestartBehavior`  
+**Type**: String enum  
+**Default**: `Off`  
+**Valid Values**: `Off` | `Prompt` | `Force` (case-insensitive)
+
+**Description**: Controls Yukon Cornelius behavior when both conditions are true: the DDM deadline is in the past and elapsed past-deadline days meet `daysPastDeadlineRestartWorkflow`.
+
+**Mode Behavior**:
+- `Off`: Keep normal update-focused reminder behavior
+- `Prompt`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
+- `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart, and non-restart dismissals are re-shown in the same run (after ~5 seconds) until restart
+
+**Eligibility Requirements**:
+- `versionComparisonResult` = Update Required
+- DDM enforcement deadline is in the past
+- Days past DDM deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
+
+**Script Default**:
+```bash
+["pastDeadlineRestartBehavior"]="string|Off"
+```
+
+**Configuration Profile**:
+```xml
+<key>PastDeadlineRestartBehavior</key>
+<string>Off</string>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineRestartBehavior -string "Prompt"
+```
 
 ---
 
@@ -873,20 +938,20 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Key Placeholders Used**:
 - `{installedmacOSVersion}` = Current macOS version
 - `{ddmVersionString}` = Required macOS version
-- `{ddmVersionStringDeadlineHumanReadable}` = Formatted deadline
-- `{ddmVersionStringDaysRemaining}` = Days until deadline
-- `{uptimeHumanReadable}` = Time since last restart
+- `{infoboxDeadlineDisplay}` = Formatted deadline display (red when past deadline on supported swiftDialog versions)
+- `{infoboxDaysRemainingDisplay}` = Days until deadline display (red when `<= 0` on supported swiftDialog versions)
+- `{infoboxLastRestartDisplay}` = Time since last restart display (red when uptime meets/exceeds threshold on supported swiftDialog versions)
 - `{diskSpaceHumanReadable}` = Free disk space
 
 **Script Default**:
 ```bash
-["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}..."
+["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {infoboxDeadlineDisplay}..."
 ```
 
 **Configuration Profile**:
 ```xml
 <key>InfoBox</key>
-<string>**System Info**&lt;br&gt;&lt;br&gt;Current: {installedmacOSVersion}&lt;br&gt;Target: {ddmVersionString}&lt;br&gt;Due: {ddmVersionStringDeadlineHumanReadable}</string>
+<string>**System Info**&lt;br&gt;&lt;br&gt;Current: {installedmacOSVersion}&lt;br&gt;Target: {ddmVersionString}&lt;br&gt;Due: {infoboxDeadlineDisplay}</string>
 ```
 
 ---
@@ -1093,7 +1158,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Key Placeholder**: `{uptimeHumanReadable}`  
 **Inserted Into**: `{excessiveUptimeWarningMessage}` in `message`
 
-**Triggered When**: `daysOfExcessiveUptimeWarning` > 0 and uptime exceeds threshold
+**Triggered When**: uptime meets/exceeds `daysOfExcessiveUptimeWarning` days (`0` means immediate)
 
 **Script Default**:
 ```bash
@@ -1170,7 +1235,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.5.0 |
+| `{scriptVersion}` | System | Script version | 2.6.0b3 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1648,9 +1713,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
+| 2.6.0b3 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
 
 ---
 
-**Last Updated**: February 14, 2026
-**DDM OS Reminder Version**: 2.5.0
-**Variables Documented**: 33 configurable preferences
+**Last Updated**: February 27, 2026
+**DDM OS Reminder Version**: 2.6.0b3
+**Variables Documented**: 35 configurable preferences

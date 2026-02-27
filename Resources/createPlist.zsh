@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.5.0"
+scriptVersion="2.6.0b3"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -109,6 +109,8 @@ daysBeforeDeadlineDisplayReminder=$(extract_from_preference_map daysBeforeDeadli
 daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlurscreen)
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
+daysPastDeadlineRestartWorkflow=$(extract_from_preference_map daysPastDeadlineRestartWorkflow)
+pastDeadlineRestartBehavior=$(extract_from_preference_map pastDeadlineRestartBehavior)
 meetingDelay=$(extract_from_preference_map meetingDelay)
 acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
@@ -152,6 +154,12 @@ defaultSupportKB=$(extract_from_preference_map supportKB)
 defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
 defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
 
+# Ensure generated configs use infobox display placeholders that support
+# conditional color formatting in newer swiftDialog versions.
+defaultInfobox="${defaultInfobox//\{ddmVersionStringDeadlineHumanReadable\}/\{infoboxDeadlineDisplay\}}"
+defaultInfobox="${defaultInfobox//\{ddmVersionStringDaysRemaining\}/\{infoboxDaysRemainingDisplay\}}"
+defaultInfobox="${defaultInfobox//\{uptimeHumanReadable\}/\{infoboxLastRestartDisplay\}}"
+
 # Resolve Info button-related defaults to concrete values,
 # mirroring runtime behavior in reminderDialog.zsh
 supportKB="$defaultSupportKB"
@@ -192,6 +200,7 @@ infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
 
 scriptLog_xml=$(echo "$scriptLog" | xml_escape)
+pastDeadlineRestartBehavior_xml=$(echo "$pastDeadlineRestartBehavior" | xml_escape)
 dateFormat_xml=$(echo "$dateFormatDeadlineHumanReadable" | xml_escape)
 
 # ─────────────────────────────────────────────────────────────
@@ -220,6 +229,12 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysBeforeDeadlineHidingButton2}</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>${daysOfExcessiveUptimeWarning}</integer>
+    <!-- Past-deadline restart behavior:
+         Off | Prompt | Force -->
+    <key>PastDeadlineRestartBehavior</key>
+    <string>${pastDeadlineRestartBehavior_xml}</string>
+    <key>DaysPastDeadlineRestartWorkflow</key>
+    <integer>${daysPastDeadlineRestartWorkflow}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
     <key>AcceptableAssertionApplicationNames</key>
@@ -325,6 +340,10 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysBeforeDeadlineHidingButton2}</integer>
                                 <key>DaysOfExcessiveUptimeWarning</key>
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
+                                <key>PastDeadlineRestartBehavior</key>
+                                <string>${pastDeadlineRestartBehavior_xml}</string>
+                                <key>DaysPastDeadlineRestartWorkflow</key>
+                                <integer>${daysPastDeadlineRestartWorkflow}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
                                 <key>AcceptableAssertionApplicationNames</key>

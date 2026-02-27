@@ -1,6 +1,6 @@
 # DDM OS Reminder — Agent Instructions
 
-> **Author**: Dan K. Snelson | **Version**: 2.5.0 | **Language**: zsh (Shell 100%) | **Platform**: macOS only | **License**: MIT
+> **Author**: Dan K. Snelson | **Version**: 2.6.0b3 | **Language**: zsh (Shell 100%) | **Platform**: macOS only | **License**: MIT
 
 ## Big picture
 - DDM OS Reminder is a macOS-only, MDM-agnostic reminder system for DDM-enforced OS update deadlines. It reads `/var/log/install.log` and shows a swiftDialog prompt via a LaunchDaemon.
@@ -29,7 +29,7 @@
 | `DaysBeforeDeadlineBlurscreen` | 45 | When the dialog background blurs |
 | `DaysBeforeDeadlineHidingButton2` | 21 | When "Remind Me Later" is disabled |
 | `MeetingDelay` | 75 min | How long to delay if a meeting is detected |
-| `DaysOfExcessiveUptimeWarning` | 0 | Uptime threshold for warning |
+| `DaysOfExcessiveUptimeWarning` | 0 | Uptime warning threshold (`0` = immediate warning; e.g., `7` = one week) |
 | `MinimumDiskFreePercentage` | 99 | Disk space threshold for warning |
 
 ## Logging
@@ -47,7 +47,7 @@
 
 ## Style and structure (observed)
 - **Variables**: lowerCamelCase exclusively. Only exception: `PLACEHOLDER_MAP` (global associative array).
-- **Functions**: Always `function name() {` with brace on same line. Control-flow uses same-line braces (`if [[ ... ]]; then`).
+- **Functions**: lowerCamelCase names only, and always `function name() {` with brace on same line. Control-flow uses same-line braces (`if [[ ... ]]; then`).
 - **Variable references**: Braced `${var}` is the default; bare `$var` only inside arithmetic `$(( ))` contexts.
 - **Whitespace**: Three blank lines between top-level sections. One blank line between logical steps inside functions. Don’t compress it.
 - **Section separators**: Hash-wall line for top-level groups (example: `####################################################################################################`).

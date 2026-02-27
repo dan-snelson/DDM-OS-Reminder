@@ -24,6 +24,12 @@
                                     <integer>1</integer>
                                     <key>DaysOfExcessiveUptimeWarning</key>
                                     <integer>7</integer>
+                                    <!-- Past-deadline restart behavior:
+                                         Off | Prompt | Force -->
+                                    <key>PastDeadlineRestartBehavior</key>
+                                    <string>Off</string>
+                                    <key>DaysPastDeadlineRestartWorkflow</key>
+                                    <integer>2</integer>
                                     <key>MinimumDiskFreePercentage</key>
                                     <integer>10</integer>
                                     <key>MeetingDelay</key>
@@ -80,7 +86,7 @@
                                     <key>Message</key>
                                     <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
                                     <key>InfoBox</key>
-                                    <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**Last Restart:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
+                                    <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**Last Restart:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
                                     <key>HelpMessage</key>
                                     <string>Assembled&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
                                     <key>HelpImage</key>
@@ -93,26 +99,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>7110BE06-157D-487B-AC20-470F94A418E9</string>
+            <string>388C8975-5286-4FE0-816F-D794B3392580</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>7110BE06-157D-487B-AC20-470F94A418E9</string>
+            <string>388C8975-5286-4FE0-816F-D794B3392580</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.5.0) to org.churchofjesuschrist standards. Created: 2026-02-19-184900</string>
+    <string>Configures DDM OS Reminder (2.6.0b3) to org.churchofjesuschrist standards. Created: 2026-02-27-144706</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>5FD0E23D-7B01-4DFC-8289-3634DE701E73</string>
+    <string>26F5536C-5D16-45F4-B47A-79448A07449B</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -122,7 +128,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>5FD0E23D-7B01-4DFC-8289-3634DE701E73</string>
+    <string>26F5536C-5D16-45F4-B47A-79448A07449B</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

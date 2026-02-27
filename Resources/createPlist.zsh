@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.6.0b1"
+scriptVersion="2.6.0b2"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -152,6 +152,12 @@ defaultSupportTeamWebsite=$(extract_from_preference_map supportTeamWebsite)
 defaultSupportKB=$(extract_from_preference_map supportKB)
 defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
 defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
+
+# Ensure generated configs use infobox display placeholders that support
+# conditional color formatting in newer swiftDialog versions.
+defaultInfobox="${defaultInfobox//\{ddmVersionStringDeadlineHumanReadable\}/\{infoboxDeadlineDisplay\}}"
+defaultInfobox="${defaultInfobox//\{ddmVersionStringDaysRemaining\}/\{infoboxDaysRemainingDisplay\}}"
+defaultInfobox="${defaultInfobox//\{uptimeHumanReadable\}/\{infoboxLastRestartDisplay\}}"
 
 # Resolve Info button-related defaults to concrete values,
 # mirroring runtime behavior in reminderDialog.zsh

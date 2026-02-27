@@ -214,7 +214,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### daysOfExcessiveUptimeWarning
 **Plist Key**: `DaysOfExcessiveUptimeWarning`  
 **Type**: Integer  
-**Default**: 0 (disabled)  
+**Default**: 0 (immediate)  
 **Valid Range**: 0-999
 
 **Description**: Number of days without restart that triggers an uptime warning message in the dialog, recommending user restart before updating.
@@ -222,7 +222,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Impact**:
 - Warns users with stale system state
 - Improves update reliability
-- 0 = feature disabled
+- 0 = immediate warning trigger (any uptime)
 
 **Recommendations**:
 - **Disabled**: 0 (default)
@@ -912,20 +912,20 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Key Placeholders Used**:
 - `{installedmacOSVersion}` = Current macOS version
 - `{ddmVersionString}` = Required macOS version
-- `{ddmVersionStringDeadlineHumanReadable}` = Formatted deadline
-- `{ddmVersionStringDaysRemaining}` = Days until deadline
-- `{uptimeHumanReadable}` = Time since last restart
+- `{infoboxDeadlineDisplay}` = Formatted deadline display (red when past deadline on supported swiftDialog versions)
+- `{infoboxDaysRemainingDisplay}` = Days until deadline display (red when `<= 0` on supported swiftDialog versions)
+- `{infoboxLastRestartDisplay}` = Time since last restart display (red when uptime meets/exceeds threshold on supported swiftDialog versions)
 - `{diskSpaceHumanReadable}` = Free disk space
 
 **Script Default**:
 ```bash
-["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}..."
+["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {infoboxDeadlineDisplay}..."
 ```
 
 **Configuration Profile**:
 ```xml
 <key>InfoBox</key>
-<string>**System Info**&lt;br&gt;&lt;br&gt;Current: {installedmacOSVersion}&lt;br&gt;Target: {ddmVersionString}&lt;br&gt;Due: {ddmVersionStringDeadlineHumanReadable}</string>
+<string>**System Info**&lt;br&gt;&lt;br&gt;Current: {installedmacOSVersion}&lt;br&gt;Target: {ddmVersionString}&lt;br&gt;Due: {infoboxDeadlineDisplay}</string>
 ```
 
 ---
@@ -1132,7 +1132,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Key Placeholder**: `{uptimeHumanReadable}`  
 **Inserted Into**: `{excessiveUptimeWarningMessage}` in `message`
 
-**Triggered When**: `daysOfExcessiveUptimeWarning` > 0 and uptime exceeds threshold
+**Triggered When**: uptime meets/exceeds `daysOfExcessiveUptimeWarning` days (`0` means immediate)
 
 **Script Default**:
 ```bash
@@ -1209,7 +1209,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.6.0b1 |
+| `{scriptVersion}` | System | Script version | 2.6.0b2 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1687,10 +1687,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
-| 2.6.0b1 | 2026-02-27 | Added `pastDeadlineRestart` configuration and Yukon Cornelius behavior documentation |
+| 2.6.0b2 | 2026-02-27 | Added `pastDeadlineRestart` configuration and Yukon Cornelius behavior documentation |
 
 ---
 
 **Last Updated**: February 27, 2026
-**DDM OS Reminder Version**: 2.6.0b1
+**DDM OS Reminder Version**: 2.6.0b2
 **Variables Documented**: 34 configurable preferences

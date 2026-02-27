@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.6.0b1"
+scriptVersion="2.6.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -75,22 +75,45 @@ lastBootTime=$( sysctl kern.boottime | awk -F'[ |,]' '{print $5}' )
 currentTime=$( date +"%s" )
 upTimeRaw=$((currentTime-lastBootTime))
 upTimeMin=$((upTimeRaw/60))
-upTimeHours=$((upTimeMin/60))
-uptimeDays=$( uptime | awk '{ print $4 }' | sed 's/,//g' )
-uptimeNumber=$( uptime | awk '{ print $3 }' | sed 's/,//g' )
+upTimeDays=$((upTimeMin / 1440))
+upTimeHoursRemainder=$(((upTimeMin % 1440) / 60))
+upTimeMinutesRemainder=$((upTimeMin % 60))
+uptimeHumanReadable=""
 
-if [[ "${uptimeDays}" = "day"* ]]; then
-    if [[ "${uptimeNumber}" -gt 1 ]]; then
-        uptimeHumanReadable="${uptimeNumber} days"
+if [[ "${upTimeDays}" -gt 0 ]]; then
+    if [[ "${upTimeDays}" -eq 1 ]]; then
+        uptimeHumanReadable="1 day"
     else
-        uptimeHumanReadable="${uptimeNumber} day"
+        uptimeHumanReadable="${upTimeDays} days"
     fi
-elif [[ "${uptimeDays}" == "mins"* ]]; then
-    uptimeHumanReadable="${uptimeNumber} mins"
-else
-    hours=$((upTimeMin / 60))
-    mins=$((upTimeMin % 60))
-    uptimeHumanReadable="$(printf "%02d:%02d" ${hours} ${mins}) (HH:MM)"
+fi
+
+if [[ "${upTimeHoursRemainder}" -gt 0 ]]; then
+    if [[ -n "${uptimeHumanReadable}" ]]; then
+        uptimeHumanReadable="${uptimeHumanReadable}, "
+    fi
+
+    if [[ "${upTimeHoursRemainder}" -eq 1 ]]; then
+        uptimeHumanReadable="${uptimeHumanReadable}1 hour"
+    else
+        uptimeHumanReadable="${uptimeHumanReadable}${upTimeHoursRemainder} hours"
+    fi
+fi
+
+if [[ "${upTimeMinutesRemainder}" -gt 0 ]]; then
+    if [[ -n "${uptimeHumanReadable}" ]]; then
+        uptimeHumanReadable="${uptimeHumanReadable}, "
+    fi
+
+    if [[ "${upTimeMinutesRemainder}" -eq 1 ]]; then
+        uptimeHumanReadable="${uptimeHumanReadable}1 minute"
+    else
+        uptimeHumanReadable="${uptimeHumanReadable}${upTimeMinutesRemainder} minutes"
+    fi
+fi
+
+if [[ -z "${uptimeHumanReadable}" ]]; then
+    uptimeHumanReadable="less than 1 minute"
 fi
 
 
@@ -166,7 +189,7 @@ declare -A preferenceConfiguration=(
     
     # Complex UI Text
     ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
-    ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}<br><br>**Day(s) Remaining:** {ddmVersionStringDaysRemaining}<br><br>**Last Restart:** {uptimeHumanReadable}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
+    ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {infoboxDeadlineDisplay}<br><br>**Day(s) Remaining:** {infoboxDaysRemainingDisplay}<br><br>**Last Restart:** {infoboxLastRestartDisplay}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
 )
@@ -529,6 +552,9 @@ function buildPlaceholderMap() {
         [installedmacOSVersion]="${installedmacOSVersion}"
         [ddmVersionStringDeadlineHumanReadable]="${ddmVersionStringDeadlineHumanReadable}"
         [ddmVersionStringDaysRemaining]="${ddmVersionStringDaysRemaining}"
+        [infoboxDeadlineDisplay]="${infoboxDeadlineDisplay}"
+        [infoboxDaysRemainingDisplay]="${infoboxDaysRemainingDisplay}"
+        [infoboxLastRestartDisplay]="${infoboxLastRestartDisplay}"
         [titleMessageUpdateOrUpgrade]="${titleMessageUpdateOrUpgrade}"
         [uptimeHumanReadable]="${uptimeHumanReadable}"
         [excessiveUptimeWarningMessage]="${excessiveUptimeWarningMessage}"
@@ -608,6 +634,7 @@ function updateRequiredVariables() {
     computeDynamicWarnings
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
+    computeInfoboxHighlights
     applypastDeadlineDialogOverrides
     buildPlaceholderMap
     
@@ -1229,13 +1256,9 @@ function downloadBrandingAssets() {
 
 function computeDynamicWarnings() {
     # Excessive uptime warning
-    if (( daysOfExcessiveUptimeWarning <= 0 )); then
+    local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
+    if (( upTimeMin < allowedUptimeMinutes )); then
         excessiveUptimeWarningMessage=""
-    else
-        local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
-        if (( upTimeMin < allowedUptimeMinutes )); then
-            excessiveUptimeWarningMessage=""
-        fi
     fi
     
     # Disk Space Warning
@@ -1286,17 +1309,41 @@ function computeDeadlineEnforcementMessage() {
     dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
 
     if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
+        dialogSupportsMarkdownColor="YES"
         deadlineEnforcementMessage=":red[${baseDeadlineEnforcementMessage}]"
         info "swiftDialog ${dialogVersion} supports markdown color; rendering enforcement sentence in red."
     else
+        dialogSupportsMarkdownColor="NO"
         deadlineEnforcementMessage="${baseDeadlineEnforcementMessage}"
         info "swiftDialog ${dialogVersion:-Unknown} does not support markdown color; rendering enforcement sentence without color."
     fi
 }
 
+function computeInfoboxHighlights() {
+    infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
+    infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
+    infoboxLastRestartDisplay="${uptimeHumanReadable}"
+
+    if [[ "${dialogSupportsMarkdownColor}" != "YES" ]]; then
+        return
+    fi
+
+    if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= $(date +%s) )); then
+        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
+    fi
+
+    if [[ "${ddmVersionStringDaysRemaining}" =~ ^-?[0-9]+$ ]] && (( ddmVersionStringDaysRemaining <= 0 )); then
+        infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
+    fi
+
+    if (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then
+        infoboxLastRestartDisplay=":red[${infoboxLastRestartDisplay}]"
+    fi
+}
+
 function evaluatepastDeadlineState() {
     local nowEpochValue=$(date +%s)
-    local excessiveUptimeThresholdMinutes=0
+    local excessiveUptimeThresholdMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
 
     if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= nowEpochValue )); then
         isPastDdmDeadline="YES"
@@ -1304,11 +1351,7 @@ function evaluatepastDeadlineState() {
         isPastDdmDeadline="NO"
     fi
 
-    if (( daysOfExcessiveUptimeWarning > 0 )); then
-        excessiveUptimeThresholdMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
-    fi
-
-    if (( daysOfExcessiveUptimeWarning > 0 && upTimeMin >= excessiveUptimeThresholdMinutes )); then
+    if (( upTimeMin >= excessiveUptimeThresholdMinutes )); then
         isExcessiveUptime="YES"
     else
         isExcessiveUptime="NO"

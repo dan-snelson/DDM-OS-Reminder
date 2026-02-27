@@ -279,7 +279,7 @@ Key preferences that affect decision tree:
 | `daysBeforeDeadlineDisplayReminder` | 60 | Reminder Window check |
 | `daysBeforeDeadlineBlurscreen` | 45 | Blurscreen activation |
 | `daysBeforeDeadlineHidingButton2` | 21 | Button 2 disable/hide |
-| `daysOfExcessiveUptimeWarning` | 0 (disabled) | Uptime warning threshold |
+| `daysOfExcessiveUptimeWarning` | 0 (immediate) | Uptime warning threshold (`0` = always warn; `7` = one week) |
 | `daysPastDeadlineRestartWorkflow` | 2 | Days-past-deadline threshold for Yukon mode |
 | `pastDeadlineRestartBehavior` | Off | Yukon Cornelius mode (`Off` / `Prompt` / `Force`) |
 | `meetingDelay` | 75 minutes | Meeting detection delay |

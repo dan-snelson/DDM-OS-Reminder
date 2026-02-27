@@ -226,7 +226,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - 0 = immediate warning trigger (any uptime)
 
 **Recommendations**:
-- **Disabled**: 0 (default)
+- **Validation / always warn**: 0 (default)
 - **Moderate**: 7 days
 - **Strict**: 3 days
 

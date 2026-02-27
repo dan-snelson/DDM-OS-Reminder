@@ -29,7 +29,7 @@
 | `DaysBeforeDeadlineBlurscreen` | 45 | When the dialog background blurs |
 | `DaysBeforeDeadlineHidingButton2` | 21 | When "Remind Me Later" is disabled |
 | `MeetingDelay` | 75 min | How long to delay if a meeting is detected |
-| `DaysOfExcessiveUptimeWarning` | 0 | Uptime threshold for warning |
+| `DaysOfExcessiveUptimeWarning` | 0 | Uptime warning threshold (`0` = immediate warning; e.g., `7` = one week) |
 | `MinimumDiskFreePercentage` | 99 | Disk space threshold for warning |
 
 ## Logging

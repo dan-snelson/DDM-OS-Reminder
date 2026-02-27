@@ -28,6 +28,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineBlurscreen | DaysBeforeDeadlineBlurscreen | Integer | 45 | Timing |
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
+| pastDeadlineRestart | PastDeadlineRestart | String (`Off` \| `Invite` \| `Force`) | Off | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
@@ -240,6 +241,44 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Warning Message Variable**: `excessiveUptimeWarningMessage`
+
+---
+
+#### pastDeadlineRestart
+**Plist Key**: `PastDeadlineRestart`  
+**Type**: String enum  
+**Default**: `Off`  
+**Valid Values**: `Off` | `Invite` | `Force` (case-insensitive)
+
+**Description**: Controls Yukon Cornelius behavior when both conditions are true: the DDM deadline is in the past and system uptime exceeds `daysOfExcessiveUptimeWarning`.
+
+**Mode Behavior**:
+- `Off`: Keep normal update-focused reminder behavior
+- `Invite`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
+- `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart and dismissal paths are re-shown until restart
+
+**Eligibility Requirements**:
+- `versionComparisonResult` = Update Required
+- DDM enforcement deadline is in the past
+- `daysOfExcessiveUptimeWarning` > 0
+- Uptime exceeds configured threshold
+
+**Script Default**:
+```bash
+["pastDeadlineRestart"]="string|Off"
+```
+
+**Configuration Profile**:
+```xml
+<key>PastDeadlineRestart</key>
+<string>Off</string>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineRestart -string "Invite"
+```
 
 ---
 
@@ -1170,7 +1209,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.5.0 |
+| `{scriptVersion}` | System | Script version | 2.6.0b1 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1648,9 +1687,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
+| 2.6.0b1 | 2026-02-27 | Added `pastDeadlineRestart` configuration and Yukon Cornelius behavior documentation |
 
 ---
 
-**Last Updated**: February 14, 2026
-**DDM OS Reminder Version**: 2.5.0
-**Variables Documented**: 33 configurable preferences
+**Last Updated**: February 27, 2026
+**DDM OS Reminder Version**: 2.6.0b1
+**Variables Documented**: 34 configurable preferences

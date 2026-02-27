@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.5.0"
+scriptVersion="2.6.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.5.0"
+scriptVersion="2.6.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -288,6 +288,14 @@ disableButton2InsteadOfHide="YES"
 # space, meeting delay, format strings, icons, etc.) are now defined in the
 # preferenceConfiguration map below and loaded via loadPreferenceOverrides()
 # to support managed and local plist overrides.
+
+# Past Deadline runtime state
+pastDeadlineForceTimerSeconds=60
+pastDeadlineRedisplayDelaySeconds=5
+pastDeadlineRestartEffective="Off"
+isPastDdmDeadline="NO"
+isExcessiveUptime="NO"
+isPastDeadlineEligible="NO"
 
 
 
@@ -354,6 +362,7 @@ declare -A preferenceConfiguration=(
     ["daysBeforeDeadlineBlurscreen"]="numeric|45"
     ["daysBeforeDeadlineHidingButton2"]="numeric|21"
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
+    ["pastDeadlineRestart"]="string|Off"
     ["meetingDelay"]="numeric|75"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
@@ -401,6 +410,7 @@ declare -A plistKeyMap=(
     ["daysBeforeDeadlineBlurscreen"]="DaysBeforeDeadlineBlurscreen"
     ["daysBeforeDeadlineHidingButton2"]="DaysBeforeDeadlineHidingButton2"
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
+    ["pastDeadlineRestart"]="PastDeadlineRestart"
     ["meetingDelay"]="MeetingDelay"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
@@ -546,6 +556,18 @@ function normalizeBooleanValue() {
         1|true|yes) echo "YES" ;;
         0|false|no) echo "NO" ;;
         *)         echo "" ;;
+    esac
+}
+
+function normalizePastDeadlineRestartValue() {
+    local value="${1}"
+    local normalizedValue="${value//[[:space:]]/}"
+
+    case "${normalizedValue:l}" in
+        off)    echo "Off" ;;
+        invite) echo "Invite" ;;
+        force)  echo "Force" ;;
+        *)      echo "Off" ;;
     esac
 }
 
@@ -714,6 +736,18 @@ function validatePreferenceLoad() {
             warning "Critical preference '${var}' is empty; using default"
         fi
     done
+
+    local originalPastDeadlineRestart="${pastDeadlineRestart}"
+    local normalizedPastDeadlineRestart="${originalPastDeadlineRestart//[[:space:]]/}"
+    pastDeadlineRestart=$(normalizePastDeadlineRestartValue "${originalPastDeadlineRestart}")
+
+    case "${normalizedPastDeadlineRestart:l}" in
+        off|invite|force)
+            ;;
+        *)
+            warning "Invalid pastDeadlineRestart value '${originalPastDeadlineRestart}'; defaulting to '${pastDeadlineRestart}'. Valid values: Off, Invite, Force."
+            ;;
+    esac
 }
 
 function buildPlaceholderMap() {
@@ -806,6 +840,7 @@ function updateRequiredVariables() {
     computeDynamicWarnings
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
+    applypastDeadlineDialogOverrides
     buildPlaceholderMap
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
@@ -1478,7 +1513,7 @@ function computeDeadlineEnforcementMessage() {
         deadlinePreposition=""
     fi
 
-    baseDeadlineEnforcementMessage="However, your device **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** ${deadlinePreposition}**${deadlineDisplay}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline."
+    baseDeadlineEnforcementMessage="However, your Mac **will automatically restart and ${titleMessageUpdateOrUpgrade:l}** ${deadlinePreposition}**${deadlineDisplay}** if you have not ${titleMessageUpdateOrUpgrade:l}d before the deadline."
 
     dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
 
@@ -1489,6 +1524,85 @@ function computeDeadlineEnforcementMessage() {
         deadlineEnforcementMessage="${baseDeadlineEnforcementMessage}"
         info "swiftDialog ${dialogVersion:-Unknown} does not support markdown color; rendering enforcement sentence without color."
     fi
+}
+
+function evaluatepastDeadlineState() {
+    local nowEpochValue=$(date +%s)
+    local excessiveUptimeThresholdMinutes=0
+
+    if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= nowEpochValue )); then
+        isPastDdmDeadline="YES"
+    else
+        isPastDdmDeadline="NO"
+    fi
+
+    if (( daysOfExcessiveUptimeWarning > 0 )); then
+        excessiveUptimeThresholdMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
+    fi
+
+    if (( daysOfExcessiveUptimeWarning > 0 && upTimeMin >= excessiveUptimeThresholdMinutes )); then
+        isExcessiveUptime="YES"
+    else
+        isExcessiveUptime="NO"
+    fi
+
+    isPastDeadlineEligible="NO"
+    if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isExcessiveUptime}" == "YES" && "${pastDeadlineRestart}" != "Off" ]]; then
+        isPastDeadlineEligible="YES"
+    fi
+
+    if [[ "${isPastDeadlineEligible}" == "YES" ]]; then
+        pastDeadlineRestartEffective="${pastDeadlineRestart}"
+        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (DDM deadline passed with excessive uptime)."
+    else
+        pastDeadlineRestartEffective="Off"
+    fi
+}
+
+function applypastDeadlineDialogOverrides() {
+    if [[ "${pastDeadlineRestartEffective}" == "Off" ]]; then
+        return
+    fi
+
+    action="restartConfirm"
+    softwareUpdateButtonText="Restart Now"
+    button1text="Restart Now"
+    button2text=""
+    infobuttontext=""
+    # helpmessage=""
+    # helpimage=""
+    hideSecondaryButton="YES"
+
+    title="Restart Your Mac"
+    message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the {ddmVersionStringDeadlineHumanReadable} deadline to update to macOS {ddmVersionString} and has been powered-on for **{uptimeHumanReadable}**.<br><br>Click **{button1text}** to restart now to help complete the required macOS {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+
+    # Restart-focused dialog mode intentionally suppresses extra warning blocks.
+    excessiveUptimeWarningMessage=""
+    diskSpaceWarningMessage=""
+    updateReadyMessage=""
+    deadlineEnforcementMessage=""
+}
+
+function executeRestartAction() {
+    local restartMode="${1:-Restart Confirm}"
+    local restartCommand=""
+
+    case "${restartMode}" in
+        "Restart")
+            restartCommand="/usr/bin/osascript -e 'tell app \"System Events\" to restart'"
+            ;;
+        "Restart Confirm"|*)
+            restartCommand="/usr/bin/osascript -e 'tell app \"loginwindow\" to «event aevtrrst»'"
+            ;;
+    esac
+
+    if /usr/bin/su - "${loggedInUser}" -c "${restartCommand}"; then
+        notice "Restart command '${restartMode}' sent for ${loggedInUser}."
+        return 0
+    fi
+
+    warning "Failed to invoke restart command '${restartMode}' for ${loggedInUser}."
+    return 1
 }
 
 
@@ -1530,11 +1644,53 @@ function displayReminderDialog() {
     returncode=$?
     info "Return Code: ${returncode}"
 
+    if [[ "${pastDeadlineRestartEffective}" == "Force" ]]; then
+        while true; do
+            case ${returncode} in
+                0)
+                    notice "${loggedInUser} clicked ${button1text}"
+                    if executeRestartAction "Restart"; then
+                        quitScript "0"
+                    fi
+                    ;;
+                4)
+                    notice "User allowed timer to expire; forcing restart."
+                    if executeRestartAction "Restart"; then
+                        quitScript "0"
+                    fi
+                    ;;
+                *)
+                    warning "Force mode active; return code '${returncode}' does not permit dismissal. Re-displaying restart dialog."
+                    ;;
+            esac
+
+            sleep "${pastDeadlineRedisplayDelaySeconds}"
+            ${dialogBinary} "${dialogArgs[@]}"
+            returncode=$?
+            info "Return Code: ${returncode}"
+        done
+    fi
+
+    if [[ "${pastDeadlineRestartEffective}" == "Invite" && "${returncode}" -eq 0 ]]; then
+        notice "${loggedInUser} clicked ${button1text}"
+        if executeRestartAction "Restart Confirm"; then
+            quitScript "0"
+        else
+            quitScript "1"
+        fi
+    fi
+
     case ${returncode} in
 
     0)  ## Process exit code 0 scenario here
         notice "${loggedInUser} clicked ${button1text}"
-        if [[ "${action}" == *"systempreferences"* ]]; then
+        if [[ "${action}" == "restartConfirm" ]]; then
+            if executeRestartAction "Restart Confirm"; then
+                quitScript "0"
+            else
+                quitScript "1"
+            fi
+        elif [[ "${action}" == *"systempreferences"* ]]; then
             launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
             notice "Checking if System Settings is open …"
             until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
@@ -1747,6 +1903,7 @@ preFlight "Complete"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 installedOSvsDDMenforcedOS
+evaluatepastDeadlineState
 
 
 
@@ -1814,17 +1971,21 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Short quiet period: skip dialog if user interacted very recently
     # -------------------------------------------------------------------------
 
-    if [[ -n "${lastInteraction}" ]]; then
-        # Validate the extracted timestamp matches expected format
-        if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
-            nowEpoch=$(date +%s)
-            lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
-            if [[ -n "${lastEpoch}" ]]; then
-                delta=$(( nowEpoch - lastEpoch ))
-                if (( delta < quietPeriodSeconds )); then
-                    minutesAgo=$(( delta / 60 ))
-                    quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
-                    quitScript "0"
+    if [[ "${pastDeadlineRestartEffective}" == "Force" ]]; then
+        notice "Past Deadline Force mode active; bypassing quiet-period suppression."
+    else
+        if [[ -n "${lastInteraction}" ]]; then
+            # Validate the extracted timestamp matches expected format
+            if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+                nowEpoch=$(date +%s)
+                lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
+                if [[ -n "${lastEpoch}" ]]; then
+                    delta=$(( nowEpoch - lastEpoch ))
+                    if (( delta < quietPeriodSeconds )); then
+                        minutesAgo=$(( delta / 60 ))
+                        quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
+                        quitScript "0"
+                    fi
                 fi
             fi
         fi
@@ -1836,15 +1997,19 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Confirm the currently logged-in user is “available” to be reminded
     # -------------------------------------------------------------------------
 
-    if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
-        if checkUserDisplaySleepAssertions; then
-            notice "No active Display Sleep Assertions detected; proceeding …"
-        else
-            quitOut "Presentation still active after ${meetingDelay} minutes; exiting quietly."
-            quitScript "0"
-        fi
+    if [[ "${pastDeadlineRestartEffective}" == "Force" ]]; then
+        notice "Past Deadline Force mode active; bypassing meeting-delay checks."
     else
-        info "Deadline is within 24 hours; ignoring ${loggedInUser}’s Display Sleep Assertions; proceeding …"
+        if [[ "${ddmVersionStringDaysRemaining}" -gt 1 ]]; then
+            if checkUserDisplaySleepAssertions; then
+                notice "No active Display Sleep Assertions detected; proceeding …"
+            else
+                quitOut "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+                quitScript "0"
+            fi
+        else
+            info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+        fi
     fi
 
 
@@ -1890,7 +2055,11 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # -------------------------------------------------------------------------
 
     updateRequiredVariables
-    displayReminderDialog --ontop
+    if [[ "${pastDeadlineRestartEffective}" == "Force" ]]; then
+        displayReminderDialog --ontop --timer "${pastDeadlineForceTimerSeconds}"
+    else
+        displayReminderDialog --ontop
+    fi
 
 else
 

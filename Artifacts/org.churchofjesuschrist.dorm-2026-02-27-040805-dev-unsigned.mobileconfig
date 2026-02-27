@@ -24,6 +24,10 @@
                                     <integer>1</integer>
                                     <key>DaysOfExcessiveUptimeWarning</key>
                                     <integer>7</integer>
+                                    <!-- Past-deadline + excessive-uptime behavior:
+                                         Off | Invite | Force -->
+                                    <key>PastDeadlineRestart</key>
+                                    <string>Off</string>
                                     <key>MinimumDiskFreePercentage</key>
                                     <integer>10</integer>
                                     <key>MeetingDelay</key>
@@ -93,26 +97,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>7110BE06-157D-487B-AC20-470F94A418E9</string>
+            <string>A2B50C7B-04DE-4B65-88FA-1C07693139CB</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>7110BE06-157D-487B-AC20-470F94A418E9</string>
+            <string>A2B50C7B-04DE-4B65-88FA-1C07693139CB</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.5.0) to org.churchofjesuschrist standards. Created: 2026-02-19-184900</string>
+    <string>Configures DDM OS Reminder (2.6.0b1) to org.churchofjesuschrist standards. Created: 2026-02-27-040805</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>5FD0E23D-7B01-4DFC-8289-3634DE701E73</string>
+    <string>C302B0E9-67CF-459F-95E6-599A355E6649</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -122,7 +126,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>5FD0E23D-7B01-4DFC-8289-3634DE701E73</string>
+    <string>C302B0E9-67CF-459F-95E6-599A355E6649</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

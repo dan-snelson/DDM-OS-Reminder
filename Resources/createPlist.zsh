@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.5.0"
+scriptVersion="2.6.0b1"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -109,6 +109,7 @@ daysBeforeDeadlineDisplayReminder=$(extract_from_preference_map daysBeforeDeadli
 daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlurscreen)
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
+pastDeadlineRestart=$(extract_from_preference_map pastDeadlineRestart)
 meetingDelay=$(extract_from_preference_map meetingDelay)
 acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
@@ -192,6 +193,7 @@ infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
 
 scriptLog_xml=$(echo "$scriptLog" | xml_escape)
+pastDeadlineRestart_xml=$(echo "$pastDeadlineRestart" | xml_escape)
 dateFormat_xml=$(echo "$dateFormatDeadlineHumanReadable" | xml_escape)
 
 # ─────────────────────────────────────────────────────────────
@@ -220,6 +222,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysBeforeDeadlineHidingButton2}</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>${daysOfExcessiveUptimeWarning}</integer>
+    <key>PastDeadlineRestart</key>
+    <string>${pastDeadlineRestart_xml}</string>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
     <key>AcceptableAssertionApplicationNames</key>
@@ -325,6 +329,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysBeforeDeadlineHidingButton2}</integer>
                                 <key>DaysOfExcessiveUptimeWarning</key>
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
+                                <key>PastDeadlineRestart</key>
+                                <string>${pastDeadlineRestart_xml}</string>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
                                 <key>AcceptableAssertionApplicationNames</key>

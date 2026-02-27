@@ -4,7 +4,7 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 2.5.0 -->
+    <!-- Version: 2.6.0b1 -->
     <!-- Generated on: 2026-02-19-190349 -->
 
     <!-- Logging -->
@@ -20,6 +20,10 @@
     <integer>1</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>7</integer>
+    <!-- Past-deadline + excessive-uptime behavior:
+         Off | Invite | Force -->
+    <key>PastDeadlineRestart</key>
+    <string>Off</string>
     <key>MinimumDiskFreePercentage</key>
     <integer>10</integer>
     <key>MeetingDelay</key>

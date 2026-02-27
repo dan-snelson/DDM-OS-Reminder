@@ -44,7 +44,7 @@ flowchart TD
     SetUptimeWarn --> CheckYukon{Past deadline by threshold days<br/>and pastDeadlineRestartBehavior != Off?}
     CheckYukon -->|No| DetectStaged[Detect Staged<br/>Updates in Preboot]
     CheckYukon -->|Prompt| YukonPrompt[Restart-only dialog<br/>Button1 = Restart Now]
-    CheckYukon -->|Force| YukonForce[Restart-only forced dialog<br/>Timer 60, re-show on dismiss]
+    CheckYukon -->|Force| YukonForce[Restart-only forced dialog<br/>Timer 60, in-loop re-show on dismiss (~5s)]
     
     DetectStaged --> StagedSignals{Staging Signals<br/>Detected?}
     StagedSignals -->|No| SetPending[Set Pending Download<br/>Message]
@@ -208,7 +208,7 @@ flowchart TD
 - **Modes**:
   - `Off`: Keep update-focused behavior
   - `Prompt`: Restart-only dialog, normal dismiss/next-run behavior
-  - `Force`: Restart-only dialog with timer 60; timeout restarts, dismissals re-display until restart
+  - `Force`: Restart-only dialog with timer 60; timeout restarts, and non-restart dismissals re-display in the same run (after ~5 seconds) until restart
 - **Deferral behavior**:
   - `Prompt` keeps quiet period and meeting-delay checks
   - `Force` bypasses quiet period and meeting-delay checks
@@ -268,7 +268,7 @@ After dialog displays, user can:
    - Exits
 
 6. **Yukon Cornelius Force Dismissal**:
-   - For return codes other than restart pathways, dialog re-displays until restart occurs
+   - For return codes other than restart pathways, dialog re-displays within the current execution (not just next LaunchDaemon run) until restart occurs
 
 ## Configuration Parameters
 

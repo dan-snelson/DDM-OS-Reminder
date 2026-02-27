@@ -282,7 +282,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Mode Behavior**:
 - `Off`: Keep normal update-focused reminder behavior
 - `Prompt`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
-- `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart and dismissal paths are re-shown until restart
+- `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart, and non-restart dismissals are re-shown in the same run (after ~5 seconds) until restart
 
 **Eligibility Requirements**:
 - `versionComparisonResult` = Update Required

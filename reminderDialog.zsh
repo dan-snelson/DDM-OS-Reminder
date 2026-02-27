@@ -1403,8 +1403,13 @@ function applypastDeadlineDialogOverrides() {
     # helpimage=""
     hideSecondaryButton="YES"
 
-    title="Restart Your Mac"
-    message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the {ddmVersionStringDeadlineHumanReadable} deadline to update to macOS {ddmVersionString} and has been powered-on for **{uptimeHumanReadable}**.<br><br>Click **{button1text}** to restart now to help complete the required macOS {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    if isPastDeadlineForceMode; then
+        title="Your Mac is restarting"
+        message="**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgrade:l} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    else
+        title="Restart Your Mac"
+        message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgrade:l} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    fi
 
     # Restart-focused dialog mode intentionally suppresses extra warning blocks.
     excessiveUptimeWarningMessage=""

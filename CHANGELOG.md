@@ -2,11 +2,12 @@
 
 ## Changelog
 
-### Version 2.6.0b2 (27-Feb-2026)
-- Added "Code Name: Yukon Cornelius" restart-mode logic in `reminderDialog.zsh` with new `PastDeadlineRestart` preference values: `Off`, `Invite`, `Force` ([Feature Request #75](https://github.com/dan-snelson/DDM-OS-Reminder/issues/75))
-- Added restart-only dialog behavior for past-deadline + excessive-uptime scenarios, including force mode timer-based restart and re-display handling on dismissal
-- Updated docs and sample configuration to include `PastDeadlineRestart` and runtime decision-tree updates
+### Version 2.6.0b3 (27-Feb-2026)
+- Added "Code Name: Yukon Cornelius" restart-mode logic in `reminderDialog.zsh` with `PastDeadlineRestartBehavior` preference values: `Off`, `Prompt`, `Force` ([Feature Request #75](https://github.com/dan-snelson/DDM-OS-Reminder/issues/75))
+- Added `DaysPastDeadlineRestartWorkflow` threshold support to trigger restart workflow by days past the DDM deadline (independent of uptime warning threshold)
+- Updated docs and sample configuration to include `PastDeadlineRestartBehavior`, `DaysPastDeadlineRestartWorkflow`, and runtime decision-tree updates
 - Added `computeInfoboxHighlights()` to render `Deadline`, `Day(s) Remaining`, and `Last Restart` as `:red[...]` in `infobox` (via new display placeholders) when their respective past-due/threshold conditions are met on markdown-color-capable swiftDialog versions.
+- Refactored "Yukon Cornelius" restart enforcement to use `PastDeadlineRestartBehavior` (`Off|Prompt|Force`) with a dedicated `DaysPastDeadlineRestartWorkflow` days-past-deadline threshold, plus aligned configs/docs and infobox past-due highlighting improvements.
 
 ### Version 2.5.0 (19-Feb-2026)
 - Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))

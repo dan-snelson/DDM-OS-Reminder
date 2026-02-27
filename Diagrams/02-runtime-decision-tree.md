@@ -41,9 +41,9 @@ flowchart TD
     CheckUptime --> UptimeOK{Excessive<br/>Uptime?<br/>≥ warning threshold}
     UptimeOK -->|Yes| SetUptimeWarn[Set Uptime Warning<br/>Message Flag]
     UptimeOK -->|No| DetectStaged
-    SetUptimeWarn --> CheckYukon{Past deadline + excessive uptime<br/>and pastDeadlineRestart != Off?}
+    SetUptimeWarn --> CheckYukon{Past deadline by threshold days<br/>and pastDeadlineRestartBehavior != Off?}
     CheckYukon -->|No| DetectStaged[Detect Staged<br/>Updates in Preboot]
-    CheckYukon -->|Invite| YukonInvite[Restart-only dialog<br/>Button1 = Restart Now]
+    CheckYukon -->|Prompt| YukonPrompt[Restart-only dialog<br/>Button1 = Restart Now]
     CheckYukon -->|Force| YukonForce[Restart-only forced dialog<br/>Timer 60, re-show on dismiss]
     
     DetectStaged --> StagedSignals{Staging Signals<br/>Detected?}
@@ -70,7 +70,7 @@ flowchart TD
     Standard --> Display[Display swiftDialog]
     Blur --> Display
     Urgent --> Display
-    YukonInvite --> Display
+    YukonPrompt --> Display
     YukonForce --> Display
     
     Display --> UserAction{User<br/>Action?}
@@ -131,7 +131,7 @@ flowchart TD
     style Standard fill:#c8e6c9
     style Blur fill:#fff59d
     style Urgent fill:#ffab91
-    style YukonInvite fill:#ffe082
+    style YukonPrompt fill:#ffe082
     style YukonForce fill:#ff8a80
     
     style Display fill:#81c784
@@ -200,18 +200,17 @@ flowchart TD
 - **Action**: Adds warning message to dialog (doesn't block display)
 
 ### 11. Yukon Cornelius Restart Mode
-- **Check**: Is `pastDeadlineRestart` set to `Invite` or `Force`, while all eligibility conditions are true?
+- **Check**: Is `pastDeadlineRestartBehavior` set to `Prompt` or `Force`, while all eligibility conditions are true?
 - **Eligibility**:
   - `versionComparisonResult` is `Update Required`
   - DDM deadline is in the past
-  - `daysOfExcessiveUptimeWarning` > 0
-  - Current uptime exceeds configured threshold
+  - Days past DDM deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
 - **Modes**:
   - `Off`: Keep update-focused behavior
-  - `Invite`: Restart-only dialog, normal dismiss/next-run behavior
+  - `Prompt`: Restart-only dialog, normal dismiss/next-run behavior
   - `Force`: Restart-only dialog with timer 60; timeout restarts, dismissals re-display until restart
 - **Deferral behavior**:
-  - `Invite` keeps quiet period and meeting-delay checks
+  - `Prompt` keeps quiet period and meeting-delay checks
   - `Force` bypasses quiet period and meeting-delay checks
 
 ### 12. Staged Update Detection
@@ -281,7 +280,8 @@ Key preferences that affect decision tree:
 | `daysBeforeDeadlineBlurscreen` | 45 | Blurscreen activation |
 | `daysBeforeDeadlineHidingButton2` | 21 | Button 2 disable/hide |
 | `daysOfExcessiveUptimeWarning` | 0 (disabled) | Uptime warning threshold |
-| `pastDeadlineRestart` | Off | Yukon Cornelius mode (`Off` / `Invite` / `Force`) |
+| `daysPastDeadlineRestartWorkflow` | 2 | Days-past-deadline threshold for Yukon mode |
+| `pastDeadlineRestartBehavior` | Off | Yukon Cornelius mode (`Off` / `Prompt` / `Force`) |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
 | `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |
 | `minimumDiskFreePercentage` | 99 | Disk space warning |

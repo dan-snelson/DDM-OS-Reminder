@@ -28,7 +28,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineBlurscreen | DaysBeforeDeadlineBlurscreen | Integer | 45 | Timing |
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
-| pastDeadlineRestart | PastDeadlineRestart | String (`Off` \| `Invite` \| `Force`) | Off | Timing |
+| daysPastDeadlineRestartWorkflow | DaysPastDeadlineRestartWorkflow | Integer | 2 | Timing |
+| pastDeadlineRestartBehavior | PastDeadlineRestartBehavior | String (`Off` \| `Prompt` \| `Force`) | Off | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
@@ -244,40 +245,65 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-#### pastDeadlineRestart
-**Plist Key**: `PastDeadlineRestart`  
+#### daysPastDeadlineRestartWorkflow
+**Plist Key**: `DaysPastDeadlineRestartWorkflow`  
+**Type**: Integer  
+**Default**: 2  
+**Valid Range**: 0-999
+
+**Description**: Number of whole days past the DDM enforcement deadline required before Yukon Cornelius restart workflow becomes eligible.
+
+**Impact**:
+- 2 = eligible after two full days past deadline (default)
+- Higher values delay restart workflow activation
+- Applies only when `pastDeadlineRestartBehavior` is not `Off`
+
+**Script Default**:
+```bash
+["daysPastDeadlineRestartWorkflow"]="numeric|2"
+```
+
+**Configuration Profile**:
+```xml
+<key>DaysPastDeadlineRestartWorkflow</key>
+<integer>2</integer>
+```
+
+---
+
+#### pastDeadlineRestartBehavior
+**Plist Key**: `PastDeadlineRestartBehavior`  
 **Type**: String enum  
 **Default**: `Off`  
-**Valid Values**: `Off` | `Invite` | `Force` (case-insensitive)
+**Valid Values**: `Off` | `Prompt` | `Force` (case-insensitive)
 
-**Description**: Controls Yukon Cornelius behavior when both conditions are true: the DDM deadline is in the past and system uptime exceeds `daysOfExcessiveUptimeWarning`.
+**Description**: Controls Yukon Cornelius behavior when both conditions are true: the DDM deadline is in the past and elapsed past-deadline days meet `daysPastDeadlineRestartWorkflow`.
 
 **Mode Behavior**:
 - `Off`: Keep normal update-focused reminder behavior
-- `Invite`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
+- `Prompt`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
 - `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart and dismissal paths are re-shown until restart
 
 **Eligibility Requirements**:
 - `versionComparisonResult` = Update Required
 - DDM enforcement deadline is in the past
-- `daysOfExcessiveUptimeWarning` > 0
-- Uptime exceeds configured threshold
+- Days past DDM deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
 
 **Script Default**:
 ```bash
-["pastDeadlineRestart"]="string|Off"
+["pastDeadlineRestartBehavior"]="string|Off"
 ```
 
 **Configuration Profile**:
 ```xml
-<key>PastDeadlineRestart</key>
+<key>PastDeadlineRestartBehavior</key>
 <string>Off</string>
 ```
 
 **Local Preference**:
 ```bash
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
-    PastDeadlineRestart -string "Invite"
+    PastDeadlineRestartBehavior -string "Prompt"
 ```
 
 ---
@@ -1209,7 +1235,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.6.0b2 |
+| `{scriptVersion}` | System | Script version | 2.6.0b3 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1687,10 +1713,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
-| 2.6.0b2 | 2026-02-27 | Added `pastDeadlineRestart` configuration and Yukon Cornelius behavior documentation |
+| 2.6.0b3 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
 
 ---
 
 **Last Updated**: February 27, 2026
-**DDM OS Reminder Version**: 2.6.0b2
-**Variables Documented**: 34 configurable preferences
+**DDM OS Reminder Version**: 2.6.0b3
+**Variables Documented**: 35 configurable preferences

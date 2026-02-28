@@ -1906,12 +1906,19 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Return Code 10: User quit dialog with keyboard shortcut
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
 
-    lastInteractionLine=$(grep -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | tail -1)
+    lastInteractionLineWithNumber=$(grep -n -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | tail -1)
+    lastInteractionLineNumber=$(echo "${lastInteractionLineWithNumber}" | cut -d: -f1)
+    lastInteractionLine=$(echo "${lastInteractionLineWithNumber}" | cut -d: -f2-)
     lastInteraction=$(echo "${lastInteractionLine}" | sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
 
     # Ignore restart-mode interactions so a post-reboot update/upgrade reminder is not suppressed.
-    if [[ -n "${lastInteraction}" ]]; then
-        restartRelatedAtLastInteraction=$(grep -E "^[^:]+: ${lastInteraction} - \\[[A-Z ]+\\].*(clicked Restart Now|forcing restart|Restart command 'Restart)" "${scriptLog}" | tail -1)
+    if [[ -n "${lastInteraction}" && -n "${lastInteractionLineNumber}" ]]; then
+        restartRelatedPattern="forcing restart|Restart command 'Restart( Confirm)?'|Failed to invoke restart command 'Restart( Confirm)?'"
+        restartRelatedAtLastInteraction=$(awk -v startLine="${lastInteractionLineNumber}" -v restartPattern="${restartRelatedPattern}" '
+            NR <= startLine { next }
+            /\[INFO\].*Return Code: (0|2|3|4|10)/ { exit }
+            $0 ~ restartPattern { print; exit }
+        ' "${scriptLog}")
         if [[ -n "${restartRelatedAtLastInteraction}" ]]; then
             notice "Most recent interaction was restart-related; excluding it from quiet-period suppression."
             lastInteraction=""

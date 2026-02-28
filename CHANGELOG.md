@@ -9,6 +9,7 @@
 - Added `computeInfoboxHighlights()` to render `Deadline`, `Day(s) Remaining`, and `Last Restart` as `:red[...]` in `infobox` (via new display placeholders) when their respective past-due/threshold conditions are met on markdown-color-capable swiftDialog versions.
 - Refactored "Yukon Cornelius" restart enforcement to use `PastDeadlineRestartBehavior` (`Off|Prompt|Force`) with a dedicated `DaysPastDeadlineRestartWorkflow` days-past-deadline threshold, plus aligned configs/docs and infobox past-due highlighting improvements.
 - Clarified and preserved intentional uptime semantics: `DaysOfExcessiveUptimeWarning=0` means immediate uptime warning/highlight eligibility (always warn)
+- Updated `assemble.zsh --interactive` to include an `Knowledge Base ('YES' to specify; 'NO' to hide)` prompt so Mac Admins can hide KB references without manual edits (`InfoButtonText`, `HelpImage`, and `HelpMessage` KB row) ([Feature Request #74](https://github.com/dan-snelson/DDM-OS-Reminder/issues/74); thanks for the idea, Adam!)
 
 ### Version 2.5.0 (19-Feb-2026)
 - Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))

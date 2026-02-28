@@ -738,7 +738,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>https://kb.company.com/macos-updates</string>
 ```
 
-**Special Value**: Set to empty string to hide info button entirely
+**Special Value**: None for hide behavior
+
+**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button.
 
 ---
 
@@ -764,6 +766,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>SupportKBURL</key>
 <string>[How to Update macOS](https://kb.company.com/updates)</string>
 ```
+
+**Important**: Setting `SupportKBURL` to an empty string does not automatically remove the KB row from `HelpMessage`; that row must be removed from `HelpMessage` content (or generated via `assemble.zsh --interactive` with KB features disabled).
 
 ---
 
@@ -985,6 +989,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>HelpMessage</key>
 <string>**Need Help?**&lt;br&gt;&lt;br&gt;Contact {supportTeamName}:&lt;br&gt;Phone: {supportTeamPhone}&lt;br&gt;Email: {supportTeamEmail}</string>
 ```
+
+**Assembly Note**: `assemble.zsh --interactive` with `Enable Knowledge Base features = NO` rewrites `HelpMessage` to remove the `Knowledge Base Article` row.
 
 ---
 

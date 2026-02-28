@@ -65,6 +65,7 @@ Support Team Name [IT Support] (or 'X' to exit):
 Support Team Phone [+1 (801) 555-1212] (or 'X' to exit): +1 (937) 681-1122
 Support Team Email [rescue@snelson.us] (or 'X' to exit):
 Support Team Website [https://support.snelson.us] (or 'X' to exit):
+Enable Knowledge Base features (Info button + KB row in (?) help) [YES] (or 'X' to exit):
 Support KB Title [Update macOS on Mac] (or 'X' to exit): KB8675309
 Info Button Action [https://support.snelson.us/KB8675309] (or 'X' to exit):
 Support KB Markdown Link [[KB8675309](https://support.snelson.us/KB8675309)] (or 'X' to exit):
@@ -111,6 +112,8 @@ Deployment Artifacts:
 
 ===============================================================
 ```
+
+If you enter `NO` for `Enable Knowledge Base features`, `assemble.zsh` skips the KB prompts and writes plist values to hide KB surfaces (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without the KB row).
 
 **1.2.** Deploy the appropriate artifacts
 

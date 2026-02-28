@@ -33,7 +33,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 scriptVersion="2.6.0b3"
 
 # Client-side Log
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/var/log/us.snelson.log"
 
 # Minimum Required Version of swiftDialog
 swiftDialogMinimumRequiredVersion="2.5.6.4805"
@@ -60,7 +60,7 @@ resetConfiguration="${4:-"All"}"
 humanReadableScriptName="DDM OS Reminder"
 
 # Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
+reverseDomainNameNotation="us.snelson"
 
 # Organization’s Script Name
 organizationScriptName="dor"
@@ -255,7 +255,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 scriptVersion="2.6.0b3"
 
 # Client-side Log
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/var/log/us.snelson.log"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -270,7 +270,7 @@ autoload -Uz is-at-least
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
 # Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
+reverseDomainNameNotation="us.snelson"
 
 # Organization’s Script Name
 organizationScriptName="dorm"
@@ -891,7 +891,7 @@ function updateRequiredVariables() {
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
-    applypastDeadlineDialogOverrides
+    applyPastDeadlineDialogOverrides
     buildPlaceholderMap
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
@@ -1589,7 +1589,7 @@ function computeInfoboxHighlights() {
     fi
 }
 
-function evaluatepastDeadlineState() {
+function evaluatePastDeadlineState() {
     local nowEpochValue=$(date +%s)
     local daysPastDdmDeadline=0
     local isPastDdmDeadline="NO"
@@ -1621,7 +1621,7 @@ function isPastDeadlineForceMode() {
     [[ "${pastDeadlineRestartEffective}" == "Force" ]]
 }
 
-function applypastDeadlineDialogOverrides() {
+function applyPastDeadlineDialogOverrides() {
     if [[ "${pastDeadlineRestartEffective}" == "Off" ]]; then
         return
     fi
@@ -1635,8 +1635,13 @@ function applypastDeadlineDialogOverrides() {
     # helpimage=""
     hideSecondaryButton="YES"
 
-    title="Restart Your Mac"
-    message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the {ddmVersionStringDeadlineHumanReadable} deadline to update to macOS {ddmVersionString} and has been powered-on for **{uptimeHumanReadable}**.<br><br>Click **{button1text}** to restart now to help complete the required macOS {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    if isPastDeadlineForceMode; then
+        title="Your Mac is restarting"
+        message="**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgrade:l} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    else
+        title="Restart Your Mac"
+        message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgrade:l} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    fi
 
     # Restart-focused dialog mode intentionally suppresses extra warning blocks.
     excessiveUptimeWarningMessage=""
@@ -1971,7 +1976,7 @@ preFlight "Complete"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 installedOSvsDDMenforcedOS
-evaluatepastDeadlineState
+evaluatePastDeadlineState
 
 
 

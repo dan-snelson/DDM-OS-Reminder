@@ -272,7 +272,13 @@ zsh assemble.zsh
    - Default: Value from scripts (if matching)
    - Press `X` to exit
 
-2. **Processing Output**:
+2. **IT Support & Branding Prompts** (when using `--interactive`):
+   - Support team name, phone, email, and website
+   - `Enable Knowledge Base features (YES keeps KB; NO hides Info button + KB row in (?) help)`
+   - If `YES`: prompts for `Support KB Title`, `Info Button Action`, and `Support KB Markdown Link`
+   - If `NO`: KB prompts are skipped and generated configs hide KB surfaces (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without KB row)
+
+3. **Processing Output**:
 ```
 ===============================================================
 🧩 Assemble DDM OS Reminder (2.6.0b3)

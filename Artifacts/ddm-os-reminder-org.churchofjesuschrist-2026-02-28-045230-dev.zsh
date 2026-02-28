@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.6.0b3"
+scriptVersion="2.6.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.6.0b3"
+scriptVersion="2.6.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -293,6 +293,8 @@ disableButton2InsteadOfHide="YES"
 pastDeadlineForceTimerSeconds=60
 pastDeadlineRedisplayDelaySeconds=5
 pastDeadlineRestartEffective="Off"
+pastDeadlineRestartMinimumUptimeMinutes=75
+pastDeadlineRestartSuppressedForUptime="NO"
 
 
 
@@ -891,7 +893,7 @@ function updateRequiredVariables() {
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
-    applypastDeadlineDialogOverrides
+    applyPastDeadlineDialogOverrides
     buildPlaceholderMap
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
@@ -1508,6 +1510,11 @@ function computeDynamicWarnings() {
     if (( upTimeMin < allowedUptimeMinutes )); then
         excessiveUptimeWarningMessage=""
     fi
+
+    # When restart workflow is suppressed for low uptime, avoid contradictory restart-oriented uptime warnings.
+    if [[ "${pastDeadlineRestartSuppressedForUptime}" == "YES" ]]; then
+        excessiveUptimeWarningMessage=""
+    fi
     
     # Disk Space Warning
     if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
@@ -1584,17 +1591,20 @@ function computeInfoboxHighlights() {
         infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
     fi
 
-    if (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then
+    if [[ "${pastDeadlineRestartSuppressedForUptime}" != "YES" ]] && (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then
         infoboxLastRestartDisplay=":red[${infoboxLastRestartDisplay}]"
     fi
 }
 
-function evaluatepastDeadlineState() {
+function evaluatePastDeadlineState() {
     local nowEpochValue=$(date +%s)
     local daysPastDdmDeadline=0
     local isPastDdmDeadline="NO"
     local isPastDeadlineRestartThresholdMet="NO"
+    local isPastDeadlineUptimeThresholdMet="NO"
     local isPastDeadlineEligible="NO"
+
+    pastDeadlineRestartSuppressedForUptime="NO"
 
     if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= nowEpochValue )); then
         isPastDdmDeadline="YES"
@@ -1605,15 +1615,23 @@ function evaluatepastDeadlineState() {
         isPastDeadlineRestartThresholdMet="YES"
     fi
 
-    if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+    if (( upTimeMin >= pastDeadlineRestartMinimumUptimeMinutes )); then
+        isPastDeadlineUptimeThresholdMet="YES"
+    fi
+
+    if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" && "${isPastDeadlineUptimeThresholdMet}" == "YES" ]]; then
         isPastDeadlineEligible="YES"
     fi
 
     if [[ "${isPastDeadlineEligible}" == "YES" ]]; then
         pastDeadlineRestartEffective="${pastDeadlineRestartBehavior}"
-        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past DDM deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s))."
+        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past DDM deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s); uptime ${upTimeMin} minute(s), minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s))."
     else
         pastDeadlineRestartEffective="Off"
+        if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" && "${isPastDeadlineUptimeThresholdMet}" != "YES" ]]; then
+            pastDeadlineRestartSuppressedForUptime="YES"
+            notice "Past Deadline mode '${pastDeadlineRestartBehavior}' suppressed: uptime ${upTimeMin} minute(s) is below minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s); continuing update/upgrade workflow."
+        fi
     fi
 }
 
@@ -1621,7 +1639,7 @@ function isPastDeadlineForceMode() {
     [[ "${pastDeadlineRestartEffective}" == "Force" ]]
 }
 
-function applypastDeadlineDialogOverrides() {
+function applyPastDeadlineDialogOverrides() {
     if [[ "${pastDeadlineRestartEffective}" == "Off" ]]; then
         return
     fi
@@ -1635,8 +1653,13 @@ function applypastDeadlineDialogOverrides() {
     # helpimage=""
     hideSecondaryButton="YES"
 
-    title="Restart Your Mac"
-    message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the {ddmVersionStringDeadlineHumanReadable} deadline to update to macOS {ddmVersionString} and has been powered-on for **{uptimeHumanReadable}**.<br><br>Click **{button1text}** to restart now to help complete the required macOS {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    if isPastDeadlineForceMode; then
+        title="Your Mac is restarting"
+        message="**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgrade:l} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    else
+        title="Restart Your Mac"
+        message="**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgrade:l} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    fi
 
     # Restart-focused dialog mode intentionally suppresses extra warning blocks.
     excessiveUptimeWarningMessage=""
@@ -1971,7 +1994,7 @@ preFlight "Complete"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 installedOSvsDDMenforcedOS
-evaluatepastDeadlineState
+evaluatePastDeadlineState
 
 
 
@@ -1997,9 +2020,17 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Return Code 10: User quit dialog with keyboard shortcut
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
 
-    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | \
-        tail -1 | \
-        sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
+    lastInteractionLine=$(grep -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | tail -1)
+    lastInteraction=$(echo "${lastInteractionLine}" | sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
+
+    # Ignore restart-mode interactions so a post-reboot update/upgrade reminder is not suppressed.
+    if [[ -n "${lastInteraction}" ]]; then
+        restartRelatedAtLastInteraction=$(grep -E "^[^:]+: ${lastInteraction} - \\[[A-Z ]+\\].*(clicked Restart Now|forcing restart|Restart command 'Restart)" "${scriptLog}" | tail -1)
+        if [[ -n "${restartRelatedAtLastInteraction}" ]]; then
+            notice "Most recent interaction was restart-related; excluding it from quiet-period suppression."
+            lastInteraction=""
+        fi
+    fi
 
     if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
         # Outside the deadline window; check if we should display initial/periodic reminder

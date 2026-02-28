@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.6.0b3"
+scriptVersion="2.6.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -61,6 +61,8 @@ disableButton2InsteadOfHide="YES"
 pastDeadlineForceTimerSeconds=60
 pastDeadlineRedisplayDelaySeconds=5
 pastDeadlineRestartEffective="Off"
+pastDeadlineRestartMinimumUptimeMinutes=75
+pastDeadlineRestartSuppressedForUptime="NO"
 
 
 
@@ -1276,6 +1278,11 @@ function computeDynamicWarnings() {
     if (( upTimeMin < allowedUptimeMinutes )); then
         excessiveUptimeWarningMessage=""
     fi
+
+    # When restart workflow is suppressed for low uptime, avoid contradictory restart-oriented uptime warnings.
+    if [[ "${pastDeadlineRestartSuppressedForUptime}" == "YES" ]]; then
+        excessiveUptimeWarningMessage=""
+    fi
     
     # Disk Space Warning
     if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
@@ -1352,7 +1359,7 @@ function computeInfoboxHighlights() {
         infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
     fi
 
-    if (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then
+    if [[ "${pastDeadlineRestartSuppressedForUptime}" != "YES" ]] && (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then
         infoboxLastRestartDisplay=":red[${infoboxLastRestartDisplay}]"
     fi
 }
@@ -1362,7 +1369,10 @@ function evaluatePastDeadlineState() {
     local daysPastDdmDeadline=0
     local isPastDdmDeadline="NO"
     local isPastDeadlineRestartThresholdMet="NO"
+    local isPastDeadlineUptimeThresholdMet="NO"
     local isPastDeadlineEligible="NO"
+
+    pastDeadlineRestartSuppressedForUptime="NO"
 
     if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= nowEpochValue )); then
         isPastDdmDeadline="YES"
@@ -1373,15 +1383,23 @@ function evaluatePastDeadlineState() {
         isPastDeadlineRestartThresholdMet="YES"
     fi
 
-    if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+    if (( upTimeMin >= pastDeadlineRestartMinimumUptimeMinutes )); then
+        isPastDeadlineUptimeThresholdMet="YES"
+    fi
+
+    if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" && "${isPastDeadlineUptimeThresholdMet}" == "YES" ]]; then
         isPastDeadlineEligible="YES"
     fi
 
     if [[ "${isPastDeadlineEligible}" == "YES" ]]; then
         pastDeadlineRestartEffective="${pastDeadlineRestartBehavior}"
-        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past DDM deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s))."
+        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past DDM deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s); uptime ${upTimeMin} minute(s), minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s))."
     else
         pastDeadlineRestartEffective="Off"
+        if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" && "${isPastDeadlineUptimeThresholdMet}" != "YES" ]]; then
+            pastDeadlineRestartSuppressedForUptime="YES"
+            notice "Past Deadline mode '${pastDeadlineRestartBehavior}' suppressed: uptime ${upTimeMin} minute(s) is below minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s); continuing update/upgrade workflow."
+        fi
     fi
 }
 
@@ -1888,9 +1906,24 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Return Code 10: User quit dialog with keyboard shortcut
     # These are the events that indicate the user consciously dismissed / acknowledged the dialog
 
-    lastInteraction=$(grep -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | \
-        tail -1 | \
-        sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
+    lastInteractionLineWithNumber=$(grep -n -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${scriptLog}" | tail -1)
+    lastInteractionLineNumber=$(echo "${lastInteractionLineWithNumber}" | cut -d: -f1)
+    lastInteractionLine=$(echo "${lastInteractionLineWithNumber}" | cut -d: -f2-)
+    lastInteraction=$(echo "${lastInteractionLine}" | sed -E 's/^[^:]+: ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/')
+
+    # Ignore restart-mode interactions so a post-reboot update/upgrade reminder is not suppressed.
+    if [[ -n "${lastInteraction}" && -n "${lastInteractionLineNumber}" ]]; then
+        restartRelatedPattern="forcing restart|Restart command 'Restart( Confirm)?'|Failed to invoke restart command 'Restart( Confirm)?'"
+        restartRelatedAtLastInteraction=$(awk -v startLine="${lastInteractionLineNumber}" -v restartPattern="${restartRelatedPattern}" '
+            NR <= startLine { next }
+            /\[INFO\].*Return Code: (0|2|3|4|10)/ { exit }
+            $0 ~ restartPattern { print; exit }
+        ' "${scriptLog}")
+        if [[ -n "${restartRelatedAtLastInteraction}" ]]; then
+            notice "Most recent interaction was restart-related; excluding it from quiet-period suppression."
+            lastInteraction=""
+        fi
+    fi
 
     if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
         # Outside the deadline window; check if we should display initial/periodic reminder

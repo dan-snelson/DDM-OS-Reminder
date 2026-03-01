@@ -738,7 +738,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>https://kb.company.com/macos-updates</string>
 ```
 
-**Special Value**: Set to empty string to hide info button entirely
+**Special Value**: None for hide behavior
+
+**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button.
 
 ---
 
@@ -764,6 +766,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>SupportKBURL</key>
 <string>[How to Update macOS](https://kb.company.com/updates)</string>
 ```
+
+**Important**: Setting `SupportKBURL` to an empty string does not automatically remove the KB row from `HelpMessage`; that row must be removed from `HelpMessage` content (or generated via `assemble.zsh --interactive` with KB features disabled).
 
 ---
 
@@ -985,6 +989,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>HelpMessage</key>
 <string>**Need Help?**&lt;br&gt;&lt;br&gt;Contact {supportTeamName}:&lt;br&gt;Phone: {supportTeamPhone}&lt;br&gt;Email: {supportTeamEmail}</string>
 ```
+
+**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` rewrites `HelpMessage` to remove the `Knowledge Base Article` row.
 
 ---
 
@@ -1713,10 +1719,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
-| 2.6.0b4 | 2026-02-28 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
+| 2.6.0b3 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
 
 ---
 
-**Last Updated**: 28-Feb-2026
-**DDM OS Reminder Version**: 2.6.0b4
+**Last Updated**: February 27, 2026
+**DDM OS Reminder Version**: 2.6.0b3
 **Variables Documented**: 35 configurable preferences

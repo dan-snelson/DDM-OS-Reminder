@@ -68,6 +68,8 @@ supportTeamWebsite=""
 supportKB=""
 infoButtonAction=""
 supportKBURL=""
+infoButtonText=""
+enableKnowledgeBase="true"
 organizationOverlayIconURL=""
 organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
@@ -170,7 +172,7 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --lane <dev|test|prod>       Select deployment mode"
       echo "  --interactive                Prompt for IT support and branding values"
-      echo "  --help, -h                    Show this help"
+      echo "  --help, -h                   Show this help"
       echo
       exit 0
       ;;
@@ -314,6 +316,7 @@ if [[ "${interactiveMode}" == true ]]; then
   defaultSupportTeamPhone="+1 (801) 555-1212"
   defaultSupportTeamEmail="rescue@${derivedDomain}"
   defaultSupportTeamWebsite="https://support.${derivedDomain}"
+  defaultEnableKnowledgeBase="YES"
   defaultSupportKB="Update macOS on Mac"
   defaultInfoButtonAction="${defaultSupportTeamWebsite}"
   defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
@@ -325,14 +328,33 @@ if [[ "${interactiveMode}" == true ]]; then
   promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
   promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
   promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
-  promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
+  promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
+  enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
+  if [[ -z "${enableKnowledgeBase}" ]]; then
+    echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
+    enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
+  fi
 
-  supportKbSlug="${supportKB// /-}"
-  defaultInfoButtonAction="${defaultSupportTeamWebsite}/${supportKbSlug}"
-  promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
+  if [[ "${enableKnowledgeBase}" == "true" ]]; then
+    promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
 
-  defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
-  promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+    supportKbSlug="${supportKB// /-}"
+    defaultInfoButtonAction="${supportTeamWebsite}/${supportKbSlug}"
+    promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
+
+    defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
+    promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+
+    infoButtonText="${supportKB}"
+  else
+    supportKB=""
+    infoButtonAction=""
+    supportKBURL=""
+    infoButtonText="hide"
+    echo ""
+    echo "ℹ️  Knowledge Base features disabled; hiding 'infobutton', KB row in 'helpmessage' and QR help image."
+    echo ""
+  fi
 
   promptWithDefault "Overlay Icon URL (Light)" "${defaultOrganizationOverlayIconURL}" "organizationOverlayIconURL"
   promptWithDefault "Overlay Icon URL (Dark)" "${defaultOrganizationOverlayIconURLdark}" "organizationOverlayIconURLdark"
@@ -604,9 +626,26 @@ if [[ -f "${plistSample}" ]]; then
     /usr/bin/plutil -replace SupportKB -string "${supportKB}" "${plistOutput}"
     /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
     /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
+    /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
     /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
     /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
     /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
+
+    if [[ "${enableKnowledgeBase}" != "true" ]]; then
+      /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
+
+      currentHelpMessage="$(/usr/bin/plutil -extract HelpMessage raw -o - "${plistOutput}" 2>/dev/null || true)"
+      if [[ -n "${currentHelpMessage}" ]]; then
+        updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
+        /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
+      fi
+
+      currentMessage="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
+      if [[ -n "${currentMessage}" ]]; then
+        updatedMessage="$(printf "%s" "${currentMessage}" | /usr/bin/sed 's#<br><br>For assistance, please contact \*\*{supportTeamName}\*\* by clicking the (\?) button in the bottom, right-hand corner\.##g')"
+        /usr/bin/plutil -replace Message -string "${updatedMessage}" "${plistOutput}"
+      fi
+    fi
   fi
 
   # Cleanup
@@ -804,6 +843,9 @@ case "${deploymentMode}" in
     echo "    - All placeholder text removed (clean output)"
     if [[ "${interactiveMode}" == true ]]; then
       echo "    - IT support and branding values applied from prompts"
+      if [[ "${enableKnowledgeBase}" != "true" ]]; then
+        echo "    - Knowledge Base surfaces hidden (Info button, KB row in help, QR help image)"
+      fi
     else
       echo "    - Ensure you've customized values before deployment"
       echo "      (re-run with --interactive or update source defaults)"
@@ -811,7 +853,11 @@ case "${deploymentMode}" in
     echo
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
-    echo "    - Support KB title/link and Info button URL"
+    if [[ "${interactiveMode}" == true && "${enableKnowledgeBase}" != "true" ]]; then
+      echo "    - Verify KB surfaces are hidden (Info button + KB row + QR help image)"
+    else
+      echo "    - Support KB title/link and Info button URL"
+    fi
     echo "    - Organization overlay icon URLs"
     echo "    - Button labels and dialog messages"
     echo

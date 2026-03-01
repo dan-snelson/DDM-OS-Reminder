@@ -8,6 +8,7 @@
 - Added notice-level observability logs for both restart-workflow activation and uptime-based suppression
 - Added `computeInfoboxHighlights()` to render `Deadline`, `Day(s) Remaining`, and `Last Restart` as `:red[...]` when supported by swiftDialog markdown color
 - Updated docs and sample configuration to align with restart-workflow behavior, including the 75-minute uptime requirement and `DaysOfExcessiveUptimeWarning=0` semantics
+- Updated `assemble.zsh --interactive` to include a `Knowledge Base ('YES' to specify; 'NO' to hide)` prompt so Mac Admins can hide KB references without manual edits (`InfoButtonText`, `HelpImage`, and `HelpMessage` KB row) ([Feature Request #74](https://github.com/dan-snelson/DDM-OS-Reminder/issues/74); thanks for the idea, Adam!)
 
 ### Version 2.5.0 (19-Feb-2026)
 - Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))

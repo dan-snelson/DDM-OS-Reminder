@@ -288,6 +288,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - `versionComparisonResult` = Update Required
 - DDM enforcement deadline is in the past
 - Days past DDM deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
+- Current uptime is greater than or equal to 75 minutes
 
 **Script Default**:
 ```bash
@@ -1720,9 +1721,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0b3 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
+| 2.6.0b4 | 2026-02-28 | Clarified support KB hide behavior and documented the 75-minute minimum uptime eligibility for Yukon Cornelius restart workflow |
 
 ---
 
-**Last Updated**: February 27, 2026
-**DDM OS Reminder Version**: 2.6.0b3
+**Last Updated**: February 28, 2026
+**DDM OS Reminder Version**: 2.6.0b4
 **Variables Documented**: 35 configurable preferences

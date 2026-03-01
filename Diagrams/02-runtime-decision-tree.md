@@ -40,11 +40,11 @@ flowchart TD
     
     CheckUptime --> UptimeOK{Excessive<br/>Uptime?<br/>≥ warning threshold}
     UptimeOK -->|Yes| SetUptimeWarn[Set Uptime Warning<br/>Message Flag]
-    UptimeOK -->|No| DetectStaged
+    UptimeOK -->|No| CheckYukon
     SetUptimeWarn --> CheckYukon{Past deadline by threshold days,<br/>uptime >= 75 minutes,<br/>and pastDeadlineRestartBehavior != Off?}
     CheckYukon -->|No| DetectStaged[Detect Staged<br/>Updates in Preboot]
     CheckYukon -->|Prompt| YukonPrompt[Restart-only dialog<br/>Button1 = Restart Now]
-    CheckYukon -->|Force| YukonForce[Restart-only forced dialog<br/>Timer 60, in-loop re-show on dismiss (~5s)]
+    CheckYukon -->|Force| YukonForce[Restart-only forced dialog<br/>Timer 60, in-loop re-show on dismiss after ~5s]
     
     DetectStaged --> StagedSignals{Staging Signals<br/>Detected?}
     StagedSignals -->|No| SetPending[Set Pending Download<br/>Message]

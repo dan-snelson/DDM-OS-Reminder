@@ -30,10 +30,10 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.6.0b3"
+scriptVersion="2.6.0b4"
 
 # Client-side Log
-scriptLog="/var/log/us.snelson.log"
+scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
 swiftDialogMinimumRequiredVersion="2.5.6.4805"
@@ -60,7 +60,7 @@ resetConfiguration="${4:-"All"}"
 humanReadableScriptName="DDM OS Reminder"
 
 # Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="us.snelson"
+reverseDomainNameNotation="org.churchofjesuschrist"
 
 # Organization’s Script Name
 organizationScriptName="dor"
@@ -252,10 +252,10 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="2.6.0b3"
+scriptVersion="2.6.0b4"
 
 # Client-side Log
-scriptLog="/var/log/us.snelson.log"
+scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -270,7 +270,7 @@ autoload -Uz is-at-least
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
 # Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="us.snelson"
+reverseDomainNameNotation="org.churchofjesuschrist"
 
 # Organization’s Script Name
 organizationScriptName="dorm"

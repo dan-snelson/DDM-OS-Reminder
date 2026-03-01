@@ -990,7 +990,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>**Need Help?**&lt;br&gt;&lt;br&gt;Contact {supportTeamName}:&lt;br&gt;Phone: {supportTeamPhone}&lt;br&gt;Email: {supportTeamEmail}</string>
 ```
 
-**Assembly Note**: `assemble.zsh --interactive` with `Enable Knowledge Base features = NO` rewrites `HelpMessage` to remove the `Knowledge Base Article` row.
+**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` rewrites `HelpMessage` to remove the `Knowledge Base Article` row.
 
 ---
 
@@ -1241,7 +1241,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.6.0b3 |
+| `{scriptVersion}` | System | Script version | 2.6.0b4 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1719,10 +1719,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
-| 2.6.0b3 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
+| 2.6.0b4 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
 
 ---
 
 **Last Updated**: February 27, 2026
-**DDM OS Reminder Version**: 2.6.0b3
+**DDM OS Reminder Version**: 2.6.0b4
 **Variables Documented**: 35 configurable preferences

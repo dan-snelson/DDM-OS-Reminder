@@ -331,7 +331,7 @@ if [[ "${interactiveMode}" == true ]]; then
   promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
   enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
   if [[ -z "${enableKnowledgeBase}" ]]; then
-    echo "⚠️  Invalid input for Enable Knowledge Base features; defaulting to ${defaultEnableKnowledgeBase}"
+    echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
     enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
   fi
 
@@ -339,7 +339,7 @@ if [[ "${interactiveMode}" == true ]]; then
     promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
 
     supportKbSlug="${supportKB// /-}"
-    defaultInfoButtonAction="${defaultSupportTeamWebsite}/${supportKbSlug}"
+    defaultInfoButtonAction="${supportTeamWebsite}/${supportKbSlug}"
     promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
 
     defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
@@ -638,6 +638,12 @@ if [[ -f "${plistSample}" ]]; then
       if [[ -n "${currentHelpMessage}" ]]; then
         updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
         /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
+      fi
+
+      currentMessage="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
+      if [[ -n "${currentMessage}" ]]; then
+        updatedMessage="$(printf "%s" "${currentMessage}" | /usr/bin/sed 's#<br><br>For assistance, please contact \*\*{supportTeamName}\*\* by clicking the (\?) button in the bottom, right-hand corner\.##g')"
+        /usr/bin/plutil -replace Message -string "${updatedMessage}" "${plistOutput}"
       fi
     fi
   fi

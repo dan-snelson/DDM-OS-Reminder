@@ -30,6 +30,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - :new: **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
+
 <img src="images/restartPrompt.png" alt="Prompt: Restart Your Mac" width="400" /> <img src="images/restartForce.png" alt="Force: Your Mac is restarting" width="400" />
 
 ## Support

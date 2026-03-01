@@ -41,7 +41,7 @@ flowchart TD
     CheckUptime --> UptimeOK{Excessive<br/>Uptime?<br/>≥ warning threshold}
     UptimeOK -->|Yes| SetUptimeWarn[Set Uptime Warning<br/>Message Flag]
     UptimeOK -->|No| DetectStaged
-    SetUptimeWarn --> CheckYukon{Past deadline by threshold days<br/>and pastDeadlineRestartBehavior != Off?}
+    SetUptimeWarn --> CheckYukon{Past deadline by threshold days,<br/>uptime >= 75 minutes,<br/>and pastDeadlineRestartBehavior != Off?}
     CheckYukon -->|No| DetectStaged[Detect Staged<br/>Updates in Preboot]
     CheckYukon -->|Prompt| YukonPrompt[Restart-only dialog<br/>Button1 = Restart Now]
     CheckYukon -->|Force| YukonForce[Restart-only forced dialog<br/>Timer 60, in-loop re-show on dismiss (~5s)]
@@ -205,6 +205,7 @@ flowchart TD
   - `versionComparisonResult` is `Update Required`
   - DDM deadline is in the past
   - Days past DDM deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
+  - Current uptime is greater than or equal to 75 minutes
 - **Modes**:
   - `Off`: Keep update-focused behavior
   - `Prompt`: Restart-only dialog, normal dismiss/next-run behavior

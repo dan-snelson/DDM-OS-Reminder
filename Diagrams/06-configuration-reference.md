@@ -1719,10 +1719,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
 | 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
-| 2.6.0b4 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
+| 2.6.0b3 | 2026-02-27 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` configuration documentation for Yukon Cornelius behavior |
 
 ---
 
 **Last Updated**: February 27, 2026
-**DDM OS Reminder Version**: 2.6.0b4
+**DDM OS Reminder Version**: 2.6.0b3
 **Variables Documented**: 35 configurable preferences

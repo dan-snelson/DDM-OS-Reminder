@@ -1,7 +1,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
 # DDM OS Reminder (2.6.0b4)
-> Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now delivers **smarter staged-update validation**, **clear red enforcement messaging**, and **deadline language users immediately understand**
+> Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **configurable post-deadline restart behavior**, **red at-a-glance urgency highlights**, and **cleaner deployment control over end-user support messaging**
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -29,8 +29,8 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
-
-<img src="images/ddmOSReminder_Demo.png" alt="A built-in 'demo' mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease." width="500"/>
+- :new: **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
+<img src="images/restartPrompt.png" alt="Prompt: Restart Your Mac" width="400" /> <img src="images/restartForce.png" alt="Force: Your Mac is restarting" width="400" />
 
 ## Support
 

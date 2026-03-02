@@ -47,55 +47,78 @@ graph TB
         INST -->|Creates| CLILD["/Library/LaunchDaemons/<br>(RDNN).dor.plist"]
         INST -->|Installs if needed| SD["swiftDialog.app"]
         
-        MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).{orgScriptName}.plist"]
+        MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).dorm.plist"]
+        LOCALPREF["/Library/Preferences/<br>(RDNN).dorm.plist<br>(optional local overrides)"]
         
         style INST fill:#fff4e6
         style CLISCRIPT fill:#e1f5ff
         style CLILD fill:#e1f5ff
         style SD fill:#e1f5ff
         style MGDPREF fill:#f3e5f5
+        style LOCALPREF fill:#f3e5f5
     end
     
     subgraph Runtime["▶️ Runtime Execution"]
         CLILD -->|RunAtLoad + schedule<br/>8am & 4pm daily| CLISCRIPT
         
-        CLISCRIPT -->|1. Loads preferences| MGDPREF
-        CLISCRIPT -->|2. Checks for user| USER{"Logged-in<br>User?"}
-        CLISCRIPT -->|3. Parses install log| INSTLOG["/var/log/install.log<br>DDM enforcement data"]
-        CLISCRIPT -->|4. Compares versions| OSVER["macOS Version<br>Check"]
-        CLISCRIPT -->|5. Checks context| CONTEXT["User Context<br>Focus/Meetings"]
-        CLISCRIPT -->|6. Displays dialog| SD
+        CLISCRIPT -->|1. Loads preferences| PREFLOAD["Preference Loader<br/>Managed → Local → Defaults"]
+        MGDPREF --> PREFLOAD
+        LOCALPREF --> PREFLOAD
         
-        USER -->|Yes| INSTLOG
-        USER -->|No| EXIT1[Exit Silently]
+        PREFLOAD -->|2. Validates runtime| USER{"Logged-in User?<br/>Wait up to 120s"}
         
-        INSTLOG --> OSVER
-        OSVER -->|Update Required| CONTEXT
+        USER -->|No| EXIT1[FATAL ERROR<br/>No user session]
+        USER -->|Yes| INSTLOG["/var/log/install.log<br/>DDM enforcement data"]
+        
+        INSTLOG --> DDMEVAL["Deadline Evaluation<br/>EnforcedInstallDate +<br/>padded-date handling"]
+        DDMEVAL --> OSVER["macOS Version<br/>Check"]
         OSVER -->|Up to Date| EXIT2[Exit Silently]
+        OSVER -->|Update Required| GATES["Reminder Gates<br/>Display window + periodic (28d)<br/>quiet period (76m)"]
         
-        CONTEXT -->|Available| SD
-        CONTEXT -->|In Meeting| DELAY[Delay 75 min]
+        GATES -->|Skip this run| EXIT3[Exit Silently]
+        GATES -->|Proceed| RESTARTCHK{"Post-deadline restart<br/>eligible?"}
         
-        SD -->|"User clicks<br>Open Software Update"| SU["System Settings<br>Software Update"]
-        SD -->|"User clicks<br>Remind Me Later"| LOG["Log Entry<br>& Exit"]
+        RESTARTCHK -->|No| CONTEXT["Availability Checks<br/>Meeting deferral only when >24h<br/>and not Force mode"]
+        RESTARTCHK -->|Prompt / Force| RSMODE["Restart-only dialog mode<br/>Prompt or Force"]
+        
+        CONTEXT -->|Assertions active| DELAY["5-minute checks up to<br/>meetingDelay, then proceed"]
+        CONTEXT -->|Proceed| DIALOG["swiftDialog UI"]
+        DELAY --> DIALOG
+        RSMODE --> DIALOG
+        
+        DIALOG -->|"Update-flow Button 1"| SU["System Settings<br/>Software Update"]
+        DIALOG -->|"Restart action or<br/>Force timer expiry"| RESTARTCMD["Restart Command<br/>Issued"]
+        DIALOG -->|"Info button"| INFO["Open InfoButtonAction URL<br/>conditional redisplay near deadline"]
+        DIALOG -->|"Dismiss / DND / postpone"| LOG["Log Entry<br/>& Exit"]
+        INFO --> LOG
         
         style USER fill:#ffccbc
         style INSTLOG fill:#b2dfdb
+        style DDMEVAL fill:#b2dfdb
         style OSVER fill:#b2dfdb
+        style GATES fill:#b2dfdb
+        style RESTARTCHK fill:#ffcc80
         style CONTEXT fill:#b2dfdb
-        style EXIT1 fill:#cfd8dc
+        style RSMODE fill:#ffcc80
+        style DIALOG fill:#c8e6c9
+        style EXIT1 fill:#ef5350
         style EXIT2 fill:#cfd8dc
+        style EXIT3 fill:#cfd8dc
         style DELAY fill:#fff9c4
         style SU fill:#c5e1a5
+        style RESTARTCMD fill:#ffcdd2
+        style INFO fill:#90caf9
         style LOG fill:#cfd8dc
     end
     
     subgraph External["🍎 Apple Systems"]
         DDM["Declarative Device<br>Management"]
-        DDM -->|Enforces deadline| INSTLOG
-        DDM -->|"Forces update at<br>deadline"| RESTART["Automatic Restart"]
+        DDM -->|Writes enforcement and padded-date entries| INSTLOG
+        DDM -->|Applies enforcement event| RESTART["Apple-managed Restart/Event"]
         
         SU -->|Downloads & installs| MACOS[macOS Update]
+        RESTARTCMD -->|Restart initiated| MACOS
+        RESTART -->|Forced platform behavior| MACOS
         
         style DDM fill:#e3f2fd
         style RESTART fill:#ffcdd2
@@ -137,17 +160,18 @@ graph TB
 ### Runtime Execution
 1. **LaunchDaemon triggers** at load and on scheduled times (default: 8am, 4pm)
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
-3. **User validation** ensures someone is logged in
-4. **Log parsing** extracts DDM enforcement dates from install.log
+3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
+4. **Log parsing and deadline evaluation** read both enforcement and padded-date paths from install.log
 5. **Version comparison** determines if update is required
-6. **Context checking** respects user's Focus mode and meetings
-7. **Dialog display** with deadline-appropriate behavior (blurscreen, button visibility)
-8. **User interaction** leads to Software Update or delayed reminder
+6. **Reminder gating** applies display-window, periodic reminder, and quiet-period logic
+7. **Post-deadline mode evaluation** determines update-flow vs restart-only (Prompt/Force)
+8. **Availability checks** apply meeting-delay only when >24h to deadline and not in Force mode
+9. **Dialog and actions** route to Software Update, restart action, info URL flow, or logged dismissal
 
 ### Apple Integration
-- **DDM** enforces update deadlines and writes enforcement data to install.log
+- **DDM** writes enforcement state into install.log and controls platform-level enforcement behavior
 - **Software Update** handles the actual macOS update process
-- **Forced restart** occurs at deadline if user hasn't updated
+- **Apple enforcement event** may follow the original deadline using Apple's padded-date path logic
 
 ## Data Flow
 
@@ -164,5 +188,5 @@ Development → Assembly → MDM → Client Installation → Runtime Execution �
 3. **Automated scheduling**: LaunchDaemon ensures regular reminders
 4. **User-friendly**: swiftDialog provides polished UI
 5. **DDM-aware**: Reads Apple's enforcement data, no MDM API required
-6. **Intelligent**: Respects user context (meetings, Focus mode)
-7. **Deadline-driven**: Behavior adapts as deadline approaches
+6. **Context-aware**: Handles meetings, DND return codes, and deadline-proximity exceptions
+7. **Deadline-driven**: Behavior adapts before and after deadline, including optional restart workflow

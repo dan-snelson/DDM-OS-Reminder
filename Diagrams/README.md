@@ -288,9 +288,9 @@ graph TD
 ```mermaid
 gantt
     title Project Timeline
-    dateFormat YYYY-MM-DD
+    dateFormat DD-MMM-YYYY
     section Phase 1
-    Task 1 :a1, 2026-01-01, 30d
+    Task 1 :a1, 01-Jan-2026, 30d
 ```
 
 **Subgraphs** (Grouping):
@@ -468,11 +468,11 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.2 | 2026-02-14 | Updated staged-update documentation in 02/06 for proposed metadata validation and pending-download normalization behavior |
-| 1.0.1 | 2026-02-05 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
+| 1.0.2 | 01-Mar-2026 | Updated staged-update documentation in 02/06 for proposed metadata validation and pending-download normalization behavior |
+| 1.0.1 | 05-Feb-2026 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
 |       |            | - Removed legacy `*-1.png` files |
 |       |            | - Clarified 06 configuration reference is text-only |
-| 1.0.0 | 2026-01-19 | Initial diagram collection created |
+| 1.0.0 | 19-Jan-2026 | Initial diagram collection created |
 |       |            | - System Architecture |
 |       |            | - Runtime Decision Tree |
 |       |            | - Deadline Timeline |
@@ -481,5 +481,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: February 14, 2026
-**DDM OS Reminder Version**: 2.6.0b4
+**Last Updated**: 01-Mar-2026
+**DDM OS Reminder Version**: 2.6.0

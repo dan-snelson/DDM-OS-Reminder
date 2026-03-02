@@ -1,6 +1,6 @@
 # Deadline Timeline Visualization
 
-This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches, providing increasingly urgent messaging and UI changes.
+This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including the optional 2.6.0 post-deadline restart workflow.
 
 ```mermaid
 gantt
@@ -13,16 +13,20 @@ gantt
     Standard Dialog             :active, standard, 2026-06-02, 15d
     Blurscreen Dialog           :crit, blur, 2026-06-17, 24d
     Urgent Dialog               :urgent, 2026-07-11, 21d
-    Apple Forces Update         :milestone, force, 2026-08-01, 1d
+    Post-Deadline Update Flow   :postupdate, 2026-08-01, 2d
+    Restart Prompt Flow         :postprompt, 2026-08-03, 2d
+    Forced Restart Flow         :crit, postforce, 2026-08-03, 2d
+    Apple Forces Update         :milestone, force, 2026-08-05, 1d
     
     section Key Milestones
     First Reminder              :milestone, m1, 2026-06-02, 0d
     Blurscreen Activates        :milestone, m2, 2026-06-17, 0d
     Button Disabled/Hidden      :milestone, m3, 2026-07-11, 0d
     DDM Deadline                :milestone, m4, 2026-08-01, 0d
+    Restart Eligible (Default)  :milestone, m5, 2026-08-03, 0d
 ```
 
-**Note**: Dates above are an illustrative example only, not tied to a specific enforcement schedule.
+**Note**: Dates above are illustrative only. Post-deadline behavior depends on `PastDeadlineRestartBehavior`, `DaysPastDeadlineRestartWorkflow`, and uptime eligibility.
 
 ## Timeline Phases
 
@@ -30,9 +34,10 @@ gantt
 **Timeline**: More than 60 days before deadline (configurable)
 
 **Behavior**:
-- ❌ No reminders displayed
+- ❌ No regular reminders displayed
 - Mac operates normally
 - DDM enforcement date exists but deadline is far away
+- ℹ️ A periodic reminder can still appear every 28 days if no recent interaction is found
 
 **Rationale**: Don't annoy users when deadline is distant
 
@@ -64,7 +69,7 @@ gantt
 - ❌ No blurscreen
 - ℹ️ Informational tone
 - 📅 Shows days remaining
-- 🔄 Displayed 2x daily (8am, 4pm)
+- 🔄 Triggered by LaunchDaemon at load and scheduled times (default 8:00/16:00)
 - 🤝 Respects meeting detection
 
 **User Options**:
@@ -104,7 +109,7 @@ gantt
 - ⚠️ Warning tone intensifies
 - 🔴 Visual urgency increased
 - 📅 Emphasizes days remaining
-- 🔄 Still 2x daily
+- 🔄 Triggered by LaunchDaemon at load and scheduled times (default 8:00/16:00)
 - 🤝 Respects meeting detection
 
 **Visual Effect**:
@@ -151,7 +156,8 @@ gantt
 - ✅ Blurscreen remains active
 - 🚨 Urgent/critical messaging
 - ⏰ Shows specific deadline date/time
-- 🔄 Still 2x daily (may increase frequency in custom config)
+- 🔄 Triggered by LaunchDaemon at load and scheduled times (default 8:00/16:00)
+- ⚠️ Meeting deferral is ignored when less than 24 hours remain
 
 **Key Change**: User can no longer postpone
 
@@ -169,8 +175,32 @@ gantt
 
 ---
 
-### Phase 5: Apple DDM Enforcement (Deadline Reached)
-**Timeline**: Day 0 - Deadline date/time
+### Phase 5: Post-Deadline Workflow (2.6.0)
+**Timeline**: After the deadline has passed and update is still required
+
+**Eligibility Gate for Restart Workflow**:
+- `PastDeadlineRestartBehavior` is not `Off`
+- The Mac still requires the enforced update/upgrade
+- Days past deadline are `>= DaysPastDeadlineRestartWorkflow` (default: `2`)
+- Current uptime is at least 75 minutes (fixed runtime gate)
+
+**Mode Behavior**:
+- `Off` (default): Continue normal update-focused reminder flow
+- `Prompt`: Switch to restart-only dialog (`Restart Now`), but user can still dismiss and be reminded again later
+- `Force`: Switch to restart-only dialog with 60-second timer; non-restart dismissal re-displays after ~5 seconds until restart occurs
+
+**Runtime Notes**:
+- If restart mode is eligible by days but uptime is below 75 minutes, restart mode is temporarily suppressed and update-focused flow continues
+- Force mode bypasses quiet-period suppression and meeting-delay checks
+
+**Configuration**:
+- `PastDeadlineRestartBehavior = Off|Prompt|Force`
+- `DaysPastDeadlineRestartWorkflow = 0-999` (default `2`)
+
+---
+
+### Phase 6: Apple DDM Enforcement (Deadline Reached / Padded Enforcement Time)
+**Timeline**: At Apple's enforced restart/update event
 
 **What Happens**:
 - 🍎 **Apple DDM takes control**
@@ -180,7 +210,7 @@ gantt
 - ⏳ Process may take 30-60 minutes depending on update size
 
 **DDM OS Reminder Role**:
-- Script stops displaying reminders (update no longer pending)
+- Script continues to run and evaluate update state until device is compliant
 - After update completes and Mac restarts, script detects Mac is up-to-date
 - Future runs exit silently until next DDM enforcement
 
@@ -194,17 +224,21 @@ gantt
 
 ## Configuration Matrix
 
-| Days to Deadline | Blurscreen | Button 2 | Meeting Deferral | Frequency |
-|------------------|------------|----------|------------------|-----------|
-| 60+ days         | ❌ No      | ✅ Enabled | N/A              | None (too early) |
-| 45-60 days       | ❌ No      | ✅ Enabled | ✅ Yes           | 2x daily |
-| 21-44 days       | ✅ Yes     | ✅ Enabled | ✅ Yes           | 2x daily |
-| 1-21 days        | ✅ Yes     | ❌ Disabled | ✅ Yes          | 2x daily |
-| 0 (deadline)     | N/A        | N/A      | N/A              | Apple forces update |
+| Window / Condition | Primary UX | Button 2 | Meeting Deferral | Trigger Behavior |
+|--------------------|------------|----------|------------------|------------------|
+| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (periodic 28-day reminder still possible) | N/A when no dialog | N/A when no dialog | LaunchDaemon at load + schedule |
+| `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | LaunchDaemon at load + schedule |
+| `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | LaunchDaemon at load + schedule |
+| `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | LaunchDaemon at load + schedule |
+| `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | LaunchDaemon at load + schedule |
+| Past deadline + restart mode `Off` or not eligible | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | LaunchDaemon at load + schedule |
+| Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog | Hidden | ❌ No (deadline window) | LaunchDaemon at load + schedule |
+| Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer 60`) | Hidden | ❌ No (explicit bypass) | Re-displays every ~5 seconds until restart |
+| Apple enforcement event | Apple-controlled restart/update | N/A | N/A | macOS/DDM enforcement |
 
 ## Customizing the Timeline
 
-All thresholds are configurable via Configuration Profile or local preferences:
+Most thresholds are configurable via Configuration Profile or local preferences:
 
 ### Via Configuration Profile (Recommended)
 
@@ -217,6 +251,12 @@ All thresholds are configurable via Configuration Profile or local preferences:
 
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>21</integer>
+
+<key>PastDeadlineRestartBehavior</key>
+<string>Off</string>
+
+<key>DaysPastDeadlineRestartWorkflow</key>
+<integer>2</integer>
 ```
 
 ### Via Local Preferences Plist
@@ -230,6 +270,12 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     DaysBeforeDeadlineHidingButton2 -int 21
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineRestartBehavior -string "Off"
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    DaysPastDeadlineRestartWorkflow -int 2
 ```
 
 ### Common Configurations
@@ -239,6 +285,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 DaysBeforeDeadlineDisplayReminder = 30
 DaysBeforeDeadlineBlurscreen = 14
 DaysBeforeDeadlineHidingButton2 = 7
+PastDeadlineRestartBehavior = Off
+DaysPastDeadlineRestartWorkflow = 2
 ```
 - Later reminders
 - Shorter blurscreen period
@@ -249,6 +297,8 @@ DaysBeforeDeadlineHidingButton2 = 7
 DaysBeforeDeadlineDisplayReminder = 90
 DaysBeforeDeadlineBlurscreen = 60
 DaysBeforeDeadlineHidingButton2 = 30
+PastDeadlineRestartBehavior = Prompt
+DaysPastDeadlineRestartWorkflow = 1
 ```
 - Earlier reminders
 - Longer blurscreen period
@@ -259,6 +309,8 @@ DaysBeforeDeadlineHidingButton2 = 30
 DaysBeforeDeadlineDisplayReminder = 60
 DaysBeforeDeadlineBlurscreen = 45
 DaysBeforeDeadlineHidingButton2 = 21
+PastDeadlineRestartBehavior = Off
+DaysPastDeadlineRestartWorkflow = 2
 ```
 - 2-month warning
 - 1.5-month blurscreen
@@ -286,7 +338,7 @@ If macOS update is **pre-downloaded** to Preboot volume:
 If Mac hasn't restarted recently (configurable threshold):
 - Dialog adds warning: "Your Mac has been powered-on for X days"
 - Recommendation to restart before updating
-- Applies to all phases where dialog displays
+- Suppressed in restart-only mode and in specific low-uptime suppression paths
 
 ### Low Disk Space Warning
 If free disk space below threshold:
@@ -299,23 +351,33 @@ Between dialog displays (same day):
 - Prevents excessive nagging
 - Enforces minimum time between reminders
 - Default: 76 minutes
-- Configurable per organization
+- Currently hard-coded in runtime logic (not profile-driven)
+- Bypassed in post-deadline `Force` mode
+
+### Meeting Deferral
+Display-sleep assertion checks (`meetingDelay`) are availability controls, not absolute blockers:
+- Used when more than 24 hours remain to deadline
+- Ignored within 24 hours of deadline
+- Ignored in post-deadline `Force` mode
 
 ---
 
 ## FAQ
 
 **Q: Can users bypass the reminders?**  
-A: During early phases (>21 days), yes—users can postpone. In urgent phase (<21 days), Button 2 is disabled. At deadline (Day 0), Apple DDM forces the update regardless.
+A: During early phases (>21 days by default), users can postpone. In urgent phase (<=21 days by default), Button 2 is disabled/hidden. In post-deadline `Force` mode, dismissal loops until restart. Apple DDM enforcement still ultimately controls the final forced update/restart event.
 
 **Q: What if user is on vacation during deadline?**  
-A: Mac will update automatically at deadline per Apple DDM enforcement. User returns to updated Mac. This is why early reminders (60 days) are important.
+A: Mac updates at Apple's DDM enforcement event (which can be after the original deadline when macOS applies its padded enforcement date). User returns to an updated Mac. This is why early reminders remain important.
 
 **Q: Can admin disable blurscreen?**  
 A: Not recommended, but theoretically possible by setting very low threshold. Blurscreen is key differentiator from Apple's subtle notification.
 
 **Q: What if user needs to postpone due to critical work?**  
-A: User can postpone during early/medium phases. For critical systems, consider extending DDM deadline via MDM before reaching urgent phase.
+A: User can postpone during early/medium phases. Within 24 hours of deadline, meeting deferral is ignored. If post-deadline restart `Force` mode is enabled and eligible, postponement is not available.
+
+**Q: When does the post-deadline restart workflow start?**  
+A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least 75 minutes.
 
 **Q: How does this interact with Apple's own notifications?**  
 A: DDM OS Reminder supplements (not replaces) Apple's notifications. Apple's notification appears but is subtle. This provides prominent, configurable reminders with better visibility.

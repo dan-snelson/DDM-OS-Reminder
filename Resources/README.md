@@ -30,7 +30,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.6.0b4)
+🧩 Assemble DDM OS Reminder (2.6.0)
 ===============================================================
 
 Full Paths:
@@ -58,7 +58,7 @@ Using 'us.snelson' as the Reverse Domain Name Notation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IT Support & Branding (Interactive)
+IT Support, Branding & Restart Policy (Interactive)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Support Team Name [IT Support] (or 'X' to exit):
@@ -72,6 +72,8 @@ Support KB Markdown Link [[KB8675309](https://support.snelson.us/KB8675309)] (or
 Overlay Icon URL (Light) [https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d] (or 'X' to exit):
 Overlay Icon URL (Dark) [https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39] (or 'X' to exit):
 Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
+Past-deadline Restart Behavior (Off / [P]rompt / [F]orce) [Off] (or 'X' to exit): Prompt
+Days Past Deadline Before Restart Workflow (0-999) [2] (or 'X' to exit): 3
 
 📦 Deployment Mode: prod
 
@@ -90,7 +92,7 @@ Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
 
     🔧 Updating internal plist content …
     🔓 Production mode: removing placeholder text for clean deployment
-    🔧 Applying IT support and branding values …
+    🔧 Applying IT support, branding and restart policy values …
    → Artifacts/us.snelson.dorm-2026-02-06-092404-prod.plist
 
 🧩 Generating Configuration Profile (.mobileconfig) …
@@ -114,6 +116,8 @@ Deployment Artifacts:
 ```
 
 If you enter `NO` for `Knowledge Base ('YES' to specify; 'NO' to hide)`, `assemble.zsh` skips KB prompts and writes plist values to hide KB surfaces (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without the KB row).
+
+If you enter `Off` for `Past-deadline Restart Behavior`, `assemble.zsh` skips the `Days Past Deadline Before Restart Workflow` prompt and leaves `DaysPastDeadlineRestartWorkflow` unchanged from the sample/default value in generated artifacts.
 
 **1.2.** Deploy the appropriate artifacts
 

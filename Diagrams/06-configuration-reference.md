@@ -12,10 +12,13 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
   - [Support Team Information](#4-support-team-information)
   - [Dialog UI Text](#5-dialog-ui-text)
   - [Update Staging Messages](#6-update-staging-messages)
+  - [Warning Messages](#7-warning-messages)
 - [Placeholder Reference](#placeholder-reference)
 - [Common Configuration Scenarios](#common-configuration-scenarios)
 - [Configuration Methods](#configuration-methods)
 - [Troubleshooting](#troubleshooting)
+- [Related Documentation](#related-documentation)
+- [Version History](#version-history)
 
 ---
 
@@ -28,6 +31,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineBlurscreen | DaysBeforeDeadlineBlurscreen | Integer | 45 | Timing |
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
+| daysPastDeadlineRestartWorkflow | DaysPastDeadlineRestartWorkflow | Integer | 2 | Timing |
+| pastDeadlineRestartBehavior | PastDeadlineRestartBehavior | String (`Off` \| `Prompt` \| `Force`) | Off | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
@@ -42,6 +47,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | supportKB | SupportKB | String | Update macOS on Mac | Support |
 | infobuttonaction | InfoButtonAction | String | https://support.apple.com/108382 | Support |
 | supportKBURL | SupportKBURL | String | [Markdown link] | Support |
+| supportAssistanceMessage | SupportAssistanceMessage | String | [Support sentence with (?) button] | Support |
 | title | Title | String | macOS {placeholder} Required | UI Text |
 | button1text | Button1Text | String | Open Software Update | UI Text |
 | button2text | Button2Text | String | Remind Me Later | UI Text |
@@ -57,7 +63,9 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | helpmessage | HelpMessage | String | [Support contact info] | UI Text |
 | helpimage | HelpImage | String | qr={infobuttonaction} | UI Text |
 
-**Note**: The sample profile in `Resources/sample.plist` uses shorter timing values (for example, 14/3/1 days) intentionally for demo-friendly behavior and does not reflect script defaults. Managed or local preferences override the script defaults in production.
+**Note**: The **Variable** column shows internal script variable names; configure values using the **Plist Key** column in your profile/plist.
+
+The sample profile in `Resources/sample.plist` uses shorter timing values (for example, 14/3/1 days) intentionally for demo-friendly behavior and does not reflect script defaults. Managed or local preferences override the script defaults in production.
 
 ---
 
@@ -213,7 +221,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### daysOfExcessiveUptimeWarning
 **Plist Key**: `DaysOfExcessiveUptimeWarning`  
 **Type**: Integer  
-**Default**: 0 (disabled)  
+**Default**: 0 (immediate)  
 **Valid Range**: 0-999
 
 **Description**: Number of days without restart that triggers an uptime warning message in the dialog, recommending user restart before updating.
@@ -221,10 +229,10 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Impact**:
 - Warns users with stale system state
 - Improves update reliability
-- 0 = feature disabled
+- 0 = immediate warning trigger (any uptime)
 
 **Recommendations**:
-- **Disabled**: 0 (default)
+- **Validation / always warn**: 0 (default)
 - **Moderate**: 7 days
 - **Strict**: 3 days
 
@@ -240,6 +248,70 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Warning Message Variable**: `excessiveUptimeWarningMessage`
+
+---
+
+#### daysPastDeadlineRestartWorkflow
+**Plist Key**: `DaysPastDeadlineRestartWorkflow`  
+**Type**: Integer  
+**Default**: 2  
+**Valid Range**: 0-999
+
+**Description**: Number of whole days past the DDM enforcement deadline required before Yukon Cornelius restart workflow becomes eligible.
+
+**Impact**:
+- 2 = eligible after two full days past deadline (default)
+- Higher values delay restart workflow activation
+- Applies only when `pastDeadlineRestartBehavior` is not `Off`
+
+**Script Default**:
+```bash
+["daysPastDeadlineRestartWorkflow"]="numeric|2"
+```
+
+**Configuration Profile**:
+```xml
+<key>DaysPastDeadlineRestartWorkflow</key>
+<integer>2</integer>
+```
+
+---
+
+#### pastDeadlineRestartBehavior
+**Plist Key**: `PastDeadlineRestartBehavior`  
+**Type**: String enum  
+**Default**: `Off`  
+**Valid Values**: `Off` | `Prompt` | `Force` (case-insensitive)
+
+**Description**: Controls what happens after the DDM deadline when restart workflow eligibility is met (`daysPastDeadlineRestartWorkflow` and minimum uptime checks pass).
+
+**Mode Behavior**:
+- `Off`: Keep normal update-focused reminder behavior
+- `Prompt`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
+- `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart, and non-restart dismissals are re-shown in the same run (after ~5 seconds) until restart
+
+**Eligibility Requirements**:
+- The Mac still requires the enforced macOS update/upgrade
+- The DDM enforcement deadline has passed
+- Days past deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
+- Current uptime is at least 75 minutes
+
+**Script Default**:
+```bash
+["pastDeadlineRestartBehavior"]="string|Off"
+```
+
+**Configuration Profile**:
+```xml
+<key>PastDeadlineRestartBehavior</key>
+<string>Off</string>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineRestartBehavior -string "Prompt"
+```
 
 ---
 
@@ -282,17 +354,17 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `AcceptableAssertionApplicationNames`  
 **Type**: String  
 **Default**: `MSTeams zoom.us Webex`  
-**Valid Format**: Space-delimited list of tokens to match assertion owner names
+**Valid Format**: Space-delimited app names/keywords
 
-**Description**: Space-delimited list of meeting/presentation application names (or distinctive substrings of those names) whose Display Sleep Assertions should be tolerated. When populated, only assertions from apps whose owner names **match one of these tokens** trigger the `meetingDelay` retry loop. Assertions from apps **not** matching any token in the list allow the reminder to proceed immediately.
+**Description**: List of meeting/presentation apps used to decide whether the dialog should defer during active calls/screensharing. If an active display-sleep assertion matches one of these values, `meetingDelay` is applied; otherwise the reminder proceeds immediately.
 
 **Impact**:
-- Default (`MSTeams zoom.us Webex`) = only assertions whose owner names contain one of these tokens trigger deferral
-- Empty or whitespace-only = allowlist filtering is disabled (legacy behavior: all non-coreaudiod assertions trigger deferral)
-- Any other populated value = only assertions whose owner names match one of the listed tokens trigger deferral
-- Matching uses case-insensitive fixed-string (substring) checks
-- Helps filter out non-meeting apps that hold assertions
-To find assertion owner names while the application is active, run in Terminal:
+- Default (`MSTeams zoom.us Webex`) = defers primarily for common meeting apps
+- Empty or whitespace-only = broad matching mode (most non-core audio assertions can trigger deferral)
+- Custom list = defers only for matching apps in your list
+- Matching is case-insensitive and substring-based
+
+To discover what app names your environment reports while a meeting app is active, run:
 ```bash
 pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"
 ```
@@ -673,7 +745,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>https://kb.company.com/macos-updates</string>
 ```
 
-**Special Value**: Set to empty string to hide info button entirely
+**Special Value**: None for hide behavior
+
+**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button.
 
 ---
 
@@ -699,6 +773,33 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>SupportKBURL</key>
 <string>[How to Update macOS](https://kb.company.com/updates)</string>
 ```
+
+**Important**: Setting `SupportKBURL` to an empty string does not automatically remove the KB row from `HelpMessage`; that row must be removed from `HelpMessage` content (or generated via `assemble.zsh --interactive` with KB features disabled).
+
+---
+
+#### supportAssistanceMessage
+**Plist Key**: `SupportAssistanceMessage`  
+**Type**: String  
+**Default**: `<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.`
+
+**Description**: Message fragment appended to `Message` for end-user support guidance. This keeps KB-assisted wording isolated from the main `Message` body.
+
+**Placeholder**: `{supportAssistanceMessage}`  
+**Used In**: message
+
+**Script Default**:
+```bash
+["supportAssistanceMessage"]="string|<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+```
+
+**Configuration Profile**:
+```xml
+<key>SupportAssistanceMessage</key>
+<string>&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+```
+
+**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` sets `SupportAssistanceMessage` to an empty string so `Message` no longer references the `(?)` button.
 
 ---
 
@@ -840,6 +941,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - `{excessiveUptimeWarningMessage}` = Uptime warning (if applicable)
 - `{diskSpaceWarningMessage}` = Disk space warning (if applicable)
 - `{supportTeamName}` = Support team name
+- `{supportAssistanceMessage}` = Optional support sentence appended to message body
 - `{weekday}` = Current day of week
 
 **Script Default** (condensed):
@@ -873,20 +975,20 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Key Placeholders Used**:
 - `{installedmacOSVersion}` = Current macOS version
 - `{ddmVersionString}` = Required macOS version
-- `{ddmVersionStringDeadlineHumanReadable}` = Formatted deadline
-- `{ddmVersionStringDaysRemaining}` = Days until deadline
-- `{uptimeHumanReadable}` = Time since last restart
+- `{infoboxDeadlineDisplay}` = Formatted deadline display (red when past deadline on supported swiftDialog versions)
+- `{infoboxDaysRemainingDisplay}` = Days until deadline display (red when `<= 0` on supported swiftDialog versions)
+- `{infoboxLastRestartDisplay}` = Time since last restart display (red when uptime meets/exceeds threshold on supported swiftDialog versions)
 - `{diskSpaceHumanReadable}` = Free disk space
 
 **Script Default**:
 ```bash
-["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {ddmVersionStringDeadlineHumanReadable}..."
+["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {infoboxDeadlineDisplay}..."
 ```
 
 **Configuration Profile**:
 ```xml
 <key>InfoBox</key>
-<string>**System Info**&lt;br&gt;&lt;br&gt;Current: {installedmacOSVersion}&lt;br&gt;Target: {ddmVersionString}&lt;br&gt;Due: {ddmVersionStringDeadlineHumanReadable}</string>
+<string>**System Info**&lt;br&gt;&lt;br&gt;Current: {installedmacOSVersion}&lt;br&gt;Target: {ddmVersionString}&lt;br&gt;Due: {infoboxDeadlineDisplay}</string>
 ```
 
 ---
@@ -920,6 +1022,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>HelpMessage</key>
 <string>**Need Help?**&lt;br&gt;&lt;br&gt;Contact {supportTeamName}:&lt;br&gt;Phone: {supportTeamPhone}&lt;br&gt;Email: {supportTeamEmail}</string>
 ```
+
+**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` rewrites `HelpMessage` to remove the `Knowledge Base Article` row.
 
 ---
 
@@ -967,16 +1071,15 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: String  
 **Default**: [Message about fully staged update]
 
-**Description**: Message inserted into main dialog when script detects that the macOS update has been fully downloaded and staged in the Preboot volume (ready for quick installation).
+**Description**: Message shown when the required macOS update appears fully downloaded and ready for installation.
 
 **Supports Placeholders**: Yes  
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
-**Detection Criteria**:
-- Staging signals detected (APFS update snapshots and/or Preboot staging content)
-- `cryptex1` size exceeds ~1 GB, or total Preboot staging usage exceeds ~8 GB
-- Proposed staged version metadata is readable from `cryptex1/proposed`
-- Proposed staged version matches the DDM-enforced version
+**When This Usually Appears**:
+- The device has clear signs that update assets are fully staged
+- Staged metadata can be read
+- Staged version matches the DDM-required version
 
 **Script Default**:
 ```bash
@@ -996,16 +1099,15 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: String  
 **Default**: [Message about partial staging]
 
-**Description**: Message inserted when update is partially downloaded but not yet complete.
+**Description**: Message shown when download/preparation has started but is not fully staged yet.
 
 **Supports Placeholders**: Yes  
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
-**Detection Criteria**:
-- APFS update snapshot(s) detected (`com.apple.os.update`)
-- Full-staged size thresholds are not met
-- Proposed staged version metadata is readable from `cryptex1/proposed`
-- Proposed staged version matches the DDM-enforced version
+**When This Usually Appears**:
+- The device shows partial staging signals
+- Full staged criteria are not yet met
+- Staged version metadata is available and matches the DDM-required version
 
 **Script Default**:
 ```bash
@@ -1025,15 +1127,15 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: String  
 **Default**: [Message about pending download]
 
-**Description**: Message inserted when no staged update is detected (update will need to download when user clicks Update).
+**Description**: Message shown when the update is not yet staged and will likely need to download when the user proceeds.
 
 **Supports Placeholders**: Yes  
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
-**Detection Criteria**:
-- No staging signals detected, or
-- Staged proposed metadata is unavailable, or
-- Staged proposed version does not match the DDM-enforced version
+**When This Usually Appears**:
+- No reliable staging signals are present, or
+- Staged metadata is unavailable, or
+- Staged version does not match the DDM-required version
 
 **Script Default**:
 ```bash
@@ -1093,7 +1195,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Key Placeholder**: `{uptimeHumanReadable}`  
 **Inserted Into**: `{excessiveUptimeWarningMessage}` in `message`
 
-**Triggered When**: `daysOfExcessiveUptimeWarning` > 0 and uptime exceeds threshold
+**Triggered When**: uptime meets/exceeds `daysOfExcessiveUptimeWarning` days (`0` means immediate)
 
 **Script Default**:
 ```bash
@@ -1166,11 +1268,12 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{supportTeamWebsite}` | Config | Website URL | https://support.company.com |
 | `{supportKBURL}` | Config | KB article link | [Link text](URL) |
 | `{supportKB}` | Config | KB article title | Update macOS on Mac |
+| `{supportAssistanceMessage}` | Config | Support guidance suffix for message body | <br><br>For assistance, please contact ... |
 | `{button1text}` | Config | Primary button | Open Software Update |
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.5.0 |
+| `{scriptVersion}` | System | Script version | 2.6.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1586,7 +1689,7 @@ ls -la /Library/Managed\ Preferences/
 cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 ```
 
-**Solution**: Ensure profile domain matches script's `preferenceDomain` variable
+**Solution**: Ensure the profile domain matches your deployed preference domain (for example, `org.churchofjesuschrist.dorm` or your customized RDNN + `.dorm`).
 
 ---
 
@@ -1617,18 +1720,17 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 **Problem**: Boolean preference not working
 
-**Accepted Values**:
-- XML: `<true/>` or `<false/>`
-- defaults write: `-bool YES` or `-bool NO`
-- Script: `"boolean|YES"` or `"boolean|NO"`
+**Recommended Values by Method**:
+- Configuration Profile XML: `<true/>` or `<false/>`
+- `defaults write`: `-bool YES` or `-bool NO`
+- Script defaults (`preferenceConfiguration`): `"boolean|YES"` or `"boolean|NO"`
 
-**Also Accepted** (normalized by script):
+**Also Tolerated at Runtime**:
 - `1` / `0`
 - `true` / `false`
-- `YES` / `NO` (case-insensitive)
+- `yes` / `no` (case-insensitive)
 
-**Not Accepted**:
-- Strings: `"true"`, `"false"`, `"YES"`, `"NO"`
+**Important**: String booleans (for example `<string>YES</string>`) may still be normalized by the script, but they are not recommended because they are easy to misread and can fail stricter plist validation/policy checks.
 
 ---
 
@@ -1646,11 +1748,12 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.3.0 | 2026-01-19 | Initial configuration reference documentation |
-| 2.5.0 | 2026-02-14 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
+| 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
+| 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
+| 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
 
 ---
 
-**Last Updated**: February 14, 2026
-**DDM OS Reminder Version**: 2.5.0
-**Variables Documented**: 33 configurable preferences
+**Last Updated**: 01-Mar-2026
+**DDM OS Reminder Version**: 2.6.0
+**Variables Documented**: 35 configurable preferences

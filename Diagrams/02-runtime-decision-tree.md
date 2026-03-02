@@ -4,89 +4,84 @@ This flowchart shows the complete decision logic executed each time the LaunchDa
 
 ```mermaid
 flowchart TD
-    Start([LaunchDaemon Triggers<br/>RunAtLoad or 8am/4pm]) --> LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
-    
-    LoadPrefs --> CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
-    CheckUser -->|No| Exit1[FATAL ERROR<br/>No user after 120s]
-    CheckUser -->|Yes| CheckRoot{Running<br/>as Root?}
-    
+    Start([LaunchDaemon Triggers<br/>RunAtLoad or 8am/4pm]) --> CheckRoot{Running<br/>as Root?}
+
     CheckRoot -->|No| Fatal1[FATAL ERROR<br/>Must run as root]
-    CheckRoot -->|Yes| ParseLog[Parse install.log<br/>for DDM enforcement dates]
-    
+    CheckRoot -->|Yes| CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
+    CheckUser -->|No| Exit1[FATAL ERROR<br/>No user after 120s]
+    CheckUser -->|Yes| LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
+
+    LoadPrefs --> ParseLog[Parse install.log<br/>for DDM enforcement dates]
     ParseLog --> CheckDDM{DDM Enforcement<br/>Date Found?}
     CheckDDM -->|No| Exit2[Exit Silently<br/>Log: No DDM enforcement]
     CheckDDM -->|Yes| GetVersions[Get Installed & Required<br/>macOS Versions]
-    
+
     GetVersions --> CompareVersions{Update<br/>Required?}
     CompareVersions -->|No - Up to Date| Exit3[Exit Silently<br/>Log: macOS up to date]
-    CompareVersions -->|Yes| CalcDays[Calculate Days<br/>Until Deadline]
-    
-    CalcDays --> CheckWindow{Within Reminder<br/>Window?<br/>≤ configurable days}
-    CheckWindow -->|No - Too Early| Exit4[Exit Silently<br/>Log: Outside reminder window]
-    CheckWindow -->|Yes| CheckQuiet{Within Quiet<br/>Period?<br/>Last shown < interval}
-    
-    CheckQuiet -->|Yes| Exit5[Exit Silently<br/>Log: Quiet period active]
-    CheckQuiet -->|No| CheckMeeting{Display Sleep<br/>Assertions?<br/>User in meeting}
-    
-    CheckMeeting -->|Yes, ≥24hrs to deadline| Delay[Delay Execution<br/>Sleep meetingDelay, then retry]
-    CheckMeeting -->|No or <24hrs| CheckDisk[Check Free<br/>Disk Space]
-    
-    Delay --> CheckMeeting
-    
-    CheckDisk --> DiskOK{Sufficient<br/>Space?<br/>≥ min threshold}
-    DiskOK -->|Warning| SetDiskWarn[Set Disk Warning<br/>Message Flag]
-    DiskOK -->|OK| CheckUptime
-    SetDiskWarn --> CheckUptime[Check System<br/>Uptime]
-    
-    CheckUptime --> UptimeOK{Excessive<br/>Uptime?<br/>≥ warning threshold}
-    UptimeOK -->|Yes| SetUptimeWarn[Set Uptime Warning<br/>Message Flag]
-    UptimeOK -->|No| DetectStaged
-    SetUptimeWarn --> DetectStaged[Detect Staged<br/>Updates in Preboot]
-    
-    DetectStaged --> StagedSignals{Staging Signals<br/>Detected?}
-    StagedSignals -->|No| SetPending[Set Pending Download<br/>Message]
-    StagedSignals -->|Yes| StagedMetadata{Proposed Version<br/>Metadata Readable?}
-    StagedMetadata -->|No| SetPendingFromMetadata[Normalize to Pending Download<br/>Re-check Next Run]
-    StagedMetadata -->|Yes| StagedMatch{Proposed Version<br/>Matches DDM Target?}
-    StagedMatch -->|No| SetPendingFromMismatch[Normalize to Pending Download<br/>Prevent False Ready State]
-    StagedMatch -->|Yes + Fully Staged| SetFullStaged[Set Full Staged<br/>Message]
-    StagedMatch -->|Yes + Partially Staged| SetPartialStaged[Set Partial Staged<br/>Message]
+    CompareVersions -->|Yes| EvalYukon[Evaluate post-deadline<br/>restart eligibility state]
 
-    SetFullStaged --> BuildDialog
-    SetPartialStaged --> BuildDialog
-    SetPending --> BuildDialog[Build Dialog<br/>with Placeholders]
-    SetPendingFromMetadata --> BuildDialog
-    SetPendingFromMismatch --> BuildDialog
-    
-    BuildDialog --> CheckDeadline{Days Until<br/>Deadline?}
-    
-    CheckDeadline -->|≥ Blurscreen Threshold<br/>default: 45 days| Standard[Standard Dialog<br/>✓ Button 2 enabled<br/>✗ No blurscreen]
-    CheckDeadline -->|< Blurscreen Threshold<br/>≥ Hide Button Threshold<br/>default: 21-44 days| Blur[Blurscreen Dialog<br/>✓ Button 2 enabled<br/>✓ Blurscreen active]
-    CheckDeadline -->|< Hide Button Threshold<br/>default: <21 days| Urgent[Urgent Dialog<br/>✗ Button 2 disabled/hidden<br/>✓ Blurscreen active]
-    
+    EvalYukon --> GetInteraction[Read last interaction<br/>codes 0/2/3/4/10<br/>exclude restart-related]
+    GetInteraction --> CheckWindow{Inside display window?<br/>daysRemaining <=<br/>daysBeforeDeadlineDisplayReminder}
+    CheckWindow -->|No| PeriodicGate{Periodic reminder due?<br/>No interaction OR<br/>>= 28 days since interaction}
+    PeriodicGate -->|No| Exit4[Exit Silently<br/>Outside display window<br/>not periodic-due]
+    PeriodicGate -->|Yes| ForceQuietBypass
+    CheckWindow -->|Yes| ForceQuietBypass{Force mode active?}
+
+    ForceQuietBypass -->|Yes| ForceMeetingBypass
+    ForceQuietBypass -->|No| CheckQuiet{Within quiet period?<br/>last interaction < 76 min}
+    CheckQuiet -->|Yes| Exit5[Exit Silently<br/>Quiet period active]
+    CheckQuiet -->|No| ForceMeetingBypass{Force mode active?}
+
+    ForceMeetingBypass -->|Yes| BuildDialog
+    ForceMeetingBypass -->|No| Deadline24{More than 24 hours<br/>to deadline?}
+    Deadline24 -->|No| BuildDialog
+    Deadline24 -->|Yes| MeetingLoop[Run display-sleep assertion loop<br/>allowlist-filtered; 5-min checks<br/>proceed when clear OR<br/>meetingDelay limit reached]
+    MeetingLoop --> BuildDialog[Build dialog content<br/>warnings + staged status + deadline text<br/>apply restart-mode overrides<br/>replace placeholders + hide rules]
+
+    BuildDialog --> DialogMode{Dialog mode selected?}
+    DialogMode -->|Update flow| CheckDeadline{Days Until<br/>Deadline?}
+    DialogMode -->|Restart Prompt| PromptDialog[Restart-only dialog<br/>Button1 = Restart Now]
+    DialogMode -->|Restart Force| ForceDialog[Restart-only forced dialog<br/>--timer 60]
+
+    CheckDeadline -->|>= blurscreen threshold<br/>default: 45 days| Standard[Standard Dialog<br/>Button2 enabled<br/>no blurscreen]
+    CheckDeadline -->|< blurscreen threshold and<br/>> hide-button threshold<br/>default: 44..22 days| Blur[Blurscreen Dialog<br/>Button2 enabled]
+    CheckDeadline -->|<= hide-button threshold<br/>default: <=21 days| Urgent[Urgent Dialog<br/>Button2 disabled/hidden<br/>blurscreen active]
+
     Standard --> Display[Display swiftDialog]
     Blur --> Display
     Urgent --> Display
-    
-    Display --> UserAction{User<br/>Action?}
-    
-    UserAction -->|Button 1:<br/>Open Software Update| OpenSU[Open System Settings<br/>Software Update pane]
-    UserAction -->|Button 2:<br/>Remind Me Later| LogRemind[Log Entry:<br/>User postponed]
-    UserAction -->|Info Button:<br/>Support Info| ShowHelp[Display Help Dialog<br/>with support details]
-    UserAction -->|Dialog Closed/Timeout| LogClose[Log Entry:<br/>Dialog closed]
-    UserAction -->|Return code 20:<br/>DND active| Exit6[Exit<br/>DND active]
-    
-    OpenSU --> LogOpen[Log Entry:<br/>Opened Software Update]
-    LogOpen --> Exit7[Exit<br/>User taking action]
-    
-    LogRemind --> Exit8[Exit<br/>Will retry at next schedule]
-    
-    ShowHelp --> RedisplayAfterHelp[Re-display<br/>Main Dialog]
-    RedisplayAfterHelp --> UserAction
-    
-    LogClose --> Exit9[Exit<br/>Will retry at next schedule]
-    
-    Exit1 --> End([End])
+    PromptDialog --> Display
+    ForceDialog --> Display
+
+    Display --> ForceReturnMode{Force mode active?}
+    ForceReturnMode -->|Yes| ForceReturn{Return code 0 or 4?}
+    ForceReturn -->|Yes| RestartNow[Invoke Restart command]
+    ForceReturn -->|No| ForceRedisplay[Sleep ~5s and re-display<br/>within same run]
+    ForceRedisplay --> Display
+
+    ForceReturnMode -->|No| NormalReturn{Return code}
+    NormalReturn -->|0| ActionType{Action type}
+    ActionType -->|systempreferences| OpenSU[Open System Settings<br/>Software Update pane]
+    ActionType -->|restartConfirm| RestartConfirm[Invoke Restart Confirm]
+    ActionType -->|other URL action| OpenAction[Open action URL]
+    OpenSU --> Exit7[Exit<br/>User taking action]
+    RestartConfirm --> Exit7
+    OpenAction --> Exit7
+
+    NormalReturn -->|2| Exit8[Exit<br/>User postponed]
+    NormalReturn -->|3| OpenInfo[Open InfoButtonAction URL]
+    OpenInfo --> InfoRedisplay{hideSecondaryButton<br/>YES or DISABLED?}
+    InfoRedisplay -->|Yes| InfoWait[Wait 61s and re-display<br/>moveable/no blurscreen]
+    InfoWait --> Display
+    InfoRedisplay -->|No| Exit9[Exit<br/>Info opened]
+    NormalReturn -->|4| Exit10[Exit<br/>Timer expired]
+    NormalReturn -->|10 or other| Exit11[Exit<br/>Dismissed/other return]
+    NormalReturn -->|20| Exit6[Exit<br/>DND active]
+
+    End([End])
+    RestartNow --> End
+
+    Exit1 --> End
     Fatal1 --> End
     Exit2 --> End
     Exit3 --> End
@@ -96,6 +91,8 @@ flowchart TD
     Exit7 --> End
     Exit8 --> End
     Exit9 --> End
+    Exit10 --> End
+    Exit11 --> End
     
     style Start fill:#e3f2fd
     style LoadPrefs fill:#fff9c4
@@ -105,14 +102,14 @@ flowchart TD
     style CompareVersions fill:#ffecb3
     style CheckWindow fill:#ffecb3
     style CheckQuiet fill:#ffecb3
-    style CheckMeeting fill:#ffecb3
-    style DiskOK fill:#ffecb3
-    style UptimeOK fill:#ffecb3
-    style StagedSignals fill:#ffecb3
-    style StagedMetadata fill:#ffecb3
-    style StagedMatch fill:#ffecb3
+    style PeriodicGate fill:#ffecb3
+    style ForceQuietBypass fill:#ffecb3
+    style ForceMeetingBypass fill:#ffecb3
+    style CheckQuiet fill:#ffecb3
+    style Deadline24 fill:#ffecb3
+    style DialogMode fill:#ff9800
     style CheckDeadline fill:#ff9800
-    style UserAction fill:#4caf50
+    style NormalReturn fill:#4caf50
     
     style Exit1 fill:#ef5350
     style Exit2 fill:#cfd8dc
@@ -120,130 +117,111 @@ flowchart TD
     style Exit4 fill:#cfd8dc
     style Exit5 fill:#cfd8dc
     style Exit6 fill:#cfd8dc
+    style Exit10 fill:#cfd8dc
+    style Exit11 fill:#cfd8dc
     style Fatal1 fill:#ef5350
     
     style Standard fill:#c8e6c9
     style Blur fill:#fff59d
     style Urgent fill:#ffab91
+    style PromptDialog fill:#ffe082
+    style ForceDialog fill:#ff8a80
     
     style Display fill:#81c784
     style OpenSU fill:#66bb6a
-    style ShowHelp fill:#64b5f6
+    style OpenInfo fill:#64b5f6
     
     style End fill:#e0e0e0
 ```
 
 ## Decision Points Explained
 
-### 1. User Validation
-- **Check**: Is a user logged in (not loginwindow), waiting up to 120 seconds?
-- **Why**: Dialog requires an active user session
-- **Exit if**: No user found after 120 seconds (fatal error)
-
-### 2. Root Privileges
+### 1. Root Privileges
 - **Check**: Is script running as root?
-- **Why**: Required for LaunchDaemon management and system-level operations
+- **Why**: Required for system access and dialog launch context
 - **Exit if**: Not root (fatal error)
 
-### 3. DDM Enforcement
-- **Check**: Are DDM enforcement dates present in `/var/log/install.log`?
-- **Why**: Script relies on Apple DDM data to determine deadlines
-- **Exit if**: No enforcement dates found
+### 2. User Validation
+- **Check**: Is a non-`loginwindow` user logged in, waiting up to 120 seconds?
+- **Why**: Dialog requires an active user session
+- **Exit if**: No valid user found after 120 seconds (fatal error)
 
-### 4. Version Comparison
-- **Check**: Is installed macOS version older than DDM-required version?
-- **Why**: Only display reminder if update is actually needed
-- **Exit if**: Mac is up to date
+### 3. Preference Load Order
+- **Order**: Managed Preferences → Local Preferences → Script Defaults
+- **Why**: Enterprise policy should override local/testing values
+- **Normalization**: Boolean and restart-mode values are normalized before use
 
-### 5. Reminder Window
-- **Check**: Are we within configured days before deadline (default: 60 days)?
-- **Why**: Don't annoy users too early
-- **Exit if**: Deadline too far in future
+### 4. DDM Enforcement + Version Comparison
+- **Check**: Are DDM enforcement entries available in `/var/log/install.log` and is update still required?
+- **Exit if**:
+  - No DDM enforcement entry found
+  - Installed macOS is already compliant
 
-### 6. Quiet Period
-- **Check**: Has dialog been shown recently (based on last display timestamp)?
-- **Why**: Prevent excessive nagging within same day
-- **Exit if**: Recently displayed
+### 5. Post-Deadline Restart Eligibility (Yukon)
+- **Computed before reminder gating**:
+  - Deadline is in the past
+  - Days past deadline `>= daysPastDeadlineRestartWorkflow`
+  - Uptime `>= 75` minutes
+  - `pastDeadlineRestartBehavior` is not `Off`
+- **Modes**:
+  - `Off`: Normal update-focused flow
+  - `Prompt`: Restart-only dialog, normal per-run exit behavior
+  - `Force`: Restart-only dialog with forced redisplay loop
+- **Suppression case**: If past-deadline day threshold is met but uptime is below 75 minutes, restart mode is suppressed for that run
 
-### 7. Do Not Disturb / Focus (swiftDialog)
-- **Check**: swiftDialog returns exit code 20 after the dialog attempt
-- **Why**: swiftDialog signals DND/Focus state via return code
-- **Exit if**: Return code 20 (logged and exits)
+### 6. Reminder Window + Periodic Reminder Logic
+- **Inside window** (`daysRemaining <= daysBeforeDeadlineDisplayReminder`): proceed
+- **Outside window**: only proceed if no interaction history exists or last interaction is `>= 28` days old
+- **Exit if**: Outside window and periodic reminder is not due
+
+### 7. Quiet-Period Suppression
+- **Check**: Most recent interaction (`Return Code: 0|2|3|4|10`) is within 76 minutes
+- **Special handling**: Restart-related interactions are excluded from quiet-period suppression
+- **Bypass**: `Force` mode skips quiet-period suppression
 
 ### 8. Meeting Detection
-- **Check**: Are display sleep assertions active (pmset)?
-- **Why**: User likely in video call or presentation
-- **Filtering**: 
-  - **Layer 1**: Excludes `coreaudiod` (system daemon, always present)
-  - **Layer 2**: If `acceptableAssertionApplicationNames` is configured, only assertions from apps **on the allowlist** trigger deferral; assertions from other apps are ignored
-  - **Default behavior** (shipped allowlist: `MSTeams zoom.us Webex`): Only those apps trigger deferral
-  - **Legacy/explicit empty allowlist**: All non-coreaudiod assertions trigger deferral
-- **Exception**: Ignored if ≤24 hours to deadline
-- **Action if**: Delay up to `meetingDelay` and retry; proceed when delay limit reached
+- **When used**: Only when not in `Force` mode and more than 24 hours remain to deadline
+- **How it works**:
+  - Scans `pmset -g assertions`
+  - Excludes `coreaudiod`
+  - Applies allowlist filter (`acceptableAssertionApplicationNames`) when populated
+  - Retries every 5 minutes until assertions clear or `meetingDelay` budget is exhausted
+- **Bypasses**:
+  - `Force` mode
+  - Deadline within 24 hours
 
-### 9. Disk Space Check
-- **Check**: Is free disk space below minimum threshold?
-- **Why**: Update may fail with insufficient space
-- **Action**: Adds warning message to dialog (doesn't block display)
+### 9. Dialog Content Assembly
+- Computes disk/uptime warning blocks
+- Computes staged update status message (full/partial/pending)
+- Computes deadline enforcement sentence and infobox highlights
+- Applies post-deadline dialog overrides (restart prompt/force)
+- Replaces placeholders and applies hide rules
 
-### 10. Uptime Check
-- **Check**: Has Mac been on for excessive days without restart?
-- **Why**: Restarts improve update reliability
-- **Action**: Adds warning message to dialog (doesn't block display)
+### 10. Deadline UI Mode (Update Flow)
+When not overridden by restart mode:
 
-### 11. Staged Update Detection
-- **Check**: Is update already downloaded to Preboot volume?
-- **Why**: Installation is faster if already staged
-- **Action**:
-  - Detects staging signals from APFS update snapshots and Preboot size heuristics
-  - Reads proposed target metadata from `cryptex1/proposed`
-  - Keeps staged state only when proposed version matches DDM-enforced version
-  - Normalizes to pending download if metadata is missing or mismatched
-  - Adds appropriate message (fully staged, partially staged, or pending)
+- **Standard Dialog** (`daysRemaining >= daysBeforeDeadlineBlurscreen`)
+  - Button 2 enabled, no blurscreen
+- **Blurscreen Dialog** (`daysBeforeDeadlineHidingButton2 < daysRemaining < daysBeforeDeadlineBlurscreen`)
+  - Button 2 enabled, blurscreen enabled
+- **Urgent Dialog** (`daysRemaining <= daysBeforeDeadlineHidingButton2`)
+  - Button 2 disabled or hidden, blurscreen enabled
 
-### 12. Deadline-Based Behavior
-Based on days remaining until deadline:
-
-#### Standard Dialog (≥45 days, configurable)
-- Button 2: **Enabled** ("Remind Me Later")
-- Blurscreen: **Disabled**
-- Urgency: Low
-
-#### Blurscreen Dialog (21-44 days, configurable)
-- Button 2: **Enabled** ("Remind Me Later")
-- Blurscreen: **Enabled** (background dimmed)
-- Urgency: Medium
-
-#### Urgent Dialog (<21 days, configurable)
-- Button 2: **Disabled or Hidden** (can't postpone)
-- Blurscreen: **Enabled**
-- Urgency: High
-
-### 13. User Actions
-After dialog displays, user can:
-
-1. **Open Software Update**: 
-   - Opens System Settings → Software Update
-   - Logs action
-   - Exits (user taking responsibility)
-
-2. **Remind Me Later**:
-   - Logs postponement
-   - Exits (will remind again at next schedule)
-   - Note: Disabled/hidden when deadline imminent
-
-3. **View Support Info** (? button):
-   - Displays help dialog with support contact info
-   - Returns to main dialog after closing help
-   - Re-displays main dialog (user can then choose action)
-
-4. **Close/Timeout**:
-   - Logs dismissal
-   - Exits (will remind again at next schedule)
-
-5. **DND/Focus Active (swiftDialog Return Code 20)**:
-   - Logs DND/Focus state
-   - Exits
+### 11. Return-Code Action Handling
+- **Force mode**:
+  - `0` or `4` triggers restart command
+  - Any other return code re-displays within the same run after ~5 seconds
+- **Non-force modes**:
+  - `0`:
+    - `systempreferences` action opens Software Update
+    - `restartConfirm` action triggers restart-confirm command (Prompt mode)
+    - Other URL actions are opened
+  - `2`: postpone and exit
+  - `3`: open `InfoButtonAction` URL; re-display only when within hide-button window
+  - `4`: timer expired, exit
+  - `10`: keyboard quit, exit
+  - `20`: DND/Focus, exit
+  - Other codes: log and exit
 
 ## Configuration Parameters
 
@@ -254,24 +232,35 @@ Key preferences that affect decision tree:
 | `daysBeforeDeadlineDisplayReminder` | 60 | Reminder Window check |
 | `daysBeforeDeadlineBlurscreen` | 45 | Blurscreen activation |
 | `daysBeforeDeadlineHidingButton2` | 21 | Button 2 disable/hide |
-| `daysOfExcessiveUptimeWarning` | 0 (disabled) | Uptime warning threshold |
+| `daysOfExcessiveUptimeWarning` | 0 (immediate) | Uptime warning threshold (`0` = always warn; `7` = one week) |
+| `daysPastDeadlineRestartWorkflow` | 2 | Days-past-deadline threshold for Yukon mode |
+| `pastDeadlineRestartBehavior` | Off | Yukon Cornelius mode (`Off` / `Prompt` / `Force`) |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
 | `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |
 | `minimumDiskFreePercentage` | 99 | Disk space warning |
 | `disableButton2InsteadOfHide` | YES | Button 2 behavior (disabled vs hidden) |
 
+Additional runtime constants used by the decision tree:
+- `quietPeriodSeconds = 4560` (76 minutes)
+- `periodicReminderDays = 28`
+- `pastDeadlineRestartMinimumUptimeMinutes = 75`
+- `pastDeadlineForceTimerSeconds = 60`
+- `pastDeadlineRedisplayDelaySeconds = 5`
+
 ## Exit Points
 
-The script has **8 exit points** (plus 2 fatal errors):
+The script has **10 common exit points** (plus 2 fatal errors):
 
 1. **No DDM enforcement** - Nothing to remind about
 2. **macOS up to date** - Update already completed
-3. **Outside reminder window** - Too early to remind
-4. **Within quiet period** - Recently reminded
-5. **DND/Focus active (swiftDialog return code 20)** - Dialog attempt exits
-6. **After opening Software Update** - User taking action
-7. **After "Remind Me Later"** - User postponed
-8. **After dialog close** - User dismissed
+3. **Outside window and periodic reminder not due** - Too early and not periodic-due
+4. **Within quiet period** - Recently interacted
+5. **DND/Focus active (return code 20)** - Dialog attempt exits
+6. **After opening Software Update / URL action** - User taking action
+7. **After restart command (Prompt/Force)** - Restart action issued
+8. **After "Remind Me Later"** - User postponed
+9. **After info URL open (non-urgent window)** - No forced redisplay path
+10. **After close/timeout/other non-force return** - User dismissed or timer expired
 
 Each exit logs appropriate message to `/var/log/{RDNN}.log` for troubleshooting.
 

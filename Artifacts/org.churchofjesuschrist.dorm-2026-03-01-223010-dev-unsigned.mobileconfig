@@ -63,6 +63,8 @@
                                     <string>https://support.apple.com/108382</string>
                                     <key>SupportKBURL</key>
                                     <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
+                                    <key>SupportAssistanceMessage</key>
+                                    <string>&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
                                     <key>Title</key>
                                     <string>Assembled macOS {titleMessageUpdateOrUpgrade} Required</string>
                                     <key>Button1Text</key>
@@ -84,7 +86,7 @@
                                     <key>HideStagedUpdateInfo</key>
                                     <false/>
                                     <key>Message</key>
-                                    <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+                                    <string>Assembled **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
                                     <key>InfoBox</key>
                                     <string>Assembled&lt;br&gt;&lt;br&gt;**Current:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**Required:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**Deadline:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**Day(s) Remaining:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**Last Restart:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**Free Disk Space:** {diskSpaceHumanReadable}</string>
                                     <key>HelpMessage</key>
@@ -99,26 +101,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>C5CE7314-8CB9-4F96-B2EE-D99D41AC3BD3</string>
+            <string>AD6352C3-F432-4B7F-A35D-9E1646FA78AE</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>C5CE7314-8CB9-4F96-B2EE-D99D41AC3BD3</string>
+            <string>AD6352C3-F432-4B7F-A35D-9E1646FA78AE</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (2.6.0) to org.churchofjesuschrist standards. Created: 2026-03-01-201403</string>
+    <string>Configures DDM OS Reminder (2.6.0) to org.churchofjesuschrist standards. Created: 2026-03-01-223010</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>31E64366-8D04-455B-9FDA-666930E1E1A4</string>
+    <string>29339C5A-38AE-450A-8610-FAFDCBDF6C3C</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -128,7 +130,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>31E64366-8D04-455B-9FDA-666930E1E1A4</string>
+    <string>29339C5A-38AE-450A-8610-FAFDCBDF6C3C</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

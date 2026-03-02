@@ -10,6 +10,8 @@
 - Added `computeInfoboxHighlights()` to render `Deadline`, `Day(s) Remaining`, and `Last Restart` as `:red[...]` when supported by swiftDialog markdown color
 - Updated `assemble.zsh --interactive` to include a `Knowledge Base ('YES' to specify; 'NO' to hide)` prompt so Mac Admins can hide KB references without manual edits (`InfoButtonText`, `HelpImage`, and `HelpMessage` KB row) ([Feature Request #74](https://github.com/dan-snelson/DDM-OS-Reminder/issues/74); thanks for the idea, Adam!)
 - Updated `assemble.zsh --interactive` to prompt for `PastDeadlineRestartBehavior` (`Off` / `Prompt` / `Force`) and conditionally prompt for `DaysPastDeadlineRestartWorkflow` when restart behavior is enabled, then stamp those values into generated `.plist` and `.mobileconfig` artifacts
+- Updated `Force` mode restart execution to use root-level `sleep 1 && shutdown -r now &` for stronger enforcement reliability on managed macOS systems
+- Added `SupportAssistanceMessage` placeholder/key so KB-disabled assemblies can suppress `(?)` button guidance without brittle `Message` regex rewrites
 
 ### Version 2.5.0 (19-Feb-2026)
 - Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))

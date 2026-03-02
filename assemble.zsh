@@ -674,6 +674,7 @@ if [[ -f "${plistSample}" ]]; then
 
     if [[ "${enableKnowledgeBase}" != "true" ]]; then
       /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
+      /usr/bin/plutil -replace SupportAssistanceMessage -string "" "${plistOutput}"
 
       currentHelpMessage="$(/usr/bin/plutil -extract HelpMessage raw -o - "${plistOutput}" 2>/dev/null || true)"
       if [[ -n "${currentHelpMessage}" ]]; then
@@ -681,10 +682,9 @@ if [[ -f "${plistSample}" ]]; then
         /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
       fi
 
-      currentMessage="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
-      if [[ -n "${currentMessage}" ]]; then
-        updatedMessage="$(printf "%s" "${currentMessage}" | /usr/bin/sed 's#<br><br>For assistance, please contact \*\*{supportTeamName}\*\* by clicking the (\?) button in the bottom, right-hand corner\.##g')"
-        /usr/bin/plutil -replace Message -string "${updatedMessage}" "${plistOutput}"
+      messageWithKbHidden="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
+      if [[ "${messageWithKbHidden}" == *"(?) button"* ]]; then
+        echo "    ⚠️  Message still references '(?) button' while Knowledge Base is disabled."
       fi
     fi
   fi

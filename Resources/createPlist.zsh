@@ -153,6 +153,7 @@ defaultSupportTeamWebsite=$(extract_from_preference_map supportTeamWebsite)
 defaultSupportKB=$(extract_from_preference_map supportKB)
 defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
 defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
+defaultSupportAssistanceMessage=$(extract_from_preference_map supportAssistanceMessage)
 
 # Ensure generated configs use infobox display placeholders that support
 # conditional color formatting in newer swiftDialog versions.
@@ -195,6 +196,7 @@ supportTeamPhone_xml=$(process "$defaultSupportTeamPhone")
 supportTeamEmail_xml=$(process "$defaultSupportTeamEmail")
 supportTeamWebsite_xml=$(process "$defaultSupportTeamWebsite")
 supportKB_xml=$(process "$defaultSupportKB")
+supportAssistanceMessage_xml=$(process "$defaultSupportAssistanceMessage")
 
 infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
@@ -267,6 +269,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infobuttonaction_xml}</string>
     <key>SupportKBURL</key>
     <string>${supportKBURL_xml}</string>
+    <key>SupportAssistanceMessage</key>
+    <string>${supportAssistanceMessage_xml}</string>
 
     <!-- Dialog text -->
     <key>Title</key>
@@ -372,6 +376,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infobuttonaction_xml}</string>
                                 <key>SupportKBURL</key>
                                 <string>${supportKBURL_xml}</string>
+                                <key>SupportAssistanceMessage</key>
+                                <string>${supportAssistanceMessage_xml}</string>
                                 <key>Title</key>
                                 <string>${title_xml}</string>
                                 <key>Button1Text</key>

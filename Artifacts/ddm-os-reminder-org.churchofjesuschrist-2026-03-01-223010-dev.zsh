@@ -404,6 +404,7 @@ declare -A preferenceConfiguration=(
     ["supportKB"]="string|Update macOS on Mac"
     ["infobuttonaction"]="string|https://support.apple.com/108382"
     ["supportKBURL"]="string|[Update macOS on Mac](https://support.apple.com/108382)"
+    ["supportAssistanceMessage"]="string|<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     
     # UI Text
     ["title"]="string|macOS {titleMessageUpdateOrUpgrade} Required"
@@ -420,7 +421,7 @@ declare -A preferenceConfiguration=(
     ["hideStagedInfo"]="boolean|NO"
     
     # Complex UI Text
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {infoboxDeadlineDisplay}<br><br>**Day(s) Remaining:** {infoboxDaysRemainingDisplay}<br><br>**Last Restart:** {infoboxLastRestartDisplay}<br><br>**Free Disk Space:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -449,6 +450,7 @@ declare -A plistKeyMap=(
     ["supportKB"]="SupportKB"
     ["infobuttonaction"]="InfoButtonAction"
     ["supportKBURL"]="SupportKBURL"
+    ["supportAssistanceMessage"]="SupportAssistanceMessage"
     ["title"]="Title"
     ["button1text"]="Button1Text"
     ["button2text"]="Button2Text"
@@ -804,6 +806,7 @@ function buildPlaceholderMap() {
         [supportTeamWebsite]="${supportTeamWebsite}"
         [supportKBURL]="${supportKBURL}"
         [supportKB]="${supportKB}"
+        [supportAssistanceMessage]="${supportAssistanceMessage}"
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
@@ -894,6 +897,11 @@ function updateRequiredVariables() {
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
     applyPastDeadlineDialogOverrides
+
+    if [[ "${infobuttontext}" == "hide" ]]; then
+        supportAssistanceMessage=""
+    fi
+
     buildPlaceholderMap
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
@@ -1674,7 +1682,13 @@ function executeRestartAction() {
 
     case "${restartMode}" in
         "Restart")
-            restartCommand="/usr/bin/osascript -e 'tell app \"System Events\" to restart'"
+            restartCommand="sleep 1 && shutdown -r now &"
+            if /bin/zsh -c "${restartCommand}"; then
+                notice "Restart command '${restartMode}' sent as root: ${restartCommand}"
+                return 0
+            fi
+            warning "Failed to invoke restart command '${restartMode}' as root: ${restartCommand}"
+            return 1
             ;;
         "Restart Confirm"|*)
             restartCommand="/usr/bin/osascript -e 'tell app \"loginwindow\" to «event aevtrrst»'"

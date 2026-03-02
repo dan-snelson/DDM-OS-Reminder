@@ -47,6 +47,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | supportKB | SupportKB | String | Update macOS on Mac | Support |
 | infobuttonaction | InfoButtonAction | String | https://support.apple.com/108382 | Support |
 | supportKBURL | SupportKBURL | String | [Markdown link] | Support |
+| supportAssistanceMessage | SupportAssistanceMessage | String | [Support sentence with (?) button] | Support |
 | title | Title | String | macOS {placeholder} Required | UI Text |
 | button1text | Button1Text | String | Open Software Update | UI Text |
 | button2text | Button2Text | String | Remind Me Later | UI Text |
@@ -777,6 +778,31 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
+#### supportAssistanceMessage
+**Plist Key**: `SupportAssistanceMessage`  
+**Type**: String  
+**Default**: `<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.`
+
+**Description**: Message fragment appended to `Message` for end-user support guidance. This keeps KB-assisted wording isolated from the main `Message` body.
+
+**Placeholder**: `{supportAssistanceMessage}`  
+**Used In**: message
+
+**Script Default**:
+```bash
+["supportAssistanceMessage"]="string|<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+```
+
+**Configuration Profile**:
+```xml
+<key>SupportAssistanceMessage</key>
+<string>&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+```
+
+**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` sets `SupportAssistanceMessage` to an empty string so `Message` no longer references the `(?)` button.
+
+---
+
 ### 5. Dialog UI Text
 
 #### title
@@ -915,6 +941,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - `{excessiveUptimeWarningMessage}` = Uptime warning (if applicable)
 - `{diskSpaceWarningMessage}` = Disk space warning (if applicable)
 - `{supportTeamName}` = Support team name
+- `{supportAssistanceMessage}` = Optional support sentence appended to message body
 - `{weekday}` = Current day of week
 
 **Script Default** (condensed):
@@ -1241,6 +1268,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{supportTeamWebsite}` | Config | Website URL | https://support.company.com |
 | `{supportKBURL}` | Config | KB article link | [Link text](URL) |
 | `{supportKB}` | Config | KB article title | Update macOS on Mac |
+| `{supportAssistanceMessage}` | Config | Support guidance suffix for message body | <br><br>For assistance, please contact ... |
 | `{button1text}` | Config | Primary button | Open Software Update |
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |

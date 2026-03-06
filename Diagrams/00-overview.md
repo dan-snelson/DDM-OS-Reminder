@@ -3,6 +3,7 @@
 This diagram gives Mac Admins a simple, high-level deployment path for DDM OS Reminder.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ffffff', 'lineColor': '#555555', 'fontFamily': 'monospace'}}}%%
 flowchart TD
     Clone["<b>1. Clone</b><br/><br/><code>git&nbsp;clone&nbsp;https://github.com/dan-snelson/DDM-OS-Reminder.git</code><br/><br/><code>cd&nbsp;DDM-OS-Reminder</code>"]
     Demo["<b>2. Demo</b><br/><br/><code>zsh&nbsp;reminderDialog.zsh&nbsp;demo</code>"]
@@ -12,11 +13,11 @@ flowchart TD
 
     Clone --> Demo --> Assemble --> Deploy --> Test
 
-    style Clone fill:#c8e6c9
-    style Demo fill:#fff9c4
-    style Assemble fill:#fff4e6
-    style Deploy fill:#ffecb3
-    style Test fill:#e1f5ff
+    style Clone fill:#2e7d32,color:#ffffff,stroke:#1b5e20
+    style Demo fill:#f9a825,color:#ffffff,stroke:#f57f17
+    style Assemble fill:#e65100,color:#ffffff,stroke:#bf360c
+    style Deploy fill:#1565c0,color:#ffffff,stroke:#0d47a1
+    style Test fill:#6a1b9a,color:#ffffff,stroke:#4a148c
 ```
 
 ## What Each Phase Means

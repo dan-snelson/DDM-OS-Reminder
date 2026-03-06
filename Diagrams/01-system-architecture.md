@@ -1,6 +1,6 @@
 # System Architecture Diagram
 
-This diagram shows the complete DDM OS Reminder ecosystem from development through deployment to runtime execution.
+This diagram shows the complete DDM OS Reminder ecosystem from development through runtime execution.
 
 ```mermaid
 graph TB
@@ -178,7 +178,7 @@ graph TB
 ```
 Development → Assembly → MDM → Client Installation → Runtime Execution → User Interaction → macOS Update
      ↑                                                        ↓
-     └────────────── Admin monitors logs & adjusts ──────────┘
+     └────────────── Admin monitors logs & adjusts ─────-─────┘
 ```
 
 ## Key Benefits of Architecture

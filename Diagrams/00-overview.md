@@ -3,7 +3,7 @@
 This diagram gives Mac Admins a simple, high-level deployment path for DDM OS Reminder.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ffffff', 'lineColor': '#555555', 'fontFamily': 'monospace'}}}%%
+%%{init: {'themeVariables': {'lineColor': '#555555', 'fontFamily': 'monospace'}}}%%
 flowchart TD
     Clone["<b>1. Clone</b><br/><br/><code>git&nbsp;clone&nbsp;https://github.com/dan-snelson/DDM-OS-Reminder.git</code><br/><br/><code>cd&nbsp;DDM-OS-Reminder</code>"]
     Demo["<b>2. Demo</b><br/><br/><code>zsh&nbsp;reminderDialog.zsh&nbsp;demo</code>"]
@@ -13,11 +13,17 @@ flowchart TD
 
     Clone --> Demo --> Assemble --> Deploy --> Test
 
-    style Clone fill:#2e7d32,color:#ffffff,stroke:#1b5e20
-    style Demo fill:#f9a825,color:#ffffff,stroke:#f57f17
-    style Assemble fill:#e65100,color:#ffffff,stroke:#bf360c
-    style Deploy fill:#1565c0,color:#ffffff,stroke:#0d47a1
-    style Test fill:#6a1b9a,color:#ffffff,stroke:#4a148c
+    classDef clone    fill:#2e7d32,color:#ffffff,stroke:#1b5e20
+    classDef demo     fill:#f9a825,color:#ffffff,stroke:#f57f17
+    classDef assemble fill:#e65100,color:#ffffff,stroke:#bf360c
+    classDef deploy   fill:#1565c0,color:#ffffff,stroke:#0d47a1
+    classDef test     fill:#6a1b9a,color:#ffffff,stroke:#4a148c
+
+    class Clone clone
+    class Demo demo
+    class Assemble assemble
+    class Deploy deploy
+    class Test test
 ```
 
 ## What Each Phase Means

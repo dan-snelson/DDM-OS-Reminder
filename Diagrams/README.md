@@ -4,7 +4,19 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ## 📊 Available Diagrams
 
-### 1. [System Architecture](01-system-architecture.md)
+### 1. [Executive Overview](00-overview.md)
+**Purpose**: High-level lifecycle view for Mac Admins who need the big picture first
+
+**Shows**:
+- Build → Assemble → Deploy → Configure → Run → Enforce
+- Core puzzle pieces in each phase (scripts, artifacts, MDM, client, Apple systems)
+- End-to-end ownership flow without deep runtime branching
+
+**Best For**: Rapid orientation and stakeholder-friendly explanations
+
+---
+
+### 2. [System Architecture](01-system-architecture.md)
 **Purpose**: Complete ecosystem overview from development through runtime execution
 
 **Shows**:
@@ -19,7 +31,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ---
 
-### 2. [Runtime Decision Tree](02-runtime-decision-tree.md)
+### 3. [Runtime Decision Tree](02-runtime-decision-tree.md)
 **Purpose**: Complete decision logic executed each time the LaunchDaemon triggers
 
 **Shows**:
@@ -34,7 +46,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ---
 
-### 3. [Deadline Timeline](03-deadline-timeline.md)
+### 4. [Deadline Timeline](03-deadline-timeline.md)
 **Purpose**: Visual representation of how user experience changes as deadline approaches
 
 **Shows**:
@@ -48,7 +60,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ---
 
-### 4. [Deployment Workflow](04-deployment-workflow.md)
+### 5. [Deployment Workflow](04-deployment-workflow.md)
 **Purpose**: Step-by-step guide for administrators deploying DDM OS Reminder
 
 **Shows**:
@@ -63,7 +75,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ---
 
-### 5. [Configuration Hierarchy](05-configuration-hierarchy.md)
+### 6. [Configuration Hierarchy](05-configuration-hierarchy.md)
 **Purpose**: 3-tier preference system showing precedence rules
 
 **Shows**:
@@ -76,7 +88,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ---
 
-### 6. [Configuration Reference](06-configuration-reference.md)
+### 7. [Configuration Reference](06-configuration-reference.md)
 **Purpose**: Complete reference for all 35 configurable preferences
 
 **Shows**:
@@ -95,14 +107,14 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ## 🎨 Rendering Diagrams
 
-All Mermaid diagrams (01–05) use **Mermaid.js** syntax for maximum portability and version control. The configuration reference (06) is text-only and does not export to an image.
+All Mermaid diagrams (00–05) use **Mermaid.js** syntax for maximum portability and version control. The configuration reference (06) is text-only and does not export to an image.
 
 ### View on GitHub
 Mermaid blocks render automatically on GitHub inside `.md` files. Text-only files render as standard Markdown.
 
 **Direct viewing**:
 ```
-https://github.com/dan-snelson/DDM-OS-Reminder/blob/main/Diagrams/01-system-architecture.md
+https://github.com/dan-snelson/DDM-OS-Reminder/blob/main/Diagrams/00-overview.md
 ```
 
 ### Render Locally
@@ -124,13 +136,13 @@ https://github.com/dan-snelson/DDM-OS-Reminder/blob/main/Diagrams/01-system-arch
 npm install -g @mermaid-js/mermaid-cli
 
 # Render to PNG
-mmdc -i 01-system-architecture.md -o 01-system-architecture.png
+mmdc -i 00-overview.md -o 00-overview.png
 
 # Render to SVG
-mmdc -i 01-system-architecture.md -o 01-system-architecture.svg
+mmdc -i 00-overview.md -o 00-overview.svg
 
-# Render all Mermaid diagrams (01–05)
-for file in 0[1-5]-*.md; do
+# Render all Mermaid diagrams (00–05)
+for file in 0[0-5]-*.md; do
     mmdc -i "$file" -o "${file%.md}.png"
 done
 ```
@@ -140,15 +152,15 @@ done
 #### As PNG Images (Recommended for blog posts)
 ```bash
 # High resolution PNG (300 DPI)
-mmdc -i 01-system-architecture.md -o 01-system-architecture.png -w 2400
+mmdc -i 00-overview.md -o 00-overview.png -w 2400
 
 # Standard resolution
-mmdc -i 01-system-architecture.md -o 01-system-architecture.png
+mmdc -i 00-overview.md -o 00-overview.png
 ```
 
 #### As SVG (Recommended for scaling)
 ```bash
-mmdc -i 01-system-architecture.md -o 01-system-architecture.svg
+mmdc -i 00-overview.md -o 00-overview.svg
 ```
 
 #### Embed in Markdown
@@ -185,6 +197,7 @@ graph TD
 [number]-[descriptive-name].md
 
 Examples:
+00-overview.md
 01-system-architecture.md
 02-runtime-decision-tree.md
 03-deadline-timeline.md
@@ -223,23 +236,27 @@ PNG exports mirror the `.md` base name (for example, `01-system-architecture.png
 
 ### For Blog Post / Documentation Website
 
-1. **Overview Section**: Use [System Architecture](01-system-architecture.md)
+1. **Executive Summary Section**: Use [Executive Overview](00-overview.md)
    - Place after introduction, before features
-   - Helps readers understand complete system at a glance
+   - Helps readers understand the lifecycle at a glance
 
-2. **Features Section**: Use [Deadline Timeline](03-deadline-timeline.md)
+2. **Architecture Section**: Use [System Architecture](01-system-architecture.md)
+   - Use immediately after executive overview
+   - Provides full component and integration detail
+
+3. **Features Section**: Use [Deadline Timeline](03-deadline-timeline.md)
    - Illustrates key differentiating feature (deadline-driven behavior)
    - Visual progression from early warnings to urgent messages
 
-3. **Implementation Section**: Use [Deployment Workflow](04-deployment-workflow.md)
+4. **Implementation Section**: Use [Deployment Workflow](04-deployment-workflow.md)
    - Step-by-step visual guide for administrators
    - Can link to detailed subsections
 
-4. **Advanced Configuration Section**: Use [Configuration Hierarchy](05-configuration-hierarchy.md)
+5. **Advanced Configuration Section**: Use [Configuration Hierarchy](05-configuration-hierarchy.md)
    - Shows 3-tier preference system
    - Helps admins understand customization options
 
-5. **Troubleshooting Section**: Use [Runtime Decision Tree](02-runtime-decision-tree.md)
+6. **Troubleshooting Section**: Use [Runtime Decision Tree](02-runtime-decision-tree.md)
    - Shows all decision points and exit conditions
    - Helps diagnose why script may/may not display dialog
 
@@ -248,6 +265,12 @@ PNG exports mirror the `.md` base name (for example, `01-system-architecture.png
 Embed key diagrams inline:
 ```markdown
 ## How It Works
+
+![Executive Overview](Diagrams/00-overview.png)
+
+DDM OS Reminder follows a simple lifecycle from build to enforcement...
+
+## System Architecture
 
 ![System Architecture](Diagrams/01-system-architecture.png)
 
@@ -265,7 +288,7 @@ Follow these steps to deploy DDM OS Reminder...
 Export diagrams as high-resolution PNG or SVG:
 ```bash
 # 4K resolution for presentations
-mmdc -i 01-system-architecture.md -o 01-system-architecture.png -w 3840 -h 2160
+mmdc -i 00-overview.md -o 00-overview.png -w 3840 -h 2160
 ```
 
 ---
@@ -381,7 +404,7 @@ open https://github.com/dan-snelson/DDM-OS-Reminder/tree/main/Diagrams
 npm install -g @mermaid-js/mermaid-cli
 
 # Export all diagrams as PNG
-for file in 0[1-5]-*.md; do
+for file in 0[0-5]-*.md; do
     echo "Rendering $file..."
     mmdc -i "$file" -o "../images/${file%.md}.png" -w 2400
 done
@@ -468,6 +491,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.3 | 05-Mar-2026 | Added 00 Executive Overview diagram and PNG export; renumbered diagram index and updated rendering guidance for 00–05 |
 | 1.0.2 | 01-Mar-2026 | Updated staged-update documentation in 02/06 for proposed metadata validation and pending-download normalization behavior |
 | 1.0.1 | 05-Feb-2026 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
 |       |            | - Removed legacy `*-1.png` files |
@@ -481,5 +505,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 01-Mar-2026
+**Last Updated**: 05-Mar-2026
 **DDM OS Reminder Version**: 2.6.0

@@ -4,9 +4,9 @@ This diagram gives Mac Admins a simple, high-level deployment path for DDM OS Re
 
 ```mermaid
 flowchart TD
-    Clone["<b>1. Clone</b><br/><br/>git&nbsp;clone&nbsp;https://github.com/dan-snelson/DDM-OS-Reminder.git<br/><br/>cd&nbsp;DDM-OS-Reminder"]
-    Demo["<b>2. Demo</b><br/><br/>zsh&nbsp;reminderDialog.zsh&nbsp;demo"]
-    Assemble["<b>3. Assemble</b><br/><br/>zsh&nbsp;assemble.zsh&nbsp;--interactive"]
+    Clone["<b>1. Clone</b><br/><br/><code>git&nbsp;clone&nbsp;https://github.com/dan-snelson/DDM-OS-Reminder.git</code><br/><br/><code>cd&nbsp;DDM-OS-Reminder</code>"]
+    Demo["<b>2. Demo</b><br/><br/><code>zsh&nbsp;reminderDialog.zsh&nbsp;demo</code>"]
+    Assemble["<b>3. Assemble</b><br/><br/><code>zsh&nbsp;assemble.zsh&nbsp;--interactive</code>"]
     Deploy["<b>4. Deploy Artifacts</b><br/><br/>Configuration Profile<br/>Script"]
     Test["<b>5. Test</b><br/><br/>Verify LaunchDaemon, preferences, logs, and dialog behavior"]
 

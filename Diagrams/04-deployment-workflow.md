@@ -272,10 +272,16 @@ zsh assemble.zsh
    - Default: Value from scripts (if matching)
    - Press `X` to exit
 
-2. **Processing Output**:
+2. **IT Support & Branding Prompts** (when using `--interactive`):
+   - Support team name, phone, email, and website
+   - `Knowledge Base ('YES' to specify; 'NO' to hide)`
+   - If `YES`: prompts for `Support KB Title`, `Info Button Action`, and `Support KB Markdown Link`
+   - If `NO`: KB prompts are skipped and generated configs hide KB surfaces in the help dialog (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without KB row)
+
+3. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0a1)
+🧩 Assemble DDM OS Reminder (2.6.0)
 ===============================================================
 
 Full Paths:
@@ -384,7 +390,7 @@ tail -50 /var/log/org.churchofjesuschrist.log
 
 Expected output:
 ```
-[PRE-FLIGHT]      DDM OS Reminder (3.0.0a1)
+[PRE-FLIGHT]      DDM OS Reminder (2.6.0)
 [PRE-FLIGHT]      Initiating …
 [NOTICE]          Reset All Configuration Files …
 [NOTICE]          Create 'DDM OS Reminder' script

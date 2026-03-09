@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="3.0.0a1"
+scriptVersion="3.0.0a2"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -109,6 +109,8 @@ daysBeforeDeadlineDisplayReminder=$(extract_from_preference_map daysBeforeDeadli
 daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlurscreen)
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
+daysPastDeadlineRestartWorkflow=$(extract_from_preference_map daysPastDeadlineRestartWorkflow)
+pastDeadlineRestartBehavior=$(extract_from_preference_map pastDeadlineRestartBehavior)
 meetingDelay=$(extract_from_preference_map meetingDelay)
 acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
@@ -179,6 +181,10 @@ defaultSupportTeamWebsite=$(extract_from_preference_map supportTeamWebsite)
 defaultSupportKB=$(extract_from_preference_map supportKB)
 defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
 defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
+defaultSupportAssistanceMessage=$(extract_from_preference_map supportAssistanceMessage)
+defaultSupportAssistanceMessageLocalizedEn=$(extract_from_preference_map supportAssistanceMessageLocalizedEn)
+defaultSupportAssistanceMessageLocalizedDe=$(extract_from_preference_map supportAssistanceMessageLocalizedDe)
+defaultSupportAssistanceMessageLocalizedFr=$(extract_from_preference_map supportAssistanceMessageLocalizedFr)
 defaultMessageLocalizedEn=$(extract_from_preference_map messageLocalizedEn)
 defaultMessageLocalizedDe=$(extract_from_preference_map messageLocalizedDe)
 defaultMessageLocalizedFr=$(extract_from_preference_map messageLocalizedFr)
@@ -254,11 +260,16 @@ supportTeamPhone_xml=$(process "$defaultSupportTeamPhone")
 supportTeamEmail_xml=$(process "$defaultSupportTeamEmail")
 supportTeamWebsite_xml=$(process "$defaultSupportTeamWebsite")
 supportKB_xml=$(process "$defaultSupportKB")
+supportAssistanceMessage_xml=$(process "$defaultSupportAssistanceMessage")
+supportAssistanceMessageLocalizedEn_xml=$(process "$defaultSupportAssistanceMessageLocalizedEn")
+supportAssistanceMessageLocalizedDe_xml=$(process "$defaultSupportAssistanceMessageLocalizedDe")
+supportAssistanceMessageLocalizedFr_xml=$(process "$defaultSupportAssistanceMessageLocalizedFr")
 
 infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
 
 scriptLog_xml=$(echo "$scriptLog" | xml_escape)
+pastDeadlineRestartBehavior_xml=$(echo "$pastDeadlineRestartBehavior" | xml_escape)
 dateFormat_xml=$(echo "$dateFormatDeadlineHumanReadable" | xml_escape)
 languageOverride_xml=$(echo "$languageOverride" | xml_escape)
 
@@ -288,6 +299,12 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysBeforeDeadlineHidingButton2}</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>${daysOfExcessiveUptimeWarning}</integer>
+    <!-- Past-deadline restart behavior:
+         Off | Prompt | Force -->
+    <key>PastDeadlineRestartBehavior</key>
+    <string>${pastDeadlineRestartBehavior_xml}</string>
+    <key>DaysPastDeadlineRestartWorkflow</key>
+    <integer>${daysPastDeadlineRestartWorkflow}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
     <key>AcceptableAssertionApplicationNames</key>
@@ -320,6 +337,14 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infobuttonaction_xml}</string>
     <key>SupportKBURL</key>
     <string>${supportKBURL_xml}</string>
+    <key>SupportAssistanceMessage</key>
+    <string>${supportAssistanceMessage_xml}</string>
+    <key>SupportAssistanceMessageLocalized_en</key>
+    <string>${supportAssistanceMessageLocalizedEn_xml}</string>
+    <key>SupportAssistanceMessageLocalized_de</key>
+    <string>${supportAssistanceMessageLocalizedDe_xml}</string>
+    <key>SupportAssistanceMessageLocalized_fr</key>
+    <string>${supportAssistanceMessageLocalizedFr_xml}</string>
 
     <!-- Localization -->
     <key>LanguageOverride</key>
@@ -463,6 +488,10 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysBeforeDeadlineHidingButton2}</integer>
                                 <key>DaysOfExcessiveUptimeWarning</key>
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
+                                <key>PastDeadlineRestartBehavior</key>
+                                <string>${pastDeadlineRestartBehavior_xml}</string>
+                                <key>DaysPastDeadlineRestartWorkflow</key>
+                                <integer>${daysPastDeadlineRestartWorkflow}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
                                 <key>AcceptableAssertionApplicationNames</key>
@@ -491,6 +520,14 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infobuttonaction_xml}</string>
                                 <key>SupportKBURL</key>
                                 <string>${supportKBURL_xml}</string>
+                                <key>SupportAssistanceMessage</key>
+                                <string>${supportAssistanceMessage_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_en</key>
+                                <string>${supportAssistanceMessageLocalizedEn_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_de</key>
+                                <string>${supportAssistanceMessageLocalizedDe_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_fr</key>
+                                <string>${supportAssistanceMessageLocalizedFr_xml}</string>
                                 <key>LanguageOverride</key>
                                 <string>${languageOverride_xml}</string>
                                 <key>Title</key>

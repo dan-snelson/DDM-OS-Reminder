@@ -4,7 +4,7 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 3.0.0a1 -->
+    <!-- Version: 3.0.0a2 -->
     <!-- Generated on: 2026-02-05-195817 -->
 
     <!-- Logging -->
@@ -20,6 +20,12 @@
     <integer>1</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>7</integer>
+    <!-- Past-deadline restart behavior:
+         Off | Prompt | Force -->
+    <key>PastDeadlineRestartBehavior</key>
+    <string>Off</string>
+    <key>DaysPastDeadlineRestartWorkflow</key>
+    <integer>2</integer>
     <key>MinimumDiskFreePercentage</key>
     <integer>10</integer>
     <key>MeetingDelay</key>
@@ -57,6 +63,14 @@
     <string>https://support.apple.com/108382</string>
     <key>SupportKBURL</key>
     <string>[Update macOS on Mac](https://support.apple.com/108382)</string>
+    <key>SupportAssistanceMessage</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+    <key>SupportAssistanceMessageLocalized_en</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+    <key>SupportAssistanceMessageLocalized_de</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Bei Fragen wenden Sie sich ueber die (?) Schaltflaeche unten rechts an **{supportTeamName}**.</string>
+    <key>SupportAssistanceMessageLocalized_fr</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Pour obtenir de l aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
 
     <!-- Localization -->
     <key>LanguageOverride</key>
@@ -139,17 +153,17 @@
     <false/>
 
     <key>Message</key>
-    <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+    <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_en</key>
-    <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;However, your device **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{ddmEnforcedInstallDateHumanReadable}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+    <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_de</key>
-    <string>Sample **Ein erforderliches macOS-{titleMessageUpdateOrUpgrade:l} ist jetzt verfuegbar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Bitte {titleMessageUpdateOrUpgrade:l} Sie auf macOS **{ddmVersionString}**, damit Ihr Mac sicher bleibt und den organisatorischen Richtlinien entspricht.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Um die {titleMessageUpdateOrUpgrade:l} jetzt durchzufuehren, klicken Sie auf **{button1text}**, folgen Sie den Anweisungen auf dem Bildschirm und klicken Sie dann auf **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Wenn Sie diese {titleMessageUpdateOrUpgrade:l} jetzt nicht durchfuehren koennen, klicken Sie auf **{button2text}**, um spaeter erneut erinnert zu werden (diese Option wird deaktiviert, wenn die Frist unmittelbar bevorsteht).&lt;br&gt;&lt;br&gt;Ihr Geraet **wird jedoch automatisch neu gestartet und {titleMessageUpdateOrUpgrade:l}t** am **{ddmEnforcedInstallDateHumanReadable}**, wenn Sie die {titleMessageUpdateOrUpgrade:l} nicht vor Ablauf der Frist abgeschlossen haben.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;Wenn Sie Unterstuetzung benoetigen, kontaktieren Sie bitte **{supportTeamName}**, indem Sie unten rechts auf die (?) Schaltflaeche klicken.</string>
+    <string>Sample **Ein erforderliches macOS-{titleMessageUpdateOrUpgrade:l} ist jetzt verfuegbar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Bitte {titleMessageUpdateOrUpgrade:l} Sie auf macOS **{ddmVersionString}**, damit Ihr Mac sicher bleibt und den organisatorischen Richtlinien entspricht.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Um die {titleMessageUpdateOrUpgrade:l} jetzt durchzufuehren, klicken Sie auf **{button1text}**, folgen Sie den Anweisungen auf dem Bildschirm und klicken Sie dann auf **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Wenn Sie diese {titleMessageUpdateOrUpgrade:l} jetzt nicht durchfuehren koennen, klicken Sie auf **{button2text}**, um spaeter erneut erinnert zu werden (diese Option wird deaktiviert, wenn die Frist unmittelbar bevorsteht).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_fr</key>
-    <string>Sample **Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**&lt;br&gt;&lt;br&gt;Bonjour, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin de maintenir la securite et la conformite de votre Mac aux politiques de votre organisation.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions a l&apos;ecran, puis cliquez sur **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un nouveau rappel plus tard (ce bouton est desactive lorsque l&apos;echeance est imminente).&lt;br&gt;&lt;br&gt;Cependant, votre appareil **redemarrera automatiquement et effectuera la {titleMessageUpdateOrUpgrade:l}** le **{ddmEnforcedInstallDateHumanReadable}** si vous ne l&apos;avez pas effectuee avant l&apos;echeance.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}&lt;br&gt;&lt;br&gt;Pour obtenir de l&apos;aide, veuillez contacter **{supportTeamName}** en cliquant sur le bouton (?) en bas a droite.</string>
+    <string>Sample **Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**&lt;br&gt;&lt;br&gt;Bonjour, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin de maintenir la securite et la conformite de votre Mac aux politiques de votre organisation.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions a l&apos;ecran, puis cliquez sur **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un nouveau rappel plus tard (ce bouton est desactive lorsque l&apos;echeance est imminente).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 
     <!-- Infobox -->
     <key>InfoBox</key>
-    <string>Sample&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {ddmVersionStringDeadlineHumanReadable}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {ddmVersionStringDaysRemaining}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {uptimeHumanReadable}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
+    <string>Sample&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
 
     <!-- Help section -->
     <key>HelpMessage</key>

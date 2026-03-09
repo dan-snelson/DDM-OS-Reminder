@@ -1,6 +1,6 @@
 # Configuration Hierarchy Diagram
 
-This diagram illustrates the 3-tier preference system used by DDM OS Reminder, showing how configuration values are loaded and which sources take precedence.
+This diagram illustrates the three-tier preference system used by DDM OS Reminder, showing how configuration values are loaded and which sources take precedence.
 
 ```mermaid
 graph TB

@@ -30,7 +30,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0a1)
+🧩 Assemble DDM OS Reminder (3.0.0a2)
 ===============================================================
 
 Full Paths:
@@ -58,19 +58,22 @@ Using 'us.snelson' as the Reverse Domain Name Notation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IT Support & Branding (Interactive)
+IT Support, Branding & Restart Policy (Interactive)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Support Team Name [IT Support] (or 'X' to exit):
 Support Team Phone [+1 (801) 555-1212] (or 'X' to exit): +1 (937) 681-1122
 Support Team Email [rescue@snelson.us] (or 'X' to exit):
 Support Team Website [https://support.snelson.us] (or 'X' to exit):
+Knowledge Base ('YES' to specify; 'NO' to hide) [YES] (or 'X' to exit):
 Support KB Title [Update macOS on Mac] (or 'X' to exit): KB8675309
 Info Button Action [https://support.snelson.us/KB8675309] (or 'X' to exit):
 Support KB Markdown Link [[KB8675309](https://support.snelson.us/KB8675309)] (or 'X' to exit):
 Overlay Icon URL (Light) [https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d] (or 'X' to exit):
 Overlay Icon URL (Dark) [https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39] (or 'X' to exit):
 Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
+Past-deadline Restart Behavior (Off / [P]rompt / [F]orce) [Off] (or 'X' to exit): Prompt
+Days Past Deadline Before Restart Workflow (0-999) [2] (or 'X' to exit): 3
 
 📦 Deployment Mode: prod
 
@@ -89,7 +92,7 @@ Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
 
     🔧 Updating internal plist content …
     🔓 Production mode: removing placeholder text for clean deployment
-    🔧 Applying IT support and branding values …
+    🔧 Applying IT support, branding and restart policy values …
    → Artifacts/us.snelson.dorm-2026-02-06-092404-prod.plist
 
 🧩 Generating Configuration Profile (.mobileconfig) …
@@ -112,6 +115,10 @@ Deployment Artifacts:
 ===============================================================
 ```
 
+If you enter `NO` for `Knowledge Base ('YES' to specify; 'NO' to hide)`, `assemble.zsh` skips KB prompts and writes plist values to hide KB surfaces (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without the KB row).
+
+If you enter `Off` for `Past-deadline Restart Behavior`, `assemble.zsh` skips the `Days Past Deadline Before Restart Workflow` prompt and leaves `DaysPastDeadlineRestartWorkflow` unchanged from the sample/default value in generated artifacts.
+
 **1.2.** Deploy the appropriate artifacts
 
 The `assemble.zsh` script creates **all three files you need for deployment**:
@@ -126,7 +133,7 @@ After carefully reviewing and customizing either the `.plist` or `.mobileconfig`
 
 > **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
-> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`) plus localized keys such as `TitleLocalized_*`, `MessageLocalized_*`, `HelpMessageLocalized_*`, localized button labels, warning fragments (`ExcessiveUptimeWarningMessageLocalized_*`, `DiskSpaceWarningMessageLocalized_*`), and staging fragments (`StagedUpdateMessageLocalized_*`, `PartiallyStagedUpdateMessageLocalized_*`, `PendingDownloadMessageLocalized_*`). With `LanguageOverride=auto`, the script reads `AppleLanguages:0` for the logged-in user; unsupported locales normalize to English, and missing localized fields fall back to the scalar key.
+> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`) and localized key families (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`) for dialog text, warnings, staging text, and support-assistance messaging.
 
 ---
 
@@ -232,4 +239,30 @@ Reports the date when the DDM-enforced macOS update was executed.
 
 ```
 Thu Nov 13 08:59:56 2025
+```
+
+**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
+Reports all local users with SecureToken enabled (comma-separated).
+
+```
+dan
+```
+
+On macOS earlier than 10.13, this EA reports:
+
+```
+N/A (macOS X.Y.Z)
+```
+
+**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
+Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
+
+```
+dan
+```
+
+On systems where APFS volume ownership cannot be determined, this EA reports:
+
+```
+Unable to determine
 ```

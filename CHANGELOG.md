@@ -2,24 +2,44 @@
 
 ## Changelog
 
-## Version 3.0.0a1 (07-Feb-2026)
-- Added multi-language support ([Feature Request #25](https://github.com/dan-snelson/DDM-OS-Reminder/issues/25); thanks for the suggestion, @Thrawnium!)
-    - Added profile-backed localization keys for dialog title/message/buttons/help text (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`)
-    - Added `LanguageOverride` preference (`auto` | `en` | `de` | `fr`) with fallback to detected logged-in user language and English default
-    - Added localized warning/staging fragment keys so injected message content can match selected language
-    - Localized dynamic update/upgrade wording and weekday placeholder resolution by selected language
+### Version 3.0.0a2 (09-Mar-2026)
+- Merged `main` (2.6.0) into `3.0.0` with manual conflict resolution and regression-focused validation.
+- Preserved 2.6.0 runtime behavior (post-deadline restart workflow, KB support-assistance controls, deadline/infobox urgency highlighting).
+- Integrated FR-25 localization across runtime/config generation (`LanguageOverride`, localized key families, and localized infobox labels).
+- Added localization parity for 2.6.0-only text paths (deadline-enforcement sentence, support-assistance text, and restart-mode dialog copy).
+- Updated `Resources/createPlist.zsh` and `Resources/sample.plist` to include both restart-policy keys and localization key families.
+- Regenerated release artifacts from the merged source.
 
-## Version 2.4.0 (06-Feb-2026)
+### Version 2.6.0 (01-Mar-2026)
+- Added "Code Name: Yukon Cornelius" past-deadline restart workflow with `PastDeadlineRestartBehavior` values `Off`, `Prompt`, and `Force` ([Feature Request #75](https://github.com/dan-snelson/DDM-OS-Reminder/issues/75))
+    - Added `DaysPastDeadlineRestartWorkflow` thresholding and a fixed 75-minute uptime minimum before restart workflow is activated
+    - Added notice-level observability logs for both restart-workflow activation and uptime-based suppression
+    - Updated docs and sample configuration to align with restart-workflow behavior, including the 75-minute uptime requirement and `DaysOfExcessiveUptimeWarning=0` semantics
+- Added `computeInfoboxHighlights()` to render `Deadline`, `Day(s) Remaining`, and `Last Restart` as `:red[...]` when supported by swiftDialog markdown color
+- Updated `assemble.zsh --interactive` to include a `Knowledge Base ('YES' to specify; 'NO' to hide)` prompt so Mac Admins can hide KB references without manual edits (`InfoButtonText`, `HelpImage`, and `HelpMessage` KB row) ([Feature Request #74](https://github.com/dan-snelson/DDM-OS-Reminder/issues/74); thanks for the idea, Adam!)
+- Updated `assemble.zsh --interactive` to prompt for `PastDeadlineRestartBehavior` (`Off` / `Prompt` / `Force`) and conditionally prompt for `DaysPastDeadlineRestartWorkflow` when restart behavior is enabled, then stamp those values into generated `.plist` and `.mobileconfig` artifacts
+- Updated `Force` mode restart execution to use root-level `sleep 1 && shutdown -r now &` for stronger enforcement reliability on managed macOS systems
+- Added `SupportAssistanceMessage` placeholder/key so KB-disabled assemblies can suppress `(?)` button guidance without brittle `Message` regex rewrites
+
+### Version 2.5.0 (19-Feb-2026)
+- Enhanced `detectStagedUpdate` to read staged proposed macOS version/build metadata from `cryptex1/proposed` and confirm it matches the DDM-enforced version when available ([Feature Request #72](https://github.com/dan-snelson/DDM-OS-Reminder/issues/72))
+- Updated staged metadata handling to normalize partially/fully staged states without proposed metadata to `Pending download`, so reminder flow continues and staging is re-evaluated on subsequent runs
+- Updated reminder body text to use swiftDialog markdown color rendering so the automatic restart/update deadline sentence is displayed in red
+- Added runtime fallback so older swiftDialog versions render the same enforcement sentence without color markdown
+- For environments that override `Message` via Configuration Profile, redeploy an updated profile that includes `{deadlineEnforcementMessage}` to enable the new red/compatibility behavior
+- Added relative deadline rendering (`Today` / `Tomorrow`) for enforcement messaging while preserving existing absolute deadline placeholders
+
+### Version 2.4.0 (06-Feb-2026)
 - Added space-delimited list of `acceptableAssertionApplicationNames` ([Feature Request #67](https://github.com/dan-snelson/DDM-OS-Reminder/issues/67); thanks for the suggestion, @yassermkh!)
 - Added Dark Mode Overlay Icon [Feature Request #62](https://github.com/dan-snelson/DDM-OS-Reminder/issues/62) (thanks for the suggestion, @cyberotterpup!)
 - Added DDM version validation to suppress reminders on invalid VersionString formats (thanks for the idea, @nessts!)
 - Added deployment mode selection [ --dev | --test | --prod ] to `assemble.zsh` for improved artifact clarity during assembly
 - Added `quitkey` option to swiftDialog invocation to allow users to dismiss the dialog via keyboard shortcut (thanks for the suggestion, @Jadah!)
 
-## Version 2.3.1 (28-Jan-2026)
+### Version 2.3.1 (28-Jan-2026)
 - Refactored `installedOSvsDDMenforcedOS()` to wait up to five minutes if `setPastDuePaddedEnforcementDate` is in the past
 
-## Version 2.3.0 (19-Jan-2026)
+### Version 2.3.0 (19-Jan-2026)
 - Refactored Update Required logic to address [Feature Request #55](https://github.com/dan-snelson/DDM-OS-Reminder/issues/55)
 - Updated "Organization Variables" (i.e., removed redundant variable declarations)
 - Refactored `OrganizationOverlayIconURL` logic to address [Bug Report #56](https://github.com/dan-snelson/DDM-OS-Reminder/issues/56) (thanks, @walkintom!)

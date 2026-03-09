@@ -35,7 +35,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="3.0.0a1"
+scriptVersion="3.0.0a2"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -60,7 +60,7 @@ interactiveMode=false
 placeholderMarker="Assembled"
 legacyPlaceholderMarker="Sample"
 
-# IT Support & Branding (interactive prompts)
+# IT Support, Branding & Restart Policy (interactive prompts)
 supportTeamName=""
 supportTeamPhone=""
 supportTeamEmail=""
@@ -68,9 +68,13 @@ supportTeamWebsite=""
 supportKB=""
 infoButtonAction=""
 supportKBURL=""
+infoButtonText=""
+enableKnowledgeBase="true"
 organizationOverlayIconURL=""
 organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
+pastDeadlineRestartBehavior=""
+daysPastDeadlineRestartWorkflow=""
 
 
 
@@ -169,8 +173,8 @@ while [[ $# -gt 0 ]]; do
       echo
       echo "Options:"
       echo "  --lane <dev|test|prod>       Select deployment mode"
-      echo "  --interactive                Prompt for IT support and branding values"
-      echo "  --help, -h                    Show this help"
+      echo "  --interactive                Prompt for IT support, branding and restart policy values"
+      echo "  --help, -h                   Show this help"
       echo
       exit 0
       ;;
@@ -245,7 +249,7 @@ echo
 
 
 ####################################################################################################
-# Optional Interactive Prompts (IT Support & Branding)
+# Optional Interactive Prompts (IT Support, Branding & Restart Policy)
 ####################################################################################################
 
 function rdnnToDomain() {
@@ -298,6 +302,18 @@ function normalizeBoolean() {
   esac
 }
 
+function normalizePastDeadlineRestartBehavior() {
+  local value="${1}"
+  local normalizedValue="${value//[[:space:]]/}"
+
+  case "${normalizedValue:l}" in
+    off)    echo "Off" ;;
+    prompt|p) echo "Prompt" ;;
+    force|f)  echo "Force" ;;
+    *)      echo "" ;;
+  esac
+}
+
 if [[ "${interactiveMode}" == true ]]; then
   derivedDomain="$(rdnnToDomain "${newRDNN}")"
   if [[ -z "${derivedDomain}" ]]; then
@@ -306,7 +322,7 @@ if [[ "${interactiveMode}" == true ]]; then
 
   echo
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "IT Support & Branding (Interactive)"
+  echo "IT Support, Branding & Restart Policy (Interactive)"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo
 
@@ -314,25 +330,47 @@ if [[ "${interactiveMode}" == true ]]; then
   defaultSupportTeamPhone="+1 (801) 555-1212"
   defaultSupportTeamEmail="rescue@${derivedDomain}"
   defaultSupportTeamWebsite="https://support.${derivedDomain}"
+  defaultEnableKnowledgeBase="YES"
   defaultSupportKB="Update macOS on Mac"
   defaultInfoButtonAction="${defaultSupportTeamWebsite}"
   defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
   defaultOrganizationOverlayIconURL="https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
   defaultOrganizationOverlayIconURLdark="https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
   defaultSwapOverlayAndLogo="NO"
+  defaultPastDeadlineRestartBehavior="Off"
+  defaultDaysPastDeadlineRestartWorkflow="2"
 
   promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
   promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
   promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
   promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
-  promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
+  promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
+  enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
+  if [[ -z "${enableKnowledgeBase}" ]]; then
+    echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
+    enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
+  fi
 
-  supportKbSlug="${supportKB// /-}"
-  defaultInfoButtonAction="${defaultSupportTeamWebsite}/${supportKbSlug}"
-  promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
+  if [[ "${enableKnowledgeBase}" == "true" ]]; then
+    promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
 
-  defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
-  promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+    supportKbSlug="${supportKB// /-}"
+    defaultInfoButtonAction="${supportTeamWebsite}/${supportKbSlug}"
+    promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
+
+    defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
+    promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+
+    infoButtonText="${supportKB}"
+  else
+    supportKB=""
+    infoButtonAction=""
+    supportKBURL=""
+    infoButtonText="hide"
+    echo ""
+    echo "ℹ️  Knowledge Base features disabled; hiding 'infobutton', KB row in 'helpmessage' and QR help image."
+    echo ""
+  fi
 
   promptWithDefault "Overlay Icon URL (Light)" "${defaultOrganizationOverlayIconURL}" "organizationOverlayIconURL"
   promptWithDefault "Overlay Icon URL (Dark)" "${defaultOrganizationOverlayIconURLdark}" "organizationOverlayIconURLdark"
@@ -342,6 +380,26 @@ if [[ "${interactiveMode}" == true ]]; then
   if [[ -z "${swapOverlayAndLogo}" ]]; then
     echo "⚠️  Invalid input for SwapOverlayAndLogo; defaulting to ${defaultSwapOverlayAndLogo}"
     swapOverlayAndLogo="$(normalizeBoolean "${defaultSwapOverlayAndLogo}")"
+  fi
+
+  while true; do
+    promptWithDefault "Past-deadline Restart Behavior (Off / [P]rompt / [F]orce)" "${defaultPastDeadlineRestartBehavior}" "pastDeadlineRestartBehavior"
+    normalizedPastDeadlineRestartBehavior="$(normalizePastDeadlineRestartBehavior "${pastDeadlineRestartBehavior}")"
+    if [[ -n "${normalizedPastDeadlineRestartBehavior}" ]]; then
+      pastDeadlineRestartBehavior="${normalizedPastDeadlineRestartBehavior}"
+      break
+    fi
+    echo "⚠️  Invalid input for PastDeadlineRestartBehavior; valid values: Off, Prompt (or P), Force (or F)."
+  done
+
+  if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+    while true; do
+      promptWithDefault "Days Past Deadline Before Restart Workflow (0-999)" "${defaultDaysPastDeadlineRestartWorkflow}" "daysPastDeadlineRestartWorkflow"
+      if [[ "${daysPastDeadlineRestartWorkflow}" == <-> ]] && (( daysPastDeadlineRestartWorkflow >= 0 && daysPastDeadlineRestartWorkflow <= 999 )); then
+        break
+      fi
+      echo "⚠️  Invalid input for DaysPastDeadlineRestartWorkflow; enter an integer from 0 to 999."
+    done
   fi
 fi
 
@@ -596,7 +654,7 @@ if [[ -f "${plistSample}" ]]; then
 }' "$plistOutput"
 
   if [[ "${interactiveMode}" == true ]]; then
-    echo "    🔧 Applying IT support and branding values …"
+    echo "    🔧 Applying IT support, branding and restart policy values …"
     /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
     /usr/bin/plutil -replace SupportTeamPhone -string "${supportTeamPhone}" "${plistOutput}"
     /usr/bin/plutil -replace SupportTeamEmail -string "${supportTeamEmail}" "${plistOutput}"
@@ -604,9 +662,31 @@ if [[ -f "${plistSample}" ]]; then
     /usr/bin/plutil -replace SupportKB -string "${supportKB}" "${plistOutput}"
     /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
     /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
+    /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
     /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
     /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
     /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
+    /usr/bin/plutil -replace PastDeadlineRestartBehavior -string "${pastDeadlineRestartBehavior}" "${plistOutput}"
+
+    if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+      /usr/bin/plutil -replace DaysPastDeadlineRestartWorkflow -integer "${daysPastDeadlineRestartWorkflow}" "${plistOutput}"
+    fi
+
+    if [[ "${enableKnowledgeBase}" != "true" ]]; then
+      /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
+      /usr/bin/plutil -replace SupportAssistanceMessage -string "" "${plistOutput}"
+
+      currentHelpMessage="$(/usr/bin/plutil -extract HelpMessage raw -o - "${plistOutput}" 2>/dev/null || true)"
+      if [[ -n "${currentHelpMessage}" ]]; then
+        updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
+        /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
+      fi
+
+      messageWithKbHidden="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
+      if [[ "${messageWithKbHidden}" == *"(?) button"* ]]; then
+        echo "    ⚠️  Message still references '(?) button' while Knowledge Base is disabled."
+      fi
+    fi
   fi
 
   # Cleanup
@@ -803,7 +883,14 @@ case "${deploymentMode}" in
     echo "  Production Artifacts Generated:"
     echo "    - All placeholder text removed (clean output)"
     if [[ "${interactiveMode}" == true ]]; then
-      echo "    - IT support and branding values applied from prompts"
+      echo "    - IT support, branding and restart policy values applied from prompts"
+      echo "    - Past-deadline restart policy set to '${pastDeadlineRestartBehavior}'"
+      if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+        echo "    - Restart workflow begins ${daysPastDeadlineRestartWorkflow} day(s) past deadline"
+      fi
+      if [[ "${enableKnowledgeBase}" != "true" ]]; then
+        echo "    - Knowledge Base surfaces hidden (Info button, KB row in help, QR help image)"
+      fi
     else
       echo "    - Ensure you've customized values before deployment"
       echo "      (re-run with --interactive or update source defaults)"
@@ -811,7 +898,11 @@ case "${deploymentMode}" in
     echo
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
-    echo "    - Support KB title/link and Info button URL"
+    if [[ "${interactiveMode}" == true && "${enableKnowledgeBase}" != "true" ]]; then
+      echo "    - Verify KB surfaces are hidden (Info button + KB row + QR help image)"
+    else
+      echo "    - Support KB title/link and Info button URL"
+    fi
     echo "    - Organization overlay icon URLs"
     echo "    - Button labels and dialog messages"
     echo

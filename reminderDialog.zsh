@@ -1481,6 +1481,9 @@ function executeRestartAction() {
 function displayReminderDialog() {
 
     additionalDialogOptions=("$@")
+    local dialogArgsWithoutHelpImage=()
+    local dialogArgsWithoutDisabledButton2=()
+    local argumentIndex=1
 
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
 
@@ -1510,6 +1513,55 @@ function displayReminderDialog() {
 
     returncode=$?
     info "Return Code: ${returncode}"
+
+    # swiftDialog can occasionally exit with code 9 on argument-parse failures.
+    # Retry with progressively simpler argument sets to preserve the user prompt.
+    if [[ "${returncode}" -eq 9 ]]; then
+
+        warning "swiftDialog returned code 9; retrying without help image argument."
+
+        while (( argumentIndex <= ${#dialogArgs[@]} )); do
+            if [[ "${dialogArgs[argumentIndex]}" == "--helpimage" ]]; then
+                (( argumentIndex += 2 ))
+                continue
+            fi
+            dialogArgsWithoutHelpImage+=("${dialogArgs[argumentIndex]}")
+            (( argumentIndex++ ))
+        done
+
+        if (( ${#dialogArgsWithoutHelpImage[@]} < ${#dialogArgs[@]} )); then
+            dialogArgs=("${dialogArgsWithoutHelpImage[@]}")
+            ${dialogBinary} "${dialogArgsWithoutHelpImage[@]}"
+            returncode=$?
+            info "Return Code: ${returncode}"
+        else
+            warning "No --helpimage argument found to remove for code 9 retry."
+        fi
+
+        if [[ "${returncode}" -eq 9 ]] && [[ "${hideSecondaryButton}" == "DISABLED" ]]; then
+
+            warning "swiftDialog still returned code 9; retrying without disabled secondary button argument."
+
+            argumentIndex=1
+            while (( argumentIndex <= ${#dialogArgsWithoutHelpImage[@]} )); do
+                if [[ "${dialogArgsWithoutHelpImage[argumentIndex]}" == "--button2disabled" ]]; then
+                    (( argumentIndex++ ))
+                    continue
+                fi
+                dialogArgsWithoutDisabledButton2+=("${dialogArgsWithoutHelpImage[argumentIndex]}")
+                (( argumentIndex++ ))
+            done
+
+            if (( ${#dialogArgsWithoutDisabledButton2[@]} < ${#dialogArgsWithoutHelpImage[@]} )); then
+                dialogArgs=("${dialogArgsWithoutDisabledButton2[@]}")
+                ${dialogBinary} "${dialogArgsWithoutDisabledButton2[@]}"
+                returncode=$?
+                info "Return Code: ${returncode}"
+            else
+                warning "No --button2disabled argument found to remove for code 9 retry."
+            fi
+        fi
+    fi
 
     if isPastDeadlineForceMode; then
         while true; do
@@ -1618,6 +1670,11 @@ function displayReminderDialog() {
         20) ## Process exit code 20 scenario here
             notice "User had Do Not Disturb enabled"
             quitScript "0"
+            ;;
+
+        9)  ## Process exit code 9 scenario here
+            warning "swiftDialog exited with code 9 after retries; check custom HelpImage/HelpMessage and button configuration."
+            quitScript "${returncode}"
             ;;
 
         *)  ## Catch all processing

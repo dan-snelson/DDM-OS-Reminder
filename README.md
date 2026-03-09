@@ -1,7 +1,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (3.0.0a2)
-> Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **profile-driven localization**
+# DDM OS Reminder (3.0.0a3)
+> Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **locale-aware deadline date rendering** while preserving profile-driven localization
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -23,6 +23,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
+- **Locale-aware Deadline Dates**: `DateFormatDeadlineHumanReadable` tokens such as `%a` and `%b` now follow the resolved dialog language (`de`, `fr`, fallback `en`) so weekday/month names are not forced to English.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
@@ -54,6 +55,17 @@ Optional verification in log output:
 - `LanguageOverride is 'fr'; using 'fr'`
 
 <img src="images/3.0.0a2_de.png" alt="3.0.0a2_de" width="400" /> <img src="images/3.0.0a2_fr.png" alt="3.0.0a2_fr" width="400" />
+
+## Deadline Date Format
+
+`DateFormatDeadlineHumanReadable` remains the single date format key.
+
+Swiss-style numeric format example:
+
+```zsh
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    DateFormatDeadlineHumanReadable -string "+%d.%m.%Y %H:%M"
+```
 
 ## Support
 

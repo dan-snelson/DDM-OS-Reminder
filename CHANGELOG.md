@@ -2,6 +2,11 @@
 
 ## Changelog
 
+### Version 3.0.0a3 (09-Mar-2026)
+- Added locale-aware deadline date formatting so `%a`/`%b` tokens in `DateFormatDeadlineHumanReadable` render by resolved dialog language (`de`, `fr`, fallback `en`).
+- Resolved dialog language before DDM deadline parsing so human-readable deadline strings are consistent across standard, padded past-due, and demo-mode flows.
+- Preserved existing localization profile keys and fallback behavior (no new production dependencies, no new date-format keys).
+
 ### Version 3.0.0a2 (09-Mar-2026)
 - Merged `main` (2.6.0) into `3.0.0` with manual conflict resolution and regression-focused validation.
 - Preserved 2.6.0 runtime behavior (post-deadline restart workflow, KB support-assistance controls, deadline/infobox urgency highlighting).

@@ -30,7 +30,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0a2)
+🧩 Assemble DDM OS Reminder (3.0.0a3)
 ===============================================================
 
 Full Paths:

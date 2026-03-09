@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.0.0a2"
+scriptVersion="3.0.0a3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.0.0a2"
+scriptVersion="3.0.0a3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -295,6 +295,7 @@ pastDeadlineRedisplayDelaySeconds=5
 pastDeadlineRestartEffective="Off"
 pastDeadlineRestartMinimumUptimeMinutes=75
 pastDeadlineRestartSuppressedForUptime="NO"
+dialogLanguage="en"
 
 
 
@@ -596,6 +597,60 @@ function isValidDDMVersionString() {
 # Deadline Display Formatting
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+function localeForDialogLanguageCode() {
+    case "${1}" in
+        de) echo "de_DE.UTF-8" ;;
+        fr) echo "fr_FR.UTF-8" ;;
+        *)  echo "en_US.UTF-8" ;;
+    esac
+}
+
+function formatDateWithDialogLocale() {
+    local inputFormat="${1}"
+    local inputValue="${2}"
+    local outputFormat="${3}"
+    local localeForDate=""
+    local formattedDate=""
+
+    localeForDate="$(localeForDialogLanguageCode "${dialogLanguage}")"
+
+    if [[ -n "${localeForDate}" ]]; then
+        formattedDate=$(LC_TIME="${localeForDate}" date -jf "${inputFormat}" "${inputValue}" "${outputFormat}" 2>/dev/null)
+    fi
+
+    if [[ -z "${formattedDate}" ]]; then
+        formattedDate=$(date -jf "${inputFormat}" "${inputValue}" "${outputFormat}" 2>/dev/null)
+    fi
+
+    echo "${formattedDate}"
+}
+
+function formatDeadlineFromISO8601() {
+    local sourceTimestamp="${1}"
+    local requestedFormat="${2}"
+    local formattedDeadline=""
+
+    formattedDeadline=$(formatDateWithDialogLocale "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
+    if [[ -z "${formattedDeadline}" ]]; then
+        formattedDeadline=$(formatDateWithDialogLocale "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
+    fi
+
+    echo "${formattedDeadline}"
+}
+
+function formatDeadlineFromEpoch() {
+    local sourceEpoch="${1}"
+    local requestedFormat="${2}"
+    local formattedDeadline=""
+
+    formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "${requestedFormat}")
+    if [[ -z "${formattedDeadline}" ]]; then
+        formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
+    fi
+
+    echo "${formattedDeadline}"
+}
+
 function formatTimeHumanReadableFromEpoch() {
     local targetEpoch="${1}"
     local timeHumanReadable=""
@@ -604,7 +659,7 @@ function formatTimeHumanReadableFromEpoch() {
         return 1
     fi
 
-    timeHumanReadable=$( date -jf "%s" "${targetEpoch}" "+%-l:%M %p" 2>/dev/null )
+    timeHumanReadable=$( formatDateWithDialogLocale "%s" "${targetEpoch}" "+%-l:%M %p" )
     if [[ -z "${timeHumanReadable}" ]]; then
         return 1
     fi
@@ -1453,11 +1508,7 @@ installedOSvsDDMenforcedOS() {
         fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
     fi
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
-    ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
-    # Fallback to default if format fails
-    if [[ -z "${ddmVersionStringDeadlineHumanReadable}" ]]; then
-        ddmVersionStringDeadlineHumanReadable=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
-    fi
+    ddmVersionStringDeadlineHumanReadable=$( formatDeadlineFromISO8601 "${ddmEnforcedInstallDate}" "${dateFormatDeadlineHumanReadable}" )
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// AM/ a.m.}
     ddmVersionStringDeadlineHumanReadable=${ddmVersionStringDeadlineHumanReadable// PM/ p.m.}
 
@@ -1533,10 +1584,7 @@ installedOSvsDDMenforcedOS() {
 
         # Process the final result
             if [[ -n "$paddedEpoch" ]]; then
-                ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "${dateFormatDeadlineHumanReadable}" 2>/dev/null )
-                if [[ -z "${ddmEnforcedInstallDateHumanReadable}" ]]; then
-                    ddmEnforcedInstallDateHumanReadable=$( date -jf "%s" "$paddedEpoch" "+%a, %d-%b-%Y, %-l:%M %p" 2>/dev/null )
-                fi
+                ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${paddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
                 ddmEnforcedInstallDateEpoch="${paddedEpoch}"
                 info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
         else
@@ -2316,6 +2364,7 @@ preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${l
 loadPreferenceOverrides
 
 validatePreferenceLoad
+resolveDialogLanguage
 
 
 

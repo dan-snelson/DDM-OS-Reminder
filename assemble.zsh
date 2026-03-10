@@ -35,7 +35,7 @@
 ####################################################################################################
 
 set -euo pipefail
-scriptVersion="3.0.0a3"
+scriptVersion="3.0.0b1"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"

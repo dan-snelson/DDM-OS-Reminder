@@ -133,7 +133,7 @@ After carefully reviewing and customizing either the `.plist` or `.mobileconfig`
 
 > **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
-> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`) and localized key families (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`) for dialog text, warnings, staging text, and support-assistance messaging.
+> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) and localized key families (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) for dialog text, warnings, staging text, and support-assistance messaging.
 
 ---
 

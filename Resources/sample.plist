@@ -71,6 +71,12 @@
     <string>&lt;br&gt;&lt;br&gt;Sample Bei Fragen wenden Sie sich ueber die (?) Schaltflaeche unten rechts an **{supportTeamName}**.</string>
     <key>SupportAssistanceMessageLocalized_fr</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Pour obtenir de l aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
+    <key>SupportAssistanceMessageLocalized_es</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Para obtener ayuda, contacte con **{supportTeamName}** haciendo clic en el botón (?) de la esquina inferior derecha.</string>
+    <key>SupportAssistanceMessageLocalized_pt</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Para obter assistência, contacte a equipa **{supportTeamName}** clicando no botão (?) no canto inferior direito.</string>
+    <key>SupportAssistanceMessageLocalized_ja</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
 
     <!-- Localization -->
     <key>LanguageOverride</key>
@@ -85,6 +91,12 @@
     <string>Sample macOS {titleMessageUpdateOrUpgrade} erforderlich</string>
     <key>TitleLocalized_fr</key>
     <string>Sample mise a jour macOS obligatoire</string>
+    <key>TitleLocalized_es</key>
+    <string>Sample {titleMessageUpdateOrUpgrade} obligatoria de macOS</string>
+    <key>TitleLocalized_pt</key>
+    <string>Sample {titleMessageUpdateOrUpgrade} obrigatória do macOS</string>
+    <key>TitleLocalized_ja</key>
+    <string>Sample macOSの{titleMessageUpdateOrUpgrade}が必要です</string>
     <key>Button1Text</key>
     <string>Sample Open Software Update</string>
     <key>Button1TextLocalized_en</key>
@@ -93,6 +105,12 @@
     <string>Sample Softwareupdate oeffnen</string>
     <key>Button1TextLocalized_fr</key>
     <string>Sample Ouvrir Mise a jour de logiciels</string>
+    <key>Button1TextLocalized_es</key>
+    <string>Sample Abrir Actualización de software</string>
+    <key>Button1TextLocalized_pt</key>
+    <string>Sample Abrir Atualização de software</string>
+    <key>Button1TextLocalized_ja</key>
+    <string>Sample ソフトウェア・アップデートを開く</string>
     <key>Button2Text</key>
     <string>Sample Remind Me Later</string>
     <key>Button2TextLocalized_en</key>
@@ -101,6 +119,12 @@
     <string>Sample Spaeter erinnern</string>
     <key>Button2TextLocalized_fr</key>
     <string>Sample Me le rappeler plus tard</string>
+    <key>Button2TextLocalized_es</key>
+    <string>Sample Recordármelo más tarde</string>
+    <key>Button2TextLocalized_pt</key>
+    <string>Sample Lembrar-me mais tarde</string>
+    <key>Button2TextLocalized_ja</key>
+    <string>Sample 後で通知</string>
     <key>InfoButtonText</key>
     <string>Sample Update macOS on Mac</string>
     <key>InfoButtonTextLocalized_en</key>
@@ -109,6 +133,12 @@
     <string>Sample macOS auf Mac aktualisieren</string>
     <key>InfoButtonTextLocalized_fr</key>
     <string>Sample Mettre a jour macOS sur Mac</string>
+    <key>InfoButtonTextLocalized_es</key>
+    <string>Sample Actualizar macOS en el Mac</string>
+    <key>InfoButtonTextLocalized_pt</key>
+    <string>Sample Atualizar macOS no Mac</string>
+    <key>InfoButtonTextLocalized_ja</key>
+    <string>Sample MacでmacOSをアップデート</string>
     <key>ExcessiveUptimeWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_en</key>
@@ -117,6 +147,12 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Hinweis:** Ihr Mac laeuft seit **{uptimeHumanReadable}**. Starten Sie ihn fuer zuverlaessigere Ergebnisse bitte manuell neu.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_fr</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note :** Votre Mac est allume depuis **{uptimeHumanReadable}**. Redemarrez-le manuellement pour de meilleurs resultats.</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_es</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Nota:** Su Mac lleva **{uptimeHumanReadable}** encendido. Para obtener resultados más fiables, reinícielo manualmente antes de continuar.</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_pt</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Nota:** O seu Mac está ligado há **{uptimeHumanReadable}**. Para resultados mais fiáveis, reinicie-o manualmente antes de continuar.</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_ja</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **注意:** このMacは **{uptimeHumanReadable}** の間、再起動されていません。より確実に実行するため、続行前に手動で再起動してください。</string>
     <key>DiskSpaceWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
     <key>DiskSpaceWarningMessageLocalized_en</key>
@@ -125,6 +161,12 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Hinweis:** Ihr Mac hat nur **{diskSpaceHumanReadable}** frei. Dadurch kann dieses macOS-{titleMessageUpdateOrUpgrade:l} scheitern.</string>
     <key>DiskSpaceWarningMessageLocalized_fr</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note :** Votre Mac ne dispose que de **{diskSpaceHumanReadable}**, ce qui peut empecher cette {titleMessageUpdateOrUpgrade:l} macOS.</string>
+    <key>DiskSpaceWarningMessageLocalized_es</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Nota:** Su Mac solo dispone de **{diskSpaceHumanReadable}**, lo que puede impedir esta {titleMessageUpdateOrUpgrade:l} de macOS.</string>
+    <key>DiskSpaceWarningMessageLocalized_pt</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Nota:** O seu Mac tem apenas **{diskSpaceHumanReadable}** livres, o que pode impedir esta {titleMessageUpdateOrUpgrade:l} do macOS.</string>
+    <key>DiskSpaceWarningMessageLocalized_ja</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **注意:** このMacの空き容量は **{diskSpaceHumanReadable}** しかないため、このmacOS {titleMessageUpdateOrUpgrade:l} を実行できない可能性があります。</string>
     <key>StagedUpdateMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
     <key>StagedUpdateMessageLocalized_en</key>
@@ -133,6 +175,12 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Gute Nachricht!** Das macOS-{ddmVersionString}-Update wurde bereits geladen. Die Installation startet schnell, wenn Sie **{button1text}** klicken.</string>
     <key>StagedUpdateMessageLocalized_fr</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Bonne nouvelle !** La mise a jour macOS {ddmVersionString} est deja telechargee. L&apos;installation sera rapide apres clic sur **{button1text}**.</string>
+    <key>StagedUpdateMessageLocalized_es</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **¡Buenas noticias!** La actualización de macOS {ddmVersionString} ya se ha descargado en su Mac y está lista para instalarse. La instalación será más rápida cuando haga clic en **{button1text}**.</string>
+    <key>StagedUpdateMessageLocalized_pt</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Boas notícias!** A atualização do macOS {ddmVersionString} já foi descarregada para o seu Mac e está pronta para instalar. A instalação será mais rápida quando clicar em **{button1text}**.</string>
+    <key>StagedUpdateMessageLocalized_ja</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **お知らせ:** macOS {ddmVersionString} アップデートはすでにこのMacにダウンロードされており、インストールの準備ができています。**{button1text}** をクリックすると、すばやくインストールできます。</string>
     <key>PartiallyStagedUpdateMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
     <key>PartiallyStagedUpdateMessageLocalized_en</key>
@@ -141,6 +189,12 @@
     <string>&lt;br&gt;&lt;br&gt;Sample Ihr Mac laedt bereits erforderliche macOS-Update-Komponenten herunter und bereitet sie vor. Die Installation wird danach schneller sein.</string>
     <key>PartiallyStagedUpdateMessageLocalized_fr</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Votre Mac a commence a telecharger et preparer les composants requis de mise a jour macOS. L&apos;installation sera ensuite plus rapide.</string>
+    <key>PartiallyStagedUpdateMessageLocalized_es</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Su Mac ha comenzado a descargar y preparar los componentes necesarios de actualización de macOS. La instalación será más rápida cuando finalice la preparación de todos los recursos.</string>
+    <key>PartiallyStagedUpdateMessageLocalized_pt</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample O seu Mac começou a descarregar e a preparar os componentes necessários da atualização do macOS. A instalação será mais rápida quando todos os recursos estiverem preparados.</string>
+    <key>PartiallyStagedUpdateMessageLocalized_ja</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample このMacでは、必要なmacOSアップデートコンポーネントのダウンロードと準備が進行中です。すべての項目の準備が完了すると、インストールはより短時間で完了します。</string>
     <key>PendingDownloadMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac will begin downloading the update shortly.</string>
     <key>PendingDownloadMessageLocalized_en</key>
@@ -149,6 +203,12 @@
     <string>&lt;br&gt;&lt;br&gt;Sample Ihr Mac beginnt in Kuerze mit dem Download des Updates.</string>
     <key>PendingDownloadMessageLocalized_fr</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Votre Mac commencera bientot a telecharger la mise a jour.</string>
+    <key>PendingDownloadMessageLocalized_es</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Su Mac comenzará a descargar la actualización en breve.</string>
+    <key>PendingDownloadMessageLocalized_pt</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample O seu Mac irá começar a descarregar a atualização em breve.</string>
+    <key>PendingDownloadMessageLocalized_ja</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample このMacはまもなくアップデートのダウンロードを開始します。</string>
     <key>HideStagedUpdateInfo</key>
     <false/>
 
@@ -160,6 +220,12 @@
     <string>Sample **Ein erforderliches macOS-{titleMessageUpdateOrUpgrade:l} ist jetzt verfuegbar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Bitte {titleMessageUpdateOrUpgrade:l} Sie auf macOS **{ddmVersionString}**, damit Ihr Mac sicher bleibt und den organisatorischen Richtlinien entspricht.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Um die {titleMessageUpdateOrUpgrade:l} jetzt durchzufuehren, klicken Sie auf **{button1text}**, folgen Sie den Anweisungen auf dem Bildschirm und klicken Sie dann auf **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Wenn Sie diese {titleMessageUpdateOrUpgrade:l} jetzt nicht durchfuehren koennen, klicken Sie auf **{button2text}**, um spaeter erneut erinnert zu werden (diese Option wird deaktiviert, wenn die Frist unmittelbar bevorsteht).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_fr</key>
     <string>Sample **Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**&lt;br&gt;&lt;br&gt;Bonjour, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin de maintenir la securite et la conformite de votre Mac aux politiques de votre organisation.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions a l&apos;ecran, puis cliquez sur **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un nouveau rappel plus tard (ce bouton est desactive lorsque l&apos;echeance est imminente).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+    <key>MessageLocalized_es</key>
+    <string>Sample **Ya está disponible una {titleMessageUpdateOrUpgrade:l} obligatoria de macOS**&lt;br&gt;&lt;br&gt;¡Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Realice la {titleMessageUpdateOrUpgrade:l} a macOS **{ddmVersionString}** para mantener su Mac seguro y en cumplimiento con las políticas de la organización.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para realizar la {titleMessageUpdateOrUpgrade:l} ahora, haga clic en **{button1text}**, revise las instrucciones en pantalla y luego haga clic en **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si no puede realizar esta {titleMessageUpdateOrUpgrade:l} ahora, haga clic en **{button2text}** para recibir otro recordatorio más tarde (esta opción se desactiva cuando se acerca la fecha límite).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+    <key>MessageLocalized_pt</key>
+    <string>Sample **Já está disponível uma {titleMessageUpdateOrUpgrade:l} obrigatória do macOS**&lt;br&gt;&lt;br&gt;Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Efetue a {titleMessageUpdateOrUpgrade:l} para o macOS **{ddmVersionString}** para manter o seu Mac seguro e em conformidade com as políticas da organização.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para efetuar a {titleMessageUpdateOrUpgrade:l} agora, clique em **{button1text}**, siga as instruções no ecrã e depois clique em **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Se não puder efetuar esta {titleMessageUpdateOrUpgrade:l} agora, clique em **{button2text}** para receber outro lembrete mais tarde (esta opção fica desativada quando o prazo se aproxima).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+    <key>MessageLocalized_ja</key>
+    <string>Sample **必須のmacOS {titleMessageUpdateOrUpgrade:l} を利用できます**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;Macを安全に保ち、組織のポリシーに準拠するため、macOS **{ddmVersionString}** へ {titleMessageUpdateOrUpgrade:l} してください。{updateReadyMessage}&lt;br&gt;&lt;br&gt;今すぐ {titleMessageUpdateOrUpgrade:l} するには、**{button1text}** をクリックし、画面の案内を確認したあと **{softwareUpdateButtonText}** をクリックしてください。&lt;br&gt;&lt;br&gt;今すぐ実行できない場合は、**{button2text}** をクリックして後で再通知を受けてください（期限が近づくとこのオプションは無効になります）。&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 
     <!-- Infobox -->
     <key>InfoBox</key>
@@ -174,6 +240,12 @@
     <string>Sample&lt;br&gt;&lt;br&gt;Bei Fragen wenden Sie sich bitte an: **{supportTeamName}**&lt;br&gt;- **Telefon:** {supportTeamPhone}&lt;br&gt;- **E-Mail:** {supportTeamEmail}&lt;br&gt;- **Webseite:** {supportTeamWebsite}&lt;br&gt;- **Knowledge-Base-Artikel:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Benutzerinformationen:**&lt;br&gt;- **Vollstaendiger Name:** {userfullname}&lt;br&gt;- **Benutzername:** {username}&lt;br&gt;&lt;br&gt;**Computerinformationen:**&lt;br&gt;- **Computername:** {computername}&lt;br&gt;- **Seriennummer:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Skriptinformationen:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Skript:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpMessageLocalized_fr</key>
     <string>Sample&lt;br&gt;&lt;br&gt;Pour obtenir de l&apos;aide, veuillez contacter : **{supportTeamName}**&lt;br&gt;- **Telephone :** {supportTeamPhone}&lt;br&gt;- **E-mail :** {supportTeamEmail}&lt;br&gt;- **Site web :** {supportTeamWebsite}&lt;br&gt;- **Article de la base de connaissances :** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informations utilisateur :**&lt;br&gt;- **Nom complet :** {userfullname}&lt;br&gt;- **Nom d&apos;utilisateur :** {username}&lt;br&gt;&lt;br&gt;**Informations de l&apos;ordinateur :**&lt;br&gt;- **Nom de l&apos;ordinateur :** {computername}&lt;br&gt;- **Numero de serie :** {serialnumber}&lt;br&gt;- **macOS :** {osversion}&lt;br&gt;&lt;br&gt;**Informations du script :**&lt;br&gt;- **Dialog :** {dialogVersion}&lt;br&gt;- **Script :** {scriptVersion}&lt;br&gt;</string>
+    <key>HelpMessageLocalized_es</key>
+    <string>Sample&lt;br&gt;&lt;br&gt;Para obtener ayuda, contacte con: **{supportTeamName}**&lt;br&gt;- **Teléfono:** {supportTeamPhone}&lt;br&gt;- **Correo electrónico:** {supportTeamEmail}&lt;br&gt;- **Sitio web:** {supportTeamWebsite}&lt;br&gt;- **Artículo de la base de conocimiento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Información del usuario:**&lt;br&gt;- **Nombre completo:** {userfullname}&lt;br&gt;- **Nombre de usuario:** {username}&lt;br&gt;&lt;br&gt;**Información del ordenador:**&lt;br&gt;- **Nombre del ordenador:** {computername}&lt;br&gt;- **Número de serie:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Información del script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+    <key>HelpMessageLocalized_pt</key>
+    <string>Sample&lt;br&gt;&lt;br&gt;Para obter assistência, contacte: **{supportTeamName}**&lt;br&gt;- **Telefone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Site web:** {supportTeamWebsite}&lt;br&gt;- **Artigo da base de conhecimento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informações do utilizador:**&lt;br&gt;- **Nome completo:** {userfullname}&lt;br&gt;- **Nome de utilizador:** {username}&lt;br&gt;&lt;br&gt;**Informações do computador:**&lt;br&gt;- **Nome do computador:** {computername}&lt;br&gt;- **Número de série:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Informações do script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+    <key>HelpMessageLocalized_ja</key>
+    <string>Sample&lt;br&gt;&lt;br&gt;サポートが必要な場合は次までご連絡ください: **{supportTeamName}**&lt;br&gt;- **電話:** {supportTeamPhone}&lt;br&gt;- **メール:** {supportTeamEmail}&lt;br&gt;- **Webサイト:** {supportTeamWebsite}&lt;br&gt;- **ナレッジベース記事:** {supportKBURL}&lt;br&gt;&lt;br&gt;**ユーザー情報:**&lt;br&gt;- **氏名:** {userfullname}&lt;br&gt;- **ユーザー名:** {username}&lt;br&gt;&lt;br&gt;**コンピュータ情報:**&lt;br&gt;- **コンピュータ名:** {computername}&lt;br&gt;- **シリアル番号:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**スクリプト情報:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpImage</key>
     <string>qr={infobuttonaction}</string>
 

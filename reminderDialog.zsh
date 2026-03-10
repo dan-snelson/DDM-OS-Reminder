@@ -177,6 +177,9 @@ declare -A preferenceConfiguration=(
     ["supportAssistanceMessageLocalizedEn"]="string|<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
     ["supportAssistanceMessageLocalizedDe"]="string|<br><br>Bei Fragen wenden Sie sich ueber die (?) Schaltflaeche unten rechts an **{supportTeamName}**."
     ["supportAssistanceMessageLocalizedFr"]="string|<br><br>Pour obtenir de l aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite."
+    ["supportAssistanceMessageLocalizedEs"]="string|<br><br>Para obtener ayuda, contacte con **{supportTeamName}** haciendo clic en el botón (?) de la esquina inferior derecha."
+    ["supportAssistanceMessageLocalizedPt"]="string|<br><br>Para obter assistência, contacte a equipa **{supportTeamName}** clicando no botão (?) no canto inferior direito."
+    ["supportAssistanceMessageLocalizedJa"]="string|<br><br>サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。"
     
     # Localization
     ["languageOverride"]="string|auto"
@@ -189,37 +192,64 @@ declare -A preferenceConfiguration=(
     ["titleLocalizedEn"]="string|macOS {titleMessageUpdateOrUpgrade} Required"
     ["titleLocalizedDe"]="string|macOS-{titleMessageUpdateOrUpgrade} erforderlich"
     ["titleLocalizedFr"]="string|{titleMessageUpdateOrUpgrade} macOS requise"
+    ["titleLocalizedEs"]="string|{titleMessageUpdateOrUpgrade} obligatoria de macOS"
+    ["titleLocalizedPt"]="string|{titleMessageUpdateOrUpgrade} obrigatória do macOS"
+    ["titleLocalizedJa"]="string|macOSの{titleMessageUpdateOrUpgrade}が必要です"
     ["button1textLocalizedEn"]="string|Open Software Update"
     ["button1textLocalizedDe"]="string|Softwareupdate oeffnen"
     ["button1textLocalizedFr"]="string|Ouvrir Mise a jour de logiciels"
+    ["button1textLocalizedEs"]="string|Abrir Actualización de software"
+    ["button1textLocalizedPt"]="string|Abrir Atualização de software"
+    ["button1textLocalizedJa"]="string|ソフトウェア・アップデートを開く"
     ["button2textLocalizedEn"]="string|Remind Me Later"
     ["button2textLocalizedDe"]="string|Spaeter erinnern"
     ["button2textLocalizedFr"]="string|Me le rappeler plus tard"
+    ["button2textLocalizedEs"]="string|Recordármelo más tarde"
+    ["button2textLocalizedPt"]="string|Lembrar-me mais tarde"
+    ["button2textLocalizedJa"]="string|後で通知"
     ["infobuttontextLocalizedEn"]="string|Update macOS on Mac"
     ["infobuttontextLocalizedDe"]="string|macOS auf Mac aktualisieren"
     ["infobuttontextLocalizedFr"]="string|Mettre a jour macOS sur Mac"
+    ["infobuttontextLocalizedEs"]="string|Actualizar macOS en el Mac"
+    ["infobuttontextLocalizedPt"]="string|Atualizar macOS no Mac"
+    ["infobuttontextLocalizedJa"]="string|MacでmacOSをアップデート"
     ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
     ["excessiveUptimeWarningMessageLocalizedEn"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
     ["excessiveUptimeWarningMessageLocalizedDe"]="string|<br><br>**Hinweis:** Ihr Mac ist seit **{uptimeHumanReadable}** eingeschaltet. Fuer zuverlaessigere Ergebnisse starten Sie ihn bitte manuell neu, bevor Sie fortfahren."
     ["excessiveUptimeWarningMessageLocalizedFr"]="string|<br><br>**Remarque :** Votre Mac est allume depuis **{uptimeHumanReadable}**. Pour de meilleurs resultats, redemarrez-le manuellement avant de continuer."
+    ["excessiveUptimeWarningMessageLocalizedEs"]="string|<br><br>**Nota:** Su Mac lleva **{uptimeHumanReadable}** encendido. Para obtener resultados más fiables, reinícielo manualmente antes de continuar."
+    ["excessiveUptimeWarningMessageLocalizedPt"]="string|<br><br>**Nota:** O seu Mac está ligado há **{uptimeHumanReadable}**. Para resultados mais fiáveis, reinicie-o manualmente antes de continuar."
+    ["excessiveUptimeWarningMessageLocalizedJa"]="string|<br><br>**注意:** このMacは **{uptimeHumanReadable}** の間、再起動されていません。より確実に実行するため、続行前に手動で再起動してください。"
     ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
     ["diskSpaceWarningMessageLocalizedEn"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
     ["diskSpaceWarningMessageLocalizedDe"]="string|<br><br>**Hinweis:** Ihr Mac hat nur **{diskSpaceHumanReadable}** frei. Dadurch kann dieses macOS-{titleMessageUpdateOrUpgrade:l} fehlschlagen."
     ["diskSpaceWarningMessageLocalizedFr"]="string|<br><br>**Remarque :** Votre Mac ne dispose que de **{diskSpaceHumanReadable}**. Cela peut empecher cette {titleMessageUpdateOrUpgrade:l} macOS."
+    ["diskSpaceWarningMessageLocalizedEs"]="string|<br><br>**Nota:** Su Mac solo dispone de **{diskSpaceHumanReadable}**, lo que puede impedir esta {titleMessageUpdateOrUpgrade:l} de macOS."
+    ["diskSpaceWarningMessageLocalizedPt"]="string|<br><br>**Nota:** O seu Mac tem apenas **{diskSpaceHumanReadable}** livres, o que pode impedir esta {titleMessageUpdateOrUpgrade:l} do macOS."
+    ["diskSpaceWarningMessageLocalizedJa"]="string|<br><br>**注意:** このMacの空き容量は **{diskSpaceHumanReadable}** しかないため、このmacOS {titleMessageUpdateOrUpgrade:l} を実行できない可能性があります。"
     
     # Update Staging Messages
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["stagedUpdateMessageLocalizedEn"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["stagedUpdateMessageLocalizedDe"]="string|<br><br>**Gute Nachricht!** Das macOS-{ddmVersionString}-Update wurde bereits auf Ihren Mac geladen und ist bereit zur Installation. Die Installation geht schneller, wenn Sie auf **{button1text}** klicken."
     ["stagedUpdateMessageLocalizedFr"]="string|<br><br>**Bonne nouvelle !** La mise a jour macOS {ddmVersionString} est deja telechargee sur votre Mac et prete a etre installee. L installation sera plus rapide lorsque vous cliquerez sur **{button1text}**."
+    ["stagedUpdateMessageLocalizedEs"]="string|<br><br>**¡Buenas noticias!** La actualización de macOS {ddmVersionString} ya se ha descargado en su Mac y está lista para instalarse. La instalación será más rápida cuando haga clic en **{button1text}**."
+    ["stagedUpdateMessageLocalizedPt"]="string|<br><br>**Boas notícias!** A atualização do macOS {ddmVersionString} já foi descarregada para o seu Mac e está pronta para instalar. A instalação será mais rápida quando clicar em **{button1text}**."
+    ["stagedUpdateMessageLocalizedJa"]="string|<br><br>**お知らせ:** macOS {ddmVersionString} アップデートはすでにこのMacにダウンロードされており、インストールの準備ができています。**{button1text}** をクリックすると、すばやくインストールできます。"
     ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
     ["partiallyStagedUpdateMessageLocalizedEn"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
     ["partiallyStagedUpdateMessageLocalizedDe"]="string|<br><br>Ihr Mac laedt bereits erforderliche macOS-Update-Komponenten herunter und bereitet sie vor. Die Installation wird schneller, sobald alle Inhalte bereitstehen."
     ["partiallyStagedUpdateMessageLocalizedFr"]="string|<br><br>Votre Mac telecharge deja les composants requis de mise a jour macOS et les prepare. L installation sera plus rapide une fois tous les elements prets."
+    ["partiallyStagedUpdateMessageLocalizedEs"]="string|<br><br>Su Mac ha comenzado a descargar y preparar los componentes necesarios de actualización de macOS. La instalación será más rápida cuando finalice la preparación de todos los recursos."
+    ["partiallyStagedUpdateMessageLocalizedPt"]="string|<br><br>O seu Mac começou a descarregar e a preparar os componentes necessários da atualização do macOS. A instalação será mais rápida quando todos os recursos estiverem preparados."
+    ["partiallyStagedUpdateMessageLocalizedJa"]="string|<br><br>このMacでは、必要なmacOSアップデートコンポーネントのダウンロードと準備が進行中です。すべての項目の準備が完了すると、インストールはより短時間で完了します。"
     ["pendingDownloadMessage"]="string|<br><br>Your Mac will begin downloading the update shortly."
     ["pendingDownloadMessageLocalizedEn"]="string|<br><br>Your Mac will begin downloading the update shortly."
     ["pendingDownloadMessageLocalizedDe"]="string|<br><br>Ihr Mac beginnt in Kuerze mit dem Download des Updates."
     ["pendingDownloadMessageLocalizedFr"]="string|<br><br>Votre Mac commencera bientot a telecharger la mise a jour."
+    ["pendingDownloadMessageLocalizedEs"]="string|<br><br>Su Mac comenzará a descargar la actualización en breve."
+    ["pendingDownloadMessageLocalizedPt"]="string|<br><br>O seu Mac irá começar a descarregar a atualização em breve."
+    ["pendingDownloadMessageLocalizedJa"]="string|<br><br>このMacはまもなくアップデートのダウンロードを開始します。"
     ["hideStagedInfo"]="boolean|NO"
     
     # Complex UI Text
@@ -229,9 +259,15 @@ declare -A preferenceConfiguration=(
     ["messageLocalizedEn"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["messageLocalizedDe"]="string|**Ein erforderliches macOS-{titleMessageUpdateOrUpgrade:l} ist jetzt verfuegbar**<br><br>Hallo {loggedInUserFirstname}!<br><br>Bitte fuehren Sie das {titleMessageUpdateOrUpgrade:l} auf macOS **{ddmVersionString}** durch, damit Ihr Mac sicher bleibt und den Richtlinien entspricht.{updateReadyMessage}<br><br>Um das {titleMessageUpdateOrUpgrade:l} jetzt zu starten, klicken Sie auf **{button1text}**, folgen Sie den Hinweisen auf dem Bildschirm und klicken Sie anschliessend auf **{softwareUpdateButtonText}**.<br><br>Wenn Sie das {titleMessageUpdateOrUpgrade:l} jetzt nicht durchfuehren koennen, klicken Sie auf **{button2text}**, um spaeter erinnert zu werden (diese Option ist kurz vor der Frist deaktiviert).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["messageLocalizedFr"]="string|**Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**<br><br>Bonjour {loggedInUserFirstname}!<br><br>Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin que votre Mac reste securise et conforme aux politiques de l organisation.{updateReadyMessage}<br><br>Pour lancer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions a l ecran, puis cliquez sur **{softwareUpdateButtonText}**.<br><br>Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un rappel plus tard (cette option est desactivee a l approche de l echeance).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["messageLocalizedEs"]="string|**Ya está disponible una {titleMessageUpdateOrUpgrade:l} obligatoria de macOS**<br><br>Feliz {weekday}, {loggedInUserFirstname}!<br><br>Realice la {titleMessageUpdateOrUpgrade:l} a macOS **{ddmVersionString}** para mantener su Mac seguro y en cumplimiento con las políticas de la organización.{updateReadyMessage}<br><br>Para realizar la {titleMessageUpdateOrUpgrade:l} ahora, haga clic en **{button1text}**, revise las instrucciones en pantalla y luego haga clic en **{softwareUpdateButtonText}**.<br><br>Si no puede realizar esta {titleMessageUpdateOrUpgrade:l} ahora, haga clic en **{button2text}** para recibir otro recordatorio más tarde (esta opción se desactiva cuando se acerca la fecha límite).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["messageLocalizedPt"]="string|**Já está disponível uma {titleMessageUpdateOrUpgrade:l} obrigatória do macOS**<br><br>Feliz {weekday}, {loggedInUserFirstname}!<br><br>Efetue a {titleMessageUpdateOrUpgrade:l} para o macOS **{ddmVersionString}** para manter o seu Mac seguro e em conformidade com as políticas da organização.{updateReadyMessage}<br><br>Para efetuar a {titleMessageUpdateOrUpgrade:l} agora, clique em **{button1text}**, siga as instruções no ecrã e depois clique em **{softwareUpdateButtonText}**.<br><br>Se não puder efetuar esta {titleMessageUpdateOrUpgrade:l} agora, clique em **{button2text}** para receber outro lembrete mais tarde (esta opção fica desativada quando o prazo se aproxima).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["messageLocalizedJa"]="string|**必須のmacOS {titleMessageUpdateOrUpgrade:l} を利用できます**<br><br>{loggedInUserFirstname}さん、{weekday}もお疲れさまです。<br><br>Macを安全に保ち、組織のポリシーに準拠するため、macOS **{ddmVersionString}** へ {titleMessageUpdateOrUpgrade:l} してください。{updateReadyMessage}<br><br>今すぐ {titleMessageUpdateOrUpgrade:l} するには、**{button1text}** をクリックし、画面の案内を確認したあと **{softwareUpdateButtonText}** をクリックしてください。<br><br>今すぐ実行できない場合は、**{button2text}** をクリックして後で再通知を受けてください（期限が近づくとこのオプションは無効になります）。<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["helpmessageLocalizedEn"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpmessageLocalizedDe"]="string|Bei Unterstuetzung kontaktieren Sie bitte: **{supportTeamName}**<br>- **Telefon:** {supportTeamPhone}<br>- **E-Mail:** {supportTeamEmail}<br>- **Webseite:** {supportTeamWebsite}<br>- **Knowledge-Base-Artikel:** {supportKBURL}<br><br>**Benutzerinformationen:**<br>- **Vollstaendiger Name:** {userfullname}<br>- **Benutzername:** {username}<br><br>**Computerinformationen:**<br>- **Computername:** {computername}<br>- **Seriennummer:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Skriptinformationen:**<br>- **Dialog:** {dialogVersion}<br>- **Skript:** {scriptVersion}<br>"
     ["helpmessageLocalizedFr"]="string|Pour obtenir de l aide, contactez : **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **E-mail:** {supportTeamEmail}<br>- **Site web:** {supportTeamWebsite}<br>- **Article de la base de connaissances:** {supportKBURL}<br><br>**Informations utilisateur:**<br>- **Nom complet:** {userfullname}<br>- **Nom d utilisateur:** {username}<br><br>**Informations ordinateur:**<br>- **Nom de l ordinateur:** {computername}<br>- **Numero de serie:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Informations script:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
+    ["helpmessageLocalizedEs"]="string|Para obtener ayuda, contacte con: **{supportTeamName}**<br>- **Telefono:** {supportTeamPhone}<br>- **Correo electrónico:** {supportTeamEmail}<br>- **Sitio web:** {supportTeamWebsite}<br>- **Articulo de la base de conocimiento:** {supportKBURL}<br><br>**Informacion del usuario:**<br>- **Nombre completo:** {userfullname}<br>- **Nombre de usuario:** {username}<br><br>**Informacion del ordenador:**<br>- **Nombre del ordenador:** {computername}<br>- **Numero de serie:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Informacion del script:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
+    ["helpmessageLocalizedPt"]="string|Para obter assistência, contacte: **{supportTeamName}**<br>- **Telefone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Site web:** {supportTeamWebsite}<br>- **Artigo da base de conhecimento:** {supportKBURL}<br><br>**Informacoes do utilizador:**<br>- **Nome completo:** {userfullname}<br>- **Nome de utilizador:** {username}<br><br>**Informacoes do computador:**<br>- **Nome do computador:** {computername}<br>- **Numero de serie:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Informacoes do script:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
+    ["helpmessageLocalizedJa"]="string|サポートが必要な場合は次までご連絡ください: **{supportTeamName}**<br>- **電話:** {supportTeamPhone}<br>- **メール:** {supportTeamEmail}<br>- **Webサイト:** {supportTeamWebsite}<br>- **ナレッジベース記事:** {supportKBURL}<br><br>**ユーザー情報:**<br>- **氏名:** {userfullname}<br>- **ユーザー名:** {username}<br><br>**コンピュータ情報:**<br>- **コンピュータ名:** {computername}<br>- **シリアル番号:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**スクリプト情報:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
 )
 
@@ -263,6 +299,9 @@ declare -A plistKeyMap=(
     ["supportAssistanceMessageLocalizedEn"]="SupportAssistanceMessageLocalized_en"
     ["supportAssistanceMessageLocalizedDe"]="SupportAssistanceMessageLocalized_de"
     ["supportAssistanceMessageLocalizedFr"]="SupportAssistanceMessageLocalized_fr"
+    ["supportAssistanceMessageLocalizedEs"]="SupportAssistanceMessageLocalized_es"
+    ["supportAssistanceMessageLocalizedPt"]="SupportAssistanceMessageLocalized_pt"
+    ["supportAssistanceMessageLocalizedJa"]="SupportAssistanceMessageLocalized_ja"
     ["title"]="Title"
     ["button1text"]="Button1Text"
     ["button2text"]="Button2Text"
@@ -270,35 +309,62 @@ declare -A plistKeyMap=(
     ["titleLocalizedEn"]="TitleLocalized_en"
     ["titleLocalizedDe"]="TitleLocalized_de"
     ["titleLocalizedFr"]="TitleLocalized_fr"
+    ["titleLocalizedEs"]="TitleLocalized_es"
+    ["titleLocalizedPt"]="TitleLocalized_pt"
+    ["titleLocalizedJa"]="TitleLocalized_ja"
     ["button1textLocalizedEn"]="Button1TextLocalized_en"
     ["button1textLocalizedDe"]="Button1TextLocalized_de"
     ["button1textLocalizedFr"]="Button1TextLocalized_fr"
+    ["button1textLocalizedEs"]="Button1TextLocalized_es"
+    ["button1textLocalizedPt"]="Button1TextLocalized_pt"
+    ["button1textLocalizedJa"]="Button1TextLocalized_ja"
     ["button2textLocalizedEn"]="Button2TextLocalized_en"
     ["button2textLocalizedDe"]="Button2TextLocalized_de"
     ["button2textLocalizedFr"]="Button2TextLocalized_fr"
+    ["button2textLocalizedEs"]="Button2TextLocalized_es"
+    ["button2textLocalizedPt"]="Button2TextLocalized_pt"
+    ["button2textLocalizedJa"]="Button2TextLocalized_ja"
     ["infobuttontextLocalizedEn"]="InfoButtonTextLocalized_en"
     ["infobuttontextLocalizedDe"]="InfoButtonTextLocalized_de"
     ["infobuttontextLocalizedFr"]="InfoButtonTextLocalized_fr"
+    ["infobuttontextLocalizedEs"]="InfoButtonTextLocalized_es"
+    ["infobuttontextLocalizedPt"]="InfoButtonTextLocalized_pt"
+    ["infobuttontextLocalizedJa"]="InfoButtonTextLocalized_ja"
     ["excessiveUptimeWarningMessage"]="ExcessiveUptimeWarningMessage"
     ["excessiveUptimeWarningMessageLocalizedEn"]="ExcessiveUptimeWarningMessageLocalized_en"
     ["excessiveUptimeWarningMessageLocalizedDe"]="ExcessiveUptimeWarningMessageLocalized_de"
     ["excessiveUptimeWarningMessageLocalizedFr"]="ExcessiveUptimeWarningMessageLocalized_fr"
+    ["excessiveUptimeWarningMessageLocalizedEs"]="ExcessiveUptimeWarningMessageLocalized_es"
+    ["excessiveUptimeWarningMessageLocalizedPt"]="ExcessiveUptimeWarningMessageLocalized_pt"
+    ["excessiveUptimeWarningMessageLocalizedJa"]="ExcessiveUptimeWarningMessageLocalized_ja"
     ["diskSpaceWarningMessage"]="DiskSpaceWarningMessage"
     ["diskSpaceWarningMessageLocalizedEn"]="DiskSpaceWarningMessageLocalized_en"
     ["diskSpaceWarningMessageLocalizedDe"]="DiskSpaceWarningMessageLocalized_de"
     ["diskSpaceWarningMessageLocalizedFr"]="DiskSpaceWarningMessageLocalized_fr"
+    ["diskSpaceWarningMessageLocalizedEs"]="DiskSpaceWarningMessageLocalized_es"
+    ["diskSpaceWarningMessageLocalizedPt"]="DiskSpaceWarningMessageLocalized_pt"
+    ["diskSpaceWarningMessageLocalizedJa"]="DiskSpaceWarningMessageLocalized_ja"
     ["stagedUpdateMessage"]="StagedUpdateMessage"
     ["stagedUpdateMessageLocalizedEn"]="StagedUpdateMessageLocalized_en"
     ["stagedUpdateMessageLocalizedDe"]="StagedUpdateMessageLocalized_de"
     ["stagedUpdateMessageLocalizedFr"]="StagedUpdateMessageLocalized_fr"
+    ["stagedUpdateMessageLocalizedEs"]="StagedUpdateMessageLocalized_es"
+    ["stagedUpdateMessageLocalizedPt"]="StagedUpdateMessageLocalized_pt"
+    ["stagedUpdateMessageLocalizedJa"]="StagedUpdateMessageLocalized_ja"
     ["partiallyStagedUpdateMessage"]="PartiallyStagedUpdateMessage"
     ["partiallyStagedUpdateMessageLocalizedEn"]="PartiallyStagedUpdateMessageLocalized_en"
     ["partiallyStagedUpdateMessageLocalizedDe"]="PartiallyStagedUpdateMessageLocalized_de"
     ["partiallyStagedUpdateMessageLocalizedFr"]="PartiallyStagedUpdateMessageLocalized_fr"
+    ["partiallyStagedUpdateMessageLocalizedEs"]="PartiallyStagedUpdateMessageLocalized_es"
+    ["partiallyStagedUpdateMessageLocalizedPt"]="PartiallyStagedUpdateMessageLocalized_pt"
+    ["partiallyStagedUpdateMessageLocalizedJa"]="PartiallyStagedUpdateMessageLocalized_ja"
     ["pendingDownloadMessage"]="PendingDownloadMessage"
     ["pendingDownloadMessageLocalizedEn"]="PendingDownloadMessageLocalized_en"
     ["pendingDownloadMessageLocalizedDe"]="PendingDownloadMessageLocalized_de"
     ["pendingDownloadMessageLocalizedFr"]="PendingDownloadMessageLocalized_fr"
+    ["pendingDownloadMessageLocalizedEs"]="PendingDownloadMessageLocalized_es"
+    ["pendingDownloadMessageLocalizedPt"]="PendingDownloadMessageLocalized_pt"
+    ["pendingDownloadMessageLocalizedJa"]="PendingDownloadMessageLocalized_ja"
     ["hideStagedInfo"]="HideStagedUpdateInfo"
     ["message"]="Message"
     ["infobox"]="InfoBox"
@@ -306,9 +372,15 @@ declare -A plistKeyMap=(
     ["messageLocalizedEn"]="MessageLocalized_en"
     ["messageLocalizedDe"]="MessageLocalized_de"
     ["messageLocalizedFr"]="MessageLocalized_fr"
+    ["messageLocalizedEs"]="MessageLocalized_es"
+    ["messageLocalizedPt"]="MessageLocalized_pt"
+    ["messageLocalizedJa"]="MessageLocalized_ja"
     ["helpmessageLocalizedEn"]="HelpMessageLocalized_en"
     ["helpmessageLocalizedDe"]="HelpMessageLocalized_de"
     ["helpmessageLocalizedFr"]="HelpMessageLocalized_fr"
+    ["helpmessageLocalizedEs"]="HelpMessageLocalized_es"
+    ["helpmessageLocalizedPt"]="HelpMessageLocalized_pt"
+    ["helpmessageLocalizedJa"]="HelpMessageLocalized_ja"
     ["helpimage"]="HelpImage"
 )
 
@@ -369,6 +441,9 @@ function localeForDialogLanguageCode() {
     case "${1}" in
         de) echo "de_DE.UTF-8" ;;
         fr) echo "fr_FR.UTF-8" ;;
+        es) echo "es_ES.UTF-8" ;;
+        pt) echo "pt_PT.UTF-8" ;;
+        ja) echo "ja_JP.UTF-8" ;;
         *)  echo "en_US.UTF-8" ;;
     esac
 }
@@ -798,8 +873,8 @@ function normalizeDialogLanguageCode() {
     languageCode="${languageCode%%_*}"
 
     case "${languageCode}" in
-        de|fr|en) echo "${languageCode}" ;;
-        *)        echo "en" ;;
+        de|fr|es|pt|ja|en) echo "${languageCode}" ;;
+        *)                 echo "en" ;;
     esac
 }
 
@@ -822,6 +897,9 @@ function languageSuffixForCode() {
     case "${1}" in
         de) echo "De" ;;
         fr) echo "Fr" ;;
+        es) echo "Es" ;;
+        pt) echo "Pt" ;;
+        ja) echo "Ja" ;;
         *)  echo "En" ;;
     esac
 }
@@ -856,6 +934,42 @@ function localizedWeekdayName() {
                 *) echo "lundi" ;;
             esac
             ;;
+        es)
+            case "${weekdayNumber}" in
+                1) echo "lunes" ;;
+                2) echo "martes" ;;
+                3) echo "miércoles" ;;
+                4) echo "jueves" ;;
+                5) echo "viernes" ;;
+                6) echo "sábado" ;;
+                7) echo "domingo" ;;
+                *) echo "lunes" ;;
+            esac
+            ;;
+        pt)
+            case "${weekdayNumber}" in
+                1) echo "segunda-feira" ;;
+                2) echo "terça-feira" ;;
+                3) echo "quarta-feira" ;;
+                4) echo "quinta-feira" ;;
+                5) echo "sexta-feira" ;;
+                6) echo "sábado" ;;
+                7) echo "domingo" ;;
+                *) echo "segunda-feira" ;;
+            esac
+            ;;
+        ja)
+            case "${weekdayNumber}" in
+                1) echo "月曜日" ;;
+                2) echo "火曜日" ;;
+                3) echo "水曜日" ;;
+                4) echo "木曜日" ;;
+                5) echo "金曜日" ;;
+                6) echo "土曜日" ;;
+                7) echo "日曜日" ;;
+                *) echo "月曜日" ;;
+            esac
+            ;;
         *)
             case "${weekdayNumber}" in
                 1) echo "Monday" ;;
@@ -874,7 +988,7 @@ function localizedWeekdayName() {
 function resolveDialogLanguage() {
 
     # Temporary hardcoding for testing localization; uncomment to force a specific language
-    # dialogLanguage="fr"   # change to: en | de | fr
+    # dialogLanguage="fr"   # change to: en | de | fr | es | pt | ja
     # notice "TEMP: forcing dialog language to '${dialogLanguage}'"
     # return
 
@@ -950,6 +1064,33 @@ function applyLocalizedUpdateVocabulary() {
                 softwareUpdateButtonText="Redemarrer maintenant"
             fi
             ;;
+        es)
+            if [[ "${mode}" == "upgrade" ]]; then
+                titleMessageUpdateOrUpgrade="Actualización"
+                softwareUpdateButtonText="Actualizar ahora"
+            else
+                titleMessageUpdateOrUpgrade="Actualización"
+                softwareUpdateButtonText="Reiniciar ahora"
+            fi
+            ;;
+        pt)
+            if [[ "${mode}" == "upgrade" ]]; then
+                titleMessageUpdateOrUpgrade="Atualização"
+                softwareUpdateButtonText="Atualizar agora"
+            else
+                titleMessageUpdateOrUpgrade="Atualização"
+                softwareUpdateButtonText="Reiniciar agora"
+            fi
+            ;;
+        ja)
+            if [[ "${mode}" == "upgrade" ]]; then
+                titleMessageUpdateOrUpgrade="アップグレード"
+                softwareUpdateButtonText="今すぐアップグレード"
+            else
+                titleMessageUpdateOrUpgrade="アップデート"
+                softwareUpdateButtonText="今すぐ再起動"
+            fi
+            ;;
         *)
             if [[ "${mode}" == "upgrade" ]]; then
                 titleMessageUpdateOrUpgrade="Upgrade"
@@ -979,6 +1120,30 @@ function applyLocalizedInfoboxLabels() {
             infoboxLabelDaysRemaining="Jours restants"
             infoboxLabelLastRestart="Dernier redemarrage"
             infoboxLabelFreeDiskSpace="Espace disque libre"
+            ;;
+        es)
+            infoboxLabelCurrent="Actual"
+            infoboxLabelRequired="Requerido"
+            infoboxLabelDeadline="Fecha límite"
+            infoboxLabelDaysRemaining="Días restantes"
+            infoboxLabelLastRestart="Último reinicio"
+            infoboxLabelFreeDiskSpace="Espacio libre en disco"
+            ;;
+        pt)
+            infoboxLabelCurrent="Atual"
+            infoboxLabelRequired="Obrigatório"
+            infoboxLabelDeadline="Prazo"
+            infoboxLabelDaysRemaining="Dias restantes"
+            infoboxLabelLastRestart="Último reinício"
+            infoboxLabelFreeDiskSpace="Espaço livre em disco"
+            ;;
+        ja)
+            infoboxLabelCurrent="現在"
+            infoboxLabelRequired="必要"
+            infoboxLabelDeadline="期限"
+            infoboxLabelDaysRemaining="残り日数"
+            infoboxLabelLastRestart="最終再起動"
+            infoboxLabelFreeDiskSpace="空きディスク容量"
             ;;
         *)
             infoboxLabelCurrent="Current"
@@ -1989,7 +2154,9 @@ function displayReminderDialog() {
             ;;
 
         9)  ## Process exit code 9 scenario here
-            warning "swiftDialog exited with code 9; confirm your .plist or .mobileconfig is installed and has the expected Preference Domain"
+            warning "swiftDialog exited with code 9; confirm your .plist or .mobileconfig is installed:"
+            info "Expected managedPreferencesPlist: ${managedPreferencesPlist}"
+            info "Expected localPreferencesPlist: ${localPreferencesPlist}"
             quitScript "${returncode}"
             ;;
 

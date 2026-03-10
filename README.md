@@ -19,11 +19,11 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 ## Features
 
 - **Customizable**: Easily customize the reminder dialog’s title, message, icons (including light/dark overlay icons) and button text to fit your organization’s requirements by distributing a Configuration Profile via any MDM solution.
-- **Multi-language Ready**: Configure localized profile keys (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`) plus `LanguageOverride` (`auto`, `en`, `de`, `fr`) to automatically match logged-in user language or enforce a specific locale.
+- **Multi-language Ready**: Configure localized profile keys (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) plus `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) to automatically match logged-in user language or enforce a specific locale.
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
-- **Locale-aware Deadline Dates**: `DateFormatDeadlineHumanReadable` tokens such as `%a` and `%b` now follow the resolved dialog language (`de`, `fr`, fallback `en`) so weekday/month names are not forced to English.
+- **Locale-aware Deadline Dates**: `DateFormatDeadlineHumanReadable` tokens such as `%a` and `%b` now follow the resolved dialog language (`de`, `fr`, `es`, `pt`, `ja`, fallback `en`) so weekday/month names are not forced to English.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
@@ -46,6 +46,21 @@ rm -f /var/log/org.churchofjesuschrist.log
 defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "fr"
 zsh reminderDialog.zsh
 
+# Spanish screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "es"
+zsh reminderDialog.zsh
+
+# Portuguese screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "pt"
+zsh reminderDialog.zsh
+
+# Japanese screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "ja"
+zsh reminderDialog.zsh
+
 # Restore automatic language detection
 defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "auto"
 ```
@@ -53,6 +68,9 @@ defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverrid
 Optional verification in log output:
 - `LanguageOverride is 'de'; using 'de'`
 - `LanguageOverride is 'fr'; using 'fr'`
+- `LanguageOverride is 'es'; using 'es'`
+- `LanguageOverride is 'pt'; using 'pt'`
+- `LanguageOverride is 'ja'; using 'ja'`
 
 <img src="images/3.0.0a2_de.png" alt="3.0.0a2_de" width="400" /> <img src="images/3.0.0a2_fr.png" alt="3.0.0a2_fr" width="400" />
 

@@ -2,18 +2,12 @@
 
 ## Changelog
 
-### Version 3.0.0a3 (09-Mar-2026)
-- Added locale-aware deadline date formatting so `%a`/`%b` tokens in `DateFormatDeadlineHumanReadable` render by resolved dialog language (`de`, `fr`, fallback `en`).
-- Resolved dialog language before DDM deadline parsing so human-readable deadline strings are consistent across standard, padded past-due, and demo-mode flows.
-- Preserved existing localization profile keys and fallback behavior (no new production dependencies, no new date-format keys).
-
-### Version 3.0.0a2 (09-Mar-2026)
-- Merged `main` (2.6.0) into `3.0.0` with manual conflict resolution and regression-focused validation.
-- Preserved 2.6.0 runtime behavior (post-deadline restart workflow, KB support-assistance controls, deadline/infobox urgency highlighting).
-- Integrated FR-25 localization across runtime/config generation (`LanguageOverride`, localized key families, and localized infobox labels).
-- Added localization parity for 2.6.0-only text paths (deadline-enforcement sentence, support-assistance text, and restart-mode dialog copy).
-- Updated `Resources/createPlist.zsh` and `Resources/sample.plist` to include both restart-policy keys and localization key families.
-- Regenerated release artifacts from the merged source.
+### Version 3.0.0b1 (10-Mar-2026)
+- Merged `main` (2.6.0) into `3.0.0` preserved `2.6.0` runtime behavior (post-deadline restart workflow, KB support-assistance controls, deadline/infobox urgency highlighting).
+- Consolidated localization coverage across runtime/config generation, including FR-25 parity plus new ES/PT/JA support (`LanguageOverride`, localized key families, localized infobox labels, and 2.6.0-only text paths such as deadline-enforcement/support-assistance/restart-mode copy).
+- Expanded locale-aware deadline date rendering so `%a`/`%b` in `DateFormatDeadlineHumanReadable` follow the resolved dialog language (`de`, `fr`, `es`, `pt`, `ja`, fallback `en`) across standard, padded past-due, and demo-mode flows.
+- Preserved existing localization fallback behavior and configuration model (no new production dependencies and no new date-format keys).
+- Updated `Resources/createPlist.zsh` and `Resources/sample.plist` for restart-policy plus localization-key parity, then regenerated release artifacts from merged source.
 
 ### Version 2.6.0 (01-Mar-2026)
 - Added "Code Name: Yukon Cornelius" past-deadline restart workflow with `PastDeadlineRestartBehavior` values `Off`, `Prompt`, and `Force` ([Feature Request #75](https://github.com/dan-snelson/DDM-OS-Reminder/issues/75))

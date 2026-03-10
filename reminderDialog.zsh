@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.0.0a3"
+scriptVersion="3.0.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1986,6 +1986,11 @@ function displayReminderDialog() {
         4)  ## Process exit code 4 scenario here
             notice "User allowed timer to expire"
             quitScript "0"
+            ;;
+
+        9)  ## Process exit code 9 scenario here
+            warning "swiftDialog exited with code 9; confirm your .plist or .mobileconfig is installed and has the expected Preference Domain"
+            quitScript "${returncode}"
             ;;
 
         10) ## Process exit code 10 scenario here

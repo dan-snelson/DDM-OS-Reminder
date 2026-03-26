@@ -12,10 +12,10 @@
 # While Apple's Declarative Device Management (DDM) provides Mac Admins a powerful method to enforce
 # macOS updates, its built-in notification tends to be too subtle for most Mac Admins.
 #
-# DDM OS Reminder evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate`
-# entries in `/var/log/install.log`, then leverages a swiftDialog-enabled script and LaunchDaemon pair
-# to dynamically deliver a more prominent end-user message of when the user’s Mac needs to be updated
-# to comply with DDM-enforced macOS update deadlines.
+# DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`, prefers the most
+# authoritative declaration entries, safely handles padded enforcement dates, and leverages a
+# swiftDialog-enabled script and LaunchDaemon pair to dynamically deliver a more prominent end-user
+# message of when the user’s Mac needs to be updated to comply with DDM-enforced macOS update deadlines.
 #
 ####################################################################################################
 

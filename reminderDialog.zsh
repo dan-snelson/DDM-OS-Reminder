@@ -20,10 +20,27 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.0.0b1"
+scriptVersion="3.0.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
+
+# Install.log parsing
+# `installLogPathOverride` is an internal fixture-testing hook for local validation only.
+# It is not a supported admin preference or deployment setting.
+installLogPath="${installLogPathOverride:-/var/log/install.log}"
+ddmResolverLookbackLines=4000
+ddmResolverStatus=""
+ddmResolverReason=""
+ddmResolverSource=""
+ddmResolverSuppressionType=""
+ddmDeclarationLogTimestamp=""
+ddmDeclarationRawLine=""
+ddmBuildVersionString=""
+ddmResolvedPaddedEpoch=""
+ddmResolvedPaddedRawLine=""
+ddmResolverFailureMarker=""
+typeset -ga ddmRecentInstallLogWindow=()
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -1409,23 +1426,386 @@ function detectStagedUpdate() {
 # Installed OS vs. DDM-enforced OS Comparison
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+function tailRecentInstallLogWindow() {
+    if [[ ! -r "${installLogPath}" ]]; then
+        ddmRecentInstallLogWindow=()
+        return 1
+    fi
+
+    ddmRecentInstallLogWindow=( ${(f)"$(tail -n "${ddmResolverLookbackLines}" "${installLogPath}" 2>/dev/null)"} )
+
+    if [[ ${#ddmRecentInstallLogWindow[@]} -eq 0 ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+function parseDDMDeclarationFromLine() {
+    local logLine="${1}"
+
+    parsedDDMSourceType=""
+    parsedDDMLogTimestamp=""
+    parsedDDMEnforcedInstallDate=""
+    parsedDDMVersionString=""
+    parsedDDMBuildVersionString=""
+    parsedDDMRawLine="${logLine}"
+
+    if [[ "${logLine}" == *"declarationFromKeys]: Falling back to default applicable declaration"* ]]; then
+        parsedDDMSourceType="defaultApplicableDeclaration"
+    elif [[ "${logLine}" == *"Found DDM enforced install ("* ]]; then
+        parsedDDMSourceType="foundDdmEnforcedInstall"
+    elif [[ "${logLine}" == *"EnforcedInstallDate:"* ]]; then
+        parsedDDMSourceType="genericEnforcedInstallDate"
+    else
+        return 1
+    fi
+
+    parsedDDMLogTimestamp=$(echo "${logLine}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+    parsedDDMEnforcedInstallDate="${${logLine##*|EnforcedInstallDate:}%%|*}"
+    parsedDDMVersionString="${${logLine##*|VersionString:}%%|*}"
+    parsedDDMBuildVersionString="${${logLine##*|BuildVersionString:}%%|*}"
+
+    if [[ -z "${parsedDDMLogTimestamp}" || "${parsedDDMLogTimestamp}" == "${logLine}" ]]; then
+        return 1
+    fi
+
+    if [[ -z "${parsedDDMEnforcedInstallDate}" || -z "${parsedDDMVersionString}" || -z "${parsedDDMBuildVersionString}" ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
+function candidateHasNoMatchScanFailure() {
+    local candidateVersion="${1}"
+    local lineIndex=0
+    local currentLine=""
+    local segmentActive="NO"
+
+    ddmResolverFailureMarker=""
+
+    for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
+        currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
+
+        if [[ "${currentLine}" == *"requestedPMV="* ]]; then
+            if [[ "${currentLine}" == *"requestedPMV=${candidateVersion},"* || "${currentLine}" == *"requestedPMV=${candidateVersion})"* ]]; then
+                segmentActive="YES"
+            else
+                segmentActive="NO"
+            fi
+            continue
+        fi
+
+        if [[ "${segmentActive}" != "YES" ]]; then
+            continue
+        fi
+
+        if [[ "${currentLine}" == *"MADownloadNoMatchFound"* ]]; then
+            ddmResolverFailureMarker="MADownloadNoMatchFound"
+            return 0
+        fi
+
+        if [[ "${currentLine}" == *"pallasNoPMVMatchFound=true"* ]]; then
+            ddmResolverFailureMarker="pallasNoPMVMatchFound=true"
+            return 0
+        fi
+
+        if [[ "${currentLine}" == *"No available updates found. Please try again later."* ]]; then
+            ddmResolverFailureMarker="No available updates found. Please try again later."
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+function resolveDDMEnforcementFromInstallLog() {
+    local line=""
+    local candidateKey=""
+    local chosenSourceType=""
+    local latestTimestamp=""
+    local latestInvalidContext=""
+    local hasDefaultApplicableDeclaration="NO"
+    local hasFoundDdmEnforcedInstall="NO"
+    local index=0
+    local latestIndex=0
+    local candidateSummary=""
+    local distinctCandidateCount=0
+
+    local -a candidateSourceTypes=()
+    local -a candidateTimestamps=()
+    local -a candidateEnforcedDates=()
+    local -a candidateVersions=()
+    local -a candidateBuilds=()
+    local -a candidateRawLines=()
+    local -a filteredIndexes=()
+    typeset -A seenCandidateIndexes=()
+
+    ddmResolverStatus=""
+    ddmResolverReason=""
+    ddmResolverSource=""
+    ddmResolverSuppressionType=""
+    ddmDeclarationLogTimestamp=""
+    ddmDeclarationRawLine=""
+    ddmBuildVersionString=""
+    ddmResolverFailureMarker=""
+
+    if ! tailRecentInstallLogWindow; then
+        ddmResolverStatus="missing"
+        ddmResolverReason="No readable install.log window available"
+        return 1
+    fi
+
+    for line in "${ddmRecentInstallLogWindow[@]}"; do
+        if ! parseDDMDeclarationFromLine "${line}"; then
+            continue
+        fi
+
+        candidateKey="${parsedDDMSourceType}|${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+
+        if [[ -n "${seenCandidateIndexes[${candidateKey}]}" ]]; then
+            index="${seenCandidateIndexes[${candidateKey}]}"
+            if [[ "${parsedDDMLogTimestamp}" > "${candidateTimestamps[$index]}" ]]; then
+                candidateTimestamps[$index]="${parsedDDMLogTimestamp}"
+                candidateRawLines[$index]="${parsedDDMRawLine}"
+            fi
+            continue
+        fi
+
+        candidateSourceTypes+=( "${parsedDDMSourceType}" )
+        candidateTimestamps+=( "${parsedDDMLogTimestamp}" )
+        candidateEnforcedDates+=( "${parsedDDMEnforcedInstallDate}" )
+        candidateVersions+=( "${parsedDDMVersionString}" )
+        candidateBuilds+=( "${parsedDDMBuildVersionString}" )
+        candidateRawLines+=( "${parsedDDMRawLine}" )
+        seenCandidateIndexes[${candidateKey}]="${#candidateSourceTypes[@]}"
+    done
+
+    if [[ ${#candidateSourceTypes[@]} -eq 0 ]]; then
+        ddmResolverStatus="missing"
+        ddmResolverReason="No DDM declaration candidates found in install.log"
+        return 1
+    fi
+
+    for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
+        if [[ "${candidateSourceTypes[$index]}" == "defaultApplicableDeclaration" ]]; then
+            hasDefaultApplicableDeclaration="YES"
+        elif [[ "${candidateSourceTypes[$index]}" == "foundDdmEnforcedInstall" ]]; then
+            hasFoundDdmEnforcedInstall="YES"
+        fi
+    done
+
+    if [[ "${hasDefaultApplicableDeclaration}" == "YES" ]]; then
+        chosenSourceType="defaultApplicableDeclaration"
+    elif [[ "${hasFoundDdmEnforcedInstall}" == "YES" ]]; then
+        chosenSourceType="foundDdmEnforcedInstall"
+    else
+        chosenSourceType="genericEnforcedInstallDate"
+    fi
+
+    for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
+        if [[ "${candidateSourceTypes[$index]}" == "${chosenSourceType}" ]]; then
+            filteredIndexes+=( "${index}" )
+        fi
+    done
+
+    distinctCandidateCount="${#filteredIndexes[@]}"
+    if (( distinctCandidateCount > 1 )); then
+        ddmResolverStatus="suppressed"
+        ddmResolverSuppressionType="conflict"
+        ddmResolverReason="Conflicting DDM declarations detected in install.log"
+        warning "${ddmResolverReason}"
+
+        for index in "${filteredIndexes[@]}"; do
+            candidateSummary="${candidateVersions[$index]} | ${candidateEnforcedDates[$index]} | ${candidateBuilds[$index]} | ${candidateSourceTypes[$index]} | ${candidateTimestamps[$index]}"
+            warning "Conflicting candidate: ${candidateSummary}"
+        done
+
+        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
+            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
+                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
+                break
+            fi
+        done
+
+        if [[ -n "${latestInvalidContext}" ]]; then
+            info "Resolver context: ${latestInvalidContext}"
+        fi
+
+        return 1
+    fi
+
+    latestIndex="${filteredIndexes[1]}"
+    latestTimestamp="${candidateTimestamps[$latestIndex]}"
+    for index in "${filteredIndexes[@]}"; do
+        if [[ "${candidateTimestamps[$index]}" > "${latestTimestamp}" ]]; then
+            latestIndex="${index}"
+            latestTimestamp="${candidateTimestamps[$index]}"
+        fi
+    done
+
+    ddmResolverSource="${candidateSourceTypes[$latestIndex]}"
+    ddmDeclarationLogTimestamp="${candidateTimestamps[$latestIndex]}"
+    ddmDeclarationRawLine="${candidateRawLines[$latestIndex]}"
+    ddmEnforcedInstallDate="${candidateEnforcedDates[$latestIndex]}"
+    ddmVersionString="${candidateVersions[$latestIndex]}"
+    ddmBuildVersionString="${candidateBuilds[$latestIndex]}"
+
+    if ! isValidDDMVersionString "${ddmVersionString}"; then
+        ddmResolverStatus="suppressed"
+        ddmResolverSuppressionType="invalidVersion"
+        ddmResolverReason="Invalid DDM version string detected in resolved declaration"
+        warning "${ddmResolverReason}: ${ddmVersionString}"
+        quitOut "${ddmResolverReason}; exiting quietly."
+        return 1
+    fi
+
+    if candidateHasNoMatchScanFailure "${ddmVersionString}"; then
+        ddmResolverStatus="suppressed"
+        ddmResolverSuppressionType="noMatch"
+        ddmResolverReason="Chosen DDM declaration does not map to an available update"
+        warning "${ddmResolverReason}: ${ddmVersionString} (${ddmResolverFailureMarker})"
+
+        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
+            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
+                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
+                break
+            fi
+        done
+
+        if [[ -n "${latestInvalidContext}" ]]; then
+            info "Resolver context: ${latestInvalidContext}"
+        fi
+
+        return 1
+    fi
+
+    ddmResolverStatus="resolved"
+    notice "Resolved DDM declaration source: ${ddmResolverSource}"
+    notice "Resolved DDM declaration version: ${ddmVersionString}"
+    notice "Resolved DDM declaration enforcement date: ${ddmEnforcedInstallDate}"
+
+    return 0
+}
+
+function resolvePaddedEnforcementDateForCandidate() {
+    local maxWaitSeconds=300
+    local checkIntervalSeconds=10
+    local elapsedSeconds=0
+    local line=""
+    local lineTimestamp=""
+    local latestPaddedLine=""
+    local latestPaddedDateRaw=""
+    local paddedEpoch=""
+    local nowEpoch=""
+    local conflictDetected="NO"
+    local conflictSummary=""
+
+    ddmResolvedPaddedEpoch=""
+    ddmResolvedPaddedRawLine=""
+
+    while (( elapsedSeconds < maxWaitSeconds )); do
+        tailRecentInstallLogWindow
+        latestPaddedLine=""
+        latestPaddedDateRaw=""
+        paddedEpoch=""
+        conflictDetected="NO"
+        conflictSummary=""
+
+        for line in "${ddmRecentInstallLogWindow[@]}"; do
+            lineTimestamp=$(echo "${line}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+
+            if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${line}" ]]; then
+                continue
+            fi
+
+            if [[ "${lineTimestamp}" < "${ddmDeclarationLogTimestamp}" ]]; then
+                continue
+            fi
+
+            if [[ "${line}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${line}"; then
+                if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" != "${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}" ]]; then
+                    conflictDetected="YES"
+                    conflictSummary="${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType}"
+                    break
+                fi
+            fi
+
+            if [[ "${line}" == *"setPastDuePaddedEnforcementDate is set: "* ]]; then
+                latestPaddedLine="${line}"
+            fi
+        done
+
+        if [[ "${conflictDetected}" == "YES" ]]; then
+            warning "Rejected padded enforcement date because a later conflicting declaration was detected: ${conflictSummary}"
+            return 1
+        fi
+
+        if [[ -n "${latestPaddedLine}" ]]; then
+            latestPaddedDateRaw="${latestPaddedLine#*setPastDuePaddedEnforcementDate is set: }"
+            paddedEpoch=$( date -jf "%a %b %d %H:%M:%S %Y" "${latestPaddedDateRaw}" "+%s" 2>/dev/null )
+
+            if [[ -z "${paddedEpoch}" ]]; then
+                warning "Unable to parse setPastDuePaddedEnforcementDate: ${latestPaddedDateRaw}"
+                return 1
+            fi
+
+            nowEpoch=$(date +%s)
+            if (( paddedEpoch > nowEpoch )); then
+                ddmResolvedPaddedEpoch="${paddedEpoch}"
+                ddmResolvedPaddedRawLine="${latestPaddedLine}"
+                notice "Accepted padded enforcement date from install.log: ${latestPaddedDateRaw}"
+                return 0
+            fi
+
+            warning "Found setPastDuePaddedEnforcementDate after resolved declaration, but it is already in the past: ${latestPaddedDateRaw}"
+        else
+            if (( elapsedSeconds == 0 )); then
+                notice "No safe setPastDuePaddedEnforcementDate found after resolved declaration; waiting up to 5 minutes …"
+            fi
+        fi
+
+        sleep "${checkIntervalSeconds}"
+        elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+
+        if (( elapsedSeconds < maxWaitSeconds )); then
+            info "Retrying padded-date resolution (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
+        fi
+    done
+
+    warning "Timed out waiting for a safe setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+    return 1
+}
+
 installedOSvsDDMenforcedOS() {
 
     # Installed macOS Version
     installedmacOSVersion=$( sw_vers -productVersion )
-    notice "Installed macOS Version: $installedmacOSVersion"
+    notice "Installed macOS Version: ${installedmacOSVersion}"
 
     # DDM-enforced macOS Version
-    ddmLogEntry=$( grep "EnforcedInstallDate" /var/log/install.log | tail -n 1 )
-    if [[ -z "$ddmLogEntry" ]]; then
+    resolveDDMEnforcementFromInstallLog
+    case "${ddmResolverStatus}" in
+        missing)
+            versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
+            return
+            ;;
+        suppressed)
+            versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
+            warning "Resolver suppression summary: ${ddmResolverSuppressionType:-unknown} | ${ddmResolverReason}"
+            quitOut "${ddmResolverReason}; exiting quietly."
+            return
+            ;;
+    esac
+
+    ddmLogEntry="${ddmDeclarationRawLine}"
+    if [[ -z "${ddmLogEntry}" ]]; then
         versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
         return
     fi
 
     # Parse enforced date and version
-    ddmEnforcedInstallDate="${${ddmLogEntry##*|EnforcedInstallDate:}%%|*}"
-    ddmVersionString="${${ddmLogEntry##*|VersionString:}%%|*}"
-    
     if ! isValidDDMVersionString "${ddmVersionString}"; then
         warning "Invalid DDM-enforced OS Version format. Log entry: ${ddmLogEntry}"
         warning "Invalid DDM-enforced OS Version: ${ddmVersionString}"
@@ -1451,86 +1831,16 @@ installedOSvsDDMenforcedOS() {
         # Enforcement deadline passed
         notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
 
-        # Read Apple's internal padded enforcement date from install.log
-        # Wait up to five minutes for setPastDuePaddedEnforcementDate if it’s in the past
-        local maxWaitSeconds=300  # 5 minutes
-        local checkIntervalSeconds=10
-        local elapsedSeconds=0
-        local paddedDateRaw=""
-        local paddedEpoch=""
-        
-        while (( elapsedSeconds < maxWaitSeconds )); do
-        pastDueDeadline=$(grep "setPastDuePaddedEnforcementDate" /var/log/install.log | tail -n 1)
-            
-        if [[ -n "$pastDueDeadline" ]]; then
-            paddedDateRaw="${pastDueDeadline#*setPastDuePaddedEnforcementDate is set: }"
-            paddedEpoch=$( date -jf "%a %b %d %H:%M:%S %Y" "$paddedDateRaw" "+%s" 2>/dev/null )
-                
-                if [[ -n "$paddedEpoch" ]]; then
-                    local nowEpoch=$(date +%s)
-                    
-                    # Check if the padded date is in the future
-                    if (( paddedEpoch > nowEpoch )); then
-                        info "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw} (valid future date)"
-                        break
-                    else
-                        # Padded date is in the past - this is the race condition
-                        local minutesAgo=$(( (nowEpoch - paddedEpoch) / 60 ))
-                        warning "Found setPastDuePaddedEnforcementDate: ${paddedDateRaw} (${minutesAgo} minutes in the past)"
-                        
-                        if (( elapsedSeconds == 0 )); then
-                            notice "Waiting up to 5 minutes for macOS to update setPastDuePaddedEnforcementDate …"
-                        fi
-                        
-                        # Wait and retry
-                        sleep ${checkIntervalSeconds}
-                        elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
-                        
-                        if (( elapsedSeconds >= maxWaitSeconds )); then
-                            warning "Timed out waiting for valid setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
-                            warning "Proceeding with current value despite it being in the past"
-                        else
-                            info "Retrying (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
-                        fi
-                    fi
-                else
-                    warning "Unable to parse setPastDuePaddedEnforcementDate: ${paddedDateRaw}"
-                    break
-                fi
-            else
-                # No setPastDuePaddedEnforcementDate found yet
-                if (( elapsedSeconds == 0 )); then
-                    notice "No setPastDuePaddedEnforcementDate found; waiting up to 5 minutes …"
-                fi
-                
-                sleep ${checkIntervalSeconds}
-                elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
-                
-                if (( elapsedSeconds >= maxWaitSeconds )); then
-                    warning "Timed out waiting for setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
-                    break
-                else
-                    info "Retrying (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
-                fi
-            fi
-        done
-
-        # Process the final result
-            if [[ -n "$paddedEpoch" ]]; then
-                ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${paddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
-                ddmEnforcedInstallDateEpoch="${paddedEpoch}"
-                info "Using ${ddmEnforcedInstallDateHumanReadable} for enforced install date"
+        if resolvePaddedEnforcementDateForCandidate; then
+            ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${ddmResolvedPaddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
+            ddmEnforcedInstallDateEpoch="${ddmResolvedPaddedEpoch}"
+            info "Effective enforcement source: setPastDuePaddedEnforcementDate"
         else
-            if [[ -z "$pastDueDeadline" ]]; then
-                warning "No setPastDuePaddedEnforcementDate found in install.log after waiting"
-            else
-                warning "Unable to parse padded enforcement date from install.log"
-            fi
-            ddmEnforcedInstallDateHumanReadable="Unavailable"
-            ddmEnforcedInstallDateEpoch=""
+            ddmEnforcedInstallDateHumanReadable="${ddmVersionStringDeadlineHumanReadable}"
+            ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
+            warning "Safe padded enforcement date unavailable; continuing with declared enforcement date ${ddmVersionStringDeadlineHumanReadable}"
+            info "Effective enforcement source: EnforcedInstallDate"
         fi
-
-        info "Effective enforcement source: setPastDuePaddedEnforcementDate"
 
     else
 
@@ -1553,7 +1863,11 @@ installedOSvsDDMenforcedOS() {
 
     # Blurscreen logic and secondary button hiding (based on precise timestamp comparison)
     nowEpoch=$(date +%s)
-    secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))
+    effectiveDeadlineEpoch="${ddmEnforcedInstallDateEpoch}"
+    if [[ -z "${effectiveDeadlineEpoch}" || ! "${effectiveDeadlineEpoch}" =~ ^[0-9]+$ ]]; then
+        effectiveDeadlineEpoch="${deadlineEpoch}"
+    fi
+    secondsUntilDeadline=$(( effectiveDeadlineEpoch - nowEpoch ))
     blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
     hideButton2ThresholdSeconds=$(( daysBeforeDeadlineHidingButton2 * 86400 ))
     ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
@@ -1863,12 +2177,13 @@ function computeInfoboxHighlights() {
     infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
+    local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
 
     if [[ "${dialogSupportsMarkdownColor}" != "YES" ]]; then
         return
     fi
 
-    if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= $(date +%s) )); then
+    if [[ -n "${infoboxDeadlineEpoch}" && "${infoboxDeadlineEpoch}" =~ ^[0-9]+$ ]] && (( infoboxDeadlineEpoch <= $(date +%s) )); then
         infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
     fi
 
@@ -1888,12 +2203,13 @@ function evaluatePastDeadlineState() {
     local isPastDeadlineRestartThresholdMet="NO"
     local isPastDeadlineUptimeThresholdMet="NO"
     local isPastDeadlineEligible="NO"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
 
     pastDeadlineRestartSuppressedForUptime="NO"
 
-    if [[ -n "${deadlineEpoch}" && "${deadlineEpoch}" =~ ^[0-9]+$ ]] && (( deadlineEpoch <= nowEpochValue )); then
+    if [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] && (( deadlineReferenceEpoch <= nowEpochValue )); then
         isPastDdmDeadline="YES"
-        daysPastDdmDeadline=$(( (nowEpochValue - deadlineEpoch) / 86400 ))
+        daysPastDdmDeadline=$(( (nowEpochValue - deadlineReferenceEpoch) / 86400 ))
     fi
 
     if (( daysPastDdmDeadline >= daysPastDeadlineRestartWorkflow )); then

@@ -637,7 +637,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0b1+)**:
+**Locale Behavior (3.0.0b2+)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language (`de`, `fr`, fallback `en`)
 - Numeric-only formats (for example `%d.%m.%Y %H:%M`) are unchanged across locales
 
@@ -1360,7 +1360,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 3.0.0b1 |
+| `{scriptVersion}` | System | Script version | 3.0.0b2 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1835,14 +1835,15 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.0.0 beta | 25-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
-| 3.0.0b1 | 09-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
-| 3.0.0b1 | 09-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
+| 3.0.0b2 | 09-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
+| 3.0.0b2 | 09-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 
 ---
 
-**Last Updated**: 09-Mar-2026
-**DDM OS Reminder Version**: 3.0.0b1
+**Last Updated**: 25-Mar-2026
+**DDM OS Reminder Version**: 3.0.0 beta series
 **Variables Documented**: 73 configurable preferences

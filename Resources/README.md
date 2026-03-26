@@ -30,7 +30,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0b1)
+🧩 Assemble DDM OS Reminder (3.0.0b2)
 ===============================================================
 
 Full Paths:
@@ -221,14 +221,17 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 ```
 
 **4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
-Reports the date of a pending DDM-enforced macOS update.
+Reports the date of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
+Returns `None` when DDM declaration state is missing, conflicting, invalid, no longer maps to an available update, or already matches the current OS build.
+Uses a safe future padded enforcement date when one is present; otherwise falls back to the declared `EnforcedInstallDate`.
 
 ```
 2026-01-17 12:00:00
 ```
 
 **4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
-Reports the version of a pending DDM-enforced macOS update.
+Reports the version of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
+Returns `None` when DDM declaration state is missing, conflicting, invalid, no longer maps to an available update, or already matches the current OS build.
 
 ```
 26.2

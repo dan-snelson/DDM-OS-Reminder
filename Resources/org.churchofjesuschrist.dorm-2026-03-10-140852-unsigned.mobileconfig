@@ -254,7 +254,7 @@
     <key>PayloadDescription</key>
     <string>DDM OS Reminder default configuration</string>
     <key>PayloadDisplayName</key>
-    <string>DDM OS Reminder (3.0.0b1)</string>
+    <string>DDM OS Reminder (3.0.0b2)</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>

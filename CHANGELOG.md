@@ -2,11 +2,18 @@
 
 ## Changelog
 
-### Version 3.0.0b1 (10-Mar-2026)
-- Merged `main` (2.6.0) into `3.0.0` preserved `2.6.0` runtime behavior (post-deadline restart workflow, KB support-assistance controls, deadline/infobox urgency highlighting).
-- Consolidated localization coverage across runtime/config generation, including FR-25 parity plus new ES/PT/JA support (`LanguageOverride`, localized key families, localized infobox labels, and 2.6.0-only text paths such as deadline-enforcement/support-assistance/restart-mode copy).
+### Version 3.0.0b2 (25-Mar-2026)
+- Merged `main` (2.6.0) into `3.0.0` while preserving `2.6.0` runtime behavior, including post-deadline restart workflow, KB support-assistance controls, and deadline/infobox urgency highlighting.
+- Consolidated localization coverage across runtime and config generation, including FR-25 parity plus ES/PT/JA support (`LanguageOverride`, localized key families, localized infobox labels, and restart/deadline/support-assistance copy paths).
 - Expanded locale-aware deadline date rendering so `%a`/`%b` in `DateFormatDeadlineHumanReadable` follow the resolved dialog language (`de`, `fr`, `es`, `pt`, `ja`, fallback `en`) across standard, padded past-due, and demo-mode flows.
-- Preserved existing localization fallback behavior and configuration model (no new production dependencies and no new date-format keys).
+- Hardened `reminderDialog.zsh` DDM resolution by replacing the old `EnforcedInstallDate | tail -n 1` heuristic with a recent-window resolver that:
+    - prioritizes `default applicable declaration` and `Found DDM enforced install` over generic `EnforcedInstallDate` matches
+    - suppresses the reminder when declaration state is missing, conflicting, invalid, or no longer maps to an available update
+    - only accepts `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration
+    - adds explicit suppression logging for `conflict`, `noMatch`, and invalid-version cases
+- Added an internal `installLogPathOverride` fixture-testing hook for local validation of `reminderDialog.zsh` and the bundled Jamf EAs.
+- Updated `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` to use the same fail-closed trust model as the runtime resolver, while keeping Jamf inventory execution lightweight.
+- Updated `Resources/README.md`, `Diagrams/`, and related diagram PNG exports to document the hardened resolver, fail-closed EA behavior, corrected `dorm.zsh` client-script paths, and current beta-series behavior.
 - Updated `Resources/createPlist.zsh` and `Resources/sample.plist` for restart-policy plus localization-key parity, then regenerated release artifacts from merged source.
 
 ### Version 2.6.0 (01-Mar-2026)

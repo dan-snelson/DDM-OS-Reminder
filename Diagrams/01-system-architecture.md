@@ -43,7 +43,7 @@ graph TB
         SCRIPT -->|Executes on client| INST[Installation Process]
         PROFILE -->|Deploys preferences| MGDPREF
 
-        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dor.zsh"]
+        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dorm.zsh"]
         INST -->|Creates| CLILD["/Library/LaunchDaemons/<br>(RDNN).dor.plist"]
         INST -->|Installs if needed| SD["swiftDialog.app"]
 
@@ -70,7 +70,7 @@ graph TB
         USER -->|No| EXIT1[FATAL ERROR<br/>No user session]
         USER -->|Yes| INSTLOG["/var/log/install.log<br/>DDM enforcement data"]
 
-        INSTLOG --> DDMEVAL["Deadline Evaluation<br/>EnforcedInstallDate +<br/>padded-date handling"]
+        INSTLOG --> DDMEVAL["DDM Resolver +<br/>Deadline Evaluation<br/>source-priority parsing +<br/>safe padded-date handling"]
         DDMEVAL --> OSVER["macOS Version<br/>Check"]
         OSVER -->|Up to Date| EXIT2[Exit Silently]
         OSVER -->|Update Required| GATES["Reminder Gates<br/>Display window + periodic (28d)<br/>quiet period (76m)"]
@@ -161,7 +161,7 @@ graph TB
 1. **LaunchDaemon triggers** at load and on scheduled times (default: 8am, 4pm)
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
-4. **Log parsing and deadline evaluation** read both enforcement and padded-date paths from install.log
+4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration
 5. **Version comparison** determines if update is required
 6. **Reminder gating** applies display-window, periodic reminder, and quiet-period logic
 7. **Post-deadline mode evaluation** determines update-flow vs restart-only (Prompt/Force)

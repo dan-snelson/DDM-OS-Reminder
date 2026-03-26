@@ -1,6 +1,6 @@
 # Deadline Timeline Visualization
 
-This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including the optional 2.6.0 post-deadline restart workflow.
+This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including the optional post-deadline restart workflow.
 
 ```mermaid
 gantt
@@ -175,7 +175,7 @@ gantt
 
 ---
 
-### Phase 5: Post-Deadline Workflow (2.6.0)
+### Phase 5: Post-Deadline Workflow
 **Timeline**: After the deadline has passed and update is still required
 
 **Eligibility Gate for Restart Workflow**:
@@ -199,8 +199,8 @@ gantt
 
 ---
 
-### Phase 6: Apple DDM Enforcement (Deadline Reached / Padded Enforcement Time)
-**Timeline**: At Apple's enforced restart/update event
+### Phase 6: Apple DDM Enforcement (Declared or Padded Enforcement Time)
+**Timeline**: At Apple's enforced restart/update event, whether at the declared deadline or a later padded enforcement timestamp
 
 **What Happens**:
 - 🍎 **Apple DDM takes control**

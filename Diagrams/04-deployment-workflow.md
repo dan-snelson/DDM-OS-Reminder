@@ -281,7 +281,7 @@ zsh assemble.zsh
 3. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (2.6.0)
+🧩 Assemble DDM OS Reminder (3.0.0 beta)
 ===============================================================
 
 Full Paths:
@@ -379,7 +379,7 @@ Expected files:
 sudo launchctl list | grep org.churchofjesuschrist.dor
 
 # Check script file
-ls -lh /Library/Management/org.churchofjesuschrist/dor.zsh
+ls -lh /Library/Management/org.churchofjesuschrist/dorm.zsh
 
 # Check managed preferences
 ls -lh /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
@@ -390,7 +390,7 @@ tail -50 /var/log/org.churchofjesuschrist.log
 
 Expected output:
 ```
-[PRE-FLIGHT]      DDM OS Reminder (2.6.0)
+[PRE-FLIGHT]      DDM OS Reminder
 [PRE-FLIGHT]      Initiating …
 [NOTICE]          Reset All Configuration Files …
 [NOTICE]          Create 'DDM OS Reminder' script
@@ -419,8 +419,8 @@ sudo launchctl start org.churchofjesuschrist.dor
 # Check if user logged in
 who
 
-# Check DDM enforcement
-grep -i "EnforcedInstallDate" /var/log/install.log
+# Check DDM resolver inputs
+grep -Ei "EnforcedInstallDate|setPastDuePaddedEnforcementDate|requestedPMV=|MADownloadNoMatchFound|pallasNoPMVMatchFound" /var/log/install.log | tail -20
 
 # Check script logs
 tail -100 /var/log/org.churchofjesuschrist.log
@@ -530,25 +530,20 @@ sudo tail -f /var/log/org.churchofjesuschrist.log
 [NOTICE]          Reset All Configuration Files …
 [PRE-FLIGHT]      Initiating …
 [NOTICE]          LaunchDaemon Status
-[INFO]            Installed macOS vs. DDM-enforced macOS Comparison
+[NOTICE]          Resolved DDM declaration source
+[WARNING]         Resolver suppression summary
 [NOTICE]          Display Reminder Dialog
 ```
 
 #### 6.2 Extension Attributes (Jamf Pro)
 
-Create EAs to report:
-- DDM enforcement status
-- Days until deadline
-- Last dialog display timestamp
-- Current macOS version vs. required
+Recommended bundled EAs:
+- `Resources/JamfEA-Pending_OS_Update_Date.zsh`
+- `Resources/JamfEA-Pending_OS_Update_Version.zsh`
+- `Resources/JamfEA-DDM_Executed_OS_Update_Date.zsh`
+- `Resources/JamfEA-DDM-OS-Reminder-User-Clicks.zsh`
 
-**Example EA**:
-```bash
-#!/bin/bash
-logFile="/var/log/org.churchofjesuschrist.log"
-lastDisplay=$(grep "Display Reminder Dialog" "$logFile" | tail -1 | awk '{print $1, $2}')
-echo "<result>$lastDisplay</result>"
-```
+The pending date/version EAs now fail closed and return `None` when recent `install.log` state is missing, conflicting, invalid, or no longer maps to an available update.
 
 #### 6.3 Common Issues and Solutions
 
@@ -611,7 +606,7 @@ sudo launchctl bootout system /Library/LaunchDaemons/org.churchofjesuschrist.dor
 
 # Remove files
 sudo rm /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
-sudo rm /Library/Management/org.churchofjesuschrist/dor.zsh
+sudo rm /Library/Management/org.churchofjesuschrist/dorm.zsh
 sudo rm -rf /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 # Remove logs (optional)

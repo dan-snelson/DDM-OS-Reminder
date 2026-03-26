@@ -11,14 +11,15 @@ flowchart TD
     CheckUser -->|No| Exit1[FATAL ERROR<br/>No user after 120s]
     CheckUser -->|Yes| LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
 
-    LoadPrefs --> ParseLog[Parse install.log<br/>for DDM enforcement dates]
-    ParseLog --> CheckDDM{DDM Enforcement<br/>Date Found?}
-    CheckDDM -->|No| Exit2[Exit Silently<br/>Log: No DDM enforcement]
+    LoadPrefs --> ParseLog[Resolve trusted DDM declaration<br/>from recent install.log window]
+    ParseLog --> CheckDDM{Trusted DDM<br/>declaration resolved?}
+    CheckDDM -->|No - Missing / conflict / noMatch| Exit2[Exit Silently<br/>Log: No valid DDM enforcement]
     CheckDDM -->|Yes| GetVersions[Get Installed & Required<br/>macOS Versions]
 
     GetVersions --> CompareVersions{Update<br/>Required?}
     CompareVersions -->|No - Up to Date| Exit3[Exit Silently<br/>Log: macOS up to date]
-    CompareVersions -->|Yes| EvalYukon[Evaluate post-deadline<br/>restart eligibility state]
+    CompareVersions -->|Yes| ResolveDeadline[Resolve effective deadline<br/>declared date or safe padded date]
+    ResolveDeadline --> EvalYukon[Evaluate post-deadline<br/>restart eligibility state]
 
     EvalYukon --> GetInteraction[Read last interaction<br/>codes 0/2/3/4/10<br/>exclude restart-related]
     GetInteraction --> CheckWindow{Inside display window?<br/>daysRemaining <=<br/>daysBeforeDeadlineDisplayReminder}
@@ -151,13 +152,26 @@ flowchart TD
 - **Why**: Enterprise policy should override local/testing values
 - **Normalization**: Boolean and restart-mode values are normalized before use
 
-### 4. DDM Enforcement + Version Comparison
-- **Check**: Are DDM enforcement entries available in `/var/log/install.log` and is update still required?
+### 4. DDM Enforcement Resolver + Version Comparison
+- **Check**: Can the script resolve one trustworthy DDM declaration from the recent `/var/log/install.log` window, and is update still required?
 - **Exit if**:
   - No DDM enforcement entry found
+  - Multiple conflicting declarations exist in the highest-priority source class
+  - The resolved declaration has an invalid version string
+  - The resolved declaration no longer maps to an available update (`MADownloadNoMatchFound` / `pallasNoPMVMatchFound`)
   - Installed macOS is already compliant
+- **Resolver priority**:
+  - `defaultApplicableDeclaration`
+  - `foundDdmEnforcedInstall`
+  - generic `EnforcedInstallDate` fallback
 
-### 5. Post-Deadline Restart Eligibility (Yukon)
+### 5. Effective Deadline Resolution
+- **Check**: Is a safe future `setPastDuePaddedEnforcementDate` present after the resolved declaration without a later conflicting declaration?
+- **Behavior**:
+  - If yes, use the padded deadline as the effective enforcement timestamp
+  - If no, continue with the declared `EnforcedInstallDate`
+
+### 6. Post-Deadline Restart Eligibility (Yukon)
 - **Computed before reminder gating**:
   - Deadline is in the past
   - Days past deadline `>= daysPastDeadlineRestartWorkflow`
@@ -169,17 +183,17 @@ flowchart TD
   - `Force`: Restart-only dialog with forced redisplay loop
 - **Suppression case**: If past-deadline day threshold is met but uptime is below 75 minutes, restart mode is suppressed for that run
 
-### 6. Reminder Window + Periodic Reminder Logic
+### 7. Reminder Window + Periodic Reminder Logic
 - **Inside window** (`daysRemaining <= daysBeforeDeadlineDisplayReminder`): proceed
 - **Outside window**: only proceed if no interaction history exists or last interaction is `>= 28` days old
 - **Exit if**: Outside window and periodic reminder is not due
 
-### 7. Quiet-Period Suppression
+### 8. Quiet-Period Suppression
 - **Check**: Most recent interaction (`Return Code: 0|2|3|4|10`) is within 76 minutes
 - **Special handling**: Restart-related interactions are excluded from quiet-period suppression
 - **Bypass**: `Force` mode skips quiet-period suppression
 
-### 8. Meeting Detection
+### 9. Meeting Detection
 - **When used**: Only when not in `Force` mode and more than 24 hours remain to deadline
 - **How it works**:
   - Scans `pmset -g assertions`
@@ -190,14 +204,14 @@ flowchart TD
   - `Force` mode
   - Deadline within 24 hours
 
-### 9. Dialog Content Assembly
+### 10. Dialog Content Assembly
 - Computes disk/uptime warning blocks
 - Computes staged update status message (full/partial/pending)
 - Computes deadline enforcement sentence and infobox highlights
 - Applies post-deadline dialog overrides (restart prompt/force)
 - Replaces placeholders and applies hide rules
 
-### 10. Deadline UI Mode (Update Flow)
+### 11. Deadline UI Mode (Update Flow)
 When not overridden by restart mode:
 
 - **Standard Dialog** (`daysRemaining >= daysBeforeDeadlineBlurscreen`)
@@ -207,7 +221,7 @@ When not overridden by restart mode:
 - **Urgent Dialog** (`daysRemaining <= daysBeforeDeadlineHidingButton2`)
   - Button 2 disabled or hidden, blurscreen enabled
 
-### 11. Return-Code Action Handling
+### 12. Return-Code Action Handling
 - **Force mode**:
   - `0` or `4` triggers restart command
   - Any other return code re-displays within the same run after ~5 seconds
@@ -251,7 +265,7 @@ Additional runtime constants used by the decision tree:
 
 The script has **10 common exit points** (plus 2 fatal errors):
 
-1. **No DDM enforcement** - Nothing to remind about
+1. **No valid DDM enforcement** - Nothing trustworthy to remind about
 2. **macOS up to date** - Update already completed
 3. **Outside window and periodic reminder not due** - Too early and not periodic-due
 4. **Within quiet period** - Recently interacted

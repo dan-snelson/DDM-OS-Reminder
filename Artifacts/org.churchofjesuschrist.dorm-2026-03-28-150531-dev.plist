@@ -93,9 +93,9 @@
 	<key>InfoBox</key>
 	<string>Assembled&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
 	<key>InfoButtonAction</key>
-	<string>https://support.churchofjesuschrist.org/Update-macOS-on-Mac</string>
+	<string>https://support.apple.com/108382</string>
 	<key>InfoButtonText</key>
-	<string>Update macOS on Mac</string>
+	<string>Assembled Update macOS on Mac</string>
 	<key>InfoButtonTextLocalized_de</key>
 	<string>Assembled macOS auf Mac aktualisieren</string>
 	<key>InfoButtonTextLocalized_en</key>
@@ -195,15 +195,15 @@
 	<key>SupportKB</key>
 	<string>Update macOS on Mac</string>
 	<key>SupportKBURL</key>
-	<string>[Update macOS on Mac](https://support.churchofjesuschrist.org/Update-macOS-on-Mac)</string>
+	<string>[Update macOS on Mac](https://support.apple.com/108382)</string>
 	<key>SupportTeamEmail</key>
-	<string>rescue@churchofjesuschrist.org</string>
+	<string>rescue@company.com</string>
 	<key>SupportTeamName</key>
-	<string>IT Support</string>
+	<string>Assembled IT Support</string>
 	<key>SupportTeamPhone</key>
-	<string>+1 (801) 555-1212</string>
+	<string>Assembled +1 (801) 555-1212</string>
 	<key>SupportTeamWebsite</key>
-	<string>https://support.churchofjesuschrist.org</string>
+	<string>https://support.company.com</string>
 	<key>SwapOverlayAndLogo</key>
 	<false/>
 	<key>Title</key>

@@ -105,9 +105,9 @@
                                 	<key>InfoBox</key>
                                 	<string>Assembled&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
                                 	<key>InfoButtonAction</key>
-                                	<string>https://support.churchofjesuschrist.org/Update-macOS-on-Mac</string>
+                                	<string>https://support.apple.com/108382</string>
                                 	<key>InfoButtonText</key>
-                                	<string>Update macOS on Mac</string>
+                                	<string>Assembled Update macOS on Mac</string>
                                 	<key>InfoButtonTextLocalized_de</key>
                                 	<string>Assembled macOS auf Mac aktualisieren</string>
                                 	<key>InfoButtonTextLocalized_en</key>
@@ -207,15 +207,15 @@
                                 	<key>SupportKB</key>
                                 	<string>Update macOS on Mac</string>
                                 	<key>SupportKBURL</key>
-                                	<string>[Update macOS on Mac](https://support.churchofjesuschrist.org/Update-macOS-on-Mac)</string>
+                                	<string>[Update macOS on Mac](https://support.apple.com/108382)</string>
                                 	<key>SupportTeamEmail</key>
-                                	<string>rescue@churchofjesuschrist.org</string>
+                                	<string>rescue@company.com</string>
                                 	<key>SupportTeamName</key>
-                                	<string>IT Support</string>
+                                	<string>Assembled IT Support</string>
                                 	<key>SupportTeamPhone</key>
-                                	<string>+1 (801) 555-1212</string>
+                                	<string>Assembled +1 (801) 555-1212</string>
                                 	<key>SupportTeamWebsite</key>
-                                	<string>https://support.churchofjesuschrist.org</string>
+                                	<string>https://support.company.com</string>
                                 	<key>SwapOverlayAndLogo</key>
                                 	<false/>
                                 	<key>Title</key>
@@ -240,26 +240,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>6AF4D093-33EB-4EB1-A981-C5AA9A17A30D</string>
+            <string>347944AF-2EC7-4532-9394-B0B49CCE0EE7</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>6AF4D093-33EB-4EB1-A981-C5AA9A17A30D</string>
+            <string>347944AF-2EC7-4532-9394-B0B49CCE0EE7</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (3.0.0b4) to org.churchofjesuschrist standards. Created: 2026-03-28-150016</string>
+    <string>Configures DDM OS Reminder (3.0.0b4) to org.churchofjesuschrist standards. Created: 2026-03-28-150531</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>8CE75B5D-0CCE-44E7-9424-A253D2FDFDDE</string>
+    <string>DD1FCE67-FC4E-4295-8428-3A2CFE361533</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -269,7 +269,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>8CE75B5D-0CCE-44E7-9424-A253D2FDFDDE</string>
+    <string>DD1FCE67-FC4E-4295-8428-3A2CFE361533</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

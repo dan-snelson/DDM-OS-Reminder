@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 3.0.0b4 (28-Mar-2026)
+- Added optional prior-plist import to `assemble.zsh --interactive`, allowing Mac Admins to reuse supported values from an earlier DOR `.plist` while still generating current-version artifacts from the current sample
+    - Imported values are read with `PlistBuddy` against the current runtime preference-key map so older plist formatting differences do not affect import behavior
+    - Missing newer keys now remain at current defaults instead of being dropped during upgrade reuse
+    - `ScriptLog` is preserved only when the imported basename matches the current RDNN; otherwise it is rewritten to the current assembly path to avoid domain leakage from older/internal plists
+    - Assembled-script `scriptLog` updates now follow the same resolved path as the generated plist so operator messaging and deployed runtime behavior stay aligned
+
 ### Version 3.0.0b3 (28-Mar-2026)
 - Updated free-disk-space reporting in `reminderDialog.zsh` to prefer Finder-aligned available capacity via `NSURLVolumeAvailableCapacityForImportantUsageKey`, improving visibility of purgeable space such as local Time Machine snapshots and iCloud-managed capacity. ([Pull Request #80](https://github.com/dan-snelson/DDM-OS-Reminder/pull/80); thanks, @huexley!)
     - Added sanity checks and automatic fallback to the previous `diskutil` path when the JXA/Foundation disk-space query returns invalid data, preserving safe reminder behavior on affected systems.

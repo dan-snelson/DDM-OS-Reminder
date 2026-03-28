@@ -23,6 +23,8 @@ zsh assemble.zsh us.snelson --lane prod --interactive
 ```
 
 > **Automation note:** `assemble.zsh` is intentionally interactive by default. For unattended/non-interactive runs, provide both the RDNN argument and `--lane` explicitly.
+>
+> **Upgrade note:** In `--interactive` mode, you can now optionally supply a previously generated DOR `.plist` to import supported values before generating new artifacts.
 
 The artifacts will be saved as shown below:
 
@@ -30,7 +32,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0b3)
+🧩 Assemble DDM OS Reminder (3.0.0b4)
 ===============================================================
 
 Full Paths:

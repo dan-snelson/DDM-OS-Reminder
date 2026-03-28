@@ -119,21 +119,22 @@ fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Free Disk Space Variables (inspired by Mac Health Check)
+# Uses NSURLVolumeAvailableCapacityForImportantUsageKey to match Finder's calculation,
+# including purgeable space (local Time Machine snapshots, iCloud cache, etc.)
+# Uses decimal divisor (1,000,000,000) to match macOS/Finder display conventions
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-freeSpace=$(diskutil info / | awk -F ': ' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk -F '(' '{print $1}' | xargs)
-diskBytes=$(diskutil info / | awk -F '[()]' '/Total Space/ {print $2}' | awk '{print $1}')
-freeBytes=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk '{print $1}')
-
+diskRawValues=$(osascript -l JavaScript -e "ObjC.import('Foundation'); var url = \$.NSURL.fileURLWithPath('/'); var result = url.resourceValuesForKeysError(['NSURLVolumeAvailableCapacityForImportantUsageKey','NSURLVolumeTotalCapacityKey'], null); [result.valueForKey('NSURLVolumeAvailableCapacityForImportantUsageKey').js, result.valueForKey('NSURLVolumeTotalCapacityKey').js].join(' ');" 2>/dev/null)
+read freeBytes diskBytes <<< "${diskRawValues}"
 if [[ -n "${diskBytes}" && -n "${freeBytes}" && "${diskBytes}" -gt 0 ]]; then
-    freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
+    freeSpace=$(echo "scale=1; ${freeBytes} / 1000000000" | bc)
+    freeSpace="${freeSpace} GB"
+    freePercentage=$(echo "scale=0; (${freeBytes} * 100) / ${diskBytes}" | bc)
 else
     error "Invalid disk space data: diskBytes=${diskBytes}, freeBytes=${freeBytes}"
+    freeSpace="Unknown"
     freePercentage="Unknown"
 fi
-
 diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"
-
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

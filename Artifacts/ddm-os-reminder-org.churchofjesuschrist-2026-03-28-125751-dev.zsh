@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.0.0b2"
+scriptVersion="3.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.0.0b2"
+scriptVersion="3.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -369,17 +369,30 @@ fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Free Disk Space Variables (inspired by Mac Health Check)
+# Prefer Finder-aligned available capacity when JXA returns sane values (thanks, @huexley!);
+# fall back to diskutil when the Foundation query is unavailable or reports 0.
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-freeSpace=$(diskutil info / | awk -F ': ' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk -F '(' '{print $1}' | xargs)
-diskBytes=$(diskutil info / | awk -F '[()]' '/Total Space/ {print $2}' | awk '{print $1}')
-freeBytes=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk '{print $1}')
+diskRawValues=$(osascript -l JavaScript -e "ObjC.import('Foundation'); var url = \$.NSURL.fileURLWithPath('/'); var result = url.resourceValuesForKeysError(['NSURLVolumeAvailableCapacityForImportantUsageKey','NSURLVolumeTotalCapacityKey'], null); [result.valueForKey('NSURLVolumeAvailableCapacityForImportantUsageKey').js, result.valueForKey('NSURLVolumeTotalCapacityKey').js].join(' ');" 2>/dev/null)
+read freeBytes diskBytes <<< "${diskRawValues}"
 
-if [[ -n "${diskBytes}" && -n "${freeBytes}" && "${diskBytes}" -gt 0 ]]; then
+if [[ "${freeBytes}" == <-> && "${diskBytes}" == <-> ]] && (( freeBytes > 0 && diskBytes >= freeBytes )); then
+    freeSpace=$(echo "scale=1; ${freeBytes} / 1000000000" | bc)
+    freeSpace="${freeSpace} GB"
     freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
 else
-    error "Invalid disk space data: diskBytes=${diskBytes}, freeBytes=${freeBytes}"
-    freePercentage="Unknown"
+    warning "JXA disk space query returned invalid data; falling back to diskutil. diskBytes=${diskBytes}, freeBytes=${freeBytes}"
+    freeSpace=$(diskutil info / | awk -F ': ' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk -F '(' '{print $1}' | xargs)
+    diskBytes=$(diskutil info / | awk -F '[()]' '/Total Space/ {print $2}' | awk '{print $1}')
+    freeBytes=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk '{print $1}')
+
+    if [[ "${freeBytes}" == <-> && "${diskBytes}" == <-> ]] && (( diskBytes > 0 && diskBytes >= freeBytes )); then
+        freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
+    else
+        error "Invalid disk space data: diskBytes=${diskBytes}, freeBytes=${freeBytes}"
+        freeSpace="Unknown"
+        freePercentage="Unknown"
+    fi
 fi
 
 diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"

@@ -2,7 +2,10 @@
 
 ## Changelog
 
-### Version 3.0.0b2 (25-Mar-2026)
+### Version 3.0.0b3 (28-Mar-2026)
+- Updated free-disk-space reporting in `reminderDialog.zsh` to prefer Finder-aligned available capacity via `NSURLVolumeAvailableCapacityForImportantUsageKey`, improving visibility of purgeable space such as local Time Machine snapshots and iCloud-managed capacity. ([Pull Request #80](https://github.com/dan-snelson/DDM-OS-Reminder/pull/80); thanks, @huexley!)
+    - Added sanity checks and automatic fallback to the previous `diskutil` path when the JXA/Foundation disk-space query returns invalid data, preserving safe reminder behavior on affected systems.
+    - Retained percentage-based warning behavior while updating the human-readable free-space display to use decimal `GB` formatting that better aligns with macOS/Finder conventions.
 - Merged `main` (2.6.0) into `3.0.0` while preserving `2.6.0` runtime behavior, including post-deadline restart workflow, KB support-assistance controls, and deadline/infobox urgency highlighting.
 - Consolidated localization coverage across runtime and config generation, including FR-25 parity plus ES/PT/JA support (`LanguageOverride`, localized key families, localized infobox labels, and restart/deadline/support-assistance copy paths).
 - Expanded locale-aware deadline date rendering so `%a`/`%b` in `DateFormatDeadlineHumanReadable` follow the resolved dialog language (`de`, `fr`, `es`, `pt`, `ja`, fallback `en`) across standard, padded past-due, and demo-mode flows.

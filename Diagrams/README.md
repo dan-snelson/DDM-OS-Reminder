@@ -491,6 +491,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.5 | 28-Mar-2026 | Updated overview, deployment workflow, and configuration reference markdown for `3.0.0b4` prior-plist upgrade-assist, lane-suffixed artifact names, and `2.2.0+` documented compatibility |
 | 1.0.4 | 25-Mar-2026 | Updated runtime and deployment diagrams for the hardened DDM resolver, corrected `dorm.zsh` client-script paths, refreshed EA documentation, and converted 00-overview source to Mermaid |
 | 1.0.3 | 05-Mar-2026 | Added 00 Executive Overview diagram and PNG export; renumbered diagram index and updated rendering guidance for 00–05 |
 | 1.0.2 | 01-Mar-2026 | Updated staged-update documentation in 02/06 for proposed metadata validation and pending-download normalization behavior |
@@ -506,5 +507,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 25-Mar-2026
-**DDM OS Reminder Version**: 3.0.0 beta series
+**Last Updated**: 28-Mar-2026
+**DDM OS Reminder Version**: 3.0.0b4

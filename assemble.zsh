@@ -11,6 +11,7 @@
 # Common usage examples:
 #   zsh assemble.zsh us.snelson --lane prod
 #   zsh assemble.zsh us.snelson --lane prod --interactive
+#   zsh assemble.zsh /path/to/previous-config.plist
 #
 # Expected directory layout:
 #   DDM-OS-Reminder/
@@ -59,6 +60,10 @@ modeSuffix=""
 interactiveMode=false
 priorPlistPath=""
 priorPlistImported=false
+priorPlistPrompted=false
+rdnnInferredFromPriorPlist=false
+modeInferredFromPriorPlist=false
+interactiveConfigurationHeaderShown=false
 
 placeholderMarker="Assembled"
 legacyPlaceholderMarker="Sample"
@@ -161,20 +166,144 @@ fi
 echo
 
 # Parse command-line arguments
-# Usage: zsh assemble.zsh [RDNN] [--lane dev|test|prod] [--interactive] [--help]
+# Usage: zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--help]
 skipRDNNPrompt=false
 skipModePrompt=false
+
+function normalizePathInput() {
+  local rawValue="${1}"
+
+  if (( ${#rawValue} >= 2 )); then
+    if [[ "${rawValue[1]}" == "'" && "${rawValue[-1]}" == "'" ]]; then
+      rawValue="${rawValue[2,-2]}"
+    elif [[ "${rawValue[1]}" == "\"" && "${rawValue[-1]}" == "\"" ]]; then
+      rawValue="${rawValue[2,-2]}"
+    fi
+  fi
+
+  echo "${rawValue}"
+}
+
+function isPriorPlistArgument() {
+  local candidateValue="${1}"
+
+  [[ "${candidateValue:l}" == *.plist ]]
+}
+
+function validatePriorPlistPath() {
+  local candidatePath="${1}"
+
+  if [[ ! -e "${candidatePath}" ]]; then
+    echo "❌ Prior plist not found: ${candidatePath}" >&2
+    return 1
+  fi
+
+  if [[ ! -r "${candidatePath}" ]]; then
+    echo "❌ Prior plist is not readable: ${candidatePath}" >&2
+    return 1
+  fi
+
+  if ! /usr/bin/plutil -lint "${candidatePath}" >/dev/null 2>&1; then
+    echo "❌ Prior plist is invalid: ${candidatePath}" >&2
+    return 1
+  fi
+
+  echo "${candidatePath}"
+}
+
+function inferRDNNFromPriorPlist() {
+  local plistPath="${1}"
+  local importedScriptLog=""
+  local inferredRDNN=""
+  local plistFilename=""
+
+  importedScriptLog="$(
+    /usr/libexec/PlistBuddy -c "Print :ScriptLog" "${plistPath}" 2>/dev/null || true
+  )"
+
+  if [[ -n "${importedScriptLog}" && "${importedScriptLog:t}" == *.log ]]; then
+    inferredRDNN="${${importedScriptLog:t}%.log}"
+  fi
+
+  if [[ -z "${inferredRDNN}" ]]; then
+    plistFilename="${plistPath:t}"
+    if [[ "${plistFilename}" == *".${currentOrgScriptName_reminder}-"* ]]; then
+      inferredRDNN="${plistFilename%%.${currentOrgScriptName_reminder}-*}"
+    fi
+  fi
+
+  if [[ -n "${inferredRDNN}" ]] && [[ "${inferredRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+    echo "${inferredRDNN}"
+  fi
+}
+
+function inferDeploymentModeFromPriorPlist() {
+  local plistFilename="${1:t:l}"
+
+  case "${plistFilename}" in
+    *-dev.plist)  echo "dev" ;;
+    *-test.plist) echo "test" ;;
+    *-prod.plist) echo "prod" ;;
+  esac
+}
+
+function showInteractiveConfigurationHeader() {
+  if [[ "${interactiveConfigurationHeaderShown}" == true ]]; then
+    return
+  fi
+
+  echo
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Interactive Configuration"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo
+
+  interactiveConfigurationHeaderShown=true
+}
+
+function applyPriorPlistSelections() {
+  local plistPath="${1}"
+  local inferredRDNN=""
+  local inferredDeploymentMode=""
+
+  priorPlistPath="${plistPath}"
+  priorPlistImported=true
+
+  echo
+  echo "ℹ️  Importing supported values from: ${priorPlistPath}"
+
+  if [[ -z "${newRDNN}" || "${rdnnInferredFromPriorPlist}" == true ]]; then
+    inferredRDNN="$(inferRDNNFromPriorPlist "${priorPlistPath}")"
+    if [[ -n "${inferredRDNN}" ]]; then
+      echo "🔎 Inferred RDNN from prior plist: '${inferredRDNN}'"
+      newRDNN="${inferredRDNN}"
+      skipRDNNPrompt=true
+      rdnnInferredFromPriorPlist=true
+    fi
+  fi
+
+  if [[ "${skipModePrompt}" == false ]]; then
+    inferredDeploymentMode="$(inferDeploymentModeFromPriorPlist "${priorPlistPath}")"
+    if [[ -n "${inferredDeploymentMode}" ]]; then
+      deploymentMode="${inferredDeploymentMode}"
+      skipModePrompt=true
+      modeInferredFromPriorPlist=true
+      echo "🔎 Inferred deployment mode from prior plist: '${deploymentMode}'"
+    fi
+  fi
+}
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --help|-h)
       echo
       echo "Usage:"
-      echo "  zsh assemble.zsh [RDNN] [--lane dev|test|prod] [--interactive] [--help]"
+      echo "  zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--help]"
       echo
       echo "Options:"
       echo "  --lane <dev|test|prod>       Select deployment mode"
       echo "  --interactive                Prompt for optional prior .plist import, IT support, branding and restart policy values"
+      echo "  prior-plist                  Auto-enables interactive mode and infers RDNN and deployment mode from the provided .plist"
       echo "  --help, -h                   Show this help"
       echo
       exit 0
@@ -187,6 +316,7 @@ while [[ $# -gt 0 ]]; do
       if [[ -n "${2:-}" ]] && [[ "${2}" =~ ^(dev|test|prod)$ ]]; then
         deploymentMode="${2}"
         skipModePrompt=true
+        modeInferredFromPriorPlist=false
         shift 2
       else
         echo "⚠️  Invalid lane: '${2:-}'. Valid options: dev, test, prod"
@@ -199,54 +329,25 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     *)
-      # Non-flag argument assumed to be RDNN
-      if [[ -z "${newRDNN}" ]]; then
-        echo "📥 RDNN provided via command-line argument: '${1}'"
-        newRDNN="${1}"
+      positionalArgument="$(normalizePathInput "${1}")"
+
+      if [[ -z "${priorPlistPath}" ]] && isPriorPlistArgument "${positionalArgument}"; then
+        priorPlistPath="$(validatePriorPlistPath "${positionalArgument}")" || exit 1
+        interactiveMode=true
+        priorPlistPrompted=true
+
+        echo "📥 Prior plist provided via command-line argument: '${priorPlistPath}'"
+        applyPriorPlistSelections "${priorPlistPath}"
+      elif [[ -z "${newRDNN}" || "${rdnnInferredFromPriorPlist}" == true ]]; then
+        echo "📥 RDNN provided via command-line argument: '${positionalArgument}'"
+        newRDNN="${positionalArgument}"
         skipRDNNPrompt=true
+        rdnnInferredFromPriorPlist=false
       fi
       shift
       ;;
   esac
 done
-
-# Prompt ONLY if not provided via argument
-if [[ "${skipRDNNPrompt}" == false ]]; then
-  if [[ -n "${currentRDNN}" ]]; then
-    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or ‘X’ to exit): " userRDNN
-
-    # Allow ‘X’ to exit
-    if [[ "${userRDNN}" == [Xx] ]]; then
-      echo "Exiting at user request."
-      exit 0
-    fi
-
-    newRDNN="${userRDNN:-${currentRDNN}}"
-  else
-    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or ‘X’ to exit): " newRDNN
-
-    # Allow ‘X’ to exit
-    if [[ "${newRDNN}" == [Xx] ]]; then
-      echo "Exiting at user request."
-      exit 0
-    fi
-  fi
-fi
-
-if ! [[ "${newRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
-  echo "❌ Invalid RDNN format."
-  exit 1
-fi
-
-# Preserve the original organizationScriptName from reminderDialog for plist naming
-newOrgScriptName="${currentOrgScriptName_reminder}"
-resolvedScriptLogPath="/var/log/${newRDNN}.log"
-
-echo
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo
 
 
 
@@ -272,20 +373,6 @@ function rdnnToDomain() {
 
   domainValue="${(j:.:)reversed}"
   echo "${domainValue}"
-}
-
-function normalizePathInput() {
-  local rawValue="${1}"
-
-  if (( ${#rawValue} >= 2 )); then
-    if [[ "${rawValue[1]}" == "'" && "${rawValue[-1]}" == "'" ]]; then
-      rawValue="${rawValue[2,-2]}"
-    elif [[ "${rawValue[1]}" == "\"" && "${rawValue[-1]}" == "\"" ]]; then
-      rawValue="${rawValue[2,-2]}"
-    fi
-  fi
-
-  echo "${rawValue}"
 }
 
 function promptWithDefault() {
@@ -343,8 +430,10 @@ function escapeSedReplacement() {
 function promptForPriorPlistImport() {
   local candidatePath=""
 
+  priorPlistPrompted=true
+
   while true; do
-    read -r "?Earlier DOR .plist to import [Return to skip] (or ‘X’ to exit): " candidatePath
+    read -r "?Drag-and-drop an earlier DOR .plist to import [Return to skip] (or ‘X’ to exit): " candidatePath
 
     if [[ "${candidatePath}" == [Xx] ]]; then
       echo "Exiting at user request."
@@ -374,10 +463,7 @@ function promptForPriorPlistImport() {
       continue
     fi
 
-    priorPlistPath="${candidatePath}"
-    priorPlistImported=true
-    echo ""
-    echo "ℹ️  Importing supported values from: ${priorPlistPath}"
+    applyPriorPlistSelections "${candidatePath}"
     return
   done
 }
@@ -520,19 +606,58 @@ function applyImportedPreferences() {
   /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${targetPlist}"
 }
 
+if [[ "${interactiveMode}" == true && "${priorPlistPrompted}" == false ]]; then
+  showInteractiveConfigurationHeader
+  promptForPriorPlistImport
+fi
+
+# Prompt ONLY if not provided via argument or inferred from a prior plist
+if [[ "${skipRDNNPrompt}" == false ]]; then
+  if [[ -n "${currentRDNN}" ]]; then
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or ‘X’ to exit): " userRDNN
+
+    if [[ "${userRDNN}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+
+    newRDNN="${userRDNN:-${currentRDNN}}"
+  else
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or ‘X’ to exit): " newRDNN
+
+    if [[ "${newRDNN}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+  fi
+fi
+
+if ! [[ "${newRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  echo "❌ Invalid RDNN format."
+  exit 1
+fi
+
+# Preserve the original organizationScriptName from reminderDialog for plist naming
+newOrgScriptName="${currentOrgScriptName_reminder}"
+resolvedScriptLogPath="/var/log/${newRDNN}.log"
+
+echo
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo
+
 if [[ "${interactiveMode}" == true ]]; then
   derivedDomain="$(rdnnToDomain "${newRDNN}")"
   if [[ -z "${derivedDomain}" ]]; then
     derivedDomain="company.com"
   fi
 
-  echo
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Interactive Configuration"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo
+  showInteractiveConfigurationHeader
 
-  promptForPriorPlistImport
+  if [[ "${priorPlistPrompted}" == false ]]; then
+    promptForPriorPlistImport
+  fi
 
   if [[ "${priorPlistImported}" == true ]]; then
     echo ""

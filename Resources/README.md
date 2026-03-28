@@ -137,6 +137,14 @@ All artifacts are saved to the `Artifacts/` folder and include the lane suffix:
 
 After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
 
+When comparing a newly generated `.plist` to an older one, prefer a normalized diff instead of a raw XML comparison:
+
+```zsh
+diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
+```
+
+This filters out comment, key-order, and whitespace churn so you can focus on actual preference-value changes.
+
 > **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
 > **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) and localized key families (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) for dialog text, warnings, staging text, and support-assistance messaging.

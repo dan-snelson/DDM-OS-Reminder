@@ -1737,6 +1737,9 @@ plutil -lint /path/to/config.plist
 
 # Check data types
 plutil -p /path/to/config.plist
+
+# Compare two plists by normalized values
+diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
 ```
 
 ---

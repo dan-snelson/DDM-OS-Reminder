@@ -351,6 +351,14 @@ Expected files:
 - `{RDNN}.dorm-{timestamp}-{lane}.plist` - Preferences file
 - `{RDNN}.dorm-{timestamp}-{lane}-unsigned.mobileconfig` - Configuration Profile
 
+If you are comparing a regenerated `.plist` to an earlier artifact, use a normalized plist diff before treating XML changes as meaningful:
+
+```bash
+diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
+```
+
+This removes comment, whitespace, and key-order noise and highlights only real preference-value differences.
+
 ---
 
 ### Phase 4: Test Deployment (🧪)

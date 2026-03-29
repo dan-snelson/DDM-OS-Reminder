@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Complete reference guide for all configurable preferences in DDM OS Reminder.
+Complete reference guide for all 73 configurable preferences in DDM OS Reminder.
 
 ## Table of Contents
 
@@ -10,9 +10,10 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
   - [Timing & Thresholds](#2-timing--thresholds)
   - [Branding & Appearance](#3-branding--appearance)
   - [Support Team Information](#4-support-team-information)
-  - [Dialog UI Text](#5-dialog-ui-text)
-  - [Update Staging Messages](#6-update-staging-messages)
-  - [Warning Messages](#7-warning-messages)
+  - [Localization & Language Selection](#5-localization--language-selection)
+  - [Dialog UI Text](#6-dialog-ui-text)
+  - [Update Staging Messages](#7-update-staging-messages)
+  - [Warning Messages](#8-warning-messages)
 - [Placeholder Reference](#placeholder-reference)
 - [Common Configuration Scenarios](#common-configuration-scenarios)
 - [Configuration Methods](#configuration-methods)
@@ -48,6 +49,43 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | infobuttonaction | InfoButtonAction | String | https://support.apple.com/108382 | Support |
 | supportKBURL | SupportKBURL | String | [Markdown link] | Support |
 | supportAssistanceMessage | SupportAssistanceMessage | String | [Support sentence with (?) button] | Support |
+| supportAssistanceMessageLocalizedEn | SupportAssistanceMessageLocalized_en | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedDe | SupportAssistanceMessageLocalized_de | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedFr | SupportAssistanceMessageLocalized_fr | String | [Localized support sentence] | Localization |
+| languageOverride | LanguageOverride | String | auto | Localization |
+| titleLocalizedEn | TitleLocalized_en | String | [Localized title] | Localization |
+| titleLocalizedDe | TitleLocalized_de | String | [Localized title] | Localization |
+| titleLocalizedFr | TitleLocalized_fr | String | [Localized title] | Localization |
+| button1textLocalizedEn | Button1TextLocalized_en | String | [Localized button text] | Localization |
+| button1textLocalizedDe | Button1TextLocalized_de | String | [Localized button text] | Localization |
+| button1textLocalizedFr | Button1TextLocalized_fr | String | [Localized button text] | Localization |
+| button2textLocalizedEn | Button2TextLocalized_en | String | [Localized button text] | Localization |
+| button2textLocalizedDe | Button2TextLocalized_de | String | [Localized button text] | Localization |
+| button2textLocalizedFr | Button2TextLocalized_fr | String | [Localized button text] | Localization |
+| infobuttontextLocalizedEn | InfoButtonTextLocalized_en | String | [Localized button text] | Localization |
+| infobuttontextLocalizedDe | InfoButtonTextLocalized_de | String | [Localized button text] | Localization |
+| infobuttontextLocalizedFr | InfoButtonTextLocalized_fr | String | [Localized button text] | Localization |
+| messageLocalizedEn | MessageLocalized_en | String | [Localized message] | Localization |
+| messageLocalizedDe | MessageLocalized_de | String | [Localized message] | Localization |
+| messageLocalizedFr | MessageLocalized_fr | String | [Localized message] | Localization |
+| helpmessageLocalizedEn | HelpMessageLocalized_en | String | [Localized help message] | Localization |
+| helpmessageLocalizedDe | HelpMessageLocalized_de | String | [Localized help message] | Localization |
+| helpmessageLocalizedFr | HelpMessageLocalized_fr | String | [Localized help message] | Localization |
+| excessiveUptimeWarningMessageLocalizedEn | ExcessiveUptimeWarningMessageLocalized_en | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedDe | ExcessiveUptimeWarningMessageLocalized_de | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedFr | ExcessiveUptimeWarningMessageLocalized_fr | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedEn | DiskSpaceWarningMessageLocalized_en | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedDe | DiskSpaceWarningMessageLocalized_de | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedFr | DiskSpaceWarningMessageLocalized_fr | String | [Localized warning] | Localization |
+| stagedUpdateMessageLocalizedEn | StagedUpdateMessageLocalized_en | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedDe | StagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedFr | StagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedEn | PartiallyStagedUpdateMessageLocalized_en | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedDe | PartiallyStagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedFr | PartiallyStagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedEn | PendingDownloadMessageLocalized_en | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedDe | PendingDownloadMessageLocalized_de | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedFr | PendingDownloadMessageLocalized_fr | String | [Localized staging message] | Localization |
 | title | Title | String | macOS {placeholder} Required | UI Text |
 | button1text | Button1Text | String | Open Software Update | UI Text |
 | button2text | Button2Text | String | Remind Me Later | UI Text |
@@ -74,8 +112,8 @@ The sample profile in `Resources/sample.plist` uses shorter timing values (for e
 ### 1. Logging & Infrastructure
 
 #### scriptLog
-**Plist Key**: `ScriptLog`  
-**Type**: String  
+**Plist Key**: `ScriptLog`
+**Type**: String
 **Default**: `/var/log/org.churchofjesuschrist.log`
 
 **Description**: Path to the client-side log file where all script activity is recorded.
@@ -106,9 +144,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ### 2. Timing & Thresholds
 
 #### daysBeforeDeadlineDisplayReminder
-**Plist Key**: `DaysBeforeDeadlineDisplayReminder`  
-**Type**: Integer  
-**Default**: 60  
+**Plist Key**: `DaysBeforeDeadlineDisplayReminder`
+**Type**: Integer
+**Default**: 60
 **Valid Range**: 0-999
 
 **Description**: Number of days before the DDM deadline when reminders should start appearing to users.
@@ -145,9 +183,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### daysBeforeDeadlineBlurscreen
-**Plist Key**: `DaysBeforeDeadlineBlurscreen`  
-**Type**: Integer  
-**Default**: 45  
+**Plist Key**: `DaysBeforeDeadlineBlurscreen`
+**Type**: Integer
+**Default**: 45
 **Valid Range**: 0-999
 
 **Description**: Number of days before deadline when the blurscreen effect activates, dimming the desktop background to increase visual urgency.
@@ -180,9 +218,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### daysBeforeDeadlineHidingButton2
-**Plist Key**: `DaysBeforeDeadlineHidingButton2`  
-**Type**: Integer  
-**Default**: 21  
+**Plist Key**: `DaysBeforeDeadlineHidingButton2`
+**Type**: Integer
+**Default**: 21
 **Valid Range**: 0-999
 
 **Description**: Number of days before deadline when the "Remind Me Later" button (Button 2) becomes disabled or hidden, forcing users to either update or close the dialog.
@@ -219,9 +257,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### daysOfExcessiveUptimeWarning
-**Plist Key**: `DaysOfExcessiveUptimeWarning`  
-**Type**: Integer  
-**Default**: 0 (immediate)  
+**Plist Key**: `DaysOfExcessiveUptimeWarning`
+**Type**: Integer
+**Default**: 0 (immediate)
 **Valid Range**: 0-999
 
 **Description**: Number of days without restart that triggers an uptime warning message in the dialog, recommending user restart before updating.
@@ -252,9 +290,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### daysPastDeadlineRestartWorkflow
-**Plist Key**: `DaysPastDeadlineRestartWorkflow`  
-**Type**: Integer  
-**Default**: 2  
+**Plist Key**: `DaysPastDeadlineRestartWorkflow`
+**Type**: Integer
+**Default**: 2
 **Valid Range**: 0-999
 
 **Description**: Number of whole days past the DDM enforcement deadline required before Yukon Cornelius restart workflow becomes eligible.
@@ -278,9 +316,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### pastDeadlineRestartBehavior
-**Plist Key**: `PastDeadlineRestartBehavior`  
-**Type**: String enum  
-**Default**: `Off`  
+**Plist Key**: `PastDeadlineRestartBehavior`
+**Type**: String enum
+**Default**: `Off`
 **Valid Values**: `Off` | `Prompt` | `Force` (case-insensitive)
 
 **Description**: Controls what happens after the DDM deadline when restart workflow eligibility is met (`daysPastDeadlineRestartWorkflow` and minimum uptime checks pass).
@@ -316,9 +354,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### meetingDelay
-**Plist Key**: `MeetingDelay`  
-**Type**: Integer  
-**Default**: 75  
+**Plist Key**: `MeetingDelay`
+**Type**: Integer
+**Default**: 75
 **Valid Range**: 0-999 (minutes)
 
 **Description**: Number of minutes to delay dialog display when user has active display sleep assertions (detected via `pmset`), typically indicating a video call or presentation.
@@ -351,9 +389,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### acceptableAssertionApplicationNames
-**Plist Key**: `AcceptableAssertionApplicationNames`  
-**Type**: String  
-**Default**: `MSTeams zoom.us Webex`  
+**Plist Key**: `AcceptableAssertionApplicationNames`
+**Type**: String
+**Default**: `MSTeams zoom.us Webex`
 **Valid Format**: Space-delimited app names/keywords
 
 **Description**: List of meeting/presentation apps used to decide whether the dialog should defer during active calls/screensharing. If an active display-sleep assertion matches one of these values, `meetingDelay` is applied; otherwise the reminder proceeds immediately.
@@ -392,7 +430,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     AcceptableAssertionApplicationNames -string "MSTeams zoom.us Webex"
 ```
 
-**Related Logic**: 
+**Related Logic**:
 - See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
 - Works in conjunction with `meetingDelay` preference
 - Feature Request: Issue #67
@@ -400,9 +438,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### minimumDiskFreePercentage
-**Plist Key**: `MinimumDiskFreePercentage`  
-**Type**: Integer  
-**Default**: 99  
+**Plist Key**: `MinimumDiskFreePercentage`
+**Type**: Integer
+**Default**: 99
 **Valid Range**: 0-99
 
 **Description**: Minimum percentage of free disk space required to avoid showing a low disk space warning in the dialog.
@@ -436,8 +474,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ### 3. Branding & Appearance
 
 #### organizationOverlayiconURL
-**Plist Key**: `OrganizationOverlayIconURL`  
-**Type**: String  
+**Plist Key**: `OrganizationOverlayIconURL`
+**Type**: String
 **Default**: `https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d`
 
 **Description**: URL to organization's icon/logo displayed in the dialog. Accepts HTTP/HTTPS URLs or local file paths.
@@ -473,8 +511,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### organizationOverlayiconURLdark
-**Plist Key**: `OrganizationOverlayIconURLdark`  
-**Type**: String  
+**Plist Key**: `OrganizationOverlayIconURLdark`
+**Type**: String
 **Default**: `https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39`
 
 **Description**: URL to organization's dark mode icon/logo displayed when macOS is in Dark Mode (System Settings > Appearance > Dark). Set to empty to always use the standard `organizationOverlayiconURL` regardless of appearance mode. The script automatically detects the user's appearance mode from `~/Library/Preferences/.GlobalPreferences.plist` and selects the appropriate icon.
@@ -524,8 +562,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### swapOverlayAndLogo
-**Plist Key**: `SwapOverlayAndLogo`  
-**Type**: Boolean  
+**Plist Key**: `SwapOverlayAndLogo`
+**Type**: Boolean
 **Default**: NO
 
 **Description**: Swaps the position of the overlay icon and the default swiftDialog logo in the dialog window.
@@ -554,8 +592,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### dateFormatDeadlineHumanReadable
-**Plist Key**: `DateFormatDeadlineHumanReadable`  
-**Type**: String  
+**Plist Key**: `DateFormatDeadlineHumanReadable`
+**Type**: String
 **Default**: `+%a, %d-%b-%Y, %-l:%M %p`
 
 **Description**: `date` command format string for displaying the DDM enforcement deadline in human-readable format.
@@ -575,6 +613,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```bash
 # US Format: 04/01/2026 8:00 AM
 "+%m/%d/%Y %-l:%M %p"
+
+# Swiss Format: 01.04.2026 20:00
+"+%d.%m.%Y %H:%M"
 
 # ISO Format: 2026-04-01 08:00
 "+%Y-%m-%d %H:%M"
@@ -596,18 +637,22 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
+**Locale Behavior (3.0.0+)**:
+- `%a` / `%A` / `%b` / `%B` follow the resolved dialog language (`de`, `fr`, fallback `en`)
+- Numeric-only formats (for example `%d.%m.%Y %H:%M`) are unchanged across locales
+
 ---
 
 ### 4. Support Team Information
 
 #### supportTeamName
-**Plist Key**: `SupportTeamName`  
-**Type**: String  
+**Plist Key**: `SupportTeamName`
+**Type**: String
 **Default**: `IT Support`
 
 **Description**: Name of your organization's support team displayed throughout the dialog and help screen.
 
-**Placeholder**: `{supportTeamName}`  
+**Placeholder**: `{supportTeamName}`
 **Used In**: message, helpmessage
 
 **Script Default**:
@@ -624,13 +669,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### supportTeamPhone
-**Plist Key**: `SupportTeamPhone`  
-**Type**: String  
+**Plist Key**: `SupportTeamPhone`
+**Type**: String
 **Default**: `+1 (801) 555-1212`
 
 **Description**: Support team phone number displayed in help dialog.
 
-**Placeholder**: `{supportTeamPhone}`  
+**Placeholder**: `{supportTeamPhone}`
 **Used In**: helpmessage
 
 **Recommendations**:
@@ -652,13 +697,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### supportTeamEmail
-**Plist Key**: `SupportTeamEmail`  
-**Type**: String  
+**Plist Key**: `SupportTeamEmail`
+**Type**: String
 **Default**: `rescue@domain.org`
 
 **Description**: Support team email address displayed in help dialog.
 
-**Placeholder**: `{supportTeamEmail}`  
+**Placeholder**: `{supportTeamEmail}`
 **Used In**: helpmessage
 
 **Script Default**:
@@ -675,13 +720,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### supportTeamWebsite
-**Plist Key**: `SupportTeamWebsite`  
-**Type**: String  
+**Plist Key**: `SupportTeamWebsite`
+**Type**: String
 **Default**: `https://support.domain.org`
 
 **Description**: Support team website URL displayed in help dialog.
 
-**Placeholder**: `{supportTeamWebsite}`  
+**Placeholder**: `{supportTeamWebsite}`
 **Used In**: helpmessage
 
 **Script Default**:
@@ -698,8 +743,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### supportKB
-**Plist Key**: `SupportKB`  
-**Type**: String  
+**Plist Key**: `SupportKB`
+**Type**: String
 **Default**: `Update macOS on Mac`
 
 **Description**: Display text for knowledge base article link (without URL).
@@ -720,13 +765,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### infobuttonaction
-**Plist Key**: `InfoButtonAction`  
-**Type**: String  
+**Plist Key**: `InfoButtonAction`
+**Type**: String
 **Default**: `https://support.apple.com/108382`
 
 **Description**: URL opened when user clicks the info button (?) in dialog. Also used as QR code content in help dialog.
 
-**Placeholder**: `{infobuttonaction}`  
+**Placeholder**: `{infobuttonaction}`
 **Used In**: helpimage (QR code generation)
 
 **Recommendations**:
@@ -752,15 +797,15 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### supportKBURL
-**Plist Key**: `SupportKBURL`  
-**Type**: String  
+**Plist Key**: `SupportKBURL`
+**Type**: String
 **Default**: `[Update macOS on Mac](https://support.apple.com/108382)`
 
 **Description**: Full markdown-formatted link combining `supportKB` text with URL for display in help message.
 
 **Format**: `[Link Text](URL)`
 
-**Placeholder**: `{supportKBURL}`  
+**Placeholder**: `{supportKBURL}`
 **Used In**: helpmessage
 
 **Script Default**:
@@ -779,13 +824,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### supportAssistanceMessage
-**Plist Key**: `SupportAssistanceMessage`  
-**Type**: String  
+**Plist Key**: `SupportAssistanceMessage`
+**Type**: String
 **Default**: `<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.`
 
 **Description**: Message fragment appended to `Message` for end-user support guidance. This keeps KB-assisted wording isolated from the main `Message` body.
 
-**Placeholder**: `{supportAssistanceMessage}`  
+**Placeholder**: `{supportAssistanceMessage}`
 **Used In**: message
 
 **Script Default**:
@@ -803,11 +848,53 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-### 5. Dialog UI Text
+### 5. Localization & Language Selection
+
+#### languageOverride
+**Plist Key**: `LanguageOverride`
+**Type**: String
+**Default**: `auto`
+**Supported Values**: `auto`, `en`, `de`, `fr`
+
+**Description**: Selects the localization family used for dialog content.
+When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value and normalizes to `en`, `de`, or `fr`.
+
+**Fallback Chain**:
+1. Selected localized key (for example, `MessageLocalized_de`)
+2. Base scalar key (for example, `Message`)
+
+**Script Default**:
+```bash
+["languageOverride"]="string|auto"
+```
+
+**Configuration Profile**:
+```xml
+<key>LanguageOverride</key>
+<string>de</string>
+```
+
+**Localized Key Families**:
+- `TitleLocalized_{en,de,fr}`
+- `Button1TextLocalized_{en,de,fr}`
+- `Button2TextLocalized_{en,de,fr}`
+- `InfoButtonTextLocalized_{en,de,fr}`
+- `MessageLocalized_{en,de,fr}`
+- `HelpMessageLocalized_{en,de,fr}`
+- `SupportAssistanceMessageLocalized_{en,de,fr}`
+- `ExcessiveUptimeWarningMessageLocalized_{en,de,fr}`
+- `DiskSpaceWarningMessageLocalized_{en,de,fr}`
+- `StagedUpdateMessageLocalized_{en,de,fr}`
+- `PartiallyStagedUpdateMessageLocalized_{en,de,fr}`
+- `PendingDownloadMessageLocalized_{en,de,fr}`
+
+---
+
+### 6. Dialog UI Text
 
 #### title
-**Plist Key**: `Title`  
-**Type**: String  
+**Plist Key**: `Title`
+**Type**: String
 **Default**: `macOS {titleMessageUpdateOrUpgrade} Required`
 
 **Description**: Main title displayed at the top of the dialog window.
@@ -834,13 +921,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### button1text
-**Plist Key**: `Button1Text`  
-**Type**: String  
+**Plist Key**: `Button1Text`
+**Type**: String
 **Default**: `Open Software Update`
 
 **Description**: Label for the primary action button (Button 1) that opens System Settings → Software Update.
 
-**Placeholder**: `{button1text}`  
+**Placeholder**: `{button1text}`
 **Used In**: message
 
 **Recommendations**:
@@ -862,13 +949,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### button2text
-**Plist Key**: `Button2Text`  
-**Type**: String  
+**Plist Key**: `Button2Text`
+**Type**: String
 **Default**: `Remind Me Later`
 
 **Description**: Label for the secondary button (Button 2) that dismisses the dialog for later reminder.
 
-**Placeholder**: `{button2text}`  
+**Placeholder**: `{button2text}`
 **Used In**: message
 
 **Note**: This button is automatically disabled/hidden when deadline is imminent (controlled by `daysBeforeDeadlineHidingButton2`)
@@ -887,8 +974,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### infobuttontext
-**Plist Key**: `InfoButtonText`  
-**Type**: String  
+**Plist Key**: `InfoButtonText`
+**Type**: String
 **Default**: `Update macOS on Mac`
 
 **Description**: Label text displayed on the info button.
@@ -915,8 +1002,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### message
-**Plist Key**: `Message`  
-**Type**: String  
+**Plist Key**: `Message`
+**Type**: String
 **Default**: [Full message text with placeholders]
 
 **Description**: Main body text of the dialog. Supports HTML formatting and extensive placeholder substitution.
@@ -964,8 +1051,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### infobox
-**Plist Key**: `InfoBox`  
-**Type**: String  
+**Plist Key**: `InfoBox`
+**Type**: String
 **Default**: [System information display]
 
 **Description**: Right sidebar content showing current system status and deadline information.
@@ -994,8 +1081,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### helpmessage
-**Plist Key**: `HelpMessage`  
-**Type**: String  
+**Plist Key**: `HelpMessage`
+**Type**: String
 **Default**: [Support contact information]
 
 **Description**: Content displayed when user clicks the help (?) button, providing support contact details and system information.
@@ -1028,13 +1115,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### helpimage
-**Plist Key**: `HelpImage`  
-**Type**: String  
+**Plist Key**: `HelpImage`
+**Type**: String
 **Default**: `qr={infobuttonaction}`
 
 **Description**: Image displayed in the help dialog. Uses special swiftDialog syntax to generate QR code.
 
-**QR Code Syntax**: `qr=URL`  
+**QR Code Syntax**: `qr=URL`
 **Direct Image**: Full URL or file path to image
 
 **Special Value**: `hide` to show no image
@@ -1064,16 +1151,16 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-### 6. Update Staging Messages
+### 7. Update Staging Messages
 
 #### stagedUpdateMessage
-**Plist Key**: `StagedUpdateMessage`  
-**Type**: String  
+**Plist Key**: `StagedUpdateMessage`
+**Type**: String
 **Default**: [Message about fully staged update]
 
 **Description**: Message shown when the required macOS update appears fully downloaded and ready for installation.
 
-**Supports Placeholders**: Yes  
+**Supports Placeholders**: Yes
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
 **When This Usually Appears**:
@@ -1095,13 +1182,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### partiallyStagedUpdateMessage
-**Plist Key**: `PartiallyStagedUpdateMessage`  
-**Type**: String  
+**Plist Key**: `PartiallyStagedUpdateMessage`
+**Type**: String
 **Default**: [Message about partial staging]
 
 **Description**: Message shown when download/preparation has started but is not fully staged yet.
 
-**Supports Placeholders**: Yes  
+**Supports Placeholders**: Yes
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
 **When This Usually Appears**:
@@ -1123,13 +1210,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### pendingDownloadMessage
-**Plist Key**: `PendingDownloadMessage`  
-**Type**: String  
+**Plist Key**: `PendingDownloadMessage`
+**Type**: String
 **Default**: [Message about pending download]
 
 **Description**: Message shown when the update is not yet staged and will likely need to download when the user proceeds.
 
-**Supports Placeholders**: Yes  
+**Supports Placeholders**: Yes
 **Inserted Into**: `{updateReadyMessage}` placeholder in `message`
 
 **When This Usually Appears**:
@@ -1151,8 +1238,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### hideStagedInfo
-**Plist Key**: `HideStagedUpdateInfo`  
-**Type**: Boolean  
+**Plist Key**: `HideStagedUpdateInfo`
+**Type**: Boolean
 **Default**: NO
 
 **Description**: When set to YES, suppresses all staged update status messages (staged, partially staged, pending). The `{updateReadyMessage}` placeholder will be empty.
@@ -1182,17 +1269,17 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-### 7. Warning Messages
+### 8. Warning Messages
 
 #### excessiveUptimeWarningMessage
-**Plist Key**: `ExcessiveUptimeWarningMessage`  
-**Type**: String  
+**Plist Key**: `ExcessiveUptimeWarningMessage`
+**Type**: String
 **Default**: [Warning about excessive uptime]
 
 **Description**: Warning message inserted into dialog when Mac has been running for excessive days without restart (threshold set by `daysOfExcessiveUptimeWarning`).
 
-**Supports Placeholders**: Yes  
-**Key Placeholder**: `{uptimeHumanReadable}`  
+**Supports Placeholders**: Yes
+**Key Placeholder**: `{uptimeHumanReadable}`
 **Inserted Into**: `{excessiveUptimeWarningMessage}` in `message`
 
 **Triggered When**: uptime meets/exceeds `daysOfExcessiveUptimeWarning` days (`0` means immediate)
@@ -1211,14 +1298,14 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ---
 
 #### diskSpaceWarningMessage
-**Plist Key**: `DiskSpaceWarningMessage`  
-**Type**: String  
+**Plist Key**: `DiskSpaceWarningMessage`
+**Type**: String
 **Default**: [Warning about low disk space]
 
 **Description**: Warning message inserted when free disk space falls below `minimumDiskFreePercentage` threshold.
 
-**Supports Placeholders**: Yes  
-**Key Placeholders**: 
+**Supports Placeholders**: Yes
+**Key Placeholders**:
 - `{diskSpaceHumanReadable}` = Free space with percentage
 - `{titleMessageUpdateOrUpgrade:l}` = "update" or "upgrade"
 
@@ -1273,7 +1360,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 2.6.0 |
+| `{scriptVersion}` | System | Script version | 3.0.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1495,8 +1582,8 @@ message = "Contact {supportTeamInfo}"
 
 ### Method 1: Configuration Profile (Managed Preferences)
 
-**Priority**: Highest (overrides all others)  
-**Deployment**: Via MDM  
+**Priority**: Highest (overrides all others)
+**Deployment**: Via MDM
 **Modifiable**: No (enforced by MDM)
 
 **When to Use**:
@@ -1521,8 +1608,8 @@ message = "Contact {supportTeamInfo}"
 
 ### Method 2: Local Preferences
 
-**Priority**: Medium (overridden by managed preferences)  
-**Deployment**: Manual or via script  
+**Priority**: Medium (overridden by managed preferences)
+**Deployment**: Manual or via script
 **Modifiable**: Yes (with admin privileges)
 
 **When to Use**:
@@ -1556,8 +1643,8 @@ sudo defaults write "$PLIST" SwapOverlayAndLogo -bool NO
 
 ### Method 3: Script Defaults
 
-**Priority**: Lowest (fallback only)  
-**Deployment**: Embedded in script  
+**Priority**: Lowest (fallback only)
+**Deployment**: Embedded in script
 **Modifiable**: Only by re-customizing and re-assembling script
 
 **When to Use**:
@@ -1650,6 +1737,9 @@ plutil -lint /path/to/config.plist
 
 # Check data types
 plutil -p /path/to/config.plist
+
+# Compare two plists by normalized values
+diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
 ```
 
 ---
@@ -1748,12 +1838,16 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
+| 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
+| 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
+| 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
 
 ---
 
-**Last Updated**: 01-Mar-2026
-**DDM OS Reminder Version**: 2.6.0
-**Variables Documented**: 35 configurable preferences
+**Last Updated**: 28-Mar-2026
+**DDM OS Reminder Version**: 3.0.0
+**Variables Documented**: 73 configurable preferences

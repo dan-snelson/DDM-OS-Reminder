@@ -1,13 +1,13 @@
 # Deadline Timeline Visualization
 
-This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including the optional 2.6.0 post-deadline restart workflow.
+This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including the optional post-deadline restart workflow.
 
 ```mermaid
 gantt
     title DDM OS Reminder Deadline Timeline
     dateFormat YYYY-MM-DD
     axisFormat %b %d
-    
+
     section User Experience
     Normal Mac Usage            :done, normal, 2026-05-03, 30d
     Standard Dialog             :active, standard, 2026-06-02, 15d
@@ -17,7 +17,7 @@ gantt
     Restart Prompt Flow         :postprompt, 2026-08-03, 2d
     Forced Restart Flow         :crit, postforce, 2026-08-03, 2d
     Apple Forces Update         :milestone, force, 2026-08-05, 1d
-    
+
     section Key Milestones
     First Reminder              :milestone, m1, 2026-06-02, 0d
     Blurscreen Activates        :milestone, m2, 2026-06-17, 0d
@@ -165,7 +165,7 @@ gantt
 1. Click "Open Software Update" → Opens System Settings (ONLY option)
 2. Close dialog → Returns next schedule (cannot avoid)
 
-**Rationale**: 
+**Rationale**:
 - Deadline is imminent; postponement no longer appropriate
 - User must take action or accept automatic restart
 
@@ -175,7 +175,7 @@ gantt
 
 ---
 
-### Phase 5: Post-Deadline Workflow (2.6.0)
+### Phase 5: Post-Deadline Workflow
 **Timeline**: After the deadline has passed and update is still required
 
 **Eligibility Gate for Restart Workflow**:
@@ -199,8 +199,8 @@ gantt
 
 ---
 
-### Phase 6: Apple DDM Enforcement (Deadline Reached / Padded Enforcement Time)
-**Timeline**: At Apple's enforced restart/update event
+### Phase 6: Apple DDM Enforcement (Declared or Padded Enforcement Time)
+**Timeline**: At Apple's enforced restart/update event, whether at the declared deadline or a later padded enforcement timestamp
 
 **What Happens**:
 - 🍎 **Apple DDM takes control**
@@ -364,20 +364,20 @@ Display-sleep assertion checks (`meetingDelay`) are availability controls, not a
 
 ## FAQ
 
-**Q: Can users bypass the reminders?**  
+**Q: Can users bypass the reminders?**
 A: During early phases (>21 days by default), users can postpone. In urgent phase (<=21 days by default), Button 2 is disabled/hidden. In post-deadline `Force` mode, dismissal loops until restart. Apple DDM enforcement still ultimately controls the final forced update/restart event.
 
-**Q: What if user is on vacation during deadline?**  
+**Q: What if user is on vacation during deadline?**
 A: Mac updates at Apple's DDM enforcement event (which can be after the original deadline when macOS applies its padded enforcement date). User returns to an updated Mac. This is why early reminders remain important.
 
-**Q: Can admin disable blurscreen?**  
+**Q: Can admin disable blurscreen?**
 A: Not recommended, but theoretically possible by setting very low threshold. Blurscreen is key differentiator from Apple's subtle notification.
 
-**Q: What if user needs to postpone due to critical work?**  
+**Q: What if user needs to postpone due to critical work?**
 A: User can postpone during early/medium phases. Within 24 hours of deadline, meeting deferral is ignored. If post-deadline restart `Force` mode is enabled and eligible, postponement is not available.
 
-**Q: When does the post-deadline restart workflow start?**  
+**Q: When does the post-deadline restart workflow start?**
 A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least 75 minutes.
 
-**Q: How does this interact with Apple's own notifications?**  
+**Q: How does this interact with Apple's own notifications?**
 A: DDM OS Reminder supplements (not replaces) Apple's notifications. Apple's notification appears but is subtle. This provides prominent, configurable reminders with better visibility.

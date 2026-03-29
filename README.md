@@ -1,7 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (2.6.0)
-> Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **configurable post-deadline restart behavior**, **red at-a-glance urgency highlights**, and **cleaner deployment control over end-user support messaging**
+# DDM OS Reminder (3.0.0)
+
+> A major update to Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **multiple language** support, significantly more robust **reminder display logic** and streamlined **upgrade functionality**
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -11,10 +12,12 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 <br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
-**DDM OS Reminder** evaluates the most recent `EnforcedInstallDate` and `setPastDuePaddedEnforcementDate` entries in `/var/log/install.log`, then leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki)-enabled script plus a LaunchDaemon to deliver a more prominent end-user dialog that reminds users to update their Mac to comply with DDM-enforced macOS update deadlines.
+:new: **DDM OS Reminder** now resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity using a declaration-aware resolver that prioritizes applicable enforced-install signals over generic matches, suppressing reminders when declaration state is missing, conflicting, invalid, or no longer maps to an available update, and only honors `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration, before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
 
-<img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates the most recent `EnforcedInstallDate` entry in `/var/log/install.log`" width="800"/>
+<img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
+
+---
 
 ## Features
 
@@ -25,9 +28,211 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
-- :new: **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
+- **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
+- :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
+- :new: **Full Multi-language Experience**: Version `3.0.0` fully supports English, German, French, Spanish, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, and human-readable deadline dates that automatically match the resolved language for a more polished, native-feeling user experience.
 
-<img src="images/restartPrompt.png" alt="Prompt: Restart Your Mac" width="400" /> <img src="images/restartForce.png" alt="Force: Your Mac is restarting" width="400" />
+
+---
+
+## :new: Upgrading
+
+Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
+
+If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that suffix still import supported values, but continue to prompt for deployment mode.
+
+<details>
+<summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>
+
+```
+zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
+
+===============================================================
+🧩 Assemble DDM OS Reminder (3.0.0)
+===============================================================
+
+Full Paths:
+
+        Reminder Dialog: ~/Downloads/DDM-OS-Reminder-main/reminderDialog.zsh
+LaunchDaemon Management: ~/Downloads/DDM-OS-Reminder-main/launchDaemonManagement.zsh
+      Working Directory: ~/Downloads/DDM-OS-Reminder-main
+    Resources Directory: ~/Downloads/DDM-OS-Reminder-main/Resources
+
+🔍 Checking Reverse Domain Name Notation …
+
+    Reminder Dialog (reminderDialog.zsh):
+        reverseDomainNameNotation = org.churchofjesuschrist
+        organizationScriptName    = dorm
+
+    LaunchDaemon Management (launchDaemonManagement.zsh):
+        reverseDomainNameNotation = org.churchofjesuschrist
+        organizationScriptName    = dor
+
+
+📥 Prior plist provided via command-line argument: '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
+
+ℹ️  Importing supported values from: /Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist
+🔎 Inferred RDNN from prior plist: 'us.snelson'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Using 'us.snelson' as the Reverse Domain Name Notation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Interactive Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+ℹ️  Prior plist supplied; skipping IT support, branding and restart policy prompts.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Select Deployment Mode:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1) Development - Keep placeholder text for local testing
+  2) Testing     - Replace placeholder text with 'TEST' for staging
+  3) Production  - Remove placeholder text for clean deployment
+
+  [Press ‘X’ to exit]
+
+Enter mode [1/2/3]: 3
+
+📦 Deployment Mode: prod
+
+🔧 Inserting reminderDialog.zsh into launchDaemonManagement.zsh  …
+
+✅ Assembly complete [2026-03-28-151200]
+   → Artifacts/ddm-os-reminder-assembled-2026-03-28-151200.zsh
+
+🔁 Updating reverseDomainNameNotation to 'us.snelson' in assembled script …
+
+🔍 Performing syntax check on 'Artifacts/ddm-os-reminder-assembled-2026-03-28-151200.zsh' …
+    ✅ Syntax check passed.
+
+🗂  Generating LaunchDaemon plist …
+    🗂  Creating us.snelson.dorm plist from /Users/dan/Documents/GitHub/dan-snelson/DDM-OS-Reminder/Resources/sample.plist …
+
+    🔧 Updating internal plist content …
+    🔓 Production mode: removing placeholder text for clean deployment
+    🔧 Importing supported values from prior plist …
+    ℹ️  Preserving imported ScriptLog: /var/log/us.snelson.log
+   → Artifacts/us.snelson.dorm-2026-03-28-151200-prod.plist
+
+🧩 Generating Configuration Profile (.mobileconfig) …
+   → Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig
+
+🔍 Performing syntax check on 'Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig' …
+    ✅ Profile syntax check passed.
+
+🔁 Renaming assembled script …
+
+🔁 Updating scriptLog path based on RDNN …
+
+🏁 Done.
+
+Deployment Artifacts:
+        Assembled Script: Artifacts/ddm-os-reminder-us.snelson-2026-03-28-151200-prod.zsh
+    Organizational Plist: Artifacts/us.snelson.dorm-2026-03-28-151200-prod.plist
+   Configuration Profile: Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  Important Next Steps:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Production Artifacts Generated:
+    - All placeholder text removed (clean output)
+    - Supported configuration values imported from prior plist
+    - Prior plist: /Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist
+    - ScriptLog resolved to '/var/log/us.snelson.log'
+
+  Recommended review items:
+    - Support team name, phone, email, website
+    - Imported ScriptLog path and any carried-forward KB/help visibility
+    - Organization overlay icon URLs
+    - Button labels and dialog messages
+
+  Files to review:
+    - Artifacts/us.snelson.dorm-2026-03-28-151200-prod.plist
+    - Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig
+
+===============================================================
+
+```
+
+</details>
+
+---
+
+## :new: Multi-language Support
+
+<table>
+  <tr>
+    <td><img width="350" alt="French localization screenshot" src="images/3.0.0_french.png" /></td>
+    <td><img width="350" alt="German localization screenshot" src="images/3.0.0_german.png" /></td>
+  </tr>
+  <tr>
+    <td><img width="350" alt="Japanese localization screenshot" src="images/3.0.0_japanese.png" /></td>
+    <td><img width="350" alt="Portuguese localization screenshot" src="images/3.0.0_portuguese.png" /></td>
+  </tr>
+  <tr>
+    <td><img width="350" alt="Spanish localization screenshot" src="images/3.0.0_spanish.png" /></td>
+    <td></td>
+  </tr>
+</table>
+
+Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
+
+```zsh
+# German screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "de"
+zsh reminderDialog.zsh
+
+# French screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "fr"
+zsh reminderDialog.zsh
+
+# Spanish screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "es"
+zsh reminderDialog.zsh
+
+# Portuguese screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "pt"
+zsh reminderDialog.zsh
+
+# Japanese screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "ja"
+zsh reminderDialog.zsh
+
+# Restore automatic language detection
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "auto"
+```
+
+Optional verification in log output:
+- `LanguageOverride is 'de'; using 'de'`
+- `LanguageOverride is 'fr'; using 'fr'`
+- `LanguageOverride is 'es'; using 'es'`
+- `LanguageOverride is 'pt'; using 'pt'`
+- `LanguageOverride is 'ja'; using 'ja'`
+
+
+
+## Deadline Date Format
+
+`DateFormatDeadlineHumanReadable` remains the single date format key.
+
+Swiss-style numeric format example:
+
+```zsh
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    DateFormatDeadlineHumanReadable -string "+%d.%m.%Y %H:%M"
+```
 
 ## Support
 

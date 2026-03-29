@@ -36,7 +36,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 **Shows**:
 - User validation checks
-- DDM enforcement date parsing
+- Trusted DDM resolver and effective deadline evaluation
 - Version comparison logic
 - Context detection (Focus mode, meetings)
 - Deadline-based behavior branching
@@ -89,7 +89,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 ---
 
 ### 7. [Configuration Reference](06-configuration-reference.md)
-**Purpose**: Complete reference for all 35 configurable preferences
+**Purpose**: Complete reference for all 73 configurable preferences
 
 **Shows**:
 - Quick reference table (all variables at a glance)
@@ -107,7 +107,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 ## 🎨 Rendering Diagrams
 
-All Mermaid diagrams (00–05) use **Mermaid.js** syntax for maximum portability and version control. The configuration reference (06) is text-only and does not export to an image.
+All diagrams `00`–`05` use **Mermaid.js** syntax for maximum portability and version control. The configuration reference (06) is text-only and does not export to an image.
 
 ### View on GitHub
 Mermaid blocks render automatically on GitHub inside `.md` files. Text-only files render as standard Markdown.
@@ -491,6 +491,8 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.5 | 28-Mar-2026 | Updated overview, deployment workflow, and configuration reference markdown for `3.0.0` prior-plist upgrade-assist, lane-suffixed artifact names, and `2.2.0+` documented compatibility |
+| 1.0.4 | 25-Mar-2026 | Updated runtime and deployment diagrams for the hardened DDM resolver, corrected `dorm.zsh` client-script paths, refreshed EA documentation, and converted 00-overview source to Mermaid |
 | 1.0.3 | 05-Mar-2026 | Added 00 Executive Overview diagram and PNG export; renumbered diagram index and updated rendering guidance for 00–05 |
 | 1.0.2 | 01-Mar-2026 | Updated staged-update documentation in 02/06 for proposed metadata validation and pending-download normalization behavior |
 | 1.0.1 | 05-Feb-2026 | Regenerated PNG exports for 01–05 with filename parity to `.md` sources |
@@ -505,5 +507,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 05-Mar-2026
-**DDM OS Reminder Version**: 2.6.0
+**Last Updated**: 28-Mar-2026
+**DDM OS Reminder Version**: 3.0.0

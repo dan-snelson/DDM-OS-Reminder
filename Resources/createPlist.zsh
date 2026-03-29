@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="2.6.0"
+scriptVersion="3.0.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 
@@ -64,7 +64,7 @@ extract_from_preference_map() {
     }
 
     # Extract the value after the pipe: ["key"]="type|value"
-    if [[ $line =~ '"[^|]+\|([^"]+)"' ]]; then
+    if [[ $line =~ '"[^|]+\|([^"]*)"' ]]; then
         echo "${match[1]}"
     else
         echo "ERROR: Cannot extract value for ${key}" >&2
@@ -117,6 +117,7 @@ dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadline
 swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
 hideStagedInfo_raw=$(extract_from_preference_map hideStagedInfo)
 minimumDiskFreePercentage=$(extract_from_preference_map minimumDiskFreePercentage)
+languageOverride=$(extract_from_preference_map languageOverride)
 
 case "${swapOverlayAndLogo_raw:u}" in
     YES|TRUE|1) swapOverlayAndLogo_xml="<true/>" ;;
@@ -133,17 +134,71 @@ esac
 # ─────────────────────────────────────────────────────────────
 defaultTitle=$(extract_from_preference_map title)
 defaultExcessiveUptimeWarningMessage=$(extract_from_preference_map excessiveUptimeWarningMessage)
+defaultExcessiveUptimeWarningMessageLocalizedEn=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedEn)
+defaultExcessiveUptimeWarningMessageLocalizedDe=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedDe)
+defaultExcessiveUptimeWarningMessageLocalizedFr=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedFr)
+defaultExcessiveUptimeWarningMessageLocalizedEs=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedEs)
+defaultExcessiveUptimeWarningMessageLocalizedPt=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedPt)
+defaultExcessiveUptimeWarningMessageLocalizedJa=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedJa)
 defaultDiskSpaceWarningMessage=$(extract_from_preference_map diskSpaceWarningMessage)
+defaultDiskSpaceWarningMessageLocalizedEn=$(extract_from_preference_map diskSpaceWarningMessageLocalizedEn)
+defaultDiskSpaceWarningMessageLocalizedDe=$(extract_from_preference_map diskSpaceWarningMessageLocalizedDe)
+defaultDiskSpaceWarningMessageLocalizedFr=$(extract_from_preference_map diskSpaceWarningMessageLocalizedFr)
+defaultDiskSpaceWarningMessageLocalizedEs=$(extract_from_preference_map diskSpaceWarningMessageLocalizedEs)
+defaultDiskSpaceWarningMessageLocalizedPt=$(extract_from_preference_map diskSpaceWarningMessageLocalizedPt)
+defaultDiskSpaceWarningMessageLocalizedJa=$(extract_from_preference_map diskSpaceWarningMessageLocalizedJa)
 defaultMessage=$(extract_from_preference_map message)
 defaultInfobox=$(extract_from_preference_map infobox)
 defaultHelpmessage=$(extract_from_preference_map helpmessage)
 defaultHelpimage=$(extract_from_preference_map helpimage)
 defaultStagedUpdateMessage=$(extract_from_preference_map stagedUpdateMessage)
+defaultStagedUpdateMessageLocalizedEn=$(extract_from_preference_map stagedUpdateMessageLocalizedEn)
+defaultStagedUpdateMessageLocalizedDe=$(extract_from_preference_map stagedUpdateMessageLocalizedDe)
+defaultStagedUpdateMessageLocalizedFr=$(extract_from_preference_map stagedUpdateMessageLocalizedFr)
+defaultStagedUpdateMessageLocalizedEs=$(extract_from_preference_map stagedUpdateMessageLocalizedEs)
+defaultStagedUpdateMessageLocalizedPt=$(extract_from_preference_map stagedUpdateMessageLocalizedPt)
+defaultStagedUpdateMessageLocalizedJa=$(extract_from_preference_map stagedUpdateMessageLocalizedJa)
 defaultPartiallyStagedUpdateMessage=$(extract_from_preference_map partiallyStagedUpdateMessage)
+defaultPartiallyStagedUpdateMessageLocalizedEn=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedEn)
+defaultPartiallyStagedUpdateMessageLocalizedDe=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedDe)
+defaultPartiallyStagedUpdateMessageLocalizedFr=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedFr)
+defaultPartiallyStagedUpdateMessageLocalizedEs=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedEs)
+defaultPartiallyStagedUpdateMessageLocalizedPt=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedPt)
+defaultPartiallyStagedUpdateMessageLocalizedJa=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedJa)
 defaultPendingDownloadMessage=$(extract_from_preference_map pendingDownloadMessage)
+defaultPendingDownloadMessageLocalizedEn=$(extract_from_preference_map pendingDownloadMessageLocalizedEn)
+defaultPendingDownloadMessageLocalizedDe=$(extract_from_preference_map pendingDownloadMessageLocalizedDe)
+defaultPendingDownloadMessageLocalizedFr=$(extract_from_preference_map pendingDownloadMessageLocalizedFr)
+defaultPendingDownloadMessageLocalizedEs=$(extract_from_preference_map pendingDownloadMessageLocalizedEs)
+defaultPendingDownloadMessageLocalizedPt=$(extract_from_preference_map pendingDownloadMessageLocalizedPt)
+defaultPendingDownloadMessageLocalizedJa=$(extract_from_preference_map pendingDownloadMessageLocalizedJa)
 defaultButton1text=$(extract_from_preference_map button1text)
 defaultButton2text=$(extract_from_preference_map button2text)
 defaultInfobuttontext=$(extract_from_preference_map infobuttontext)
+defaultTitleLocalizedEn=$(extract_from_preference_map titleLocalizedEn)
+defaultTitleLocalizedDe=$(extract_from_preference_map titleLocalizedDe)
+defaultTitleLocalizedFr=$(extract_from_preference_map titleLocalizedFr)
+defaultTitleLocalizedEs=$(extract_from_preference_map titleLocalizedEs)
+defaultTitleLocalizedPt=$(extract_from_preference_map titleLocalizedPt)
+defaultTitleLocalizedJa=$(extract_from_preference_map titleLocalizedJa)
+defaultButton1textLocalizedEn=$(extract_from_preference_map button1textLocalizedEn)
+defaultButton1textLocalizedDe=$(extract_from_preference_map button1textLocalizedDe)
+defaultButton1textLocalizedFr=$(extract_from_preference_map button1textLocalizedFr)
+defaultButton1textLocalizedEs=$(extract_from_preference_map button1textLocalizedEs)
+defaultButton1textLocalizedPt=$(extract_from_preference_map button1textLocalizedPt)
+defaultButton1textLocalizedJa=$(extract_from_preference_map button1textLocalizedJa)
+defaultButton2textLocalizedEn=$(extract_from_preference_map button2textLocalizedEn)
+defaultButton2textLocalizedDe=$(extract_from_preference_map button2textLocalizedDe)
+defaultButton2textLocalizedFr=$(extract_from_preference_map button2textLocalizedFr)
+defaultButton2textLocalizedEs=$(extract_from_preference_map button2textLocalizedEs)
+defaultButton2textLocalizedPt=$(extract_from_preference_map button2textLocalizedPt)
+defaultButton2textLocalizedJa=$(extract_from_preference_map button2textLocalizedJa)
+defaultInfobuttontextLocalizedEn=$(extract_from_preference_map infobuttontextLocalizedEn)
+defaultInfobuttontextLocalizedDe=$(extract_from_preference_map infobuttontextLocalizedDe)
+defaultInfobuttontextLocalizedFr=$(extract_from_preference_map infobuttontextLocalizedFr)
+defaultInfobuttontextLocalizedEs=$(extract_from_preference_map infobuttontextLocalizedEs)
+defaultInfobuttontextLocalizedPt=$(extract_from_preference_map infobuttontextLocalizedPt)
+defaultInfobuttontextLocalizedJa=$(extract_from_preference_map infobuttontextLocalizedJa)
 defaultOverlayiconURL=$(extract_from_preference_map organizationOverlayiconURL)
 defaultOverlayiconURLdark=$(extract_from_preference_map organizationOverlayiconURLdark)
 defaultSupportTeamName=$(extract_from_preference_map supportTeamName)
@@ -154,12 +209,24 @@ defaultSupportKB=$(extract_from_preference_map supportKB)
 defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
 defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
 defaultSupportAssistanceMessage=$(extract_from_preference_map supportAssistanceMessage)
-
-# Ensure generated configs use infobox display placeholders that support
-# conditional color formatting in newer swiftDialog versions.
-defaultInfobox="${defaultInfobox//\{ddmVersionStringDeadlineHumanReadable\}/\{infoboxDeadlineDisplay\}}"
-defaultInfobox="${defaultInfobox//\{ddmVersionStringDaysRemaining\}/\{infoboxDaysRemainingDisplay\}}"
-defaultInfobox="${defaultInfobox//\{uptimeHumanReadable\}/\{infoboxLastRestartDisplay\}}"
+defaultSupportAssistanceMessageLocalizedEn=$(extract_from_preference_map supportAssistanceMessageLocalizedEn)
+defaultSupportAssistanceMessageLocalizedDe=$(extract_from_preference_map supportAssistanceMessageLocalizedDe)
+defaultSupportAssistanceMessageLocalizedFr=$(extract_from_preference_map supportAssistanceMessageLocalizedFr)
+defaultSupportAssistanceMessageLocalizedEs=$(extract_from_preference_map supportAssistanceMessageLocalizedEs)
+defaultSupportAssistanceMessageLocalizedPt=$(extract_from_preference_map supportAssistanceMessageLocalizedPt)
+defaultSupportAssistanceMessageLocalizedJa=$(extract_from_preference_map supportAssistanceMessageLocalizedJa)
+defaultMessageLocalizedEn=$(extract_from_preference_map messageLocalizedEn)
+defaultMessageLocalizedDe=$(extract_from_preference_map messageLocalizedDe)
+defaultMessageLocalizedFr=$(extract_from_preference_map messageLocalizedFr)
+defaultMessageLocalizedEs=$(extract_from_preference_map messageLocalizedEs)
+defaultMessageLocalizedPt=$(extract_from_preference_map messageLocalizedPt)
+defaultMessageLocalizedJa=$(extract_from_preference_map messageLocalizedJa)
+defaultHelpmessageLocalizedEn=$(extract_from_preference_map helpmessageLocalizedEn)
+defaultHelpmessageLocalizedDe=$(extract_from_preference_map helpmessageLocalizedDe)
+defaultHelpmessageLocalizedFr=$(extract_from_preference_map helpmessageLocalizedFr)
+defaultHelpmessageLocalizedEs=$(extract_from_preference_map helpmessageLocalizedEs)
+defaultHelpmessageLocalizedPt=$(extract_from_preference_map helpmessageLocalizedPt)
+defaultHelpmessageLocalizedJa=$(extract_from_preference_map helpmessageLocalizedJa)
 
 # Resolve Info button-related defaults to concrete values,
 # mirroring runtime behavior in reminderDialog.zsh
@@ -174,16 +241,82 @@ resolvedInfobuttontext="$defaultInfobuttontext"
 # ---------------------------------------------------------------------
 title_xml=$(process "$defaultTitle")
 excessiveUptimeWarningMessage_xml=$(process "$defaultExcessiveUptimeWarningMessage")
+excessiveUptimeWarningMessageLocalizedEn_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedEn")
+excessiveUptimeWarningMessageLocalizedDe_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedDe")
+excessiveUptimeWarningMessageLocalizedFr_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedFr")
+excessiveUptimeWarningMessageLocalizedEs_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedEs")
+excessiveUptimeWarningMessageLocalizedPt_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedPt")
+excessiveUptimeWarningMessageLocalizedJa_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedJa")
 diskSpaceWarningMessage_xml=$(process "$defaultDiskSpaceWarningMessage")
+diskSpaceWarningMessageLocalizedEn_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedEn")
+diskSpaceWarningMessageLocalizedDe_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedDe")
+diskSpaceWarningMessageLocalizedFr_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedFr")
+diskSpaceWarningMessageLocalizedEs_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedEs")
+diskSpaceWarningMessageLocalizedPt_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedPt")
+diskSpaceWarningMessageLocalizedJa_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedJa")
 stagedUpdateMessage_xml=$(process "${defaultStagedUpdateMessage}")
+stagedUpdateMessageLocalizedEn_xml=$(process "${defaultStagedUpdateMessageLocalizedEn}")
+stagedUpdateMessageLocalizedDe_xml=$(process "${defaultStagedUpdateMessageLocalizedDe}")
+stagedUpdateMessageLocalizedFr_xml=$(process "${defaultStagedUpdateMessageLocalizedFr}")
+stagedUpdateMessageLocalizedEs_xml=$(process "${defaultStagedUpdateMessageLocalizedEs}")
+stagedUpdateMessageLocalizedPt_xml=$(process "${defaultStagedUpdateMessageLocalizedPt}")
+stagedUpdateMessageLocalizedJa_xml=$(process "${defaultStagedUpdateMessageLocalizedJa}")
 partiallyStagedUpdateMessage_xml=$(process "${defaultPartiallyStagedUpdateMessage}")
+partiallyStagedUpdateMessageLocalizedEn_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedEn}")
+partiallyStagedUpdateMessageLocalizedDe_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedDe}")
+partiallyStagedUpdateMessageLocalizedFr_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedFr}")
+partiallyStagedUpdateMessageLocalizedEs_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedEs}")
+partiallyStagedUpdateMessageLocalizedPt_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedPt}")
+partiallyStagedUpdateMessageLocalizedJa_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedJa}")
 pendingDownloadMessage_xml=$(process "${defaultPendingDownloadMessage}")
+pendingDownloadMessageLocalizedEn_xml=$(process "${defaultPendingDownloadMessageLocalizedEn}")
+pendingDownloadMessageLocalizedDe_xml=$(process "${defaultPendingDownloadMessageLocalizedDe}")
+pendingDownloadMessageLocalizedFr_xml=$(process "${defaultPendingDownloadMessageLocalizedFr}")
+pendingDownloadMessageLocalizedEs_xml=$(process "${defaultPendingDownloadMessageLocalizedEs}")
+pendingDownloadMessageLocalizedPt_xml=$(process "${defaultPendingDownloadMessageLocalizedPt}")
+pendingDownloadMessageLocalizedJa_xml=$(process "${defaultPendingDownloadMessageLocalizedJa}")
 message_xml=$(process "$defaultMessage")
 infobox_xml=$(process "$defaultInfobox")
 helpmessage_xml=$(process "$defaultHelpmessage")
 helpimage_xml=$(process "$defaultHelpimage")
 button1text_xml=$(process "$defaultButton1text")
 button2text_xml=$(process "$defaultButton2text")
+titleLocalizedEn_xml=$(process "$defaultTitleLocalizedEn")
+titleLocalizedDe_xml=$(process "$defaultTitleLocalizedDe")
+titleLocalizedFr_xml=$(process "$defaultTitleLocalizedFr")
+titleLocalizedEs_xml=$(process "$defaultTitleLocalizedEs")
+titleLocalizedPt_xml=$(process "$defaultTitleLocalizedPt")
+titleLocalizedJa_xml=$(process "$defaultTitleLocalizedJa")
+button1textLocalizedEn_xml=$(process "$defaultButton1textLocalizedEn")
+button1textLocalizedDe_xml=$(process "$defaultButton1textLocalizedDe")
+button1textLocalizedFr_xml=$(process "$defaultButton1textLocalizedFr")
+button1textLocalizedEs_xml=$(process "$defaultButton1textLocalizedEs")
+button1textLocalizedPt_xml=$(process "$defaultButton1textLocalizedPt")
+button1textLocalizedJa_xml=$(process "$defaultButton1textLocalizedJa")
+button2textLocalizedEn_xml=$(process "$defaultButton2textLocalizedEn")
+button2textLocalizedDe_xml=$(process "$defaultButton2textLocalizedDe")
+button2textLocalizedFr_xml=$(process "$defaultButton2textLocalizedFr")
+button2textLocalizedEs_xml=$(process "$defaultButton2textLocalizedEs")
+button2textLocalizedPt_xml=$(process "$defaultButton2textLocalizedPt")
+button2textLocalizedJa_xml=$(process "$defaultButton2textLocalizedJa")
+infobuttontextLocalizedEn_xml=$(process "$defaultInfobuttontextLocalizedEn")
+infobuttontextLocalizedDe_xml=$(process "$defaultInfobuttontextLocalizedDe")
+infobuttontextLocalizedFr_xml=$(process "$defaultInfobuttontextLocalizedFr")
+infobuttontextLocalizedEs_xml=$(process "$defaultInfobuttontextLocalizedEs")
+infobuttontextLocalizedPt_xml=$(process "$defaultInfobuttontextLocalizedPt")
+infobuttontextLocalizedJa_xml=$(process "$defaultInfobuttontextLocalizedJa")
+messageLocalizedEn_xml=$(process "$defaultMessageLocalizedEn")
+messageLocalizedDe_xml=$(process "$defaultMessageLocalizedDe")
+messageLocalizedFr_xml=$(process "$defaultMessageLocalizedFr")
+messageLocalizedEs_xml=$(process "$defaultMessageLocalizedEs")
+messageLocalizedPt_xml=$(process "$defaultMessageLocalizedPt")
+messageLocalizedJa_xml=$(process "$defaultMessageLocalizedJa")
+helpmessageLocalizedEn_xml=$(process "$defaultHelpmessageLocalizedEn")
+helpmessageLocalizedDe_xml=$(process "$defaultHelpmessageLocalizedDe")
+helpmessageLocalizedFr_xml=$(process "$defaultHelpmessageLocalizedFr")
+helpmessageLocalizedEs_xml=$(process "$defaultHelpmessageLocalizedEs")
+helpmessageLocalizedPt_xml=$(process "$defaultHelpmessageLocalizedPt")
+helpmessageLocalizedJa_xml=$(process "$defaultHelpmessageLocalizedJa")
 
 # Info button pieces use resolved defaults (already evaluated)
 infobuttontext_xml=$(process "$resolvedInfobuttontext")
@@ -197,6 +330,12 @@ supportTeamEmail_xml=$(process "$defaultSupportTeamEmail")
 supportTeamWebsite_xml=$(process "$defaultSupportTeamWebsite")
 supportKB_xml=$(process "$defaultSupportKB")
 supportAssistanceMessage_xml=$(process "$defaultSupportAssistanceMessage")
+supportAssistanceMessageLocalizedEn_xml=$(process "$defaultSupportAssistanceMessageLocalizedEn")
+supportAssistanceMessageLocalizedDe_xml=$(process "$defaultSupportAssistanceMessageLocalizedDe")
+supportAssistanceMessageLocalizedFr_xml=$(process "$defaultSupportAssistanceMessageLocalizedFr")
+supportAssistanceMessageLocalizedEs_xml=$(process "$defaultSupportAssistanceMessageLocalizedEs")
+supportAssistanceMessageLocalizedPt_xml=$(process "$defaultSupportAssistanceMessageLocalizedPt")
+supportAssistanceMessageLocalizedJa_xml=$(process "$defaultSupportAssistanceMessageLocalizedJa")
 
 infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
@@ -204,6 +343,7 @@ supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
 scriptLog_xml=$(echo "$scriptLog" | xml_escape)
 pastDeadlineRestartBehavior_xml=$(echo "$pastDeadlineRestartBehavior" | xml_escape)
 dateFormat_xml=$(echo "$dateFormatDeadlineHumanReadable" | xml_escape)
+languageOverride_xml=$(echo "$languageOverride" | xml_escape)
 
 # ─────────────────────────────────────────────────────────────
 # Generate plist
@@ -271,30 +411,166 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${supportKBURL_xml}</string>
     <key>SupportAssistanceMessage</key>
     <string>${supportAssistanceMessage_xml}</string>
+    <key>SupportAssistanceMessageLocalized_en</key>
+    <string>${supportAssistanceMessageLocalizedEn_xml}</string>
+    <key>SupportAssistanceMessageLocalized_de</key>
+    <string>${supportAssistanceMessageLocalizedDe_xml}</string>
+    <key>SupportAssistanceMessageLocalized_fr</key>
+    <string>${supportAssistanceMessageLocalizedFr_xml}</string>
+    <key>SupportAssistanceMessageLocalized_es</key>
+    <string>${supportAssistanceMessageLocalizedEs_xml}</string>
+    <key>SupportAssistanceMessageLocalized_pt</key>
+    <string>${supportAssistanceMessageLocalizedPt_xml}</string>
+    <key>SupportAssistanceMessageLocalized_ja</key>
+    <string>${supportAssistanceMessageLocalizedJa_xml}</string>
+
+    <!-- Localization -->
+    <key>LanguageOverride</key>
+    <string>${languageOverride_xml}</string>
 
     <!-- Dialog text -->
     <key>Title</key>
     <string>${title_xml}</string>
+    <key>TitleLocalized_en</key>
+    <string>${titleLocalizedEn_xml}</string>
+    <key>TitleLocalized_de</key>
+    <string>${titleLocalizedDe_xml}</string>
+    <key>TitleLocalized_fr</key>
+    <string>${titleLocalizedFr_xml}</string>
+    <key>TitleLocalized_es</key>
+    <string>${titleLocalizedEs_xml}</string>
+    <key>TitleLocalized_pt</key>
+    <string>${titleLocalizedPt_xml}</string>
+    <key>TitleLocalized_ja</key>
+    <string>${titleLocalizedJa_xml}</string>
     <key>Button1Text</key>
     <string>${button1text_xml}</string>
+    <key>Button1TextLocalized_en</key>
+    <string>${button1textLocalizedEn_xml}</string>
+    <key>Button1TextLocalized_de</key>
+    <string>${button1textLocalizedDe_xml}</string>
+    <key>Button1TextLocalized_fr</key>
+    <string>${button1textLocalizedFr_xml}</string>
+    <key>Button1TextLocalized_es</key>
+    <string>${button1textLocalizedEs_xml}</string>
+    <key>Button1TextLocalized_pt</key>
+    <string>${button1textLocalizedPt_xml}</string>
+    <key>Button1TextLocalized_ja</key>
+    <string>${button1textLocalizedJa_xml}</string>
     <key>Button2Text</key>
     <string>${button2text_xml}</string>
+    <key>Button2TextLocalized_en</key>
+    <string>${button2textLocalizedEn_xml}</string>
+    <key>Button2TextLocalized_de</key>
+    <string>${button2textLocalizedDe_xml}</string>
+    <key>Button2TextLocalized_fr</key>
+    <string>${button2textLocalizedFr_xml}</string>
+    <key>Button2TextLocalized_es</key>
+    <string>${button2textLocalizedEs_xml}</string>
+    <key>Button2TextLocalized_pt</key>
+    <string>${button2textLocalizedPt_xml}</string>
+    <key>Button2TextLocalized_ja</key>
+    <string>${button2textLocalizedJa_xml}</string>
     <key>InfoButtonText</key>
     <string>${infobuttontext_xml}</string>
+    <key>InfoButtonTextLocalized_en</key>
+    <string>${infobuttontextLocalizedEn_xml}</string>
+    <key>InfoButtonTextLocalized_de</key>
+    <string>${infobuttontextLocalizedDe_xml}</string>
+    <key>InfoButtonTextLocalized_fr</key>
+    <string>${infobuttontextLocalizedFr_xml}</string>
+    <key>InfoButtonTextLocalized_es</key>
+    <string>${infobuttontextLocalizedEs_xml}</string>
+    <key>InfoButtonTextLocalized_pt</key>
+    <string>${infobuttontextLocalizedPt_xml}</string>
+    <key>InfoButtonTextLocalized_ja</key>
+    <string>${infobuttontextLocalizedJa_xml}</string>
     <key>ExcessiveUptimeWarningMessage</key>
     <string>${excessiveUptimeWarningMessage_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_en</key>
+    <string>${excessiveUptimeWarningMessageLocalizedEn_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_de</key>
+    <string>${excessiveUptimeWarningMessageLocalizedDe_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_fr</key>
+    <string>${excessiveUptimeWarningMessageLocalizedFr_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_es</key>
+    <string>${excessiveUptimeWarningMessageLocalizedEs_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_pt</key>
+    <string>${excessiveUptimeWarningMessageLocalizedPt_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_ja</key>
+    <string>${excessiveUptimeWarningMessageLocalizedJa_xml}</string>
     <key>DiskSpaceWarningMessage</key>
     <string>${diskSpaceWarningMessage_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_en</key>
+    <string>${diskSpaceWarningMessageLocalizedEn_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_de</key>
+    <string>${diskSpaceWarningMessageLocalizedDe_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_fr</key>
+    <string>${diskSpaceWarningMessageLocalizedFr_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_es</key>
+    <string>${diskSpaceWarningMessageLocalizedEs_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_pt</key>
+    <string>${diskSpaceWarningMessageLocalizedPt_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_ja</key>
+    <string>${diskSpaceWarningMessageLocalizedJa_xml}</string>
     <key>StagedUpdateMessage</key>
     <string>${stagedUpdateMessage_xml}</string>
+    <key>StagedUpdateMessageLocalized_en</key>
+    <string>${stagedUpdateMessageLocalizedEn_xml}</string>
+    <key>StagedUpdateMessageLocalized_de</key>
+    <string>${stagedUpdateMessageLocalizedDe_xml}</string>
+    <key>StagedUpdateMessageLocalized_fr</key>
+    <string>${stagedUpdateMessageLocalizedFr_xml}</string>
+    <key>StagedUpdateMessageLocalized_es</key>
+    <string>${stagedUpdateMessageLocalizedEs_xml}</string>
+    <key>StagedUpdateMessageLocalized_pt</key>
+    <string>${stagedUpdateMessageLocalizedPt_xml}</string>
+    <key>StagedUpdateMessageLocalized_ja</key>
+    <string>${stagedUpdateMessageLocalizedJa_xml}</string>
     <key>PartiallyStagedUpdateMessage</key>
     <string>${partiallyStagedUpdateMessage_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_en</key>
+    <string>${partiallyStagedUpdateMessageLocalizedEn_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_de</key>
+    <string>${partiallyStagedUpdateMessageLocalizedDe_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_fr</key>
+    <string>${partiallyStagedUpdateMessageLocalizedFr_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_es</key>
+    <string>${partiallyStagedUpdateMessageLocalizedEs_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_pt</key>
+    <string>${partiallyStagedUpdateMessageLocalizedPt_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_ja</key>
+    <string>${partiallyStagedUpdateMessageLocalizedJa_xml}</string>
     <key>PendingDownloadMessage</key>
     <string>${pendingDownloadMessage_xml}</string>
+    <key>PendingDownloadMessageLocalized_en</key>
+    <string>${pendingDownloadMessageLocalizedEn_xml}</string>
+    <key>PendingDownloadMessageLocalized_de</key>
+    <string>${pendingDownloadMessageLocalizedDe_xml}</string>
+    <key>PendingDownloadMessageLocalized_fr</key>
+    <string>${pendingDownloadMessageLocalizedFr_xml}</string>
+    <key>PendingDownloadMessageLocalized_es</key>
+    <string>${pendingDownloadMessageLocalizedEs_xml}</string>
+    <key>PendingDownloadMessageLocalized_pt</key>
+    <string>${pendingDownloadMessageLocalizedPt_xml}</string>
+    <key>PendingDownloadMessageLocalized_ja</key>
+    <string>${pendingDownloadMessageLocalizedJa_xml}</string>
     <key>HideStagedUpdateInfo</key>
     ${hideStagedInfo_xml}
     <key>Message</key>
     <string>${message_xml}</string>
+    <key>MessageLocalized_en</key>
+    <string>${messageLocalizedEn_xml}</string>
+    <key>MessageLocalized_de</key>
+    <string>${messageLocalizedDe_xml}</string>
+    <key>MessageLocalized_fr</key>
+    <string>${messageLocalizedFr_xml}</string>
+    <key>MessageLocalized_es</key>
+    <string>${messageLocalizedEs_xml}</string>
+    <key>MessageLocalized_pt</key>
+    <string>${messageLocalizedPt_xml}</string>
+    <key>MessageLocalized_ja</key>
+    <string>${messageLocalizedJa_xml}</string>
 
     <!-- Infobox -->
     <key>InfoBox</key>
@@ -303,6 +579,18 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <!-- Help section -->
     <key>HelpMessage</key>
     <string>${helpmessage_xml}</string>
+    <key>HelpMessageLocalized_en</key>
+    <string>${helpmessageLocalizedEn_xml}</string>
+    <key>HelpMessageLocalized_de</key>
+    <string>${helpmessageLocalizedDe_xml}</string>
+    <key>HelpMessageLocalized_fr</key>
+    <string>${helpmessageLocalizedFr_xml}</string>
+    <key>HelpMessageLocalized_es</key>
+    <string>${helpmessageLocalizedEs_xml}</string>
+    <key>HelpMessageLocalized_pt</key>
+    <string>${helpmessageLocalizedPt_xml}</string>
+    <key>HelpMessageLocalized_ja</key>
+    <string>${helpmessageLocalizedJa_xml}</string>
     <key>HelpImage</key>
     <string>${helpimage_xml}</string>
 </dict>
@@ -378,32 +666,178 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${supportKBURL_xml}</string>
                                 <key>SupportAssistanceMessage</key>
                                 <string>${supportAssistanceMessage_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_en</key>
+                                <string>${supportAssistanceMessageLocalizedEn_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_de</key>
+                                <string>${supportAssistanceMessageLocalizedDe_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_fr</key>
+                                <string>${supportAssistanceMessageLocalizedFr_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_es</key>
+                                <string>${supportAssistanceMessageLocalizedEs_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_pt</key>
+                                <string>${supportAssistanceMessageLocalizedPt_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_ja</key>
+                                <string>${supportAssistanceMessageLocalizedJa_xml}</string>
+                                <key>LanguageOverride</key>
+                                <string>${languageOverride_xml}</string>
                                 <key>Title</key>
                                 <string>${title_xml}</string>
+                                <key>TitleLocalized_en</key>
+                                <string>${titleLocalizedEn_xml}</string>
+                                <key>TitleLocalized_de</key>
+                                <string>${titleLocalizedDe_xml}</string>
+                                <key>TitleLocalized_fr</key>
+                                <string>${titleLocalizedFr_xml}</string>
+                                <key>TitleLocalized_es</key>
+                                <string>${titleLocalizedEs_xml}</string>
+                                <key>TitleLocalized_pt</key>
+                                <string>${titleLocalizedPt_xml}</string>
+                                <key>TitleLocalized_ja</key>
+                                <string>${titleLocalizedJa_xml}</string>
                                 <key>Button1Text</key>
                                 <string>${button1text_xml}</string>
+                                <key>Button1TextLocalized_en</key>
+                                <string>${button1textLocalizedEn_xml}</string>
+                                <key>Button1TextLocalized_de</key>
+                                <string>${button1textLocalizedDe_xml}</string>
+                                <key>Button1TextLocalized_fr</key>
+                                <string>${button1textLocalizedFr_xml}</string>
+                                <key>Button1TextLocalized_es</key>
+                                <string>${button1textLocalizedEs_xml}</string>
+                                <key>Button1TextLocalized_pt</key>
+                                <string>${button1textLocalizedPt_xml}</string>
+                                <key>Button1TextLocalized_ja</key>
+                                <string>${button1textLocalizedJa_xml}</string>
                                 <key>Button2Text</key>
                                 <string>${button2text_xml}</string>
+                                <key>Button2TextLocalized_en</key>
+                                <string>${button2textLocalizedEn_xml}</string>
+                                <key>Button2TextLocalized_de</key>
+                                <string>${button2textLocalizedDe_xml}</string>
+                                <key>Button2TextLocalized_fr</key>
+                                <string>${button2textLocalizedFr_xml}</string>
+                                <key>Button2TextLocalized_es</key>
+                                <string>${button2textLocalizedEs_xml}</string>
+                                <key>Button2TextLocalized_pt</key>
+                                <string>${button2textLocalizedPt_xml}</string>
+                                <key>Button2TextLocalized_ja</key>
+                                <string>${button2textLocalizedJa_xml}</string>
                                 <key>InfoButtonText</key>
                                 <string>${infobuttontext_xml}</string>
+                                <key>InfoButtonTextLocalized_en</key>
+                                <string>${infobuttontextLocalizedEn_xml}</string>
+                                <key>InfoButtonTextLocalized_de</key>
+                                <string>${infobuttontextLocalizedDe_xml}</string>
+                                <key>InfoButtonTextLocalized_fr</key>
+                                <string>${infobuttontextLocalizedFr_xml}</string>
+                                <key>InfoButtonTextLocalized_es</key>
+                                <string>${infobuttontextLocalizedEs_xml}</string>
+                                <key>InfoButtonTextLocalized_pt</key>
+                                <string>${infobuttontextLocalizedPt_xml}</string>
+                                <key>InfoButtonTextLocalized_ja</key>
+                                <string>${infobuttontextLocalizedJa_xml}</string>
                                 <key>ExcessiveUptimeWarningMessage</key>
                                 <string>${excessiveUptimeWarningMessage_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_en</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedEn_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_de</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedDe_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_fr</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedFr_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_es</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedEs_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_pt</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedPt_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_ja</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedJa_xml}</string>
                                 <key>DiskSpaceWarningMessage</key>
                                 <string>${diskSpaceWarningMessage_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_en</key>
+                                <string>${diskSpaceWarningMessageLocalizedEn_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_de</key>
+                                <string>${diskSpaceWarningMessageLocalizedDe_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_fr</key>
+                                <string>${diskSpaceWarningMessageLocalizedFr_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_es</key>
+                                <string>${diskSpaceWarningMessageLocalizedEs_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_pt</key>
+                                <string>${diskSpaceWarningMessageLocalizedPt_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_ja</key>
+                                <string>${diskSpaceWarningMessageLocalizedJa_xml}</string>
                                 <key>StagedUpdateMessage</key>
                                 <string>${stagedUpdateMessage_xml}</string>
+                                <key>StagedUpdateMessageLocalized_en</key>
+                                <string>${stagedUpdateMessageLocalizedEn_xml}</string>
+                                <key>StagedUpdateMessageLocalized_de</key>
+                                <string>${stagedUpdateMessageLocalizedDe_xml}</string>
+                                <key>StagedUpdateMessageLocalized_fr</key>
+                                <string>${stagedUpdateMessageLocalizedFr_xml}</string>
+                                <key>StagedUpdateMessageLocalized_es</key>
+                                <string>${stagedUpdateMessageLocalizedEs_xml}</string>
+                                <key>StagedUpdateMessageLocalized_pt</key>
+                                <string>${stagedUpdateMessageLocalizedPt_xml}</string>
+                                <key>StagedUpdateMessageLocalized_ja</key>
+                                <string>${stagedUpdateMessageLocalizedJa_xml}</string>
                                 <key>PartiallyStagedUpdateMessage</key>
                                 <string>${partiallyStagedUpdateMessage_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_en</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedEn_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_de</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedDe_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_fr</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedFr_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_es</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedEs_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_pt</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedPt_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_ja</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedJa_xml}</string>
                                 <key>PendingDownloadMessage</key>
                                 <string>${pendingDownloadMessage_xml}</string>
+                                <key>PendingDownloadMessageLocalized_en</key>
+                                <string>${pendingDownloadMessageLocalizedEn_xml}</string>
+                                <key>PendingDownloadMessageLocalized_de</key>
+                                <string>${pendingDownloadMessageLocalizedDe_xml}</string>
+                                <key>PendingDownloadMessageLocalized_fr</key>
+                                <string>${pendingDownloadMessageLocalizedFr_xml}</string>
+                                <key>PendingDownloadMessageLocalized_es</key>
+                                <string>${pendingDownloadMessageLocalizedEs_xml}</string>
+                                <key>PendingDownloadMessageLocalized_pt</key>
+                                <string>${pendingDownloadMessageLocalizedPt_xml}</string>
+                                <key>PendingDownloadMessageLocalized_ja</key>
+                                <string>${pendingDownloadMessageLocalizedJa_xml}</string>
                                 <key>HideStagedUpdateInfo</key>
                                 ${hideStagedInfo_xml}
                                 <key>Message</key>
                                 <string>${message_xml}</string>
+                                <key>MessageLocalized_en</key>
+                                <string>${messageLocalizedEn_xml}</string>
+                                <key>MessageLocalized_de</key>
+                                <string>${messageLocalizedDe_xml}</string>
+                                <key>MessageLocalized_fr</key>
+                                <string>${messageLocalizedFr_xml}</string>
+                                <key>MessageLocalized_es</key>
+                                <string>${messageLocalizedEs_xml}</string>
+                                <key>MessageLocalized_pt</key>
+                                <string>${messageLocalizedPt_xml}</string>
+                                <key>MessageLocalized_ja</key>
+                                <string>${messageLocalizedJa_xml}</string>
                                 <key>InfoBox</key>
                                 <string>${infobox_xml}</string>
                                 <key>HelpMessage</key>
                                 <string>${helpmessage_xml}</string>
+                                <key>HelpMessageLocalized_en</key>
+                                <string>${helpmessageLocalizedEn_xml}</string>
+                                <key>HelpMessageLocalized_de</key>
+                                <string>${helpmessageLocalizedDe_xml}</string>
+                                <key>HelpMessageLocalized_fr</key>
+                                <string>${helpmessageLocalizedFr_xml}</string>
+                                <key>HelpMessageLocalized_es</key>
+                                <string>${helpmessageLocalizedEs_xml}</string>
+                                <key>HelpMessageLocalized_pt</key>
+                                <string>${helpmessageLocalizedPt_xml}</string>
+                                <key>HelpMessageLocalized_ja</key>
+                                <string>${helpmessageLocalizedJa_xml}</string>
                                 <key>HelpImage</key>
                                 <string>${helpimage_xml}</string>
                             </dict>

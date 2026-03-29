@@ -9,47 +9,47 @@ graph TB
         LD["launchDaemonManagement.zsh<br>Deployment orchestration"]
         AS["assemble.zsh<br>Build script"]
         SP["sample.plist<br>Configuration template"]
-        
+
         style RD fill:#e1f5ff
         style LD fill:#e1f5ff
         style AS fill:#fff4e6
         style SP fill:#f3e5f5
     end
-    
+
     subgraph Assembly["⚙️ Assembly Process"]
         AS -->|1. Reads & harmonizes RDNN| RD
         AS -->|2. Embeds dialog script| LD
         AS -->|3. Generates config| SP
         AS -->|4. Produces artifacts| ART
-        
+
         ART["Artifacts/<br>- Assembled script<br>- .plist<br>- .mobileconfig"]
-        
+
         style ART fill:#c8e6c9
     end
-    
+
     subgraph Deployment["📦 Deployment via MDM"]
         MDM["MDM Server<br>Jamf Pro / Intune / etc."]
         ART -->|Upload| MDM
-        
+
         MDM -->|Policy: Script| SCRIPT[Assembled Script]
         MDM -->|Profile: Prefs| PROFILE[Configuration Profile]
-        
+
         style MDM fill:#ffecb3
         style SCRIPT fill:#c8e6c9
         style PROFILE fill:#f3e5f5
     end
-    
+
     subgraph Client["💻 Client Mac"]
         SCRIPT -->|Executes on client| INST[Installation Process]
         PROFILE -->|Deploys preferences| MGDPREF
-        
-        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dor.zsh"]
+
+        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dorm.zsh"]
         INST -->|Creates| CLILD["/Library/LaunchDaemons/<br>(RDNN).dor.plist"]
         INST -->|Installs if needed| SD["swiftDialog.app"]
-        
+
         MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).dorm.plist"]
         LOCALPREF["/Library/Preferences/<br>(RDNN).dorm.plist<br>(optional local overrides)"]
-        
+
         style INST fill:#fff4e6
         style CLISCRIPT fill:#e1f5ff
         style CLILD fill:#e1f5ff
@@ -57,41 +57,41 @@ graph TB
         style MGDPREF fill:#f3e5f5
         style LOCALPREF fill:#f3e5f5
     end
-    
+
     subgraph Runtime["▶️ Runtime Execution"]
         CLILD -->|RunAtLoad + schedule<br/>8am & 4pm daily| CLISCRIPT
-        
+
         CLISCRIPT -->|1. Loads preferences| PREFLOAD["Preference Loader<br/>Managed → Local → Defaults"]
         MGDPREF --> PREFLOAD
         LOCALPREF --> PREFLOAD
-        
+
         PREFLOAD -->|2. Validates runtime| USER{"Logged-in User?<br/>Wait up to 120s"}
-        
+
         USER -->|No| EXIT1[FATAL ERROR<br/>No user session]
         USER -->|Yes| INSTLOG["/var/log/install.log<br/>DDM enforcement data"]
-        
-        INSTLOG --> DDMEVAL["Deadline Evaluation<br/>EnforcedInstallDate +<br/>padded-date handling"]
+
+        INSTLOG --> DDMEVAL["DDM Resolver +<br/>Deadline Evaluation<br/>source-priority parsing +<br/>safe padded-date handling"]
         DDMEVAL --> OSVER["macOS Version<br/>Check"]
         OSVER -->|Up to Date| EXIT2[Exit Silently]
         OSVER -->|Update Required| GATES["Reminder Gates<br/>Display window + periodic (28d)<br/>quiet period (76m)"]
-        
+
         GATES -->|Skip this run| EXIT3[Exit Silently]
         GATES -->|Proceed| RESTARTCHK{"Post-deadline restart<br/>eligible?"}
-        
+
         RESTARTCHK -->|No| CONTEXT["Availability Checks<br/>Meeting deferral only when >24h<br/>and not Force mode"]
         RESTARTCHK -->|Prompt / Force| RSMODE["Restart-only dialog mode<br/>Prompt or Force"]
-        
+
         CONTEXT -->|Assertions active| DELAY["5-minute checks up to<br/>meetingDelay, then proceed"]
         CONTEXT -->|Proceed| DIALOG["swiftDialog UI"]
         DELAY --> DIALOG
         RSMODE --> DIALOG
-        
+
         DIALOG -->|"Update-flow Button 1"| SU["System Settings<br/>Software Update"]
         DIALOG -->|"Restart action or<br/>Force timer expiry"| RESTARTCMD["Restart Command<br/>Issued"]
         DIALOG -->|"Info button"| INFO["Open InfoButtonAction URL<br/>conditional redisplay near deadline"]
         DIALOG -->|"Dismiss / DND / postpone"| LOG["Log Entry<br/>& Exit"]
         INFO --> LOG
-        
+
         style USER fill:#ffccbc
         style INSTLOG fill:#b2dfdb
         style DDMEVAL fill:#b2dfdb
@@ -110,16 +110,16 @@ graph TB
         style INFO fill:#90caf9
         style LOG fill:#cfd8dc
     end
-    
+
     subgraph External["🍎 Apple Systems"]
         DDM["Declarative Device<br>Management"]
         DDM -->|Writes enforcement and padded-date entries| INSTLOG
         DDM -->|Applies enforcement event| RESTART["Apple-managed Restart/Event"]
-        
+
         SU -->|Downloads & installs| MACOS[macOS Update]
         RESTARTCMD -->|Restart initiated| MACOS
         RESTART -->|Forced platform behavior| MACOS
-        
+
         style DDM fill:#e3f2fd
         style RESTART fill:#ffcdd2
         style MACOS fill:#c5e1a5
@@ -161,7 +161,7 @@ graph TB
 1. **LaunchDaemon triggers** at load and on scheduled times (default: 8am, 4pm)
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
-4. **Log parsing and deadline evaluation** read both enforcement and padded-date paths from install.log
+4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration
 5. **Version comparison** determines if update is required
 6. **Reminder gating** applies display-window, periodic reminder, and quiet-period logic
 7. **Post-deadline mode evaluation** determines update-flow vs restart-only (Prompt/Force)

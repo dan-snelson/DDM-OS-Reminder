@@ -29,7 +29,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
-- :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
+- :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
 - :new: **Full Multi-language Experience**: Version `3.0.0` fully supports English, German, French, Spanish, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, and human-readable deadline dates that automatically match the resolved language for a more polished, native-feeling user experience.
 
 
@@ -38,6 +38,8 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 ## :new: Upgrading
 
 Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
+
+If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that suffix still import supported values, but continue to prompt for deployment mode.
 
 <details>
 <summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>

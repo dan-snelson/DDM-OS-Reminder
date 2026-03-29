@@ -199,7 +199,7 @@
                                 	<key>SupportAssistanceMessageLocalized_es</key>
                                 	<string>&lt;br&gt;&lt;br&gt;Assembled Para obtener ayuda, contacte con **{supportTeamName}** haciendo clic en el botón (?) de la esquina inferior derecha.</string>
                                 	<key>SupportAssistanceMessageLocalized_fr</key>
-                                	<string>&lt;br&gt;&lt;br&gt;Assembled Pour obtenir de l aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
+                                	<string>&lt;br&gt;&lt;br&gt;Assembled Pour obtenir de l'aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
                                 	<key>SupportAssistanceMessageLocalized_ja</key>
                                 	<string>&lt;br&gt;&lt;br&gt;Assembled サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
                                 	<key>SupportAssistanceMessageLocalized_pt</key>
@@ -240,26 +240,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>1BFD450E-BAFE-4BB3-A824-A96413E4F7D9</string>
+            <string>D5D327A6-A484-4C0E-923B-59039AA90A58</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>1BFD450E-BAFE-4BB3-A824-A96413E4F7D9</string>
+            <string>D5D327A6-A484-4C0E-923B-59039AA90A58</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (3.0.0) to org.churchofjesuschrist standards. Created: 2026-03-29-074652</string>
+    <string>Configures DDM OS Reminder (3.0.0) to org.churchofjesuschrist standards. Created: 2026-03-29-174903</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>CC7AFCD6-6006-4062-AB70-7D1EB4DAFA45</string>
+    <string>7EA872BE-988B-40FE-8B21-943CEF599D92</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -269,7 +269,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>CC7AFCD6-6006-4062-AB70-7D1EB4DAFA45</string>
+    <string>7EA872BE-988B-40FE-8B21-943CEF599D92</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

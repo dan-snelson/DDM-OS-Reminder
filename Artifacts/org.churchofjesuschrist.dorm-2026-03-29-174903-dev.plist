@@ -187,7 +187,7 @@
 	<key>SupportAssistanceMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Para obtener ayuda, contacte con **{supportTeamName}** haciendo clic en el botón (?) de la esquina inferior derecha.</string>
 	<key>SupportAssistanceMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled Pour obtenir de l aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled Pour obtenir de l'aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
 	<key>SupportAssistanceMessageLocalized_ja</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
 	<key>SupportAssistanceMessageLocalized_pt</key>

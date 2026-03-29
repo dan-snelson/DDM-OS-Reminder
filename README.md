@@ -12,7 +12,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 <br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
-:new: **DDM OS Reminder** now resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity using a declaration-aware resolver that prioritizes applicable enforced-install signals over generic matches, suppresses reminders when declaration state is missing, conflicting, invalid, or no longer maps to an available update, and only honors `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration, before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
+:new: **DDM OS Reminder** now resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity using a declaration-aware resolver that prioritizes applicable enforced-install signals over generic matches, suppressing reminders when declaration state is missing, conflicting, invalid, or no longer maps to an available update, and only honors `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration, before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
@@ -22,17 +22,16 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 ## Features
 
 - **Customizable**: Easily customize the reminder dialog’s title, message, icons (including light/dark overlay icons) and button text to fit your organization’s requirements by distributing a Configuration Profile via any MDM solution.
-- **Multi-language Support**: Configure localized profile keys (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) plus `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) to automatically match logged-in user language or enforce a specific locale.
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
-- **Locale-aware Deadline Dates**: `DateFormatDeadlineHumanReadable` tokens such as `%a` and `%b` now follow the resolved dialog language (`de`, `fr`, `es`, `pt`, `ja`, fallback `en`) so weekday/month names are not forced to English.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
+- :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
+- :new: **Full Multi-language Experience**: Version `3.0.0` fully supports English, German, French, Spanish, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, and human-readable deadline dates that automatically match the resolved language for a more polished, native-feeling user experience.
 
-<img src="images/restartPrompt.png" alt="Prompt: Restart Your Mac" width="400" /> <img src="images/restartForce.png" alt="Force: Your Mac is restarting" width="400" />
 
 ---
 
@@ -52,10 +51,10 @@ zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelso
 
 Full Paths:
 
-        Reminder Dialog: DDM-OS-Reminder/reminderDialog.zsh
-LaunchDaemon Management: DDM-OS-Reminder/launchDaemonManagement.zsh
-      Working Directory: DDM-OS-Reminder
-    Resources Directory: DDM-OS-Reminder/Resources
+        Reminder Dialog: ~/Downloads/DDM-OS-Reminder-main/reminderDialog.zsh
+LaunchDaemon Management: ~/Downloads/DDM-OS-Reminder-main/launchDaemonManagement.zsh
+      Working Directory: ~/Downloads/DDM-OS-Reminder-main
+    Resources Directory: ~/Downloads/DDM-OS-Reminder-main/Resources
 
 🔍 Checking Reverse Domain Name Notation …
 
@@ -166,11 +165,11 @@ Deployment Artifacts:
 
 ## :new: Multi-language Support
 
-<img width="350" alt="3 0 0a2_fr" src="https://github.com/user-attachments/assets/b623cc09-59ae-450b-a40e-53f8e2a367e0" />
-<img width="350" alt="3 0 0a2_de" src="https://github.com/user-attachments/assets/79ae0134-966b-43fc-ac03-3ad229a38220" />
-<img width="350" alt="Screenshot 2026-03-10 at 3 03 58 PM" src="https://github.com/user-attachments/assets/d69da93c-b3b9-4f62-ae85-2c7a78e063aa" />
-<img width="350" alt="Screenshot 2026-03-10 at 3 03 11 PM" src="https://github.com/user-attachments/assets/b2d24289-cbce-490a-983e-e9d493ec123f" />
-<img width="350" alt="Screenshot 2026-03-10 at 3 01 53 PM" src="https://github.com/user-attachments/assets/4f125565-7514-45e1-ace2-a91af3a6904f" />
+<img width="350" alt="French localization screenshot" src="images/3.0.0_french.png" />
+<img width="350" alt="German localization screenshot" src="images/3.0.0_german.png" />
+<img width="350" alt="Japanese localization screenshot" src="images/3.0.0_japanese.png" />
+<img width="350" alt="Portuguese localization screenshot" src="images/3.0.0_portuguese.png" />
+<img width="350" alt="Spanish localization screenshot" src="images/3.0.0_spanish.png" />
 
 Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
 

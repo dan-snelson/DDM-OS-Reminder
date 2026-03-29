@@ -36,6 +36,7 @@
 ####################################################################################################
 
 set -euo pipefail
+autoload -Uz is-at-least
 scriptVersion="3.0.0b4"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
@@ -83,6 +84,8 @@ organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
 pastDeadlineRestartBehavior=""
 daysPastDeadlineRestartWorkflow=""
+
+
 
 ####################################################################################################
 # Header
@@ -192,6 +195,12 @@ function isPriorPlistArgument() {
 
 function validatePriorPlistPath() {
   local candidatePath="${1}"
+  local preferencesDomainComment=""
+  local versionComment=""
+  local versionCore=""
+  local scriptLogValue=""
+  local requiredKey=""
+  local -a missingRequiredKeys
 
   if [[ ! -e "${candidatePath}" ]]; then
     echo "❌ Prior plist not found: ${candidatePath}" >&2
@@ -206,6 +215,67 @@ function validatePriorPlistPath() {
   if ! /usr/bin/plutil -lint "${candidatePath}" >/dev/null 2>&1; then
     echo "❌ Prior plist is invalid: ${candidatePath}" >&2
     return 1
+  fi
+
+  for requiredKey in ScriptLog SupportTeamName SupportKBURL InfoButtonText Message HelpMessage; do
+    if ! /usr/libexec/PlistBuddy -c "Print :${requiredKey}" "${candidatePath}" >/dev/null 2>&1; then
+      missingRequiredKeys+=("${requiredKey}")
+    fi
+  done
+
+  if (( ${#missingRequiredKeys[@]} > 0 )); then
+    echo "❌ Prior plist does not appear to be a DDM OS Reminder plist; missing required keys: ${(j:, :)missingRequiredKeys}" >&2
+    return 1
+  fi
+
+  scriptLogValue="$(
+    /usr/libexec/PlistBuddy -c "Print :ScriptLog" "${candidatePath}" 2>/dev/null || true
+  )"
+
+  if [[ -z "${scriptLogValue}" || "${scriptLogValue:t}" != *.log ]]; then
+    echo "❌ Prior plist does not contain a valid DDM OS Reminder ScriptLog path" >&2
+    return 1
+  fi
+
+  preferencesDomainComment="$(
+    /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Preferences Domain:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
+      | /usr/bin/head -n 1
+  )"
+  preferencesDomainComment="$(
+    printf "%s\n" "${preferencesDomainComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  )"
+
+  if [[ -n "${preferencesDomainComment}" && "${preferencesDomainComment}" != *".${currentOrgScriptName_reminder}" ]]; then
+    echo "❌ Prior plist metadata does not match a DDM OS Reminder preferences domain: ${preferencesDomainComment}" >&2
+    return 1
+  fi
+
+  versionComment="$(
+    /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Version:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
+      | /usr/bin/head -n 1
+  )"
+  versionComment="$(
+    printf "%s\n" "${versionComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  )"
+
+  if [[ -z "${versionComment}" ]]; then
+    echo "⚠️  Prior plist is missing version metadata; continuing with documented 2.2.0+ compatibility on a best-effort basis" >&2
+    echo "${candidatePath}"
+    return 0
+  fi
+
+  versionCore="$(
+    printf "%s\n" "${versionComment}" | /usr/bin/sed -nE 's/^[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p'
+  )"
+
+  if [[ -z "${versionCore}" ]]; then
+    echo "⚠️  Prior plist version metadata is not recognized ('${versionComment}'); continuing with best-effort import" >&2
+    echo "${candidatePath}"
+    return 0
+  fi
+
+  if ! is-at-least 2.2.0 "${versionCore}"; then
+    echo "⚠️  Prior plist version '${versionComment}' predates the documented 2.2.0+ compatibility baseline; continuing with best-effort import" >&2
   fi
 
   echo "${candidatePath}"
@@ -429,8 +499,10 @@ function escapeSedReplacement() {
 
 function promptForPriorPlistImport() {
   local candidatePath=""
+  local validatedPath=""
 
   priorPlistPrompted=true
+  showInteractiveConfigurationHeader
 
   while true; do
     read -r "?Drag-and-drop an earlier DOR .plist to import [Return to skip] (or ‘X’ to exit): " candidatePath
@@ -448,28 +520,22 @@ function promptForPriorPlistImport() {
       return
     fi
 
-    if [[ ! -e "${candidatePath}" ]]; then
-      echo "⚠️  File not found: ${candidatePath}"
+    if ! validatedPath="$(validatePriorPlistPath "${candidatePath}")"; then
       continue
     fi
 
-    if [[ ! -r "${candidatePath}" ]]; then
-      echo "⚠️  File is not readable: ${candidatePath}"
-      continue
-    fi
-
-    if ! /usr/bin/plutil -lint "${candidatePath}" >/dev/null 2>&1; then
-      echo "⚠️  Invalid plist: ${candidatePath}"
-      continue
-    fi
-
-    applyPriorPlistSelections "${candidatePath}"
+    applyPriorPlistSelections "${validatedPath}"
     return
   done
 }
 
 function emitSupportedPlistPreferenceTypes() {
-  perl -ne '
+  if [[ ! -x /usr/bin/perl ]]; then
+    echo "❌ /usr/bin/perl is required to inspect supported preference types during plist import" >&2
+    return 1
+  fi
+
+  /usr/bin/perl -ne '
     if (/^declare -A preferenceConfiguration=\(/) { $section = "pref"; next }
     if (/^declare -A plistKeyMap=\(/) { $section = "map"; next }
     if (/^\)$/) { $section = ""; next }
@@ -607,7 +673,6 @@ function applyImportedPreferences() {
 }
 
 if [[ "${interactiveMode}" == true && "${priorPlistPrompted}" == false ]]; then
-  showInteractiveConfigurationHeader
   promptForPriorPlistImport
 fi
 
@@ -653,8 +718,6 @@ if [[ "${interactiveMode}" == true ]]; then
     derivedDomain="company.com"
   fi
 
-  showInteractiveConfigurationHeader
-
   if [[ "${priorPlistPrompted}" == false ]]; then
     promptForPriorPlistImport
   fi
@@ -665,6 +728,7 @@ if [[ "${interactiveMode}" == true ]]; then
     echo ""
   else
 
+    showInteractiveConfigurationHeader
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "IT Support, Branding & Restart Policy (Interactive)"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

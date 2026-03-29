@@ -35,15 +35,20 @@ flowchart TD
     ReviewCustom -->|Need Changes| CustomizeReminder
     ReviewCustom -->|Ready| AssemblePhase[⚙️ Assembly Phase]
     
-    AssemblePhase --> RunAssemble[▶️ Run Assembly Script<br/>zsh assemble.zsh]
+    AssemblePhase --> RunAssemble[▶️ Run Assembly Script<br/>zsh assemble.zsh --interactive<br/>or drag a prior .plist]
     
-    RunAssemble --> PromptRDNN[💭 Prompt: Enter RDNN<br/>or accept default]
-    PromptRDNN --> ProcessAssembly[🔧 Processing...<br/>- Harmonize RDNN<br/>- Embed reminderDialog<br/>- Remove demo mode<br/>- Validate syntax]
+    RunAssemble --> PriorPlist{Earlier DOR .plist<br/>available?}
+    PriorPlist -->|Yes| ImportPrior[📥 Import Prior Plist<br/>- infer RDNN when possible<br/>- infer lane from filename when possible<br/>- skip branding prompts]
+    PriorPlist -->|No| PromptRDNN[💭 Prompt: Enter RDNN<br/>or accept default]
+    ImportPrior --> NeedRDNN{RDNN<br/>inferred?}
+    NeedRDNN -->|Yes| ProcessAssembly[🔧 Processing...<br/>- Harmonize RDNN<br/>- Embed reminderDialog<br/>- Remove demo mode<br/>- Validate syntax]
+    NeedRDNN -->|No| PromptRDNN
+    PromptRDNN --> ProcessAssembly
     
     ProcessAssembly --> GenerateArtifacts[📦 Generate Artifacts]
-    GenerateArtifacts --> Artifact1["✅ Assembled Script<br>ddm-os-reminder-(RDNN)-(timestamp).zsh"]
-    GenerateArtifacts --> Artifact2["✅ Configuration Plist<br>(RDNN).dorm-(timestamp).plist"]
-    GenerateArtifacts --> Artifact3["✅ Configuration Profile<br>(RDNN).dorm-(timestamp)-unsigned.mobileconfig"]
+    GenerateArtifacts --> Artifact1["✅ Assembled Script<br>ddm-os-reminder-(RDNN)-(timestamp)-(lane).zsh"]
+    GenerateArtifacts --> Artifact2["✅ Configuration Plist<br>(RDNN).dorm-(timestamp)-(lane).plist"]
+    GenerateArtifacts --> Artifact3["✅ Configuration Profile<br>(RDNN).dorm-(timestamp)-(lane)-unsigned.mobileconfig"]
     
     Artifact1 --> CheckArtifacts{Artifacts<br/>Generated?}
     Artifact2 --> CheckArtifacts
@@ -263,22 +268,34 @@ organizationScriptName="dor"
 
 ```bash
 cd /path/to/DDM-OS-Reminder
-zsh assemble.zsh
+zsh assemble.zsh --interactive
+# or upgrade from a prior configuration in one command
+zsh assemble.zsh /path/to/previous-config.plist
 ```
 
-**Interactive Prompts**:
-1. **RDNN Prompt**: Enter your organization's Reverse Domain Name Notation
+**Interactive Flow**:
+1. **Prior `.plist` Prompt** (when using `--interactive`):
+   - Drag-and-drop an earlier DOR `.plist`, press `Return` to skip, or press `X` to exit
+   - If supplied, `assemble.zsh` imports supported values, infers the RDNN when possible, and skips the IT support / branding / restart prompts
+   - If the filename ends with `-dev.plist`, `-test.plist`, or `-prod.plist`, deployment mode is inferred too
+
+2. **RDNN Prompt** (only when RDNN was not provided or inferred):
    - Example: `com.company.division`
    - Default: Value from scripts (if matching)
    - Press `X` to exit
 
-2. **IT Support & Branding Prompts** (when using `--interactive`):
+3. **IT Support & Branding Prompts** (when using `--interactive` without a prior plist):
    - Support team name, phone, email, and website
    - `Knowledge Base ('YES' to specify; 'NO' to hide)`
    - If `YES`: prompts for `Support KB Title`, `Info Button Action`, and `Support KB Markdown Link`
    - If `NO`: KB prompts are skipped and generated configs hide KB surfaces in the help dialog (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without KB row)
 
-3. **Processing Output**:
+4. **Deployment Mode Prompt**:
+   - Skipped when `--lane` is supplied
+   - Skipped when inferred from a prior plist filename
+   - Otherwise choose `dev`, `test`, or `prod`
+
+5. **Processing Output**:
 ```
 ===============================================================
 🧩 Assemble DDM OS Reminder (3.0.0)
@@ -290,8 +307,13 @@ LaunchDaemon Management: /path/to/launchDaemonManagement.zsh
       Working Directory: /path/to/DDM-OS-Reminder
     Resources Directory: /path/to/Resources
 
-🔍 Checking Reverse Domain Name Notation …
-Enter Your Organization's RDNN [org.churchofjesuschrist]: com.myorg
+📥 Prior plist provided via command-line argument: '/path/to/com.myorg.dorm-2026-03-28-132701-prod.plist'
+🔎 Inferred RDNN from prior plist: 'com.myorg'
+🔎 Inferred deployment mode from prior plist: 'prod'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Using 'com.myorg' as the Reverse Domain Name Notation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🔧 Inserting reminderDialog.zsh into launchDaemonManagement.zsh …
 ✅ Assembly complete [2026-01-19-143022]
@@ -301,18 +323,23 @@ Enter Your Organization's RDNN [org.churchofjesuschrist]: com.myorg
     ✅ Syntax check passed.
 
 🗂  Generating LaunchDaemon plist …
-   → Artifacts/com.myorg.dorm-2026-01-19-143022.plist
+   → Artifacts/com.myorg.dorm-2026-01-19-143022-prod.plist
 
 🧩 Generating Configuration Profile (.mobileconfig) …
-   → Artifacts/com.myorg.dorm-2026-01-19-143022-unsigned.mobileconfig
+   → Artifacts/com.myorg.dorm-2026-01-19-143022-prod-unsigned.mobileconfig
 
 🏁 Done.
 
 Deployment Artifacts:
-        Assembled Script: Artifacts/ddm-os-reminder-com.myorg-2026-01-19-143022.zsh
-    Organizational Plist: Artifacts/com.myorg.dorm-2026-01-19-143022.plist
-   Configuration Profile: Artifacts/com.myorg.dorm-2026-01-19-143022-unsigned.mobileconfig
+        Assembled Script: Artifacts/ddm-os-reminder-com.myorg-2026-01-19-143022-prod.zsh
+    Organizational Plist: Artifacts/com.myorg.dorm-2026-01-19-143022-prod.plist
+   Configuration Profile: Artifacts/com.myorg.dorm-2026-01-19-143022-prod-unsigned.mobileconfig
 ```
+
+**Upgrade Compatibility Note**:
+- The documented prior-plist upgrade-assist workflow is based on plists generated by DDM OS Reminder `2.2.0` or later.
+- Earlier DOR plists can still import on a best-effort basis, but `assemble.zsh` warns when compatibility metadata is missing or predates that baseline.
+- Older supported plists without a `-dev`, `-test`, or `-prod` filename suffix still import successfully, but deployment mode will continue to prompt.
 
 #### 3.2 Verify Artifacts
 
@@ -321,9 +348,17 @@ ls -lh Artifacts/
 ```
 
 Expected files:
-- `ddm-os-reminder-{RDNN}-{timestamp}.zsh` - Executable script
-- `{RDNN}.dorm-{timestamp}.plist` - Preferences file
-- `{RDNN}.dorm-{timestamp}-unsigned.mobileconfig` - Configuration Profile
+- `ddm-os-reminder-{RDNN}-{timestamp}-{lane}.zsh` - Executable script
+- `{RDNN}.dorm-{timestamp}-{lane}.plist` - Preferences file
+- `{RDNN}.dorm-{timestamp}-{lane}-unsigned.mobileconfig` - Configuration Profile
+
+If you are comparing a regenerated `.plist` to an earlier artifact, use a normalized plist diff before treating XML changes as meaningful:
+
+```bash
+diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
+```
+
+This removes comment, whitespace, and key-order noise and highlights only real preference-value differences.
 
 ---
 

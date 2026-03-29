@@ -11,6 +11,7 @@
 # Common usage examples:
 #   zsh assemble.zsh us.snelson --lane prod
 #   zsh assemble.zsh us.snelson --lane prod --interactive
+#   zsh assemble.zsh /path/to/previous-config.plist
 #
 # Expected directory layout:
 #   DDM-OS-Reminder/
@@ -35,6 +36,7 @@
 ####################################################################################################
 
 set -euo pipefail
+autoload -Uz is-at-least
 scriptVersion="3.0.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
@@ -51,11 +53,18 @@ currentRDNN=""
 currentOrgScriptName=""
 newRDNN=""
 newOrgScriptName=""
+resolvedScriptLogPath=""
 
 # Deployment mode (dev, test, prod)
 deploymentMode="prod"  # default to production mode
 modeSuffix=""
 interactiveMode=false
+priorPlistPath=""
+priorPlistImported=false
+priorPlistPrompted=false
+rdnnInferredFromPriorPlist=false
+modeInferredFromPriorPlist=false
+interactiveConfigurationHeaderShown=false
 
 placeholderMarker="Assembled"
 legacyPlaceholderMarker="Sample"
@@ -75,6 +84,32 @@ organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
 pastDeadlineRestartBehavior=""
 daysPastDeadlineRestartWorkflow=""
+
+
+
+function printUsage() {
+  echo
+  echo "Usage:"
+  echo "  zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--help]"
+  echo
+  echo "Options:"
+  echo "  --lane <dev|test|prod>       Select deployment mode"
+  echo "  --interactive                Prompt for optional prior .plist import, IT support, branding and restart policy values"
+  echo "  prior-plist                  Auto-enables interactive mode and infers RDNN and deployment mode from the provided .plist"
+  echo "  --help, -h                   Show this help"
+  echo
+}
+
+
+
+for argument in "$@"; do
+  case "${argument}" in
+    --help|-h)
+      printUsage
+      exit 0
+      ;;
+  esac
+done
 
 
 
@@ -160,22 +195,204 @@ fi
 echo
 
 # Parse command-line arguments
-# Usage: zsh assemble.zsh [RDNN] [--lane dev|test|prod] [--interactive] [--help]
+# Usage: zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--help]
 skipRDNNPrompt=false
 skipModePrompt=false
+
+function normalizePathInput() {
+  local rawValue="${1}"
+
+  if (( ${#rawValue} >= 2 )); then
+    if [[ "${rawValue[1]}" == "'" && "${rawValue[-1]}" == "'" ]]; then
+      rawValue="${rawValue[2,-2]}"
+    elif [[ "${rawValue[1]}" == "\"" && "${rawValue[-1]}" == "\"" ]]; then
+      rawValue="${rawValue[2,-2]}"
+    fi
+  fi
+
+  echo "${rawValue}"
+}
+
+function isPriorPlistArgument() {
+  local candidateValue="${1}"
+
+  [[ "${candidateValue:l}" == *.plist ]]
+}
+
+function validatePriorPlistPath() {
+  local candidatePath="${1}"
+  local preferencesDomainComment=""
+  local versionComment=""
+  local versionCore=""
+  local scriptLogValue=""
+  local requiredKey=""
+  local -a missingRequiredKeys
+
+  if [[ ! -e "${candidatePath}" ]]; then
+    echo "❌ Prior plist not found: ${candidatePath}" >&2
+    return 1
+  fi
+
+  if [[ ! -r "${candidatePath}" ]]; then
+    echo "❌ Prior plist is not readable: ${candidatePath}" >&2
+    return 1
+  fi
+
+  if ! /usr/bin/plutil -lint "${candidatePath}" >/dev/null 2>&1; then
+    echo "❌ Prior plist is invalid: ${candidatePath}" >&2
+    return 1
+  fi
+
+  for requiredKey in ScriptLog SupportTeamName SupportKBURL InfoButtonText Message HelpMessage; do
+    if ! /usr/libexec/PlistBuddy -c "Print :${requiredKey}" "${candidatePath}" >/dev/null 2>&1; then
+      missingRequiredKeys+=("${requiredKey}")
+    fi
+  done
+
+  if (( ${#missingRequiredKeys[@]} > 0 )); then
+    echo "❌ Prior plist does not appear to be a DDM OS Reminder plist; missing required keys: ${(j:, :)missingRequiredKeys}" >&2
+    return 1
+  fi
+
+  scriptLogValue="$(
+    /usr/libexec/PlistBuddy -c "Print :ScriptLog" "${candidatePath}" 2>/dev/null || true
+  )"
+
+  if [[ -z "${scriptLogValue}" || "${scriptLogValue:t}" != *.log ]]; then
+    echo "❌ Prior plist does not contain a valid DDM OS Reminder ScriptLog path" >&2
+    return 1
+  fi
+
+  preferencesDomainComment="$(
+    /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Preferences Domain:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
+      | /usr/bin/head -n 1
+  )"
+  preferencesDomainComment="$(
+    printf "%s\n" "${preferencesDomainComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  )"
+
+  if [[ -n "${preferencesDomainComment}" && "${preferencesDomainComment}" != *".${currentOrgScriptName_reminder}" ]]; then
+    echo "❌ Prior plist metadata does not match a DDM OS Reminder preferences domain: ${preferencesDomainComment}" >&2
+    return 1
+  fi
+
+  versionComment="$(
+    /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Version:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
+      | /usr/bin/head -n 1
+  )"
+  versionComment="$(
+    printf "%s\n" "${versionComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  )"
+
+  if [[ -z "${versionComment}" ]]; then
+    echo "⚠️  Prior plist is missing version metadata; continuing with documented 2.2.0+ compatibility on a best-effort basis" >&2
+    echo "${candidatePath}"
+    return 0
+  fi
+
+  versionCore="$(
+    printf "%s\n" "${versionComment}" | /usr/bin/sed -nE 's/^[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p'
+  )"
+
+  if [[ -z "${versionCore}" ]]; then
+    echo "⚠️  Prior plist version metadata is not recognized ('${versionComment}'); continuing with best-effort import" >&2
+    echo "${candidatePath}"
+    return 0
+  fi
+
+  if ! is-at-least 2.2.0 "${versionCore}"; then
+    echo "⚠️  Prior plist version '${versionComment}' predates the documented 2.2.0+ compatibility baseline; continuing with best-effort import" >&2
+  fi
+
+  echo "${candidatePath}"
+}
+
+function inferRDNNFromPriorPlist() {
+  local plistPath="${1}"
+  local importedScriptLog=""
+  local inferredRDNN=""
+  local plistFilename=""
+
+  importedScriptLog="$(
+    /usr/libexec/PlistBuddy -c "Print :ScriptLog" "${plistPath}" 2>/dev/null || true
+  )"
+
+  if [[ -n "${importedScriptLog}" && "${importedScriptLog:t}" == *.log ]]; then
+    inferredRDNN="${${importedScriptLog:t}%.log}"
+  fi
+
+  if [[ -z "${inferredRDNN}" ]]; then
+    plistFilename="${plistPath:t}"
+    if [[ "${plistFilename}" == *".${currentOrgScriptName_reminder}-"* ]]; then
+      inferredRDNN="${plistFilename%%.${currentOrgScriptName_reminder}-*}"
+    fi
+  fi
+
+  if [[ -n "${inferredRDNN}" ]] && [[ "${inferredRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+    echo "${inferredRDNN}"
+  fi
+}
+
+function inferDeploymentModeFromPriorPlist() {
+  local plistFilename="${1:t:l}"
+
+  case "${plistFilename}" in
+    *-dev.plist)  echo "dev" ;;
+    *-test.plist) echo "test" ;;
+    *-prod.plist) echo "prod" ;;
+  esac
+}
+
+function showInteractiveConfigurationHeader() {
+  if [[ "${interactiveConfigurationHeaderShown}" == true ]]; then
+    return
+  fi
+
+  echo
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Interactive Configuration"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo
+
+  interactiveConfigurationHeaderShown=true
+}
+
+function applyPriorPlistSelections() {
+  local plistPath="${1}"
+  local inferredRDNN=""
+  local inferredDeploymentMode=""
+
+  priorPlistPath="${plistPath}"
+  priorPlistImported=true
+
+  echo
+  echo "ℹ️  Importing supported values from: ${priorPlistPath}"
+
+  if [[ -z "${newRDNN}" || "${rdnnInferredFromPriorPlist}" == true ]]; then
+    inferredRDNN="$(inferRDNNFromPriorPlist "${priorPlistPath}")"
+    if [[ -n "${inferredRDNN}" ]]; then
+      echo "🔎 Inferred RDNN from prior plist: '${inferredRDNN}'"
+      newRDNN="${inferredRDNN}"
+      skipRDNNPrompt=true
+      rdnnInferredFromPriorPlist=true
+    fi
+  fi
+
+  if [[ "${skipModePrompt}" == false ]]; then
+    inferredDeploymentMode="$(inferDeploymentModeFromPriorPlist "${priorPlistPath}")"
+    if [[ -n "${inferredDeploymentMode}" ]]; then
+      deploymentMode="${inferredDeploymentMode}"
+      skipModePrompt=true
+      modeInferredFromPriorPlist=true
+      echo "🔎 Inferred deployment mode from prior plist: '${deploymentMode}'"
+    fi
+  fi
+}
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --help|-h)
-      echo
-      echo "Usage:"
-      echo "  zsh assemble.zsh [RDNN] [--lane dev|test|prod] [--interactive] [--help]"
-      echo
-      echo "Options:"
-      echo "  --lane <dev|test|prod>       Select deployment mode"
-      echo "  --interactive                Prompt for IT support, branding and restart policy values"
-      echo "  --help, -h                   Show this help"
-      echo
+      printUsage
       exit 0
       ;;
     --interactive)
@@ -186,6 +403,7 @@ while [[ $# -gt 0 ]]; do
       if [[ -n "${2:-}" ]] && [[ "${2}" =~ ^(dev|test|prod)$ ]]; then
         deploymentMode="${2}"
         skipModePrompt=true
+        modeInferredFromPriorPlist=false
         shift 2
       else
         echo "⚠️  Invalid lane: '${2:-}'. Valid options: dev, test, prod"
@@ -198,53 +416,25 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     *)
-      # Non-flag argument assumed to be RDNN
-      if [[ -z "${newRDNN}" ]]; then
-        echo "📥 RDNN provided via command-line argument: '${1}'"
-        newRDNN="${1}"
+      positionalArgument="$(normalizePathInput "${1}")"
+
+      if [[ -z "${priorPlistPath}" ]] && isPriorPlistArgument "${positionalArgument}"; then
+        priorPlistPath="$(validatePriorPlistPath "${positionalArgument}")" || exit 1
+        interactiveMode=true
+        priorPlistPrompted=true
+
+        echo "📥 Prior plist provided via command-line argument: '${priorPlistPath}'"
+        applyPriorPlistSelections "${priorPlistPath}"
+      elif [[ -z "${newRDNN}" || "${rdnnInferredFromPriorPlist}" == true ]]; then
+        echo "📥 RDNN provided via command-line argument: '${positionalArgument}'"
+        newRDNN="${positionalArgument}"
         skipRDNNPrompt=true
+        rdnnInferredFromPriorPlist=false
       fi
       shift
       ;;
   esac
 done
-
-# Prompt ONLY if not provided via argument
-if [[ "${skipRDNNPrompt}" == false ]]; then
-  if [[ -n "${currentRDNN}" ]]; then
-    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or ‘X’ to exit): " userRDNN
-
-    # Allow ‘X’ to exit
-    if [[ "${userRDNN}" == [Xx] ]]; then
-      echo "Exiting at user request."
-      exit 0
-    fi
-
-    newRDNN="${userRDNN:-${currentRDNN}}"
-  else
-    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or ‘X’ to exit): " newRDNN
-
-    # Allow ‘X’ to exit
-    if [[ "${newRDNN}" == [Xx] ]]; then
-      echo "Exiting at user request."
-      exit 0
-    fi
-  fi
-fi
-
-if ! [[ "${newRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
-  echo "❌ Invalid RDNN format."
-  exit 1
-fi
-
-# Preserve the original organizationScriptName from reminderDialog for plist naming
-newOrgScriptName="${currentOrgScriptName_reminder}"
-
-echo
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo
 
 
 
@@ -314,92 +504,369 @@ function normalizePastDeadlineRestartBehavior() {
   esac
 }
 
+function escapeSedReplacement() {
+  local escapedValue="${1}"
+
+  escapedValue="${escapedValue//\\/\\\\}"
+  escapedValue="${escapedValue//&/\\&}"
+  escapedValue="${escapedValue//|/\\|}"
+
+  echo "${escapedValue}"
+}
+
+function promptForPriorPlistImport() {
+  local candidatePath=""
+  local validatedPath=""
+
+  priorPlistPrompted=true
+  showInteractiveConfigurationHeader
+
+  while true; do
+    read -r "?Drag-and-drop an earlier DOR .plist to import [Return to skip] (or ‘X’ to exit): " candidatePath
+
+    if [[ "${candidatePath}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+
+    candidatePath="$(normalizePathInput "${candidatePath}")"
+
+    if [[ -z "${candidatePath}" ]]; then
+      priorPlistPath=""
+      priorPlistImported=false
+      return
+    fi
+
+    if ! validatedPath="$(validatePriorPlistPath "${candidatePath}")"; then
+      continue
+    fi
+
+    applyPriorPlistSelections "${validatedPath}"
+    return
+  done
+}
+
+function emitSupportedPlistPreferenceTypes() {
+  /usr/bin/awk '
+    BEGIN {
+      section = ""
+    }
+
+    /^declare -A preferenceConfiguration=\(/ {
+      section = "pref"
+      next
+    }
+
+    /^declare -A plistKeyMap=\(/ {
+      section = "map"
+      next
+    }
+
+    /^\)$/ {
+      section = ""
+      next
+    }
+
+    section == "pref" {
+      line = $0
+      if (line ~ /^[[:space:]]*\["[^"]+"\]="[^|"]+\|/) {
+        key = line
+        sub(/^[[:space:]]*\["/, "", key)
+        sub(/"\]=".*$/, "", key)
+
+        preferenceType = line
+        sub(/^[[:space:]]*\["[^"]+"\]="/, "", preferenceType)
+        sub(/\|.*$/, "", preferenceType)
+
+        preferenceTypeByConfigKey[key] = preferenceType
+      }
+      next
+    }
+
+    section == "map" {
+      line = $0
+      if (line ~ /^[[:space:]]*\["[^"]+"\]="[^"]+"/) {
+        key = line
+        sub(/^[[:space:]]*\["/, "", key)
+        sub(/"\]=".*$/, "", key)
+
+        plistKey = line
+        sub(/^[[:space:]]*\["[^"]+"\]="/, "", plistKey)
+        sub(/".*$/, "", plistKey)
+
+        plistKeyByConfigKey[key] = plistKey
+      }
+      next
+    }
+
+    END {
+      for (configKey in preferenceTypeByConfigKey) {
+        plistKey = (configKey in plistKeyByConfigKey) ? plistKeyByConfigKey[configKey] : configKey
+        print plistKey "|" preferenceTypeByConfigKey[configKey]
+      }
+    }
+  ' "${messageScript}" | LC_ALL=C sort
+}
+
+function extractPlistKeys() {
+  local plistPath="${1}"
+
+  sed -n 's/^[[:space:]]*<key>\([^<]*\)<\/key>[[:space:]]*$/\1/p' "${plistPath}"
+}
+
+function writePreferenceOverride() {
+  local plistPath="${1}"
+  local plistKey="${2}"
+  local preferenceType="${3}"
+  local preferenceValue="${4}"
+  local normalizedBoolean=""
+
+  case "${preferenceType}" in
+    numeric)
+      if [[ "${preferenceValue}" == <-> ]]; then
+        /usr/bin/plutil -replace "${plistKey}" -integer "${preferenceValue}" "${plistPath}"
+      else
+        echo "    ⚠️  Skipping invalid integer value '${preferenceValue}' for ${plistKey}"
+      fi
+      ;;
+    boolean)
+      normalizedBoolean="$(normalizeBoolean "${preferenceValue}")"
+      if [[ -n "${normalizedBoolean}" ]]; then
+        /usr/bin/plutil -replace "${plistKey}" -bool "${normalizedBoolean}" "${plistPath}"
+      else
+        echo "    ⚠️  Skipping invalid boolean value '${preferenceValue}' for ${plistKey}"
+      fi
+      ;;
+    string|*)
+      /usr/bin/plutil -replace "${plistKey}" -string "${preferenceValue}" "${plistPath}"
+      ;;
+  esac
+}
+
+function preferenceTypeForPlistKey() {
+  local targetKey="${1}"
+  shift
+
+  local preferenceLine=""
+  local candidateKey=""
+  local candidateType=""
+
+  for preferenceLine in "$@"; do
+    candidateKey="${preferenceLine%%|*}"
+    candidateType="${preferenceLine#*|}"
+
+    if [[ "${candidateKey}" == "${targetKey}" ]]; then
+      echo "${candidateType}"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+function applyImportedPreferences() {
+  local sourcePlist="${1}"
+  local targetPlist="${2}"
+  local emittedPreferenceTypes=""
+  local importedKey=""
+  local importedValue=""
+  local preferenceType=""
+  local preferenceLine=""
+  local candidateKey=""
+  local -a supportedPreferenceLines
+  local -A unsupportedImportedKeySet
+  local -a unsupportedImportedKeys
+
+  if ! emittedPreferenceTypes="$(emitSupportedPlistPreferenceTypes)"; then
+    echo "    ❌ Failed to determine supported preference types; aborting preference import."
+    return 1
+  fi
+
+  if [[ -z "${emittedPreferenceTypes}" ]]; then
+    echo "    ❌ No supported preference types were returned; aborting preference import."
+    return 1
+  fi
+
+  supportedPreferenceLines=("${(@f)${emittedPreferenceTypes}}")
+
+  while IFS= read -r importedKey; do
+    [[ -z "${importedKey}" ]] && continue
+    if ! preferenceType="$(preferenceTypeForPlistKey "${importedKey}" "${supportedPreferenceLines[@]}")"; then
+      unsupportedImportedKeySet["${importedKey}"]=1
+    fi
+  done < <(extractPlistKeys "${sourcePlist}")
+
+  if (( ${#unsupportedImportedKeySet[@]} > 0 )); then
+    unsupportedImportedKeys=("${(@ok)unsupportedImportedKeySet}")
+    echo "    ⚠️  Ignoring unsupported imported keys: ${(j:, :)unsupportedImportedKeys}"
+  fi
+
+  for preferenceLine in "${supportedPreferenceLines[@]}"; do
+    candidateKey="${preferenceLine%%|*}"
+    preferenceType="${preferenceLine#*|}"
+    importedKey="${candidateKey}"
+
+    if ! /usr/libexec/PlistBuddy -c "Print :${importedKey}" "${sourcePlist}" >/dev/null 2>&1; then
+      continue
+    fi
+
+    importedValue="$(
+      /usr/libexec/PlistBuddy -c "Print :${importedKey}" "${sourcePlist}" 2>/dev/null
+    )"
+
+    if [[ "${importedKey}" == "ScriptLog" ]]; then
+      if [[ "${importedValue:t}" == "${newRDNN}.log" ]]; then
+        resolvedScriptLogPath="${importedValue}"
+        echo "    ℹ️  Preserving imported ScriptLog: ${resolvedScriptLogPath}"
+      else
+        echo "    ⚠️  Imported ScriptLog basename '${importedValue:t}' does not match '${newRDNN}.log'; using ${resolvedScriptLogPath}"
+      fi
+      continue
+    fi
+
+    writePreferenceOverride "${targetPlist}" "${importedKey}" "${preferenceType}" "${importedValue}"
+  done
+
+  /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${targetPlist}"
+}
+
+if [[ "${interactiveMode}" == true && "${priorPlistPrompted}" == false ]]; then
+  promptForPriorPlistImport
+fi
+
+# Prompt ONLY if not provided via argument or inferred from a prior plist
+if [[ "${skipRDNNPrompt}" == false ]]; then
+  if [[ -n "${currentRDNN}" ]]; then
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or ‘X’ to exit): " userRDNN
+
+    if [[ "${userRDNN}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+
+    newRDNN="${userRDNN:-${currentRDNN}}"
+  else
+    read -r "?Enter Your Organization’s Reverse Domain Name Notation (or ‘X’ to exit): " newRDNN
+
+    if [[ "${newRDNN}" == [Xx] ]]; then
+      echo "Exiting at user request."
+      exit 0
+    fi
+  fi
+fi
+
+if ! [[ "${newRDNN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  echo "❌ Invalid RDNN format."
+  exit 1
+fi
+
+# Preserve the original organizationScriptName from reminderDialog for plist naming
+newOrgScriptName="${currentOrgScriptName_reminder}"
+resolvedScriptLogPath="/var/log/${newRDNN}.log"
+
+echo
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo
+
 if [[ "${interactiveMode}" == true ]]; then
   derivedDomain="$(rdnnToDomain "${newRDNN}")"
   if [[ -z "${derivedDomain}" ]]; then
     derivedDomain="company.com"
   fi
 
-  echo
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "IT Support, Branding & Restart Policy (Interactive)"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo
-
-  defaultSupportTeamName="IT Support"
-  defaultSupportTeamPhone="+1 (801) 555-1212"
-  defaultSupportTeamEmail="rescue@${derivedDomain}"
-  defaultSupportTeamWebsite="https://support.${derivedDomain}"
-  defaultEnableKnowledgeBase="YES"
-  defaultSupportKB="Update macOS on Mac"
-  defaultInfoButtonAction="${defaultSupportTeamWebsite}"
-  defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
-  defaultOrganizationOverlayIconURL="https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
-  defaultOrganizationOverlayIconURLdark="https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
-  defaultSwapOverlayAndLogo="NO"
-  defaultPastDeadlineRestartBehavior="Off"
-  defaultDaysPastDeadlineRestartWorkflow="2"
-
-  promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
-  promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
-  promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
-  promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
-  promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
-  enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
-  if [[ -z "${enableKnowledgeBase}" ]]; then
-    echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
-    enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
+  if [[ "${priorPlistPrompted}" == false ]]; then
+    promptForPriorPlistImport
   fi
 
-  if [[ "${enableKnowledgeBase}" == "true" ]]; then
-    promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
-
-    supportKbSlug="${supportKB// /-}"
-    defaultInfoButtonAction="${supportTeamWebsite}/${supportKbSlug}"
-    promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
-
-    defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
-    promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
-
-    infoButtonText="${supportKB}"
+  if [[ "${priorPlistImported}" == true ]]; then
+    echo ""
+    echo "ℹ️  Prior plist supplied; skipping IT support, branding and restart policy prompts."
+    echo ""
   else
-    supportKB=""
-    infoButtonAction=""
-    supportKBURL=""
-    infoButtonText="hide"
+
+    showInteractiveConfigurationHeader
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "IT Support, Branding & Restart Policy (Interactive)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "ℹ️  Knowledge Base features disabled; hiding 'infobutton', KB row in 'helpmessage' and QR help image."
-    echo ""
-  fi
 
-  promptWithDefault "Overlay Icon URL (Light)" "${defaultOrganizationOverlayIconURL}" "organizationOverlayIconURL"
-  promptWithDefault "Overlay Icon URL (Dark)" "${defaultOrganizationOverlayIconURLdark}" "organizationOverlayIconURLdark"
+    defaultSupportTeamName="IT Support"
+    defaultSupportTeamPhone="+1 (801) 555-1212"
+    defaultSupportTeamEmail="rescue@${derivedDomain}"
+    defaultSupportTeamWebsite="https://support.${derivedDomain}"
+    defaultEnableKnowledgeBase="YES"
+    defaultSupportKB="Update macOS on Mac"
+    defaultInfoButtonAction="${defaultSupportTeamWebsite}"
+    defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
+    defaultOrganizationOverlayIconURL="https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    defaultOrganizationOverlayIconURLdark="https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
+    defaultSwapOverlayAndLogo="NO"
+    defaultPastDeadlineRestartBehavior="Off"
+    defaultDaysPastDeadlineRestartWorkflow="2"
 
-  promptWithDefault "Swap Overlay and Logo (YES/NO)" "${defaultSwapOverlayAndLogo}" "swapOverlayAndLogo"
-  swapOverlayAndLogo="$(normalizeBoolean "${swapOverlayAndLogo}")"
-  if [[ -z "${swapOverlayAndLogo}" ]]; then
-    echo "⚠️  Invalid input for SwapOverlayAndLogo; defaulting to ${defaultSwapOverlayAndLogo}"
-    swapOverlayAndLogo="$(normalizeBoolean "${defaultSwapOverlayAndLogo}")"
-  fi
-
-  while true; do
-    promptWithDefault "Past-deadline Restart Behavior (Off / [P]rompt / [F]orce)" "${defaultPastDeadlineRestartBehavior}" "pastDeadlineRestartBehavior"
-    normalizedPastDeadlineRestartBehavior="$(normalizePastDeadlineRestartBehavior "${pastDeadlineRestartBehavior}")"
-    if [[ -n "${normalizedPastDeadlineRestartBehavior}" ]]; then
-      pastDeadlineRestartBehavior="${normalizedPastDeadlineRestartBehavior}"
-      break
+    promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
+    promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
+    promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
+    promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
+    promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
+    enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
+    if [[ -z "${enableKnowledgeBase}" ]]; then
+      echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
+      enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
     fi
-    echo "⚠️  Invalid input for PastDeadlineRestartBehavior; valid values: Off, Prompt (or P), Force (or F)."
-  done
 
-  if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+    if [[ "${enableKnowledgeBase}" == "true" ]]; then
+      promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
+
+      supportKbSlug="${supportKB// /-}"
+      defaultInfoButtonAction="${supportTeamWebsite}/${supportKbSlug}"
+      promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
+
+      defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
+      promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+
+      infoButtonText="${supportKB}"
+    else
+      supportKB=""
+      infoButtonAction=""
+      supportKBURL=""
+      infoButtonText="hide"
+      echo ""
+      echo "ℹ️  Knowledge Base features disabled; hiding 'infobutton', KB row in 'helpmessage' and QR help image."
+      echo ""
+    fi
+
+    promptWithDefault "Overlay Icon URL (Light)" "${defaultOrganizationOverlayIconURL}" "organizationOverlayIconURL"
+    promptWithDefault "Overlay Icon URL (Dark)" "${defaultOrganizationOverlayIconURLdark}" "organizationOverlayIconURLdark"
+
+    promptWithDefault "Swap Overlay and Logo (YES/NO)" "${defaultSwapOverlayAndLogo}" "swapOverlayAndLogo"
+    swapOverlayAndLogo="$(normalizeBoolean "${swapOverlayAndLogo}")"
+    if [[ -z "${swapOverlayAndLogo}" ]]; then
+      echo "⚠️  Invalid input for SwapOverlayAndLogo; defaulting to ${defaultSwapOverlayAndLogo}"
+      swapOverlayAndLogo="$(normalizeBoolean "${defaultSwapOverlayAndLogo}")"
+    fi
+
     while true; do
-      promptWithDefault "Days Past Deadline Before Restart Workflow (0-999)" "${defaultDaysPastDeadlineRestartWorkflow}" "daysPastDeadlineRestartWorkflow"
-      if [[ "${daysPastDeadlineRestartWorkflow}" == <-> ]] && (( daysPastDeadlineRestartWorkflow >= 0 && daysPastDeadlineRestartWorkflow <= 999 )); then
+      promptWithDefault "Past-deadline Restart Behavior (Off / [P]rompt / [F]orce)" "${defaultPastDeadlineRestartBehavior}" "pastDeadlineRestartBehavior"
+      normalizedPastDeadlineRestartBehavior="$(normalizePastDeadlineRestartBehavior "${pastDeadlineRestartBehavior}")"
+      if [[ -n "${normalizedPastDeadlineRestartBehavior}" ]]; then
+        pastDeadlineRestartBehavior="${normalizedPastDeadlineRestartBehavior}"
         break
       fi
-      echo "⚠️  Invalid input for DaysPastDeadlineRestartWorkflow; enter an integer from 0 to 999."
+      echo "⚠️  Invalid input for PastDeadlineRestartBehavior; valid values: Off, Prompt (or P), Force (or F)."
     done
+
+    if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+      while true; do
+        promptWithDefault "Days Past Deadline Before Restart Workflow (0-999)" "${defaultDaysPastDeadlineRestartWorkflow}" "daysPastDeadlineRestartWorkflow"
+        if [[ "${daysPastDeadlineRestartWorkflow}" == <-> ]] && (( daysPastDeadlineRestartWorkflow >= 0 && daysPastDeadlineRestartWorkflow <= 999 )); then
+          break
+        fi
+        echo "⚠️  Invalid input for DaysPastDeadlineRestartWorkflow; enter an integer from 0 to 999."
+      done
+    fi
   fi
 fi
 
@@ -646,48 +1113,51 @@ if [[ -f "${plistSample}" ]]; then
     -e "s|<!-- Generated on: .* -->|<!-- Generated on: ${timestamp} -->|" \
     "${plistOutput}"
 
-  # Update scriptLog
-  sed -i '' -e '/<key>ScriptLog<\/key>/{
-    N
-    s|<key>ScriptLog</key>.*<string>/var/log/org\.churchofjesuschrist\.log</string>|<key>ScriptLog</key>\
-    <string>/var/log/'${newRDNN}'.log</string>|
-}' "$plistOutput"
-
   if [[ "${interactiveMode}" == true ]]; then
-    echo "    🔧 Applying IT support, branding and restart policy values …"
-    /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
-    /usr/bin/plutil -replace SupportTeamPhone -string "${supportTeamPhone}" "${plistOutput}"
-    /usr/bin/plutil -replace SupportTeamEmail -string "${supportTeamEmail}" "${plistOutput}"
-    /usr/bin/plutil -replace SupportTeamWebsite -string "${supportTeamWebsite}" "${plistOutput}"
-    /usr/bin/plutil -replace SupportKB -string "${supportKB}" "${plistOutput}"
-    /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
-    /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
-    /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
-    /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
-    /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
-    /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
-    /usr/bin/plutil -replace PastDeadlineRestartBehavior -string "${pastDeadlineRestartBehavior}" "${plistOutput}"
+    if [[ "${priorPlistImported}" == true ]]; then
+      echo "    🔧 Importing supported values from prior plist …"
+      if ! applyImportedPreferences "${priorPlistPath}" "${plistOutput}"; then
+        echo "❌ Failed to import supported values from prior plist."
+        exit 1
+      fi
+    else
+      echo "    🔧 Applying IT support, branding and restart policy values …"
+      /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
+      /usr/bin/plutil -replace SupportTeamPhone -string "${supportTeamPhone}" "${plistOutput}"
+      /usr/bin/plutil -replace SupportTeamEmail -string "${supportTeamEmail}" "${plistOutput}"
+      /usr/bin/plutil -replace SupportTeamWebsite -string "${supportTeamWebsite}" "${plistOutput}"
+      /usr/bin/plutil -replace SupportKB -string "${supportKB}" "${plistOutput}"
+      /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
+      /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
+      /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
+      /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
+      /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
+      /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
+      /usr/bin/plutil -replace PastDeadlineRestartBehavior -string "${pastDeadlineRestartBehavior}" "${plistOutput}"
 
-    if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
-      /usr/bin/plutil -replace DaysPastDeadlineRestartWorkflow -integer "${daysPastDeadlineRestartWorkflow}" "${plistOutput}"
-    fi
-
-    if [[ "${enableKnowledgeBase}" != "true" ]]; then
-      /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
-      /usr/bin/plutil -replace SupportAssistanceMessage -string "" "${plistOutput}"
-
-      currentHelpMessage="$(/usr/bin/plutil -extract HelpMessage raw -o - "${plistOutput}" 2>/dev/null || true)"
-      if [[ -n "${currentHelpMessage}" ]]; then
-        updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
-        /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
+      if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+        /usr/bin/plutil -replace DaysPastDeadlineRestartWorkflow -integer "${daysPastDeadlineRestartWorkflow}" "${plistOutput}"
       fi
 
-      messageWithKbHidden="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
-      if [[ "${messageWithKbHidden}" == *"(?) button"* ]]; then
-        echo "    ⚠️  Message still references '(?) button' while Knowledge Base is disabled."
+      if [[ "${enableKnowledgeBase}" != "true" ]]; then
+        /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
+        /usr/bin/plutil -replace SupportAssistanceMessage -string "" "${plistOutput}"
+
+        currentHelpMessage="$(/usr/bin/plutil -extract HelpMessage raw -o - "${plistOutput}" 2>/dev/null || true)"
+        if [[ -n "${currentHelpMessage}" ]]; then
+          updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
+          /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
+        fi
+
+        messageWithKbHidden="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
+        if [[ "${messageWithKbHidden}" == *"(?) button"* ]]; then
+          echo "    ⚠️  Message still references '(?) button' while Knowledge Base is disabled."
+        fi
       fi
     fi
   fi
+
+  /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${plistOutput}"
 
   # Cleanup
   rm -f "${plistOutput}.bak" 2>/dev/null || true
@@ -836,12 +1306,10 @@ outputScript="${newOutputScript}"
 echo
 echo "🔁 Updating scriptLog path based on RDNN …"
 
-# Extract the first two components of the RDNN
-topTwoRDNN="$(printf '%s' "${newRDNN}" | cut -d'.' -f1-2)"
-
 # Replace only the Client-side Log definition
+escapedScriptLogPath="$(escapeSedReplacement "${resolvedScriptLogPath}")"
 sed -i.bak \
-  -e "s|^scriptLog=\"/var/log/.*\"|scriptLog=\"/var/log/${topTwoRDNN}.log\"|" \
+  -e "s|^scriptLog=\"[^\"]*\"|scriptLog=\"${escapedScriptLogPath}\"|" \
   "${outputScript}"
 
 rm -f "${outputScript}.bak" 2>/dev/null || true
@@ -870,6 +1338,11 @@ case "${deploymentMode}" in
   dev)
     echo "  Development Artifacts Generated:"
     echo "    - Legacy 'Sample' placeholders replaced with '${placeholderMarker}'"
+    if [[ "${priorPlistImported}" == true ]]; then
+      echo "    - Supported configuration values imported from prior plist"
+      echo "    - Prior plist: ${priorPlistPath}"
+      echo "    - ScriptLog resolved to '${resolvedScriptLogPath}'"
+    fi
     echo "    - Safe to deploy for local validation"
     echo "    - NOT suitable for production use"
     ;;
@@ -883,13 +1356,19 @@ case "${deploymentMode}" in
     echo "  Production Artifacts Generated:"
     echo "    - All placeholder text removed (clean output)"
     if [[ "${interactiveMode}" == true ]]; then
-      echo "    - IT support, branding and restart policy values applied from prompts"
-      echo "    - Past-deadline restart policy set to '${pastDeadlineRestartBehavior}'"
-      if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
-        echo "    - Restart workflow begins ${daysPastDeadlineRestartWorkflow} day(s) past deadline"
-      fi
-      if [[ "${enableKnowledgeBase}" != "true" ]]; then
-        echo "    - Knowledge Base surfaces hidden (Info button, KB row in help, QR help image)"
+      if [[ "${priorPlistImported}" == true ]]; then
+        echo "    - Supported configuration values imported from prior plist"
+        echo "    - Prior plist: ${priorPlistPath}"
+        echo "    - ScriptLog resolved to '${resolvedScriptLogPath}'"
+      else
+        echo "    - IT support, branding and restart policy values applied from prompts"
+        echo "    - Past-deadline restart policy set to '${pastDeadlineRestartBehavior}'"
+        if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
+          echo "    - Restart workflow begins ${daysPastDeadlineRestartWorkflow} day(s) past deadline"
+        fi
+        if [[ "${enableKnowledgeBase}" != "true" ]]; then
+          echo "    - Knowledge Base surfaces hidden (Info button, KB row in help, QR help image)"
+        fi
       fi
     else
       echo "    - Ensure you've customized values before deployment"
@@ -898,7 +1377,9 @@ case "${deploymentMode}" in
     echo
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
-    if [[ "${interactiveMode}" == true && "${enableKnowledgeBase}" != "true" ]]; then
+    if [[ "${priorPlistImported}" == true ]]; then
+      echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"
+    elif [[ "${interactiveMode}" == true && "${enableKnowledgeBase}" != "true" ]]; then
       echo "    - Verify KB surfaces are hidden (Info button + KB row + QR help image)"
     else
       echo "    - Support KB title/link and Info button URL"

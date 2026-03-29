@@ -281,7 +281,7 @@ zsh assemble.zsh
 3. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0 beta)
+🧩 Assemble DDM OS Reminder (3.0.0)
 ===============================================================
 
 Full Paths:

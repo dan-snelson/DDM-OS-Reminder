@@ -637,7 +637,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0b3+)**:
+**Locale Behavior (3.0.0+)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language (`de`, `fr`, fallback `en`)
 - Numeric-only formats (for example `%d.%m.%Y %H:%M`) are unchanged across locales
 
@@ -1360,7 +1360,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 3.0.0b3 |
+| `{scriptVersion}` | System | Script version | 3.0.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1839,8 +1839,8 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
-| 3.0.0b3 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
-| 3.0.0b3 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
+| 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
+| 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 
 ---
 

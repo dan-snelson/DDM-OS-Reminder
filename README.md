@@ -1,7 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (3.0.0b3)
-> Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **locale-aware deadline date rendering** while preserving profile-driven localization
+# DDM OS Reminder (3.0.0)
+
+> A major update to Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **multiple language** support, significantly more robust **reminder display logic** and streamlined **upgrade functionality**
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -11,15 +12,17 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 <br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
-**DDM OS Reminder** evaluates recent DDM declaration state in `/var/log/install.log`, prefers the most authoritative declaration entries, safely handles padded enforcement dates, and leverages a [swiftDialog](https://github.com/swiftDialog/swiftDialog/wiki)-enabled script plus a LaunchDaemon to deliver a more prominent end-user dialog that reminds users to update their Mac to comply with DDM-enforced macOS update deadlines.
+:new: **DDM OS Reminder** now resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity using a declaration-aware resolver that prioritizes applicable enforced-install signals over generic matches, suppresses reminders when declaration state is missing, conflicting, invalid, or no longer maps to an available update, and only honors `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration, before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
 
+---
+
 ## Features
 
 - **Customizable**: Easily customize the reminder dialog’s title, message, icons (including light/dark overlay icons) and button text to fit your organization’s requirements by distributing a Configuration Profile via any MDM solution.
-- **Multi-language Ready**: Configure localized profile keys (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) plus `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) to automatically match logged-in user language or enforce a specific locale.
+- **Multi-language Support**: Configure localized profile keys (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) plus `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) to automatically match logged-in user language or enforce a specific locale.
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
@@ -31,7 +34,143 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 <img src="images/restartPrompt.png" alt="Prompt: Restart Your Mac" width="400" /> <img src="images/restartForce.png" alt="Force: Your Mac is restarting" width="400" />
 
-## Screenshot Localization Workflow
+---
+
+## :new: Upgrading
+
+Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
+
+<details>
+<summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>
+
+```
+zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
+
+===============================================================
+🧩 Assemble DDM OS Reminder (3.0.0)
+===============================================================
+
+Full Paths:
+
+        Reminder Dialog: DDM-OS-Reminder/reminderDialog.zsh
+LaunchDaemon Management: DDM-OS-Reminder/launchDaemonManagement.zsh
+      Working Directory: DDM-OS-Reminder
+    Resources Directory: DDM-OS-Reminder/Resources
+
+🔍 Checking Reverse Domain Name Notation …
+
+    Reminder Dialog (reminderDialog.zsh):
+        reverseDomainNameNotation = org.churchofjesuschrist
+        organizationScriptName    = dorm
+
+    LaunchDaemon Management (launchDaemonManagement.zsh):
+        reverseDomainNameNotation = org.churchofjesuschrist
+        organizationScriptName    = dor
+
+
+📥 Prior plist provided via command-line argument: '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
+
+ℹ️  Importing supported values from: /Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist
+🔎 Inferred RDNN from prior plist: 'us.snelson'
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Using 'us.snelson' as the Reverse Domain Name Notation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Interactive Configuration
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+ℹ️  Prior plist supplied; skipping IT support, branding and restart policy prompts.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Select Deployment Mode:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1) Development - Keep placeholder text for local testing
+  2) Testing     - Replace placeholder text with 'TEST' for staging
+  3) Production  - Remove placeholder text for clean deployment
+
+  [Press ‘X’ to exit]
+
+Enter mode [1/2/3]: 3
+
+📦 Deployment Mode: prod
+
+🔧 Inserting reminderDialog.zsh into launchDaemonManagement.zsh  …
+
+✅ Assembly complete [2026-03-28-151200]
+   → Artifacts/ddm-os-reminder-assembled-2026-03-28-151200.zsh
+
+🔁 Updating reverseDomainNameNotation to 'us.snelson' in assembled script …
+
+🔍 Performing syntax check on 'Artifacts/ddm-os-reminder-assembled-2026-03-28-151200.zsh' …
+    ✅ Syntax check passed.
+
+🗂  Generating LaunchDaemon plist …
+    🗂  Creating us.snelson.dorm plist from /Users/dan/Documents/GitHub/dan-snelson/DDM-OS-Reminder/Resources/sample.plist …
+
+    🔧 Updating internal plist content …
+    🔓 Production mode: removing placeholder text for clean deployment
+    🔧 Importing supported values from prior plist …
+    ℹ️  Preserving imported ScriptLog: /var/log/us.snelson.log
+   → Artifacts/us.snelson.dorm-2026-03-28-151200-prod.plist
+
+🧩 Generating Configuration Profile (.mobileconfig) …
+   → Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig
+
+🔍 Performing syntax check on 'Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig' …
+    ✅ Profile syntax check passed.
+
+🔁 Renaming assembled script …
+
+🔁 Updating scriptLog path based on RDNN …
+
+🏁 Done.
+
+Deployment Artifacts:
+        Assembled Script: Artifacts/ddm-os-reminder-us.snelson-2026-03-28-151200-prod.zsh
+    Organizational Plist: Artifacts/us.snelson.dorm-2026-03-28-151200-prod.plist
+   Configuration Profile: Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  Important Next Steps:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Production Artifacts Generated:
+    - All placeholder text removed (clean output)
+    - Supported configuration values imported from prior plist
+    - Prior plist: /Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist
+    - ScriptLog resolved to '/var/log/us.snelson.log'
+
+  Recommended review items:
+    - Support team name, phone, email, website
+    - Imported ScriptLog path and any carried-forward KB/help visibility
+    - Organization overlay icon URLs
+    - Button labels and dialog messages
+
+  Files to review:
+    - Artifacts/us.snelson.dorm-2026-03-28-151200-prod.plist
+    - Artifacts/us.snelson.dorm-2026-03-28-151200-prod-unsigned.mobileconfig
+
+===============================================================
+
+```
+
+</details>
+
+---
+
+## :new: Multi-language Support
+
+<img width="350" alt="3 0 0a2_fr" src="https://github.com/user-attachments/assets/b623cc09-59ae-450b-a40e-53f8e2a367e0" />
+<img width="350" alt="3 0 0a2_de" src="https://github.com/user-attachments/assets/79ae0134-966b-43fc-ac03-3ad229a38220" />
+<img width="350" alt="Screenshot 2026-03-10 at 3 03 58 PM" src="https://github.com/user-attachments/assets/d69da93c-b3b9-4f62-ae85-2c7a78e063aa" />
+<img width="350" alt="Screenshot 2026-03-10 at 3 03 11 PM" src="https://github.com/user-attachments/assets/b2d24289-cbce-490a-983e-e9d493ec123f" />
+<img width="350" alt="Screenshot 2026-03-10 at 3 01 53 PM" src="https://github.com/user-attachments/assets/4f125565-7514-45e1-ace2-a91af3a6904f" />
 
 Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
 
@@ -72,7 +211,7 @@ Optional verification in log output:
 - `LanguageOverride is 'pt'; using 'pt'`
 - `LanguageOverride is 'ja'; using 'ja'`
 
-<img src="images/3.0.0a2_de.png" alt="3.0.0a2_de" width="400" /> <img src="images/3.0.0a2_fr.png" alt="3.0.0a2_fr" width="400" />
+
 
 ## Deadline Date Format
 

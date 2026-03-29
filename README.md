@@ -165,11 +165,20 @@ Deployment Artifacts:
 
 ## :new: Multi-language Support
 
-<img width="350" alt="French localization screenshot" src="images/3.0.0_french.png" />
-<img width="350" alt="German localization screenshot" src="images/3.0.0_german.png" />
-<img width="350" alt="Japanese localization screenshot" src="images/3.0.0_japanese.png" />
-<img width="350" alt="Portuguese localization screenshot" src="images/3.0.0_portuguese.png" />
-<img width="350" alt="Spanish localization screenshot" src="images/3.0.0_spanish.png" />
+<table>
+  <tr>
+    <td><img width="350" alt="French localization screenshot" src="images/3.0.0_french.png" /></td>
+    <td><img width="350" alt="German localization screenshot" src="images/3.0.0_german.png" /></td>
+  </tr>
+  <tr>
+    <td><img width="350" alt="Japanese localization screenshot" src="images/3.0.0_japanese.png" /></td>
+    <td><img width="350" alt="Portuguese localization screenshot" src="images/3.0.0_portuguese.png" /></td>
+  </tr>
+  <tr>
+    <td><img width="350" alt="Spanish localization screenshot" src="images/3.0.0_spanish.png" /></td>
+    <td></td>
+  </tr>
+</table>
 
 Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
 

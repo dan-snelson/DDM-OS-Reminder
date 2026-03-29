@@ -36,6 +36,7 @@
 ####################################################################################################
 
 set -euo pipefail
+autoload -Uz is-at-least
 scriptVersion="3.0.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
@@ -546,35 +547,65 @@ function promptForPriorPlistImport() {
 }
 
 function emitSupportedPlistPreferenceTypes() {
-  if [[ ! -x /usr/bin/perl ]]; then
-    echo "❌ /usr/bin/perl is required to inspect supported preference types during plist import" >&2
-    return 1
-  fi
-
-  /usr/bin/perl -ne '
-    if (/^declare -A preferenceConfiguration=\(/) { $section = "pref"; next }
-    if (/^declare -A plistKeyMap=\(/) { $section = "map"; next }
-    if (/^\)$/) { $section = ""; next }
-
-    if ($section eq "pref" && /^\s*\["([^"]+)"\]="([^|"]+)\|/) {
-      $preferenceTypeByConfigKey{$1} = $2;
-      next;
+  /usr/bin/awk '
+    BEGIN {
+      section = ""
     }
 
-    if ($section eq "map" && /^\s*\["([^"]+)"\]="([^"]+)"/) {
-      $plistKeyByConfigKey{$1} = $2;
-      next;
+    /^declare -A preferenceConfiguration=\(/ {
+      section = "pref"
+      next
+    }
+
+    /^declare -A plistKeyMap=\(/ {
+      section = "map"
+      next
+    }
+
+    /^\)$/ {
+      section = ""
+      next
+    }
+
+    section == "pref" {
+      line = $0
+      if (line ~ /^[[:space:]]*\["[^"]+"\]="[^|"]+\|/) {
+        key = line
+        sub(/^[[:space:]]*\["/, "", key)
+        sub(/"\]=".*$/, "", key)
+
+        preferenceType = line
+        sub(/^[[:space:]]*\["[^"]+"\]="/, "", preferenceType)
+        sub(/\|.*$/, "", preferenceType)
+
+        preferenceTypeByConfigKey[key] = preferenceType
+      }
+      next
+    }
+
+    section == "map" {
+      line = $0
+      if (line ~ /^[[:space:]]*\["[^"]+"\]="[^"]+"/) {
+        key = line
+        sub(/^[[:space:]]*\["/, "", key)
+        sub(/"\]=".*$/, "", key)
+
+        plistKey = line
+        sub(/^[[:space:]]*\["[^"]+"\]="/, "", plistKey)
+        sub(/".*$/, "", plistKey)
+
+        plistKeyByConfigKey[key] = plistKey
+      }
+      next
     }
 
     END {
-      for my $configKey (sort keys %preferenceTypeByConfigKey) {
-        my $plistKey = exists $plistKeyByConfigKey{$configKey}
-          ? $plistKeyByConfigKey{$configKey}
-          : $configKey;
-        print "$plistKey|$preferenceTypeByConfigKey{$configKey}\n";
+      for (configKey in preferenceTypeByConfigKey) {
+        plistKey = (configKey in plistKeyByConfigKey) ? plistKeyByConfigKey[configKey] : configKey
+        print plistKey "|" preferenceTypeByConfigKey[configKey]
       }
     }
-  ' "${messageScript}"
+  ' "${messageScript}" | LC_ALL=C sort
 }
 
 function extractPlistKeys() {
@@ -636,6 +667,7 @@ function preferenceTypeForPlistKey() {
 function applyImportedPreferences() {
   local sourcePlist="${1}"
   local targetPlist="${2}"
+  local emittedPreferenceTypes=""
   local importedKey=""
   local importedValue=""
   local preferenceType=""
@@ -645,7 +677,17 @@ function applyImportedPreferences() {
   local -A unsupportedImportedKeySet
   local -a unsupportedImportedKeys
 
-  supportedPreferenceLines=("${(@f)$(emitSupportedPlistPreferenceTypes)}")
+  if ! emittedPreferenceTypes="$(emitSupportedPlistPreferenceTypes)"; then
+    echo "    ❌ Failed to determine supported preference types; aborting preference import."
+    return 1
+  fi
+
+  if [[ -z "${emittedPreferenceTypes}" ]]; then
+    echo "    ❌ No supported preference types were returned; aborting preference import."
+    return 1
+  fi
+
+  supportedPreferenceLines=("${(@f)${emittedPreferenceTypes}}")
 
   while IFS= read -r importedKey; do
     [[ -z "${importedKey}" ]] && continue
@@ -1074,7 +1116,10 @@ if [[ -f "${plistSample}" ]]; then
   if [[ "${interactiveMode}" == true ]]; then
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    🔧 Importing supported values from prior plist …"
-      applyImportedPreferences "${priorPlistPath}" "${plistOutput}"
+      if ! applyImportedPreferences "${priorPlistPath}" "${plistOutput}"; then
+        echo "❌ Failed to import supported values from prior plist."
+        exit 1
+      fi
     else
       echo "    🔧 Applying IT support, branding and restart policy values …"
       /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
@@ -1293,6 +1338,11 @@ case "${deploymentMode}" in
   dev)
     echo "  Development Artifacts Generated:"
     echo "    - Legacy 'Sample' placeholders replaced with '${placeholderMarker}'"
+    if [[ "${priorPlistImported}" == true ]]; then
+      echo "    - Supported configuration values imported from prior plist"
+      echo "    - Prior plist: ${priorPlistPath}"
+      echo "    - ScriptLog resolved to '${resolvedScriptLogPath}'"
+    fi
     echo "    - Safe to deploy for local validation"
     echo "    - NOT suitable for production use"
     ;;

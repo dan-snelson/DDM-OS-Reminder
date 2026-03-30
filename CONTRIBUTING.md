@@ -1,4 +1,4 @@
-# Contributing to DDM OS Reminder (3.0.0)
+# Contributing to DDM OS Reminder (3.1.0b2)
 
 First, thank you for your interest in contributing to **DDM OS Reminder**! Community contributions have already greatly improved this project.
 
@@ -7,6 +7,10 @@ You're invited to discuss your contributions via the [Mac Admins Slack](https:/
 ## Pull Requests
 
 When submitting a Pull Request, please submit against the `development` branch (unless requested otherwise) and ensure your changes are well-documented and tested. Include a clear description of the changes made and the purpose of the contribution.
+
+### Localization Contributions
+
+For additional language support, contributors only need to edit [Resources/sample.plist](Resources/sample.plist). The runtime defaults and generated plist/mobileconfig output are derived from that localization surface.
 
 ### Branching Strategy
 

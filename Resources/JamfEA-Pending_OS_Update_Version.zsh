@@ -1,5 +1,6 @@
 #!/bin/zsh --no-rcs
 # EA: DDM Pending OS Update Version
+# Version: 3.0.1
 # Reports a pending DDM-enforced macOS update version when install.log state is trustworthy.
 # Created by: @robjschroeder 10.10.2025
 # Hardened to fail closed on conflicting or invalid DDM declaration state
@@ -75,7 +76,10 @@ function resolveDDMEnforcementFromInstallLog() {
             sourceType = ""
             sourcePriority = 0
 
-            if (index($0, "declarationFromKeys]: Falling back to default applicable declaration")) {
+            if (index($0, "declarationFromKeys]: Found currently applicable declaration")) {
+                sourceType = "currentApplicableDeclaration"
+                sourcePriority = 4
+            } else if (index($0, "declarationFromKeys]: Falling back to default applicable declaration")) {
                 sourceType = "defaultApplicableDeclaration"
                 sourcePriority = 3
             } else if (index($0, "Found DDM enforced install (")) {
@@ -113,20 +117,27 @@ function resolveDDMEnforcementFromInstallLog() {
         }
 
         END {
-            highestPriority = 0
+            latestTimestamp = ""
             for (candidateKey in candidateTimestamp) {
-                if (candidatePriority[candidateKey] > highestPriority) {
+                if (latestTimestamp == "" || candidateTimestamp[candidateKey] > latestTimestamp) {
+                    latestTimestamp = candidateTimestamp[candidateKey]
+                }
+            }
+
+            if (latestTimestamp == "") {
+                exit 20
+            }
+
+            highestPriority = 0
+            filteredCount = 0
+            for (candidateKey in candidateTimestamp) {
+                if (candidateTimestamp[candidateKey] == latestTimestamp && candidatePriority[candidateKey] > highestPriority) {
                     highestPriority = candidatePriority[candidateKey]
                 }
             }
 
-            if (highestPriority == 0) {
-                exit 20
-            }
-
-            filteredCount = 0
             for (candidateKey in candidateTimestamp) {
-                if (candidatePriority[candidateKey] == highestPriority) {
+                if (candidateTimestamp[candidateKey] == latestTimestamp && candidatePriority[candidateKey] == highestPriority) {
                     filteredCount++
                     filteredCandidate[filteredCount] = candidateKey
                 }

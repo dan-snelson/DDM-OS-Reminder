@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 3.0.1 (30-Mar-2026)
+- Fixed DDM declaration resolution for newer macOS `softwareupdated` log patterns by recognizing `Found currently applicable declaration` entries and preferring the most recent declaration state before applying source priority. (thanks for the assist, @phillnz!)
+- Updated `reminderDialog.zsh` plus the bundled Jamf Pending OS Update EAs so real pending updates continue to resolve correctly when stale older declaration lines still exist in the recent `install.log` window.
+
 ### Version 3.0.0 (29-Mar-2026)
 - Hardened `reminderDialog.zsh` DDM resolution by replacing the old `EnforcedInstallDate | tail -n 1` heuristic with a recent-window resolver that:
     - prioritizes `default applicable declaration` and `Found DDM enforced install` over generic `EnforcedInstallDate` matches

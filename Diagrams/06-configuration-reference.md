@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Complete reference guide for all 73 configurable preferences in DDM OS Reminder.
+Complete reference guide for all configurable preferences in DDM OS Reminder.
 
 ## Table of Contents
 
@@ -14,6 +14,7 @@ Complete reference guide for all 73 configurable preferences in DDM OS Reminder.
   - [Dialog UI Text](#6-dialog-ui-text)
   - [Update Staging Messages](#7-update-staging-messages)
   - [Warning Messages](#8-warning-messages)
+  - [Dynamic Localization Primitives](#9-dynamic-localization-primitives)
 - [Placeholder Reference](#placeholder-reference)
 - [Common Configuration Scenarios](#common-configuration-scenarios)
 - [Configuration Methods](#configuration-methods)
@@ -52,40 +53,127 @@ Complete reference guide for all 73 configurable preferences in DDM OS Reminder.
 | supportAssistanceMessageLocalizedEn | SupportAssistanceMessageLocalized_en | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedDe | SupportAssistanceMessageLocalized_de | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedFr | SupportAssistanceMessageLocalized_fr | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedEs | SupportAssistanceMessageLocalized_es | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedNl | SupportAssistanceMessageLocalized_nl | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedPt | SupportAssistanceMessageLocalized_pt | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedJa | SupportAssistanceMessageLocalized_ja | String | [Localized support sentence] | Localization |
 | languageOverride | LanguageOverride | String | auto | Localization |
 | titleLocalizedEn | TitleLocalized_en | String | [Localized title] | Localization |
 | titleLocalizedDe | TitleLocalized_de | String | [Localized title] | Localization |
 | titleLocalizedFr | TitleLocalized_fr | String | [Localized title] | Localization |
+| titleLocalizedEs | TitleLocalized_es | String | [Localized title] | Localization |
+| titleLocalizedNl | TitleLocalized_nl | String | [Localized title] | Localization |
+| titleLocalizedPt | TitleLocalized_pt | String | [Localized title] | Localization |
+| titleLocalizedJa | TitleLocalized_ja | String | [Localized title] | Localization |
 | button1textLocalizedEn | Button1TextLocalized_en | String | [Localized button text] | Localization |
 | button1textLocalizedDe | Button1TextLocalized_de | String | [Localized button text] | Localization |
 | button1textLocalizedFr | Button1TextLocalized_fr | String | [Localized button text] | Localization |
+| button1textLocalizedEs | Button1TextLocalized_es | String | [Localized button text] | Localization |
+| button1textLocalizedNl | Button1TextLocalized_nl | String | [Localized button text] | Localization |
+| button1textLocalizedPt | Button1TextLocalized_pt | String | [Localized button text] | Localization |
+| button1textLocalizedJa | Button1TextLocalized_ja | String | [Localized button text] | Localization |
 | button2textLocalizedEn | Button2TextLocalized_en | String | [Localized button text] | Localization |
 | button2textLocalizedDe | Button2TextLocalized_de | String | [Localized button text] | Localization |
 | button2textLocalizedFr | Button2TextLocalized_fr | String | [Localized button text] | Localization |
+| button2textLocalizedEs | Button2TextLocalized_es | String | [Localized button text] | Localization |
+| button2textLocalizedNl | Button2TextLocalized_nl | String | [Localized button text] | Localization |
+| button2textLocalizedPt | Button2TextLocalized_pt | String | [Localized button text] | Localization |
+| button2textLocalizedJa | Button2TextLocalized_ja | String | [Localized button text] | Localization |
 | infobuttontextLocalizedEn | InfoButtonTextLocalized_en | String | [Localized button text] | Localization |
 | infobuttontextLocalizedDe | InfoButtonTextLocalized_de | String | [Localized button text] | Localization |
 | infobuttontextLocalizedFr | InfoButtonTextLocalized_fr | String | [Localized button text] | Localization |
+| infobuttontextLocalizedEs | InfoButtonTextLocalized_es | String | [Localized button text] | Localization |
+| infobuttontextLocalizedNl | InfoButtonTextLocalized_nl | String | [Localized button text] | Localization |
+| infobuttontextLocalizedPt | InfoButtonTextLocalized_pt | String | [Localized button text] | Localization |
+| infobuttontextLocalizedJa | InfoButtonTextLocalized_ja | String | [Localized button text] | Localization |
 | messageLocalizedEn | MessageLocalized_en | String | [Localized message] | Localization |
 | messageLocalizedDe | MessageLocalized_de | String | [Localized message] | Localization |
 | messageLocalizedFr | MessageLocalized_fr | String | [Localized message] | Localization |
+| messageLocalizedEs | MessageLocalized_es | String | [Localized message] | Localization |
+| messageLocalizedNl | MessageLocalized_nl | String | [Localized message] | Localization |
+| messageLocalizedPt | MessageLocalized_pt | String | [Localized message] | Localization |
+| messageLocalizedJa | MessageLocalized_ja | String | [Localized message] | Localization |
 | helpmessageLocalizedEn | HelpMessageLocalized_en | String | [Localized help message] | Localization |
 | helpmessageLocalizedDe | HelpMessageLocalized_de | String | [Localized help message] | Localization |
 | helpmessageLocalizedFr | HelpMessageLocalized_fr | String | [Localized help message] | Localization |
+| helpmessageLocalizedEs | HelpMessageLocalized_es | String | [Localized help message] | Localization |
+| helpmessageLocalizedNl | HelpMessageLocalized_nl | String | [Localized help message] | Localization |
+| helpmessageLocalizedPt | HelpMessageLocalized_pt | String | [Localized help message] | Localization |
+| helpmessageLocalizedJa | HelpMessageLocalized_ja | String | [Localized help message] | Localization |
 | excessiveUptimeWarningMessageLocalizedEn | ExcessiveUptimeWarningMessageLocalized_en | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedDe | ExcessiveUptimeWarningMessageLocalized_de | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedFr | ExcessiveUptimeWarningMessageLocalized_fr | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedEs | ExcessiveUptimeWarningMessageLocalized_es | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedNl | ExcessiveUptimeWarningMessageLocalized_nl | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedPt | ExcessiveUptimeWarningMessageLocalized_pt | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedJa | ExcessiveUptimeWarningMessageLocalized_ja | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedEn | DiskSpaceWarningMessageLocalized_en | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedDe | DiskSpaceWarningMessageLocalized_de | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedFr | DiskSpaceWarningMessageLocalized_fr | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedEs | DiskSpaceWarningMessageLocalized_es | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedNl | DiskSpaceWarningMessageLocalized_nl | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedPt | DiskSpaceWarningMessageLocalized_pt | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedJa | DiskSpaceWarningMessageLocalized_ja | String | [Localized warning] | Localization |
 | stagedUpdateMessageLocalizedEn | StagedUpdateMessageLocalized_en | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedDe | StagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedFr | StagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedEs | StagedUpdateMessageLocalized_es | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedNl | StagedUpdateMessageLocalized_nl | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedPt | StagedUpdateMessageLocalized_pt | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedJa | StagedUpdateMessageLocalized_ja | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedEn | PartiallyStagedUpdateMessageLocalized_en | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedDe | PartiallyStagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedFr | PartiallyStagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedEs | PartiallyStagedUpdateMessageLocalized_es | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedNl | PartiallyStagedUpdateMessageLocalized_nl | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedPt | PartiallyStagedUpdateMessageLocalized_pt | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedJa | PartiallyStagedUpdateMessageLocalized_ja | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedEn | PendingDownloadMessageLocalized_en | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedDe | PendingDownloadMessageLocalized_de | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedFr | PendingDownloadMessageLocalized_fr | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedEs | PendingDownloadMessageLocalized_es | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedNl | PendingDownloadMessageLocalized_nl | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedPt | PendingDownloadMessageLocalized_pt | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedJa | PendingDownloadMessageLocalized_ja | String | [Localized staging message] | Localization |
+| hideStagedInfo | HideStagedUpdateInfo | Boolean | NO | Localization |
+| relativeDeadlineToday | RelativeDeadlineToday | String | Today | Localization |
+| relativeDeadlineToday_{lang} | RelativeDeadlineTodayLocalized_{lang} | String | [Localized phrase] | Localization |
+| relativeDeadlineTomorrow | RelativeDeadlineTomorrow | String | Tomorrow | Localization |
+| relativeDeadlineTomorrow_{lang} | RelativeDeadlineTomorrowLocalized_{lang} | String | [Localized phrase] | Localization |
+| updateWord | UpdateWord | String | Update | Localization |
+| updateWord_{lang} | UpdateWordLocalized_{lang} | String | [Localized word] | Localization |
+| upgradeWord | UpgradeWord | String | Upgrade | Localization |
+| upgradeWord_{lang} | UpgradeWordLocalized_{lang} | String | [Localized word] | Localization |
+| softwareUpdateButtonTextUpdate | SoftwareUpdateButtonTextUpdate | String | Restart Now | Localization |
+| softwareUpdateButtonTextUpdate_{lang} | SoftwareUpdateButtonTextUpdateLocalized_{lang} | String | [Localized button] | Localization |
+| softwareUpdateButtonTextUpgrade | SoftwareUpdateButtonTextUpgrade | String | Upgrade Now | Localization |
+| softwareUpdateButtonTextUpgrade_{lang} | SoftwareUpdateButtonTextUpgradeLocalized_{lang} | String | [Localized button] | Localization |
+| restartNowButtonText | RestartNowButtonText | String | Restart Now | Localization |
+| restartNowButtonText_{lang} | RestartNowButtonTextLocalized_{lang} | String | [Localized button] | Localization |
+| infoboxLabelCurrent | InfoboxLabelCurrent | String | Current | Localization |
+| infoboxLabelCurrent_{lang} | InfoboxLabelCurrentLocalized_{lang} | String | [Localized label] | Localization |
+| infoboxLabelRequired | InfoboxLabelRequired | String | Required | Localization |
+| infoboxLabelRequired_{lang} | InfoboxLabelRequiredLocalized_{lang} | String | [Localized label] | Localization |
+| infoboxLabelDeadline | InfoboxLabelDeadline | String | Deadline | Localization |
+| infoboxLabelDeadline_{lang} | InfoboxLabelDeadlineLocalized_{lang} | String | [Localized label] | Localization |
+| infoboxLabelDaysRemaining | InfoboxLabelDaysRemaining | String | Day(s) Remaining | Localization |
+| infoboxLabelDaysRemaining_{lang} | InfoboxLabelDaysRemainingLocalized_{lang} | String | [Localized label] | Localization |
+| infoboxLabelLastRestart | InfoboxLabelLastRestart | String | Last Restart | Localization |
+| infoboxLabelLastRestart_{lang} | InfoboxLabelLastRestartLocalized_{lang} | String | [Localized label] | Localization |
+| infoboxLabelFreeDiskSpace | InfoboxLabelFreeDiskSpace | String | Free Disk Space | Localization |
+| infoboxLabelFreeDiskSpace_{lang} | InfoboxLabelFreeDiskSpaceLocalized_{lang} | String | [Localized label] | Localization |
+| deadlineEnforcementMessageAbsolute | DeadlineEnforcementMessageAbsolute | String | [Deadline sentence w/ date] | Localization |
+| deadlineEnforcementMessageAbsolute_{lang} | DeadlineEnforcementMessageAbsoluteLocalized_{lang} | String | [Localized deadline sentence] | Localization |
+| deadlineEnforcementMessageRelative | DeadlineEnforcementMessageRelative | String | [Deadline sentence w/ Today/Tomorrow] | Localization |
+| deadlineEnforcementMessageRelative_{lang} | DeadlineEnforcementMessageRelativeLocalized_{lang} | String | [Localized deadline sentence] | Localization |
+| pastDeadlinePromptTitle | PastDeadlinePromptTitle | String | Restart Your Mac | Localization |
+| pastDeadlinePromptTitle_{lang} | PastDeadlinePromptTitleLocalized_{lang} | String | [Localized title] | Localization |
+| pastDeadlinePromptMessage | PastDeadlinePromptMessage | String | [Restart prompt message] | Localization |
+| pastDeadlinePromptMessage_{lang} | PastDeadlinePromptMessageLocalized_{lang} | String | [Localized message] | Localization |
+| pastDeadlineForceTitle | PastDeadlineForceTitle | String | Your Mac is restarting | Localization |
+| pastDeadlineForceTitle_{lang} | PastDeadlineForceTitleLocalized_{lang} | String | [Localized title] | Localization |
+| pastDeadlineForceMessage | PastDeadlineForceMessage | String | [Force restart message] | Localization |
+| pastDeadlineForceMessage_{lang} | PastDeadlineForceMessageLocalized_{lang} | String | [Localized message] | Localization |
 | title | Title | String | macOS {placeholder} Required | UI Text |
 | button1text | Button1Text | String | Open Software Update | UI Text |
 | button2text | Button2Text | String | Remind Me Later | UI Text |
@@ -854,13 +942,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `LanguageOverride`
 **Type**: String
 **Default**: `auto`
-**Supported Values**: `auto`, `en`, `de`, `fr`
+**Supported Values**: `auto`, `en`, `de`, `fr`, `es`, `nl`, `pt`, `ja`
 
 **Description**: Selects the localization family used for dialog content.
-When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value and normalizes to `en`, `de`, or `fr`.
+When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value and normalizes to `en`, `de`, `fr`, `es`, `nl`, `pt`, or `ja`.
 
 **Fallback Chain**:
-1. Selected localized key (for example, `MessageLocalized_de`)
+1. Selected localized key (for example, `MessageLocalized_nl`)
 2. Base scalar key (for example, `Message`)
 
 **Script Default**:
@@ -871,22 +959,53 @@ When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` v
 **Configuration Profile**:
 ```xml
 <key>LanguageOverride</key>
-<string>de</string>
+<string>nl</string>
 ```
 
-**Localized Key Families**:
-- `TitleLocalized_{en,de,fr}`
-- `Button1TextLocalized_{en,de,fr}`
-- `Button2TextLocalized_{en,de,fr}`
-- `InfoButtonTextLocalized_{en,de,fr}`
-- `MessageLocalized_{en,de,fr}`
-- `HelpMessageLocalized_{en,de,fr}`
-- `SupportAssistanceMessageLocalized_{en,de,fr}`
-- `ExcessiveUptimeWarningMessageLocalized_{en,de,fr}`
-- `DiskSpaceWarningMessageLocalized_{en,de,fr}`
-- `StagedUpdateMessageLocalized_{en,de,fr}`
-- `PartiallyStagedUpdateMessageLocalized_{en,de,fr}`
-- `PendingDownloadMessageLocalized_{en,de,fr}`
+**Local Preference (testing)**:
+```bash
+# Force Dutch for testing
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "nl"
+# Verify
+grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
+```
+
+**Localized Key Families** (`{lang}` = `en`, `de`, `fr`, `es`, `nl`, `pt`, `ja`):
+
+*Existing families (2.x+)*:
+- `TitleLocalized_{lang}`
+- `Button1TextLocalized_{lang}`
+- `Button2TextLocalized_{lang}`
+- `InfoButtonTextLocalized_{lang}`
+- `MessageLocalized_{lang}`
+- `HelpMessageLocalized_{lang}`
+- `SupportAssistanceMessageLocalized_{lang}`
+- `ExcessiveUptimeWarningMessageLocalized_{lang}`
+- `DiskSpaceWarningMessageLocalized_{lang}`
+- `StagedUpdateMessageLocalized_{lang}`
+- `PartiallyStagedUpdateMessageLocalized_{lang}`
+- `PendingDownloadMessageLocalized_{lang}`
+
+*Dynamic localization primitives (3.1.0+)*:
+- `RelativeDeadlineTodayLocalized_{lang}`
+- `RelativeDeadlineTomorrowLocalized_{lang}`
+- `UpdateWordLocalized_{lang}`
+- `UpgradeWordLocalized_{lang}`
+- `SoftwareUpdateButtonTextUpdateLocalized_{lang}`
+- `SoftwareUpdateButtonTextUpgradeLocalized_{lang}`
+- `RestartNowButtonTextLocalized_{lang}`
+- `InfoboxLabelCurrentLocalized_{lang}`
+- `InfoboxLabelRequiredLocalized_{lang}`
+- `InfoboxLabelDeadlineLocalized_{lang}`
+- `InfoboxLabelDaysRemainingLocalized_{lang}`
+- `InfoboxLabelLastRestartLocalized_{lang}`
+- `InfoboxLabelFreeDiskSpaceLocalized_{lang}`
+- `DeadlineEnforcementMessageAbsoluteLocalized_{lang}`
+- `DeadlineEnforcementMessageRelativeLocalized_{lang}`
+- `PastDeadlinePromptTitleLocalized_{lang}`
+- `PastDeadlinePromptMessageLocalized_{lang}`
+- `PastDeadlineForceTitleLocalized_{lang}`
+- `PastDeadlineForceMessageLocalized_{lang}`
 
 ---
 
@@ -1323,6 +1442,85 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>DiskSpaceWarningMessage</key>
 <string>&lt;br&gt;&lt;br&gt;**Low Disk Space:** {diskSpaceHumanReadable} available. Free up space before updating.</string>
 ```
+
+---
+
+### 9. Dynamic Localization Primitives
+
+Preference families that supply localized runtime copy previously hard-coded in the script. Each family includes a base scalar key (the fallback) and per-language variants following the `{PlistKey}Localized_{lang}` pattern where `{lang}` is `en`, `de`, `fr`, `es`, `nl`, `pt`, or `ja`. Changing these keys customizes or retranslates copy without modifying the script.
+
+---
+
+#### relativeDeadlineToday / relativeDeadlineTomorrow
+**Plist Keys**: `RelativeDeadlineToday` / `RelativeDeadlineTomorrow`
+**Type**: String
+**Defaults**: `Today` / `Tomorrow`
+
+**Description**: Relative deadline phrases substituted into the deadline enforcement message and deadline display when the enforcement date falls on the current day or the following day.
+
+---
+
+#### updateWord / upgradeWord
+**Plist Keys**: `UpdateWord` / `UpgradeWord`
+**Type**: String
+**Defaults**: `Update` / `Upgrade`
+
+**Description**: Source values for the `{titleMessageUpdateOrUpgrade}` placeholder. The script sets this word based on whether DDM requires an update or a major-version upgrade.
+
+---
+
+#### softwareUpdateButtonTextUpdate / softwareUpdateButtonTextUpgrade
+**Plist Keys**: `SoftwareUpdateButtonTextUpdate` / `SoftwareUpdateButtonTextUpgrade`
+**Type**: String
+**Defaults**: `Restart Now` / `Upgrade Now`
+
+**Description**: Label for the action button in System Settings → Software Update that users are instructed to click after opening the Software Update pane. The `Update` variant is used for point-release updates; the `Upgrade` variant is used for major-version upgrades.
+
+---
+
+#### restartNowButtonText
+**Plist Key**: `RestartNowButtonText`
+**Type**: String
+**Default**: `Restart Now`
+
+**Description**: Button label used in past-deadline restart dialogs (`Prompt` and `Force` modes). Overrides `button1text` and `softwareUpdateButtonText` in those modes.
+
+---
+
+#### Infobox Labels
+**Plist Keys**: `InfoboxLabelCurrent`, `InfoboxLabelRequired`, `InfoboxLabelDeadline`, `InfoboxLabelDaysRemaining`, `InfoboxLabelLastRestart`, `InfoboxLabelFreeDiskSpace`
+**Type**: String
+**Defaults**: `Current`, `Required`, `Deadline`, `Day(s) Remaining`, `Last Restart`, `Free Disk Space`
+
+**Description**: Labels for the six rows displayed in the infobox sidebar. Each accepts per-language variants following the standard `{Key}Localized_{lang}` pattern.
+
+---
+
+#### deadlineEnforcementMessageAbsolute / deadlineEnforcementMessageRelative
+**Plist Keys**: `DeadlineEnforcementMessageAbsolute` / `DeadlineEnforcementMessageRelative`
+**Type**: String
+
+**Description**: Sentence appended to `{deadlineEnforcementMessage}` inside `Message`. The `Absolute` variant is used when the deadline renders as a full date string; the `Relative` variant is used when it renders as Today or Tomorrow.
+
+**Key Placeholders**: `{deadlineDisplay}`, `{titleMessageUpdateOrUpgrade:l}`, `{titleMessageUpdateOrUpgrade}`
+
+---
+
+#### pastDeadlinePromptTitle / pastDeadlinePromptMessage
+**Plist Keys**: `PastDeadlinePromptTitle` / `PastDeadlinePromptMessage`
+**Type**: String
+**Defaults**: `Restart Your Mac` / [full restart prompt body]
+
+**Description**: Title and message body used when `PastDeadlineRestartBehavior` is `Prompt`. `button1text` is also overridden to `RestartNowButtonText` in this mode.
+
+---
+
+#### pastDeadlineForceTitle / pastDeadlineForceMessage
+**Plist Keys**: `PastDeadlineForceTitle` / `PastDeadlineForceMessage`
+**Type**: String
+**Defaults**: `Your Mac is restarting` / [full force-restart body]
+
+**Description**: Title and message body used when `PastDeadlineRestartBehavior` is `Force`. A `--timer 60` countdown is added; the dialog re-displays until the Mac restarts.
 
 ---
 
@@ -1845,9 +2043,9 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
+| 3.1.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 
 ---
 
-**Last Updated**: 28-Mar-2026
-**DDM OS Reminder Version**: 3.0.0
-**Variables Documented**: 73 configurable preferences
+**Last Updated**: 30-Mar-2026
+**DDM OS Reminder Version**: 3.1.0

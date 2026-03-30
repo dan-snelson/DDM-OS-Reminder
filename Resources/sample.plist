@@ -4,7 +4,7 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 3.0.0 -->
+    <!-- Version: 3.1.0 -->
     <!-- Generated on: 2026-02-05-195817 -->
 
     <!-- Logging -->
@@ -77,6 +77,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample Para obter assistência, contacte a equipa **{supportTeamName}** clicando no botão (?) no canto inferior direito.</string>
     <key>SupportAssistanceMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
+    <key>SupportAssistanceMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample: Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
 
     <!-- Localization -->
     <key>LanguageOverride</key>
@@ -97,6 +99,8 @@
     <string>Sample {titleMessageUpdateOrUpgrade} obrigatória do macOS</string>
     <key>TitleLocalized_ja</key>
     <string>Sample macOSの{titleMessageUpdateOrUpgrade}が必要です</string>
+    <key>TitleLocalized_nl</key>
+    <string>Sample macOS {titleMessageUpdateOrUpgrade} vereist</string>
     <key>Button1Text</key>
     <string>Sample Open Software Update</string>
     <key>Button1TextLocalized_en</key>
@@ -111,6 +115,8 @@
     <string>Sample Abrir Atualização de software</string>
     <key>Button1TextLocalized_ja</key>
     <string>Sample ソフトウェア・アップデートを開く</string>
+    <key>Button1TextLocalized_nl</key>
+    <string>Sample Open Software-update</string>
     <key>Button2Text</key>
     <string>Sample Remind Me Later</string>
     <key>Button2TextLocalized_en</key>
@@ -125,6 +131,8 @@
     <string>Sample Lembrar-me mais tarde</string>
     <key>Button2TextLocalized_ja</key>
     <string>Sample 後で通知</string>
+    <key>Button2TextLocalized_nl</key>
+    <string>Sample Herinner me later</string>
     <key>InfoButtonText</key>
     <string>Sample Update macOS on Mac</string>
     <key>InfoButtonTextLocalized_en</key>
@@ -139,6 +147,8 @@
     <string>Sample Atualizar macOS no Mac</string>
     <key>InfoButtonTextLocalized_ja</key>
     <string>Sample MacでmacOSをアップデート</string>
+    <key>InfoButtonTextLocalized_nl</key>
+    <string>Sample Werk macOS bij op Mac</string>
     <key>ExcessiveUptimeWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_en</key>
@@ -153,6 +163,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Nota:** O seu Mac está ligado há **{uptimeHumanReadable}**. Para resultados mais fiáveis, reinicie-o manualmente antes de continuar.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **注意:** このMacは **{uptimeHumanReadable}** の間、再起動されていません。より確実に実行するため、続行前に手動で再起動してください。</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Opmerking:** Uw Mac is al **{uptimeHumanReadable}** ingeschakeld. Voor betrouwbaardere resultaten wordt aanbevolen uw Mac handmatig opnieuw op te starten voordat u verdergaat.</string>
     <key>DiskSpaceWarningMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
     <key>DiskSpaceWarningMessageLocalized_en</key>
@@ -167,6 +179,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Nota:** O seu Mac tem apenas **{diskSpaceHumanReadable}** livres, o que pode impedir esta {titleMessageUpdateOrUpgrade:l} do macOS.</string>
     <key>DiskSpaceWarningMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **注意:** このMacの空き容量は **{diskSpaceHumanReadable}** しかないため、このmacOS {titleMessageUpdateOrUpgrade:l} を実行できない可能性があります。</string>
+    <key>DiskSpaceWarningMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Opmerking:** Uw Mac heeft slechts **{diskSpaceHumanReadable}** beschikbaar, wat deze macOS {titleMessageUpdateOrUpgrade:l} kan verhinderen.</string>
     <key>StagedUpdateMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
     <key>StagedUpdateMessageLocalized_en</key>
@@ -181,6 +195,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Boas notícias!** A atualização do macOS {ddmVersionString} já foi descarregada para o seu Mac e está pronta para instalar. A instalação será mais rápida quando clicar em **{button1text}**.</string>
     <key>StagedUpdateMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **お知らせ:** macOS {ddmVersionString} アップデートはすでにこのMacにダウンロードされており、インストールの準備ができています。**{button1text}** をクリックすると、すばやくインストールできます。</string>
+    <key>StagedUpdateMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Goed nieuws!** De macOS {ddmVersionString}-update is al gedownload op uw Mac en is klaar om te worden geïnstalleerd. De installatie verloopt snel zodra u op **{button1text}** klikt.</string>
     <key>PartiallyStagedUpdateMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
     <key>PartiallyStagedUpdateMessageLocalized_en</key>
@@ -195,6 +211,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample O seu Mac começou a descarregar e a preparar os componentes necessários da atualização do macOS. A instalação será mais rápida quando todos os recursos estiverem preparados.</string>
     <key>PartiallyStagedUpdateMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample このMacでは、必要なmacOSアップデートコンポーネントのダウンロードと準備が進行中です。すべての項目の準備が完了すると、インストールはより短時間で完了します。</string>
+    <key>PartiallyStagedUpdateMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Uw Mac is begonnen met het downloaden en voorbereiden van de vereiste macOS-updateonderdelen. De installatie zal sneller verlopen zodra alle onderdelen volledig zijn voorbereid.</string>
     <key>PendingDownloadMessage</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac will begin downloading the update shortly.</string>
     <key>PendingDownloadMessageLocalized_en</key>
@@ -209,8 +227,316 @@
     <string>&lt;br&gt;&lt;br&gt;Sample O seu Mac irá começar a descarregar a atualização em breve.</string>
     <key>PendingDownloadMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample このMacはまもなくアップデートのダウンロードを開始します。</string>
+    <key>PendingDownloadMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Uw Mac zal binnenkort beginnen met het downloaden van de update.</string>
     <key>HideStagedUpdateInfo</key>
     <false/>
+
+    <!-- Dynamic localization primitives -->
+    <key>RelativeDeadlineToday</key>
+    <string>Today</string>
+    <key>RelativeDeadlineTodayLocalized_en</key>
+    <string>Today</string>
+    <key>RelativeDeadlineTodayLocalized_de</key>
+    <string>Heute</string>
+    <key>RelativeDeadlineTodayLocalized_fr</key>
+    <string>Aujourd&apos;hui</string>
+    <key>RelativeDeadlineTodayLocalized_es</key>
+    <string>Hoy</string>
+    <key>RelativeDeadlineTodayLocalized_pt</key>
+    <string>Hoje</string>
+    <key>RelativeDeadlineTodayLocalized_ja</key>
+    <string>今日</string>
+    <key>RelativeDeadlineTodayLocalized_nl</key>
+    <string>Vandaag</string>
+    <key>RelativeDeadlineTomorrow</key>
+    <string>Tomorrow</string>
+    <key>RelativeDeadlineTomorrowLocalized_en</key>
+    <string>Tomorrow</string>
+    <key>RelativeDeadlineTomorrowLocalized_de</key>
+    <string>Morgen</string>
+    <key>RelativeDeadlineTomorrowLocalized_fr</key>
+    <string>Demain</string>
+    <key>RelativeDeadlineTomorrowLocalized_es</key>
+    <string>Mañana</string>
+    <key>RelativeDeadlineTomorrowLocalized_pt</key>
+    <string>Amanha</string>
+    <key>RelativeDeadlineTomorrowLocalized_ja</key>
+    <string>明日</string>
+    <key>RelativeDeadlineTomorrowLocalized_nl</key>
+    <string>Morgen</string>
+    <key>UpdateWord</key>
+    <string>Update</string>
+    <key>UpdateWordLocalized_en</key>
+    <string>Update</string>
+    <key>UpdateWordLocalized_de</key>
+    <string>Aktualisierung</string>
+    <key>UpdateWordLocalized_fr</key>
+    <string>Mise a jour</string>
+    <key>UpdateWordLocalized_es</key>
+    <string>Actualización</string>
+    <key>UpdateWordLocalized_pt</key>
+    <string>Atualização</string>
+    <key>UpdateWordLocalized_ja</key>
+    <string>アップデート</string>
+    <key>UpdateWordLocalized_nl</key>
+    <string>update</string>
+    <key>UpgradeWord</key>
+    <string>Upgrade</string>
+    <key>UpgradeWordLocalized_en</key>
+    <string>Upgrade</string>
+    <key>UpgradeWordLocalized_de</key>
+    <string>Upgrade</string>
+    <key>UpgradeWordLocalized_fr</key>
+    <string>Mise a niveau</string>
+    <key>UpgradeWordLocalized_es</key>
+    <string>Actualización</string>
+    <key>UpgradeWordLocalized_pt</key>
+    <string>Atualização</string>
+    <key>UpgradeWordLocalized_ja</key>
+    <string>アップグレード</string>
+    <key>UpgradeWordLocalized_nl</key>
+    <string>upgrade</string>
+    <key>SoftwareUpdateButtonTextUpdate</key>
+    <string>Restart Now</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_en</key>
+    <string>Restart Now</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_de</key>
+    <string>Jetzt neu starten</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_fr</key>
+    <string>Redemarrer maintenant</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_es</key>
+    <string>Reiniciar ahora</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_pt</key>
+    <string>Reiniciar agora</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_ja</key>
+    <string>今すぐ再起動</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_nl</key>
+    <string>Start nu opnieuw op</string>
+    <key>SoftwareUpdateButtonTextUpgrade</key>
+    <string>Upgrade Now</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_en</key>
+    <string>Upgrade Now</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_de</key>
+    <string>Upgrade jetzt</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_fr</key>
+    <string>Mettre a niveau maintenant</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_es</key>
+    <string>Actualizar ahora</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_pt</key>
+    <string>Atualizar agora</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_ja</key>
+    <string>今すぐアップグレード</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_nl</key>
+    <string>Voer nu de upgrade uit</string>
+    <key>RestartNowButtonText</key>
+    <string>Restart Now</string>
+    <key>RestartNowButtonTextLocalized_en</key>
+    <string>Restart Now</string>
+    <key>RestartNowButtonTextLocalized_de</key>
+    <string>Jetzt neu starten</string>
+    <key>RestartNowButtonTextLocalized_fr</key>
+    <string>Redemarrer maintenant</string>
+    <key>RestartNowButtonTextLocalized_es</key>
+    <string>Reiniciar ahora</string>
+    <key>RestartNowButtonTextLocalized_pt</key>
+    <string>Reiniciar agora</string>
+    <key>RestartNowButtonTextLocalized_ja</key>
+    <string>今すぐ再起動</string>
+    <key>RestartNowButtonTextLocalized_nl</key>
+    <string>Start nu opnieuw op</string>
+    <key>InfoboxLabelCurrent</key>
+    <string>Current</string>
+    <key>InfoboxLabelCurrentLocalized_en</key>
+    <string>Current</string>
+    <key>InfoboxLabelCurrentLocalized_de</key>
+    <string>Aktuell</string>
+    <key>InfoboxLabelCurrentLocalized_fr</key>
+    <string>Actuel</string>
+    <key>InfoboxLabelCurrentLocalized_es</key>
+    <string>Actual</string>
+    <key>InfoboxLabelCurrentLocalized_pt</key>
+    <string>Atual</string>
+    <key>InfoboxLabelCurrentLocalized_ja</key>
+    <string>現在</string>
+    <key>InfoboxLabelCurrentLocalized_nl</key>
+    <string>Huidig</string>
+    <key>InfoboxLabelRequired</key>
+    <string>Required</string>
+    <key>InfoboxLabelRequiredLocalized_en</key>
+    <string>Required</string>
+    <key>InfoboxLabelRequiredLocalized_de</key>
+    <string>Erforderlich</string>
+    <key>InfoboxLabelRequiredLocalized_fr</key>
+    <string>Requis</string>
+    <key>InfoboxLabelRequiredLocalized_es</key>
+    <string>Requerido</string>
+    <key>InfoboxLabelRequiredLocalized_pt</key>
+    <string>Obrigatório</string>
+    <key>InfoboxLabelRequiredLocalized_ja</key>
+    <string>必要</string>
+    <key>InfoboxLabelRequiredLocalized_nl</key>
+    <string>Vereist</string>
+    <key>InfoboxLabelDeadline</key>
+    <string>Deadline</string>
+    <key>InfoboxLabelDeadlineLocalized_en</key>
+    <string>Deadline</string>
+    <key>InfoboxLabelDeadlineLocalized_de</key>
+    <string>Frist</string>
+    <key>InfoboxLabelDeadlineLocalized_fr</key>
+    <string>Echeance</string>
+    <key>InfoboxLabelDeadlineLocalized_es</key>
+    <string>Fecha límite</string>
+    <key>InfoboxLabelDeadlineLocalized_pt</key>
+    <string>Prazo</string>
+    <key>InfoboxLabelDeadlineLocalized_ja</key>
+    <string>期限</string>
+    <key>InfoboxLabelDeadlineLocalized_nl</key>
+    <string>Deadline</string>
+    <key>InfoboxLabelDaysRemaining</key>
+    <string>Day(s) Remaining</string>
+    <key>InfoboxLabelDaysRemainingLocalized_en</key>
+    <string>Day(s) Remaining</string>
+    <key>InfoboxLabelDaysRemainingLocalized_de</key>
+    <string>Verbleibende Tage</string>
+    <key>InfoboxLabelDaysRemainingLocalized_fr</key>
+    <string>Jours restants</string>
+    <key>InfoboxLabelDaysRemainingLocalized_es</key>
+    <string>Días restantes</string>
+    <key>InfoboxLabelDaysRemainingLocalized_pt</key>
+    <string>Dias restantes</string>
+    <key>InfoboxLabelDaysRemainingLocalized_ja</key>
+    <string>残り日数</string>
+    <key>InfoboxLabelDaysRemainingLocalized_nl</key>
+    <string>Resterende dagen</string>
+    <key>InfoboxLabelLastRestart</key>
+    <string>Last Restart</string>
+    <key>InfoboxLabelLastRestartLocalized_en</key>
+    <string>Last Restart</string>
+    <key>InfoboxLabelLastRestartLocalized_de</key>
+    <string>Letzter Neustart</string>
+    <key>InfoboxLabelLastRestartLocalized_fr</key>
+    <string>Dernier redemarrage</string>
+    <key>InfoboxLabelLastRestartLocalized_es</key>
+    <string>Último reinicio</string>
+    <key>InfoboxLabelLastRestartLocalized_pt</key>
+    <string>Último reinício</string>
+    <key>InfoboxLabelLastRestartLocalized_ja</key>
+    <string>最終再起動</string>
+    <key>InfoboxLabelLastRestartLocalized_nl</key>
+    <string>Laatste herstart</string>
+    <key>InfoboxLabelFreeDiskSpace</key>
+    <string>Free Disk Space</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_en</key>
+    <string>Free Disk Space</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_de</key>
+    <string>Freier Festplattenspeicher</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_fr</key>
+    <string>Espace disque libre</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_es</key>
+    <string>Espacio libre en disco</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_pt</key>
+    <string>Espaço livre em disco</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_ja</key>
+    <string>空きディスク容量</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_nl</key>
+    <string>Vrije schijfruimte</string>
+    <key>DeadlineEnforcementMessageAbsolute</key>
+    <string>However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_en</key>
+    <string>However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_de</key>
+    <string>Andernfalls **wird Ihr Mac automatisch neu gestartet und {titleMessageUpdateOrUpgrade:l}t** am **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_fr</key>
+    <string>Sinon, votre Mac **redemarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** le **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_es</key>
+    <string>De lo contrario, su Mac **se reiniciará automáticamente y aplicará la {titleMessageUpdateOrUpgrade:l}** el **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_pt</key>
+    <string>Caso contrario, o seu Mac **reiniciará automaticamente e aplicará a {titleMessageUpdateOrUpgrade:l}** em **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_ja</key>
+    <string>期限の **{deadlineDisplay}** までに実行されない場合、Macは**自動的に再起動して {titleMessageUpdateOrUpgrade:l} を適用**します。</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_nl</key>
+    <string>Anders wordt uw Mac **automatisch opnieuw opgestart en wordt de {titleMessageUpdateOrUpgrade:l} uitgevoerd** op **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageRelative</key>
+    <string>However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_en</key>
+    <string>However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_de</key>
+    <string>Andernfalls **wird Ihr Mac automatisch neu gestartet und {titleMessageUpdateOrUpgrade:l}t** **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_fr</key>
+    <string>Sinon, votre Mac **redemarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_es</key>
+    <string>De lo contrario, su Mac **se reiniciará automáticamente y aplicará la {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_pt</key>
+    <string>Caso contrario, o seu Mac **reiniciará automaticamente e aplicará a {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_ja</key>
+    <string>期限の **{deadlineDisplay}** までに実行されない場合、Macは**自動的に再起動して {titleMessageUpdateOrUpgrade:l} を適用**します。</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_nl</key>
+    <string>Anders wordt uw Mac **automatisch opnieuw opgestart en wordt de {titleMessageUpdateOrUpgrade:l} uitgevoerd** **{deadlineDisplay}**.</string>
+    <key>PastDeadlinePromptTitle</key>
+    <string>Restart Your Mac</string>
+    <key>PastDeadlinePromptTitleLocalized_en</key>
+    <string>Restart Your Mac</string>
+    <key>PastDeadlinePromptTitleLocalized_de</key>
+    <string>Starten Sie Ihren Mac neu</string>
+    <key>PastDeadlinePromptTitleLocalized_fr</key>
+    <string>Redemarrez votre Mac</string>
+    <key>PastDeadlinePromptTitleLocalized_es</key>
+    <string>Reinicie su Mac</string>
+    <key>PastDeadlinePromptTitleLocalized_pt</key>
+    <string>Reinicie o seu Mac</string>
+    <key>PastDeadlinePromptTitleLocalized_ja</key>
+    <string>Macを再起動してください</string>
+    <key>PastDeadlinePromptTitleLocalized_nl</key>
+    <string>Start uw Mac opnieuw op</string>
+    <key>PastDeadlinePromptMessage</key>
+    <string>**Please restart your Mac now**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgrade:l} to macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgrade:l}.&lt;br&gt;&lt;br&gt;(This reminder will persist until your Mac has been restarted.)</string>
+    <key>PastDeadlinePromptMessageLocalized_en</key>
+    <string>**Please restart your Mac now**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgrade:l} to macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgrade:l}.&lt;br&gt;&lt;br&gt;(This reminder will persist until your Mac has been restarted.)</string>
+    <key>PastDeadlinePromptMessageLocalized_de</key>
+    <string>**Bitte starten Sie Ihren Mac jetzt neu**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Ihr Mac hat die Frist **{ddmVersionStringDeadlineHumanReadable}** fuer das macOS-{titleMessageUpdateOrUpgrade:l} auf {ddmVersionString} ueberschritten.&lt;br&gt;&lt;br&gt;Klicken Sie auf **{button1text}**, um den Neustart jetzt durchzufuehren und das erforderliche {titleMessageUpdateOrUpgrade:l} abzuschliessen.&lt;br&gt;&lt;br&gt;(Diese Erinnerung bleibt sichtbar, bis Ihr Mac neu gestartet wurde.)</string>
+    <key>PastDeadlinePromptMessageLocalized_fr</key>
+    <string>**Veuillez redemarrer votre Mac maintenant**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a depasse l&apos;echeance **{ddmVersionStringDeadlineHumanReadable}** pour la {titleMessageUpdateOrUpgrade:l} vers macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Cliquez sur **{button1text}** pour redemarrer maintenant et terminer la {titleMessageUpdateOrUpgrade:l} requise.&lt;br&gt;&lt;br&gt;(Ce rappel restera affiche jusqu&apos;au redemarrage de votre Mac.)</string>
+    <key>PastDeadlinePromptMessageLocalized_es</key>
+    <string>**Reinicie su Mac ahora**&lt;br&gt;&lt;br&gt;Hola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;Su Mac ha superado la fecha límite de **{ddmVersionStringDeadlineHumanReadable}** para aplicar la {titleMessageUpdateOrUpgrade:l} a macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Haga clic en **{button1text}** para reiniciar ahora y ayudar a completar la {titleMessageUpdateOrUpgrade:l} requerida.&lt;br&gt;&lt;br&gt;(Este recordatorio permanecerá visible hasta que se reinicie su Mac.)</string>
+    <key>PastDeadlinePromptMessageLocalized_pt</key>
+    <string>**Reinicie o seu Mac agora**&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;O seu Mac ultrapassou o prazo de **{ddmVersionStringDeadlineHumanReadable}** para aplicar a {titleMessageUpdateOrUpgrade:l} para o macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Clique em **{button1text}** para reiniciar agora e ajudar a concluir a {titleMessageUpdateOrUpgrade:l} obrigatória.&lt;br&gt;&lt;br&gt;(Este lembrete permanecerá visível até o seu Mac ser reiniciado.)</string>
+    <key>PastDeadlinePromptMessageLocalized_ja</key>
+    <string>**今すぐMacを再起動してください**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;このMacは、macOS {ddmVersionString} への {titleMessageUpdateOrUpgrade:l} の期限 **{ddmVersionStringDeadlineHumanReadable}** を過ぎています。&lt;br&gt;&lt;br&gt;必須の {titleMessageUpdateOrUpgrade:l} を完了するため、**{button1text}** をクリックして今すぐ再起動してください。&lt;br&gt;&lt;br&gt;（この通知はMacが再起動されるまで表示されます。）</string>
+    <key>PastDeadlinePromptMessageLocalized_nl</key>
+    <string>**Start uw Mac nu opnieuw op**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac heeft de deadline van **{ddmVersionStringDeadlineHumanReadable}** overschreden om de {titleMessageUpdateOrUpgrade:l} naar macOS {ddmVersionString} uit te voeren.&lt;br&gt;&lt;br&gt;Klik op **{button1text}** om nu opnieuw op te starten en de vereiste {titleMessageUpdateOrUpgrade:l} te helpen voltooien.&lt;br&gt;&lt;br&gt;(Deze herinnering blijft zichtbaar totdat uw Mac opnieuw is opgestart.)</string>
+    <key>PastDeadlineForceTitle</key>
+    <string>Your Mac is restarting</string>
+    <key>PastDeadlineForceTitleLocalized_en</key>
+    <string>Your Mac is restarting</string>
+    <key>PastDeadlineForceTitleLocalized_de</key>
+    <string>Ihr Mac wird neu gestartet</string>
+    <key>PastDeadlineForceTitleLocalized_fr</key>
+    <string>Votre Mac redemarre</string>
+    <key>PastDeadlineForceTitleLocalized_es</key>
+    <string>Su Mac se está reiniciando</string>
+    <key>PastDeadlineForceTitleLocalized_pt</key>
+    <string>O seu Mac está a reiniciar</string>
+    <key>PastDeadlineForceTitleLocalized_ja</key>
+    <string>Macを再起動しています</string>
+    <key>PastDeadlineForceTitleLocalized_nl</key>
+    <string>Uw Mac wordt opnieuw opgestart</string>
+    <key>PastDeadlineForceMessage</key>
+    <string>**Your Mac will restart when the timer below expires.**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgrade:l} process to complete, or you can click **{button1text}**.&lt;br&gt;&lt;br&gt;(This reminder will persist until your Mac has been restarted.)</string>
+    <key>PastDeadlineForceMessageLocalized_en</key>
+    <string>**Your Mac will restart when the timer below expires.**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgrade:l} process to complete, or you can click **{button1text}**.&lt;br&gt;&lt;br&gt;(This reminder will persist until your Mac has been restarted.)</string>
+    <key>PastDeadlineForceMessageLocalized_de</key>
+    <string>**Ihr Mac wird neu gestartet, wenn der Timer unten ablaeuft.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Die Frist **{ddmVersionStringDeadlineHumanReadable}** fuer macOS {ddmVersionString} wurde ueberschritten. Ein Neustart ist erforderlich, um den {titleMessageUpdateOrUpgrade:l}sprozess abzuschliessen, oder klicken Sie auf **{button1text}**.&lt;br&gt;&lt;br&gt;(Diese Erinnerung bleibt sichtbar, bis Ihr Mac neu gestartet wurde.)</string>
+    <key>PastDeadlineForceMessageLocalized_fr</key>
+    <string>**Votre Mac redemarrera quand le minuteur ci-dessous expirera.**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a depasse l&apos;echeance **{ddmVersionStringDeadlineHumanReadable}** pour macOS {ddmVersionString}. Un redemarrage est requis pour terminer la {titleMessageUpdateOrUpgrade:l}, ou cliquez sur **{button1text}**.&lt;br&gt;&lt;br&gt;(Ce rappel restera affiche jusqu&apos;au redemarrage de votre Mac.)</string>
+    <key>PastDeadlineForceMessageLocalized_es</key>
+    <string>**Su Mac se reiniciará cuando expire el temporizador de abajo.**&lt;br&gt;&lt;br&gt;Hola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;Su Mac ha superado la fecha límite de **{ddmVersionStringDeadlineHumanReadable}** para instalar macOS {ddmVersionString} y debe reiniciarse para ayudar a completar la {titleMessageUpdateOrUpgrade:l}, o bien puede hacer clic en **{button1text}**.&lt;br&gt;&lt;br&gt;(Este recordatorio permanecerá visible hasta que se reinicie su Mac.)</string>
+    <key>PastDeadlineForceMessageLocalized_pt</key>
+    <string>**O seu Mac será reiniciado quando o temporizador abaixo terminar.**&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;O seu Mac ultrapassou o prazo de **{ddmVersionStringDeadlineHumanReadable}** para instalar o macOS {ddmVersionString} e precisa de ser reiniciado para ajudar a concluir a {titleMessageUpdateOrUpgrade:l}, ou pode clicar em **{button1text}**.&lt;br&gt;&lt;br&gt;(Este lembrete permanecerá visível até o seu Mac ser reiniciado.)</string>
+    <key>PastDeadlineForceMessageLocalized_ja</key>
+    <string>**下のタイマーが切れるとMacが再起動します。**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;このMacは、macOS {ddmVersionString} のインストール期限 **{ddmVersionStringDeadlineHumanReadable}** を過ぎています。{titleMessageUpdateOrUpgrade:l} を完了しやすくするため再起動が必要です。すぐに実行するには **{button1text}** をクリックしてください。&lt;br&gt;&lt;br&gt;（この通知はMacが再起動されるまで表示されます。）</string>
+    <key>PastDeadlineForceMessageLocalized_nl</key>
+    <string>**Uw Mac wordt opnieuw opgestart wanneer de timer hieronder afloopt.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac heeft de deadline van **{ddmVersionStringDeadlineHumanReadable}** overschreden om macOS {ddmVersionString} te installeren en moet opnieuw worden opgestart om het {titleMessageUpdateOrUpgrade:l}-proces te helpen voltooien, of u kunt op **{button1text}** klikken.&lt;br&gt;&lt;br&gt;(Deze herinnering blijft zichtbaar totdat uw Mac opnieuw is opgestart.)</string>
 
     <key>Message</key>
     <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
@@ -226,6 +552,8 @@
     <string>Sample **Já está disponível uma {titleMessageUpdateOrUpgrade:l} obrigatória do macOS**&lt;br&gt;&lt;br&gt;Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Efetue a {titleMessageUpdateOrUpgrade:l} para o macOS **{ddmVersionString}** para manter o seu Mac seguro e em conformidade com as políticas da organização.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para efetuar a {titleMessageUpdateOrUpgrade:l} agora, clique em **{button1text}**, siga as instruções no ecrã e depois clique em **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Se não puder efetuar esta {titleMessageUpdateOrUpgrade:l} agora, clique em **{button2text}** para receber outro lembrete mais tarde (esta opção fica desativada quando o prazo se aproxima).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_ja</key>
     <string>Sample **必須のmacOS {titleMessageUpdateOrUpgrade:l} を利用できます**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;Macを安全に保ち、組織のポリシーに準拠するため、macOS **{ddmVersionString}** へ {titleMessageUpdateOrUpgrade:l} してください。{updateReadyMessage}&lt;br&gt;&lt;br&gt;今すぐ {titleMessageUpdateOrUpgrade:l} するには、**{button1text}** をクリックし、画面の案内を確認したあと **{softwareUpdateButtonText}** をクリックしてください。&lt;br&gt;&lt;br&gt;今すぐ実行できない場合は、**{button2text}** をクリックして後で再通知を受けてください（期限が近づくとこのオプションは無効になります）。&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+    <key>MessageLocalized_nl</key>
+    <string>Sample **Een vereiste macOS {titleMessageUpdateOrUpgrade:l} is nu beschikbaar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Voer de macOS {titleMessageUpdateOrUpgrade:l} naar macOS **{ddmVersionString}** uit om ervoor te zorgen dat uw Mac veilig blijft en voldoet aan de beleidsregels van de organisatie.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Om de {titleMessageUpdateOrUpgrade:l} nu uit te voeren, klikt u op **{button1text}**, volgt u de instructies op het scherm en klikt u vervolgens op **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Als u deze {titleMessageUpdateOrUpgrade:l} nu niet kunt uitvoeren, klikt u op **{button2text}** om later opnieuw te worden herinnerd (deze optie is niet beschikbaar wanneer de deadline nadert).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 
     <!-- Infobox -->
     <key>InfoBox</key>
@@ -246,6 +574,8 @@
     <string>Sample&lt;br&gt;&lt;br&gt;Para obter assistência, contacte: **{supportTeamName}**&lt;br&gt;- **Telefone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Site web:** {supportTeamWebsite}&lt;br&gt;- **Artigo da base de conhecimento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informações do utilizador:**&lt;br&gt;- **Nome completo:** {userfullname}&lt;br&gt;- **Nome de utilizador:** {username}&lt;br&gt;&lt;br&gt;**Informações do computador:**&lt;br&gt;- **Nome do computador:** {computername}&lt;br&gt;- **Número de série:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Informações do script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpMessageLocalized_ja</key>
     <string>Sample&lt;br&gt;&lt;br&gt;サポートが必要な場合は次までご連絡ください: **{supportTeamName}**&lt;br&gt;- **電話:** {supportTeamPhone}&lt;br&gt;- **メール:** {supportTeamEmail}&lt;br&gt;- **Webサイト:** {supportTeamWebsite}&lt;br&gt;- **ナレッジベース記事:** {supportKBURL}&lt;br&gt;&lt;br&gt;**ユーザー情報:**&lt;br&gt;- **氏名:** {userfullname}&lt;br&gt;- **ユーザー名:** {username}&lt;br&gt;&lt;br&gt;**コンピュータ情報:**&lt;br&gt;- **コンピュータ名:** {computername}&lt;br&gt;- **シリアル番号:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**スクリプト情報:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+    <key>HelpMessageLocalized_nl</key>
+    <string>Sample&lt;br&gt;&lt;br&gt;Voor hulp kunt u contact opnemen met: **{supportTeamName}**&lt;br&gt;- **Telefoon:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Kennisbankartikel:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Gebruikersinformatie:**&lt;br&gt;- **Volledige naam:** {userfullname}&lt;br&gt;- **Gebruikersnaam:** {username}&lt;br&gt;&lt;br&gt;**Computerinformatie:**&lt;br&gt;- **Computernaam:** {computername}&lt;br&gt;- **Serienummer:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Scriptinformatie:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpImage</key>
     <string>qr={infobuttonaction}</string>
 

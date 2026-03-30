@@ -2,11 +2,12 @@
 
 ## Changelog
 
-### Version 3.1.0b2 (30-Mar-2026)
+### Version 3.1.0b3 (30-Mar-2026)
 - Polished German localization across `reminderDialog.zsh` and `Resources/sample.plist`, switching the default user-facing copy to informal second-person phrasing and restoring umlauts in the shipped German strings. ([Pull Request #86](https://github.com/dan-snelson/DDM-OS-Reminder/pull/86); thanks, @AirBookMac!)
 - Added first-class Dutch (`nl`) localization support across runtime language detection, locale-aware deadline rendering, generated plist/mobileconfig output, and sample configuration defaults. ([Pull Request #85](https://github.com/dan-snelson/DDM-OS-Reminder/pull/85); thanks, @JordyThery!)
 - Externalized the remaining hard-coded localized runtime strings into plist-backed preferences, including update/upgrade vocabulary, relative deadline phrases, infobox labels, deadline enforcement messaging, and past-deadline restart dialog copy.
 - Updated `Resources/sample.plist`, `Resources/createPlist.zsh`, and release metadata so translators can work from the plist surface instead of code-localized strings.
+- Fixed DDM declaration resolution for newer macOS softwareupdate log patterns (thanks for the assist, @phillnz!)
 
 ### Version 3.0.0 (29-Mar-2026)
 - Hardened `reminderDialog.zsh` DDM resolution by replacing the old `EnforcedInstallDate | tail -n 1` heuristic with a recent-window resolver that:

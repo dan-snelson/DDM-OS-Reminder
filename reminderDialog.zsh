@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0b2"
+scriptVersion="3.1.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1650,7 +1650,9 @@ function parseDDMDeclarationFromLine() {
     parsedDDMBuildVersionString=""
     parsedDDMRawLine="${logLine}"
 
-    if [[ "${logLine}" == *"declarationFromKeys]: Falling back to default applicable declaration"* ]]; then
+    if [[ "${logLine}" == *"declarationFromKeys]: Found currently applicable declaration"* ]]; then
+        parsedDDMSourceType="currentApplicableDeclaration"
+    elif [[ "${logLine}" == *"declarationFromKeys]: Falling back to default applicable declaration"* ]]; then
         parsedDDMSourceType="defaultApplicableDeclaration"
     elif [[ "${logLine}" == *"Found DDM enforced install ("* ]]; then
         parsedDDMSourceType="foundDdmEnforcedInstall"
@@ -1674,6 +1676,28 @@ function parseDDMDeclarationFromLine() {
     fi
 
     return 0
+}
+
+function ddmSourcePriority() {
+    local sourceType="${1}"
+
+    case "${sourceType}" in
+        currentApplicableDeclaration)
+            echo "4"
+            ;;
+        defaultApplicableDeclaration)
+            echo "3"
+            ;;
+        foundDdmEnforcedInstall)
+            echo "2"
+            ;;
+        genericEnforcedInstallDate)
+            echo "1"
+            ;;
+        *)
+            echo "0"
+            ;;
+    esac
 }
 
 function candidateHasNoMatchScanFailure() {
@@ -1722,15 +1746,14 @@ function candidateHasNoMatchScanFailure() {
 function resolveDDMEnforcementFromInstallLog() {
     local line=""
     local candidateKey=""
-    local chosenSourceType=""
     local latestTimestamp=""
     local latestInvalidContext=""
-    local hasDefaultApplicableDeclaration="NO"
-    local hasFoundDdmEnforcedInstall="NO"
     local index=0
     local latestIndex=0
     local candidateSummary=""
     local distinctCandidateCount=0
+    local highestPriority=0
+    local currentPriority=0
 
     local -a candidateSourceTypes=()
     local -a candidateTimestamps=()
@@ -1787,30 +1810,39 @@ function resolveDDMEnforcementFromInstallLog() {
         return 1
     fi
 
-    for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
-        if [[ "${candidateSourceTypes[$index]}" == "defaultApplicableDeclaration" ]]; then
-            hasDefaultApplicableDeclaration="YES"
-        elif [[ "${candidateSourceTypes[$index]}" == "foundDdmEnforcedInstall" ]]; then
-            hasFoundDdmEnforcedInstall="YES"
+    latestTimestamp="${candidateTimestamps[1]}"
+    for (( index = 2; index <= ${#candidateTimestamps[@]}; index++ )); do
+        if [[ "${candidateTimestamps[$index]}" > "${latestTimestamp}" ]]; then
+            latestTimestamp="${candidateTimestamps[$index]}"
         fi
     done
 
-    if [[ "${hasDefaultApplicableDeclaration}" == "YES" ]]; then
-        chosenSourceType="defaultApplicableDeclaration"
-    elif [[ "${hasFoundDdmEnforcedInstall}" == "YES" ]]; then
-        chosenSourceType="foundDdmEnforcedInstall"
-    else
-        chosenSourceType="genericEnforcedInstallDate"
-    fi
-
     for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
-        if [[ "${candidateSourceTypes[$index]}" == "${chosenSourceType}" ]]; then
+        if [[ "${candidateTimestamps[$index]}" == "${latestTimestamp}" ]]; then
             filteredIndexes+=( "${index}" )
         fi
     done
 
+    highestPriority=0
+    for index in "${filteredIndexes[@]}"; do
+        currentPriority="$(ddmSourcePriority "${candidateSourceTypes[$index]}")"
+        if (( currentPriority > highestPriority )); then
+            highestPriority="${currentPriority}"
+        fi
+    done
+
+    filteredIndexes=( )
+    for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
+        if [[ "${candidateTimestamps[$index]}" == "${latestTimestamp}" ]]; then
+            currentPriority="$(ddmSourcePriority "${candidateSourceTypes[$index]}")"
+            if (( currentPriority == highestPriority )); then
+                filteredIndexes+=( "${index}" )
+            fi
+        fi
+    done
+
     distinctCandidateCount="${#filteredIndexes[@]}"
-    if (( distinctCandidateCount > 1 )); then
+    if (( distinctCandidateCount != 1 )); then
         ddmResolverStatus="suppressed"
         ddmResolverSuppressionType="conflict"
         ddmResolverReason="Conflicting DDM declarations detected in install.log"
@@ -1836,14 +1868,6 @@ function resolveDDMEnforcementFromInstallLog() {
     fi
 
     latestIndex="${filteredIndexes[1]}"
-    latestTimestamp="${candidateTimestamps[$latestIndex]}"
-    for index in "${filteredIndexes[@]}"; do
-        if [[ "${candidateTimestamps[$index]}" > "${latestTimestamp}" ]]; then
-            latestIndex="${index}"
-            latestTimestamp="${candidateTimestamps[$index]}"
-        fi
-    done
-
     ddmResolverSource="${candidateSourceTypes[$latestIndex]}"
     ddmDeclarationLogTimestamp="${candidateTimestamps[$latestIndex]}"
     ddmDeclarationRawLine="${candidateRawLines[$latestIndex]}"

@@ -2163,7 +2163,7 @@ function computeDeadlineEnforcementMessage() {
 
     case "${dialogLanguage}" in
         de)
-            baseDeadlineEnforcementMessage="Andernfalls **wird Ihr Mac automatisch neu gestartet und ${titleMessageUpdateOrUpgrade:l}t** ${deadlinePreposition}**${deadlineDisplay}**."
+            baseDeadlineEnforcementMessage="Andernfalls **wird dein Mac automatisch neu gestartet und ${titleMessageUpdateOrUpgrade:l}t** ${deadlinePreposition}**${deadlineDisplay}**."
             ;;
         fr)
             baseDeadlineEnforcementMessage="Sinon, votre Mac **redemarrera automatiquement et appliquera la ${titleMessageUpdateOrUpgrade:l}** ${deadlinePreposition}**${deadlineDisplay}**."
@@ -2270,8 +2270,8 @@ function applyPastDeadlineDialogOverrides() {
             de)
                 softwareUpdateButtonText="Jetzt neu starten"
                 button1text="Jetzt neu starten"
-                title="Ihr Mac wird neu gestartet"
-                message="**Ihr Mac wird neu gestartet, wenn der Timer unten ablaeuft.**<br><br>Hallo {loggedInUserFirstname}!<br><br>Die Frist **{ddmVersionStringDeadlineHumanReadable}** fuer macOS {ddmVersionString} wurde ueberschritten. Ein Neustart ist erforderlich, um den {titleMessageUpdateOrUpgrade:l}sprozess abzuschliessen, oder klicken Sie auf **{button1text}**.<br><br>(Diese Erinnerung bleibt sichtbar, bis Ihr Mac neu gestartet wurde.)"
+                title="Dein Mac wird neu gestartet"
+                message="**Dein Mac wird neu gestartet, wenn der Timer unten abläuft.**<br><br>Hallo {loggedInUserFirstname}!<br><br>Die Frist **{ddmVersionStringDeadlineHumanReadable}** für macOS {ddmVersionString} wurde überschritten. Ein Neustart ist erforderlich, um den {titleMessageUpdateOrUpgrade:l}sprozess abzuschliessen, oder klicke auf **{button1text}**.<br><br>(Diese Erinnerung bleibt sichtbar, bis dein Mac neu gestartet wurde.)"
                 ;;
             fr)
                 softwareUpdateButtonText="Redemarrer maintenant"
@@ -2291,8 +2291,8 @@ function applyPastDeadlineDialogOverrides() {
             de)
                 softwareUpdateButtonText="Jetzt neu starten"
                 button1text="Jetzt neu starten"
-                title="Starten Sie Ihren Mac neu"
-                message="**Bitte starten Sie Ihren Mac jetzt neu**<br><br>Hallo {loggedInUserFirstname}!<br><br>Ihr Mac hat die Frist **{ddmVersionStringDeadlineHumanReadable}** fuer das macOS-{titleMessageUpdateOrUpgrade:l} auf {ddmVersionString} ueberschritten.<br><br>Klicken Sie auf **{button1text}**, um den Neustart jetzt durchzufuehren und das erforderliche {titleMessageUpdateOrUpgrade:l} abzuschliessen.<br><br>(Diese Erinnerung bleibt sichtbar, bis Ihr Mac neu gestartet wurde.)"
+                title="Starte deinen Mac neu"
+                message="**Bitte starte deinen Mac jetzt neu**<br><br>Hallo {loggedInUserFirstname}!<br><br>Dein Mac hat die Frist **{ddmVersionStringDeadlineHumanReadable}** für das macOS-{titleMessageUpdateOrUpgrade:l} auf {ddmVersionString} überschritten.<br><br>Klicke auf **{button1text}**, um den Neustart jetzt durchzuführen und das erforderliche {titleMessageUpdateOrUpgrade:l} abzuschliessen.<br><br>(Diese Erinnerung bleibt sichtbar, bis dein Mac neu gestartet wurde.)"
                 ;;
             fr)
                 softwareUpdateButtonText="Redemarrer maintenant"

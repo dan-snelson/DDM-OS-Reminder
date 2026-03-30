@@ -67,6 +67,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
     <key>SupportAssistanceMessageLocalized_en</key>
     <string>&lt;br&gt;&lt;br&gt;Sample For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
+    <key>SupportAssistanceMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample: Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
     <key>SupportAssistanceMessageLocalized_de</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Bei Fragen wenden Sie sich ueber die (?) Schaltflaeche unten rechts an **{supportTeamName}**.</string>
     <key>SupportAssistanceMessageLocalized_fr</key>
@@ -87,6 +89,8 @@
     <string>Sample macOS {titleMessageUpdateOrUpgrade} Required</string>
     <key>TitleLocalized_en</key>
     <string>Sample macOS {titleMessageUpdateOrUpgrade} Required</string>
+    <key>TitleLocalized_nl</key>
+    <string>Sample macOS {titleMessageUpdateOrUpgrade} vereist</string>
     <key>TitleLocalized_de</key>
     <string>Sample macOS {titleMessageUpdateOrUpgrade} erforderlich</string>
     <key>TitleLocalized_fr</key>
@@ -101,6 +105,8 @@
     <string>Sample Open Software Update</string>
     <key>Button1TextLocalized_en</key>
     <string>Sample Open Software Update</string>
+    <key>Button1TextLocalized_nl</key>
+    <string>Sample Open Software-update</string>
     <key>Button1TextLocalized_de</key>
     <string>Sample Softwareupdate oeffnen</string>
     <key>Button1TextLocalized_fr</key>
@@ -115,6 +121,8 @@
     <string>Sample Remind Me Later</string>
     <key>Button2TextLocalized_en</key>
     <string>Sample Remind Me Later</string>
+    <key>Button2TextLocalized_nl</key>
+    <string>Sample Herinner me later</string>
     <key>Button2TextLocalized_de</key>
     <string>Sample Spaeter erinnern</string>
     <key>Button2TextLocalized_fr</key>
@@ -129,6 +137,8 @@
     <string>Sample Update macOS on Mac</string>
     <key>InfoButtonTextLocalized_en</key>
     <string>Sample Update macOS on Mac</string>
+    <key>InfoButtonTextLocalized_nl</key>
+    <string>Sample Werk macOS bij op Mac</string>
     <key>InfoButtonTextLocalized_de</key>
     <string>Sample macOS auf Mac aktualisieren</string>
     <key>InfoButtonTextLocalized_fr</key>
@@ -143,6 +153,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_en</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding.</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Opmerking:** Uw Mac is al **{uptimeHumanReadable}** ingeschakeld. Voor betrouwbaardere resultaten wordt aanbevolen uw Mac handmatig opnieuw op te starten voordat u verdergaat.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_de</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Hinweis:** Ihr Mac laeuft seit **{uptimeHumanReadable}**. Starten Sie ihn fuer zuverlaessigere Ergebnisse bitte manuell neu.</string>
     <key>ExcessiveUptimeWarningMessageLocalized_fr</key>
@@ -157,6 +169,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
     <key>DiskSpaceWarningMessageLocalized_en</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}.</string>
+    <key>DiskSpaceWarningMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Opmerking:** Uw Mac heeft slechts **{diskSpaceHumanReadable}** beschikbaar, wat deze macOS {titleMessageUpdateOrUpgrade:l} kan verhinderen.</string>
     <key>DiskSpaceWarningMessageLocalized_de</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Hinweis:** Ihr Mac hat nur **{diskSpaceHumanReadable}** frei. Dadurch kann dieses macOS-{titleMessageUpdateOrUpgrade:l} scheitern.</string>
     <key>DiskSpaceWarningMessageLocalized_fr</key>
@@ -171,6 +185,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
     <key>StagedUpdateMessageLocalized_en</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**.</string>
+    <key>StagedUpdateMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample **Goed nieuws!** De macOS {ddmVersionString}-update is al gedownload op uw Mac en is klaar om te worden geïnstalleerd. De installatie verloopt snel zodra u op **{button1text}** klikt.</string>
     <key>StagedUpdateMessageLocalized_de</key>
     <string>&lt;br&gt;&lt;br&gt;Sample **Gute Nachricht!** Das macOS-{ddmVersionString}-Update wurde bereits geladen. Die Installation startet schnell, wenn Sie **{button1text}** klicken.</string>
     <key>StagedUpdateMessageLocalized_fr</key>
@@ -185,6 +201,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
     <key>PartiallyStagedUpdateMessageLocalized_en</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
+    <key>PartiallyStagedUpdateMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Uw Mac is begonnen met het downloaden en voorbereiden van de vereiste macOS-updateonderdelen. De installatie zal sneller verlopen zodra alle onderdelen volledig zijn voorbereid.</string>
     <key>PartiallyStagedUpdateMessageLocalized_de</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Ihr Mac laedt bereits erforderliche macOS-Update-Komponenten herunter und bereitet sie vor. Die Installation wird danach schneller sein.</string>
     <key>PartiallyStagedUpdateMessageLocalized_fr</key>
@@ -199,6 +217,8 @@
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac will begin downloading the update shortly.</string>
     <key>PendingDownloadMessageLocalized_en</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Your Mac will begin downloading the update shortly.</string>
+    <key>PendingDownloadMessageLocalized_nl</key>
+    <string>&lt;br&gt;&lt;br&gt;Sample Uw Mac zal binnenkort beginnen met het downloaden van de update.</string>
     <key>PendingDownloadMessageLocalized_de</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Ihr Mac beginnt in Kuerze mit dem Download des Updates.</string>
     <key>PendingDownloadMessageLocalized_fr</key>
@@ -216,6 +236,8 @@
     <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_en</key>
     <string>Sample **A required macOS {titleMessageUpdateOrUpgrade:l} is now available**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+    <key>MessageLocalized_nl</key>
+    <string>Sample **Een vereiste macOS {titleMessageUpdateOrUpgrade:l} is nu beschikbaar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Voer de macOS {titleMessageUpdateOrUpgrade:l} naar macOS **{ddmVersionString}** uit om ervoor te zorgen dat uw Mac veilig blijft en voldoet aan de beleidsregels van de organisatie.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Om de {titleMessageUpdateOrUpgrade:l} nu uit te voeren, klikt u op **{button1text}**, volgt u de instructies op het scherm en klikt u vervolgens op **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Als u deze {titleMessageUpdateOrUpgrade:l} nu niet kunt uitvoeren, klikt u op **{button2text}** om later opnieuw te worden herinnerd (deze optie is niet beschikbaar wanneer de deadline nadert).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_de</key>
     <string>Sample **Ein erforderliches macOS-{titleMessageUpdateOrUpgrade:l} ist jetzt verfuegbar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Bitte {titleMessageUpdateOrUpgrade:l} Sie auf macOS **{ddmVersionString}**, damit Ihr Mac sicher bleibt und den organisatorischen Richtlinien entspricht.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Um die {titleMessageUpdateOrUpgrade:l} jetzt durchzufuehren, klicken Sie auf **{button1text}**, folgen Sie den Anweisungen auf dem Bildschirm und klicken Sie dann auf **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Wenn Sie diese {titleMessageUpdateOrUpgrade:l} jetzt nicht durchfuehren koennen, klicken Sie auf **{button2text}**, um spaeter erneut erinnert zu werden (diese Option wird deaktiviert, wenn die Frist unmittelbar bevorsteht).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>MessageLocalized_fr</key>
@@ -236,6 +258,8 @@
     <string>Sample&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpMessageLocalized_en</key>
     <string>Sample&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
+    <key>HelpMessageLocalized_nl</key>
+    <string>Sample&lt;br&gt;&lt;br&gt;Voor hulp kunt u contact opnemen met: **{supportTeamName}**&lt;br&gt;- **Telefoon:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Kennisbankartikel:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Gebruikersinformatie:**&lt;br&gt;- **Volledige naam:** {userfullname}&lt;br&gt;- **Gebruikersnaam:** {username}&lt;br&gt;&lt;br&gt;**Computerinformatie:**&lt;br&gt;- **Computernaam:** {computername}&lt;br&gt;- **Serienummer:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Scriptinformatie:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpMessageLocalized_de</key>
     <string>Sample&lt;br&gt;&lt;br&gt;Bei Fragen wenden Sie sich bitte an: **{supportTeamName}**&lt;br&gt;- **Telefon:** {supportTeamPhone}&lt;br&gt;- **E-Mail:** {supportTeamEmail}&lt;br&gt;- **Webseite:** {supportTeamWebsite}&lt;br&gt;- **Knowledge-Base-Artikel:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Benutzerinformationen:**&lt;br&gt;- **Vollstaendiger Name:** {userfullname}&lt;br&gt;- **Benutzername:** {username}&lt;br&gt;&lt;br&gt;**Computerinformationen:**&lt;br&gt;- **Computername:** {computername}&lt;br&gt;- **Seriennummer:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Skriptinformationen:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Skript:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpMessageLocalized_fr</key>

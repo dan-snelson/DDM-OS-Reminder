@@ -30,7 +30,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
 - :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
-- :new: **Full Multi-language Experience**: Version `3.0.1` fully supports English, German, French, Spanish, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, and human-readable deadline dates that automatically match the resolved language for a more polished, native-feeling user experience.
+- :new: **Full Multi-language Experience**: Introduced in version `3.0.0` and fully supported in `3.0.1`, DDM OS Reminder supports English, German, French, Spanish, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, and human-readable deadline dates that automatically match the resolved language for a more polished, native-feeling user experience.
 
 
 ---

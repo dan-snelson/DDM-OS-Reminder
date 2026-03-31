@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0b8"
+scriptVersion="3.1.0b9"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1805,14 +1805,38 @@ function resolvePaddedEnforcementDateForCandidate() {
     return 1
 }
 
+function currentMacSatisfiesResolvedDeclaration() {
+    if ! isValidDDMVersionString "${ddmVersionString}"; then
+        return 1
+    fi
+
+    if [[ -n "${installedmacOSBuild}" && -n "${ddmBuildVersionString}" && "${ddmBuildVersionString}" != "(null)" && "${installedmacOSBuild}" == "${ddmBuildVersionString}" ]]; then
+        return 0
+    fi
+
+    if [[ -n "${installedmacOSVersion}" ]] && isValidDDMVersionString "${installedmacOSVersion}" && is-at-least "${ddmVersionString}" "${installedmacOSVersion}"; then
+        return 0
+    fi
+
+    return 1
+}
+
 installedOSvsDDMenforcedOS() {
 
     # Installed macOS Version
     installedmacOSVersion=$( sw_vers -productVersion )
+    installedmacOSBuild=$( sw_vers -buildVersion )
     notice "Installed macOS Version: ${installedmacOSVersion}"
+    notice "Installed macOS Build: ${installedmacOSBuild}"
 
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
+    if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
+        versionComparisonResult="Up-to-date"
+        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}${ddmResolverStatus:+ despite resolver state ${ddmResolverStatus}}."
+        return
+    fi
+
     case "${ddmResolverStatus}" in
         missing)
             versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."

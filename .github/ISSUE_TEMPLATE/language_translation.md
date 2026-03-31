@@ -17,7 +17,7 @@ assignees: dan-snelson
 
 What language are you contributing? (e.g., `Italian`, `Swedish`, `Polish`)
 
-Currently supported examples: `en` `de` `fr` `es` `nl` `pt` `ja`
+Examples: `en` `de` `fr` `es` `it` `nl` `pt` `ja`
 The script auto-detects any additional language present in the plist. No script edits are required.
 
 Are you adding a **new** language or **improving** an existing one?

@@ -11,11 +11,13 @@
 
 set -euo pipefail
 
-scriptVersion="3.1.0b4"
+scriptVersion="3.1.0b5"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
+SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
 
 [[ -f "$SOURCE_SCRIPT" ]] || { echo "ERROR: Cannot find reminderDialog.zsh at ${SOURCE_SCRIPT}"; exit 1; }
+[[ -f "$SAMPLE_PLIST" ]] || { echo "ERROR: Cannot find sample.plist at ${SAMPLE_PLIST}"; exit 1; }
 
 testingMode="no"
 if [[ "${1:-}" == "--testing" ]]; then
@@ -97,6 +99,33 @@ xml_escape() {
 }
 
 process() { echo "$1" | normalize_placeholders | xml_escape; }
+
+indent_xml_block() {
+    local indent="${1}"
+
+    sed -e 's/^[[:space:]]*//' -e "s/^/${indent}/"
+}
+
+extract_additional_localized_entries() {
+    awk '
+        BEGIN { emitValue = 0 }
+
+        match($0, /^[[:space:]]*<key>([^<]+Localized_[^<]+)<\/key>[[:space:]]*$/, matches) {
+            key = matches[1]
+
+            if (key !~ /Localized_(en|de|fr|es|pt|ja|nl)$/) {
+                print $0
+                emitValue = 1
+                next
+            }
+        }
+
+        emitValue == 1 {
+            print $0
+            emitValue = 0
+        }
+    ' "${SAMPLE_PLIST}"
+}
 
 # ─────────────────────────────────────────────────────────────
 # Extract globals (still use awk for non-map variables)
@@ -263,6 +292,9 @@ defaultUpdateWordLocalizedEs=$(extract_from_preference_map updateWordLocalizedEs
 defaultUpdateWordLocalizedPt=$(extract_from_preference_map updateWordLocalizedPt)
 defaultUpdateWordLocalizedJa=$(extract_from_preference_map updateWordLocalizedJa)
 defaultUpdateWordLocalizedNl=$(extract_from_preference_map updateWordLocalizedNl)
+
+additionalLocalizedEntries="$(extract_additional_localized_entries | indent_xml_block "    ")"
+additionalLocalizedEntriesMobileconfig="$(extract_additional_localized_entries | indent_xml_block "                                ")"
 defaultUpgradeWord=$(extract_from_preference_map upgradeWord)
 defaultUpgradeWordLocalizedEn=$(extract_from_preference_map upgradeWordLocalizedEn)
 defaultUpgradeWordLocalizedDe=$(extract_from_preference_map upgradeWordLocalizedDe)
@@ -1247,6 +1279,7 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${helpmessageLocalizedJa_xml}</string>
     <key>HelpMessageLocalized_nl</key>
     <string>${helpmessageLocalizedNl_xml}</string>
+${additionalLocalizedEntries}
     <key>HelpImage</key>
     <string>${helpimage_xml}</string>
 </dict>
@@ -1822,6 +1855,7 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${helpmessageLocalizedJa_xml}</string>
                                 <key>HelpMessageLocalized_nl</key>
                                 <string>${helpmessageLocalizedNl_xml}</string>
+${additionalLocalizedEntriesMobileconfig}
                                 <key>HelpImage</key>
                                 <string>${helpimage_xml}</string>
                             </dict>

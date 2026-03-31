@@ -1,4 +1,4 @@
-# Contributing to DDM OS Reminder (3.1.0b2)
+# Contributing to DDM OS Reminder (3.1.0b5)
 
 First, thank you for your interest in contributing to **DDM OS Reminder**! Community contributions have already greatly improved this project.
 
@@ -10,7 +10,7 @@ When submitting a Pull Request, please submit against the `development` branch (
 
 ### Localization Contributions
 
-For additional language support, contributors only need to edit [Resources/sample.plist](Resources/sample.plist). The runtime defaults and generated plist/mobileconfig output are derived from that localization surface.
+For additional language support, contributors only need to edit [Resources/sample.plist](Resources/sample.plist). `assemble.zsh`, `Resources/createPlist.zsh`, and runtime language detection all carry forward any additional `*_Localized_<code>` keys defined there.
 
 ### Branching Strategy
 

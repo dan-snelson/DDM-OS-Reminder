@@ -37,7 +37,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.1.0b4)
+🧩 Assemble DDM OS Reminder (3.1.0b5)
 ===============================================================
 
 Full Paths:
@@ -148,7 +148,7 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 
 > **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
-> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `nl`, `pt`, `ja`) and localized key families (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_nl`, `*_Localized_pt`, `*_Localized_ja`) for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, and past-deadline restart copy.
+> **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, and past-deadline restart copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`.
 
 ---
 

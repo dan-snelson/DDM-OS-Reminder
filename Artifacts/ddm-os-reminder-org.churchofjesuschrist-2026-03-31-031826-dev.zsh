@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0b4"
+scriptVersion="3.1.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1031,13 +1031,36 @@ function isValidDDMVersionString() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function localeForDialogLanguageCode() {
-    case "${1}" in
+    local languageCode="${1:l}"
+    local discoveredLocale=""
+
+    # Prefer an installed locale that matches the requested language code so
+    # new plist-only translations can localize weekdays and %a/%b dates too.
+    discoveredLocale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
+        BEGIN { IGNORECASE = 1 }
+        {
+            localeLower = tolower($0)
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?(\\.utf-?8)?$")) {
+                print $0
+                exit
+            }
+        }
+    ')
+
+    if [[ -n "${discoveredLocale}" ]]; then
+        echo "${discoveredLocale}"
+        return
+    fi
+
+    case "${languageCode}" in
         de) echo "de_DE.UTF-8" ;;
-        fr) echo "fr_FR.UTF-8" ;;
+        en) echo "en_US.UTF-8" ;;
         es) echo "es_ES.UTF-8" ;;
+        fr) echo "fr_FR.UTF-8" ;;
+        it) echo "it_IT.UTF-8" ;;
+        ja) echo "ja_JP.UTF-8" ;;
         nl) echo "nl_NL.UTF-8" ;;
         pt) echo "pt_PT.UTF-8" ;;
-        ja) echo "ja_JP.UTF-8" ;;
         *)  echo "" ;;
     esac
 }

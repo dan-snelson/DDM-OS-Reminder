@@ -6,6 +6,8 @@
 - Replaced hard-coded dialog language allowlists in `reminderDialog.zsh` with dynamic localization detection, so any language with a `TitleLocalized_<code>` key in managed or local preferences is now recognized without additional script edits.
 - Added a second localized-preference loading pass so previously unknown `*Localized_<code>` keys are imported from `/Library/Managed Preferences` and `/Library/Preferences` using the existing local-then-managed precedence model.
 - Updated dialog locale fallback behavior so unknown language codes no longer force `en_US.UTF-8`, allowing weekday and date rendering to fall back to the system default locale when no explicit mapping exists.
+- Updated locale resolution to prefer any installed locale matching the active dialog language code, allowing plist-only translations to localize weekday names and `%a` / `%b` deadline dates without adding per-language script mappings.
+- Updated `Resources/createPlist.zsh` to preserve additional `*_Localized_<code>` keys from `Resources/sample.plist`, so optional plist/mobileconfig regeneration no longer drops new languages that are not hardcoded in the script.
 - Updated the Language Translation issue template to document the new auto-detection behavior and clarify the supported plist locations for demo testing.
 
 ### Version 3.1.0b4 (30-Mar-2026)

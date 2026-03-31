@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 3.1.0b7 (31-Mar-2026)
+- Changed `reminderDialog.zsh` to ship English built-in fallback text only; non-English interfaces now require localized `*Localized_<code>` keys in managed or local preferences.
+    - `reminderDialog.zsh` is now nearly 14 percent leaner, reducing maintenance overhead while preserving localized deployment flexibility through plist-driven translations.
+
 ### Version 3.1.0b6 (31-Mar-2026)
 - Re-attempted to address Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87), thanks for the detailed testing feedback, @DamianFornagiel!)
     - Updated `assemble.zsh` prior-plist validation to accept either legacy `HelpMessage` or one-or-more `HelpMessageLocalized_<code>` keys, so localized-only profiles are no longer rejected as invalid upgrade sources.

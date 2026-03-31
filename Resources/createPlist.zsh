@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="3.1.0b6"
+scriptVersion="3.1.0b7"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
@@ -58,6 +58,15 @@ echo "Extracting preference values from ${SOURCE_SCRIPT#${SCRIPT_DIR}/} → $OUT
 extract_from_preference_map() {
     local key=$1
     local line
+    local value
+
+    if [[ "${key}" == *Localized_* ]] && [[ -f "${SAMPLE_PLIST}" ]]; then
+        value=$(/usr/libexec/PlistBuddy -c "Print :${key}" "${SAMPLE_PLIST}" 2>/dev/null || true)
+        if [[ -n "${value}" ]]; then
+            echo "${value}"
+            return
+        fi
+    fi
     
     # Search for the key in the preferenceConfiguration map (contains "|" separator)
     line=$(grep -m1 "\[\"${key}\"\]=\"[^|]*|" "$SOURCE_SCRIPT") || {
@@ -67,7 +76,9 @@ extract_from_preference_map() {
 
     # Extract the value after the pipe: ["key"]="type|value"
     if [[ $line =~ '"[^|]+\|([^"]*)"' ]]; then
-        echo "${match[1]}"
+        value="${match[1]}"
+
+        echo "${value}"
     else
         echo "ERROR: Cannot extract value for ${key}" >&2
         exit 1

@@ -5,6 +5,11 @@
 ### Version 3.1.0b7 (31-Mar-2026)
 - Changed `reminderDialog.zsh` to ship English built-in fallback text only; non-English interfaces now require localized `*Localized_<code>` keys in managed or local preferences.
     - `reminderDialog.zsh` is now nearly 14 percent leaner, reducing maintenance overhead while preserving localized deployment flexibility through plist-driven translations.
+- Updated `reminderDialog.zsh` DDM resolver classification so contradictory declaration state is tracked explicitly as `conflict`, while clean scan failures continue to classify as `noMatch` and missing/invalid declaration state is logged distinctly.
+- Updated `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` to return specific resolver states (`conflict`, `noMatch`, `missing`, `invalidVersion`) instead of collapsing all trust failures to `None`.
+- Optimized the two pending-update Jamf Pro Extension Attributes by replacing per-line external parsing in the DDM resolver hot path with in-process Zsh parsing, substantially reducing execution time on large `install.log` files.
+- Hardened the shared contradiction check so a declaration that reappears after `No updates found for DDM to enforce` now classifies as `conflict`, including repeated identical declarations.
+    - `None` is now reserved in those EAs for clean non-failure states such as already-compliant/current-build matches.
 
 ### Version 3.1.0b6 (31-Mar-2026)
 - Re-attempted to address Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87), thanks for the detailed testing feedback, @DamianFornagiel!)

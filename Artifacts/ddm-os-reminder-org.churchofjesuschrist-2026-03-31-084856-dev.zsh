@@ -272,6 +272,7 @@ ddmBuildVersionString=""
 ddmResolvedPaddedEpoch=""
 ddmResolvedPaddedRawLine=""
 ddmResolverFailureMarker=""
+ddmResolverConflictSummary=""
 typeset -ga ddmRecentInstallLogWindow=()
 
 # Load is-at-least for version comparison
@@ -1600,16 +1601,45 @@ function ddmSourcePriority() {
     esac
 }
 
+function parseDDMDescriptorVersionFromLine() {
+    local logLine="${1}"
+
+    parsedDDMDescriptorVersion=""
+
+    if [[ "${logLine}" != *"PrimaryDescriptor:"* || "${logLine}" == *"PrimaryDescriptor: (null)"* || "${logLine}" != *"SU:"* ]]; then
+        return 1
+    fi
+
+    parsedDDMDescriptorVersion=$(echo "${logLine}" | sed -nE 's/.* SU:.* ([0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?) [A-Za-z0-9]+ .*/\1/p')
+
+    if [[ -z "${parsedDDMDescriptorVersion}" ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
 function candidateHasNoMatchScanFailure() {
     local candidateVersion="${1}"
+    local declarationTimestamp="${2}"
     local lineIndex=0
     local currentLine=""
+    local lineTimestamp=""
     local segmentActive="NO"
 
     ddmResolverFailureMarker=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
+        lineTimestamp=$(echo "${currentLine}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+
+        if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${currentLine}" ]]; then
+            continue
+        fi
+
+        if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+            continue
+        fi
 
         if [[ "${currentLine}" == *"requestedPMV="* ]]; then
             if [[ "${currentLine}" == *"requestedPMV=${candidateVersion},"* || "${currentLine}" == *"requestedPMV=${candidateVersion})"* ]]; then
@@ -1643,9 +1673,76 @@ function candidateHasNoMatchScanFailure() {
     return 1
 }
 
+function candidateHasConflictingEvidence() {
+    local candidateSignature="${1}"
+    local candidateVersion="${2}"
+    local firstDeclarationTimestamp="${3}"
+    local declarationTimestamp="${4}"
+    local lineIndex=0
+    local currentLine=""
+    local lineTimestamp=""
+    local noUpdatesTimestamp=""
+
+    ddmResolverConflictSummary=""
+
+    for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
+        currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
+        lineTimestamp=$(echo "${currentLine}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+
+        if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${currentLine}" ]]; then
+            continue
+        fi
+
+        if [[ "${lineTimestamp}" < "${firstDeclarationTimestamp}" ]]; then
+            continue
+        fi
+
+        if [[ "${currentLine}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${currentLine}"; then
+            if [[ -n "${noUpdatesTimestamp}" ]]; then
+                if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" == "${candidateSignature}" ]]; then
+                    if [[ "${lineTimestamp}" > "${noUpdatesTimestamp}" || "${lineTimestamp}" == "${noUpdatesTimestamp}" ]]; then
+                        ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
+                        return 0
+                    fi
+                fi
+            fi
+
+            if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+                continue
+            fi
+
+            if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" != "${candidateSignature}" ]]; then
+                ddmResolverConflictSummary="Conflicting declaration: ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType}"
+                return 0
+            fi
+        fi
+
+        if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+            if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
+                noUpdatesTimestamp="${lineTimestamp}"
+            fi
+            continue
+        fi
+
+        if parseDDMDescriptorVersionFromLine "${currentLine}"; then
+            if [[ "${parsedDDMDescriptorVersion}" != "${candidateVersion}" ]]; then
+                ddmResolverConflictSummary="Available descriptor ${parsedDDMDescriptorVersion} disagrees with DDM declaration ${candidateVersion}"
+                return 0
+            fi
+        fi
+
+        if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
+            noUpdatesTimestamp="${lineTimestamp}"
+        fi
+    done
+
+    return 1
+}
+
 function resolveDDMEnforcementFromInstallLog() {
     local line=""
     local candidateKey=""
+    local candidateSignature=""
     local latestTimestamp=""
     local latestInvalidContext=""
     local index=0
@@ -1656,6 +1753,7 @@ function resolveDDMEnforcementFromInstallLog() {
     local currentPriority=0
 
     local -a candidateSourceTypes=()
+    local -a candidateFirstTimestamps=()
     local -a candidateTimestamps=()
     local -a candidateEnforcedDates=()
     local -a candidateVersions=()
@@ -1672,9 +1770,11 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmDeclarationRawLine=""
     ddmBuildVersionString=""
     ddmResolverFailureMarker=""
+    ddmResolverConflictSummary=""
 
     if ! tailRecentInstallLogWindow; then
         ddmResolverStatus="missing"
+        ddmResolverSuppressionType="missing"
         ddmResolverReason="No readable install.log window available"
         return 1
     fi
@@ -1686,7 +1786,7 @@ function resolveDDMEnforcementFromInstallLog() {
 
         candidateKey="${parsedDDMSourceType}|${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
 
-        if [[ -n "${seenCandidateIndexes[${candidateKey}]}" ]]; then
+        if (( ${+seenCandidateIndexes[${candidateKey}]} )); then
             index="${seenCandidateIndexes[${candidateKey}]}"
             if [[ "${parsedDDMLogTimestamp}" > "${candidateTimestamps[$index]}" ]]; then
                 candidateTimestamps[$index]="${parsedDDMLogTimestamp}"
@@ -1696,6 +1796,7 @@ function resolveDDMEnforcementFromInstallLog() {
         fi
 
         candidateSourceTypes+=( "${parsedDDMSourceType}" )
+        candidateFirstTimestamps+=( "${parsedDDMLogTimestamp}" )
         candidateTimestamps+=( "${parsedDDMLogTimestamp}" )
         candidateEnforcedDates+=( "${parsedDDMEnforcedInstallDate}" )
         candidateVersions+=( "${parsedDDMVersionString}" )
@@ -1706,6 +1807,7 @@ function resolveDDMEnforcementFromInstallLog() {
 
     if [[ ${#candidateSourceTypes[@]} -eq 0 ]]; then
         ddmResolverStatus="missing"
+        ddmResolverSuppressionType="missing"
         ddmResolverReason="No DDM declaration candidates found in install.log"
         return 1
     fi
@@ -1743,7 +1845,7 @@ function resolveDDMEnforcementFromInstallLog() {
 
     distinctCandidateCount="${#filteredIndexes[@]}"
     if (( distinctCandidateCount != 1 )); then
-        ddmResolverStatus="suppressed"
+        ddmResolverStatus="conflict"
         ddmResolverSuppressionType="conflict"
         ddmResolverReason="Conflicting DDM declarations detected in install.log"
         warning "${ddmResolverReason}"
@@ -1774,9 +1876,10 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmEnforcedInstallDate="${candidateEnforcedDates[$latestIndex]}"
     ddmVersionString="${candidateVersions[$latestIndex]}"
     ddmBuildVersionString="${candidateBuilds[$latestIndex]}"
+    candidateSignature="${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}"
 
     if ! isValidDDMVersionString "${ddmVersionString}"; then
-        ddmResolverStatus="suppressed"
+        ddmResolverStatus="invalidVersion"
         ddmResolverSuppressionType="invalidVersion"
         ddmResolverReason="Invalid DDM version string detected in resolved declaration"
         warning "${ddmResolverReason}: ${ddmVersionString}"
@@ -1784,8 +1887,28 @@ function resolveDDMEnforcementFromInstallLog() {
         return 1
     fi
 
-    if candidateHasNoMatchScanFailure "${ddmVersionString}"; then
-        ddmResolverStatus="suppressed"
+    if candidateHasConflictingEvidence "${candidateSignature}" "${ddmVersionString}" "${candidateFirstTimestamps[$latestIndex]}" "${ddmDeclarationLogTimestamp}"; then
+        ddmResolverStatus="conflict"
+        ddmResolverSuppressionType="conflict"
+        ddmResolverReason="Conflicting DDM state detected in install.log"
+        warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
+
+        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
+            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
+                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
+                break
+            fi
+        done
+
+        if [[ -n "${latestInvalidContext}" ]]; then
+            info "Resolver context: ${latestInvalidContext}"
+        fi
+
+        return 1
+    fi
+
+    if candidateHasNoMatchScanFailure "${ddmVersionString}" "${ddmDeclarationLogTimestamp}"; then
+        ddmResolverStatus="noMatch"
         ddmResolverSuppressionType="noMatch"
         ddmResolverReason="Chosen DDM declaration does not map to an available update"
         warning "${ddmResolverReason}: ${ddmVersionString} (${ddmResolverFailureMarker})"
@@ -1805,6 +1928,7 @@ function resolveDDMEnforcementFromInstallLog() {
     fi
 
     ddmResolverStatus="resolved"
+    ddmResolverSuppressionType=""
     notice "Resolved DDM declaration source: ${ddmResolverSource}"
     notice "Resolved DDM declaration version: ${ddmVersionString}"
     notice "Resolved DDM declaration enforcement date: ${ddmEnforcedInstallDate}"
@@ -1914,9 +2038,9 @@ installedOSvsDDMenforcedOS() {
             versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
             return
             ;;
-        suppressed)
+        conflict|noMatch|invalidVersion)
             versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
-            warning "Resolver suppression summary: ${ddmResolverSuppressionType:-unknown} | ${ddmResolverReason}"
+            warning "Resolver suppression summary: ${ddmResolverSuppressionType:-${ddmResolverStatus:-unknown}} | ${ddmResolverReason}"
             quitOut "${ddmResolverReason}; exiting quietly."
             return
             ;;

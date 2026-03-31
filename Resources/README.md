@@ -237,7 +237,8 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 
 **4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
 Reports the date of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
-Returns `None` when DDM declaration state is missing, conflicting, invalid, no longer maps to an available update, or already matches the current OS build.
+Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate date.
+Returns `None` only when no pending update should be reported because the resolved declaration already matches the current OS build.
 Uses a safe future padded enforcement date when one is present; otherwise falls back to the declared `EnforcedInstallDate`.
 
 ```
@@ -246,7 +247,8 @@ Uses a safe future padded enforcement date when one is present; otherwise falls 
 
 **4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
 Reports the version of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
-Returns `None` when DDM declaration state is missing, conflicting, invalid, no longer maps to an available update, or already matches the current OS build.
+Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate version.
+Returns `None` only when no pending update should be reported because the resolved declaration already matches the current OS build.
 
 ```
 26.2

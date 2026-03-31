@@ -17,7 +17,8 @@ assignees: dan-snelson
 
 What language are you contributing? (e.g., `Italian`, `Swedish`, `Polish`)
 
-Currently supported: `en` `de` `fr` `es` `nl` `pt` `ja`
+Currently supported examples: `en` `de` `fr` `es` `nl` `pt` `ja`
+The script auto-detects any additional language present in the plist. No script edits are required.
 
 Are you adding a **new** language or **improving** an existing one?
 
@@ -27,7 +28,9 @@ Are you adding a **new** language or **improving** an existing one?
 
 1. Download [`Resources/sample.plist`](https://raw.githubusercontent.com/dan-snelson/DDM-OS-Reminder/main/Resources/sample.plist) from the `main` branch.
 2. For every key ending in `_Localized_en`, add a matching key with your language code suffix (e.g., `_Localized_it`), with the translated value — following the `_Localized_de` / `_Localized_fr` pattern already in the file.
-3. To preview your translation, set `LanguageOverride` to your language code in a local copy of the plist (e.g., `it`) and place it at `/Library/Managed Preferences/org.churchofjesuschrist.dorm.plist`.
+3. To preview your translation, set `LanguageOverride` to your language code in a local copy of the plist (e.g., `it`) and place it in one of the script's supported preference locations:
+   - `/Library/Managed Preferences/org.churchofjesuschrist.dorm.plist`
+   - `/Library/Preferences/org.churchofjesuschrist.dorm.plist`
 4. Run demo mode to verify your strings render correctly:
 ```zsh
 zsh reminderDialog.zsh demo

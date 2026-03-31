@@ -2,6 +2,12 @@
 
 ## Changelog
 
+### Version 3.1.0b5 (31-Mar-2026)
+- Replaced hard-coded dialog language allowlists in `reminderDialog.zsh` with dynamic localization detection, so any language with a `TitleLocalized_<code>` key in managed or local preferences is now recognized without additional script edits.
+- Added a second localized-preference loading pass so previously unknown `*Localized_<code>` keys are imported from `/Library/Managed Preferences` and `/Library/Preferences` using the existing local-then-managed precedence model.
+- Updated dialog locale fallback behavior so unknown language codes no longer force `en_US.UTF-8`, allowing weekday and date rendering to fall back to the system default locale when no explicit mapping exists.
+- Updated the Language Translation issue template to document the new auto-detection behavior and clarify the supported plist locations for demo testing.
+
 ### Version 3.1.0b4 (30-Mar-2026)
 - Fixed localized text fallback so explicitly configured base scalar keys such as `HelpMessage`, `Message`, and related `*Localized_*` preference families are no longer silently overwritten by shipped localized defaults when no per-language override is present. This restores backward compatibility for older profiles while preserving explicit localized overrides. (Addresses Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87)thanks for the heads-up, @damian!)
 - Updated string preference loading to treat explicit plist keys as authoritative even when their value is an empty string, aligning runtime behavior with generated plist values such as `SupportAssistanceMessage=""` when Knowledge Base surfaces are disabled.

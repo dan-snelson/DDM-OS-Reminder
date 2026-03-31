@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0b4"
+scriptVersion="3.1.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -806,7 +806,7 @@ function localeForDialogLanguageCode() {
         nl) echo "nl_NL.UTF-8" ;;
         pt) echo "pt_PT.UTF-8" ;;
         ja) echo "ja_JP.UTF-8" ;;
-        *)  echo "en_US.UTF-8" ;;
+        *)  echo "" ;;
     esac
 }
 
@@ -1023,6 +1023,59 @@ function loadDefaultPreferences() {
     done
 }
 
+function isKnownPreferencePlistKey() {
+    local plistKey="${1}"
+    local prefKey=""
+
+    for prefKey in "${(@k)preferenceConfiguration}"; do
+        if [[ "${plistKeyMap[$prefKey]:-$prefKey}" == "${plistKey}" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+function loadDynamicLocalizedPreferenceOverridesFromPlist() {
+    local plistPath="${1}"
+    local rawKey=""
+    local plistKeys=()
+
+    while IFS= read -r rawKey; do
+        [[ -n "${rawKey}" ]] && plistKeys+=("${rawKey}")
+    done < <(/usr/libexec/PlistBuddy -c "Print" "${plistPath}" 2>/dev/null | awk '
+        /^    / && /Localized_/ {
+            key=$0
+            sub(/^    /, "", key)
+            sub(/ =.*/, "", key)
+            print key
+        }
+    ')
+
+    for rawKey in "${plistKeys[@]}"; do
+        local baseRaw="${rawKey%%Localized_*}"
+        local codePart="${rawKey##*Localized_}"
+        local internalBase=""
+        local internalSuffix=""
+        local internalKey=""
+        local dynamicValue=""
+
+        [[ -z "${baseRaw}" || -z "${codePart}" ]] && continue
+
+        if isKnownPreferencePlistKey "${rawKey}"; then
+            continue
+        fi
+
+        internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        internalSuffix="$(languageSuffixForCode "${codePart}")"
+        internalKey="${internalBase}Localized${internalSuffix}"
+        dynamicValue=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
+
+        printf -v "${internalKey}" '%s' "${dynamicValue}"
+        preferenceExplicitlySet["${internalKey}"]="true"
+    done
+}
+
 function loadPreferenceOverrides() {
     preferenceExplicitlySet=()
     
@@ -1090,10 +1143,18 @@ function loadPreferenceOverrides() {
                 ;;
         esac
     done
-    
+
+    if [[ "${hasLocalPrefs}" == "true" ]]; then
+        loadDynamicLocalizedPreferenceOverridesFromPlist "${localPreferencesPlist}.plist"
+    fi
+
+    if [[ "${hasManagedPrefs}" == "true" ]]; then
+        loadDynamicLocalizedPreferenceOverridesFromPlist "${managedPreferencesPlist}.plist"
+    fi
+
     # Special handling for date format
     [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
-    
+
     preFlight "Preferences loaded"
 
 }
@@ -1235,6 +1296,10 @@ function applyHideRules() {
 
 function normalizeDialogLanguageCode() {
     local languageCode="${1:l}"
+    local sentinelKey=""
+    local builtinSuffix=""
+    local sentinelVar=""
+
     languageCode="${languageCode#\"}"
     languageCode="${languageCode%\"}"
     languageCode="${languageCode#\'}"
@@ -1242,10 +1307,28 @@ function normalizeDialogLanguageCode() {
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
-    case "${languageCode}" in
-        de|fr|es|nl|pt|ja|en) echo "${languageCode}" ;;
-        *)                    echo "en" ;;
-    esac
+    [[ "${languageCode}" == "en" ]] && echo "en" && return
+
+    sentinelKey="TitleLocalized_${languageCode}"
+    if [[ -f "${managedPreferencesPlist}.plist" ]]; then
+        if /usr/libexec/PlistBuddy -c "Print :${sentinelKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
+            echo "${languageCode}"
+            return
+        fi
+    fi
+
+    if [[ -f "${localPreferencesPlist}.plist" ]]; then
+        if /usr/libexec/PlistBuddy -c "Print :${sentinelKey}" "${localPreferencesPlist}.plist" >/dev/null 2>&1; then
+            echo "${languageCode}"
+            return
+        fi
+    fi
+
+    builtinSuffix="$(languageSuffixForCode "${languageCode}")"
+    sentinelVar="titleLocalized${builtinSuffix}"
+    [[ -n "${(P)sentinelVar}" ]] && echo "${languageCode}" && return
+
+    echo "en"
 }
 
 function detectLoggedInUserLanguageCode() {
@@ -1264,15 +1347,11 @@ function detectLoggedInUserLanguageCode() {
 }
 
 function languageSuffixForCode() {
-    case "${1}" in
-        de) echo "De" ;;
-        fr) echo "Fr" ;;
-        es) echo "Es" ;;
-        nl) echo "Nl" ;;
-        pt) echo "Pt" ;;
-        ja) echo "Ja" ;;
-        *)  echo "En" ;;
-    esac
+    local code="${1:l}"
+
+    [[ -z "${code}" || "${code}" == "en" ]] && echo "En" && return
+
+    echo "${(C)code}"
 }
 
 function localizedWeekdayName() {

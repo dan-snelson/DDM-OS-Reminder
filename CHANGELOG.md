@@ -2,6 +2,12 @@
 
 ## Changelog
 
+### Version 3.1.0b6 (31-Mar-2026)
+- Re-attempted to address Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87), thanks for the detailed testing feedback, @DamianFornagiel!)
+    - Updated `assemble.zsh` prior-plist validation to accept either legacy `HelpMessage` or one-or-more `HelpMessageLocalized_<code>` keys, so localized-only profiles are no longer rejected as invalid upgrade sources.
+    - Updated Knowledge Base suppression in `assemble.zsh` to remove the Knowledge Base row from every present help-message variant, including `HelpMessageLocalized_*`, instead of rewriting only the legacy `HelpMessage` key.
+    - Clarified README guidance so Mac Admins use base text keys for shared cross-language copy and reserve `*Localized_<code>` keys for explicit per-language overrides.
+
 ### Version 3.1.0b5 (31-Mar-2026)
 - Added shipped Italian (`it`) localization to `Resources/sample.plist`, regenerated sample-derived deployment artifacts, and refreshed README / issue-template examples so the documented language set matches the repo state.
 - Replaced hard-coded dialog language allowlists in `reminderDialog.zsh` with dynamic localization detection, so any language with a `TitleLocalized_<code>` key in managed or local preferences is now recognized without additional script edits.
@@ -12,7 +18,7 @@
 - Updated the Language Translation issue template to document the new auto-detection behavior and clarify the supported plist locations for demo testing.
 
 ### Version 3.1.0b4 (30-Mar-2026)
-- Fixed localized text fallback so explicitly configured base scalar keys such as `HelpMessage`, `Message`, and related `*Localized_*` preference families are no longer silently overwritten by shipped localized defaults when no per-language override is present. This restores backward compatibility for older profiles while preserving explicit localized overrides. (Addresses Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87)thanks for the heads-up, @DamianFornagiel!)
+- Fixed localized text fallback so explicitly configured base scalar keys such as `HelpMessage`, `Message`, and related `*Localized_*` preference families are no longer silently overwritten by shipped localized defaults when no per-language override is present. This restores backward compatibility for older profiles while preserving explicit localized overrides. (Addresses Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87), thanks for the heads-up, @DamianFornagiel!)
 - Updated string preference loading to treat explicit plist keys as authoritative even when their value is an empty string, aligning runtime behavior with generated plist values such as `SupportAssistanceMessage=""` when Knowledge Base surfaces are disabled.
 
 ### Version 3.1.0b3 (30-Mar-2026)

@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (3.1.0b5)
+# DDM OS Reminder (3.1.0b6)
 
 > A major update to Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **multiple language** support, significantly more robust **reminder display logic** and streamlined **upgrade functionality**
 
@@ -30,7 +30,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
 - :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
-- :new: **Full Multi-language Experience**: Version `3.1.0b5` fully supports English, German, French, Spanish, Italian, Dutch, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that automatically match the resolved language for a more polished, native-feeling user experience.
+- :new: **Full Multi-language Experience**: Version `3.1.0b6` fully supports English, German, French, Spanish, Italian, Dutch, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that automatically match the resolved language for a more polished, native-feeling user experience.
 
 
 ---
@@ -48,7 +48,7 @@ If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.pli
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.1.0b5)
+🧩 Assemble DDM OS Reminder (3.1.0b6)
 ===============================================================
 
 Full Paths:
@@ -183,6 +183,8 @@ Deployment Artifacts:
 </table>
 
 Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
+
+For custom text authoring, use base keys such as `Message` and `HelpMessage` when you want one shared string across every language. Add `MessageLocalized_<code>` or `HelpMessageLocalized_<code>` only for languages that truly need an override.
 
 ```zsh
 # German screenshots

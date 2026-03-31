@@ -37,7 +37,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.1.0b5"
+scriptVersion="3.1.0b6"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -227,6 +227,8 @@ function validatePriorPlistPath() {
   local scriptLogValue=""
   local requiredKey=""
   local -a missingRequiredKeys
+  local hasLegacyHelpMessage="false"
+  local hasLocalizedHelpMessage="false"
 
   if [[ ! -e "${candidatePath}" ]]; then
     echo "❌ Prior plist not found: ${candidatePath}" >&2
@@ -243,11 +245,23 @@ function validatePriorPlistPath() {
     return 1
   fi
 
-  for requiredKey in ScriptLog SupportTeamName SupportKBURL InfoButtonText Message HelpMessage; do
+  for requiredKey in ScriptLog SupportTeamName SupportKBURL InfoButtonText Message; do
     if ! /usr/libexec/PlistBuddy -c "Print :${requiredKey}" "${candidatePath}" >/dev/null 2>&1; then
       missingRequiredKeys+=("${requiredKey}")
     fi
   done
+
+  if /usr/libexec/PlistBuddy -c "Print :HelpMessage" "${candidatePath}" >/dev/null 2>&1; then
+    hasLegacyHelpMessage="true"
+  fi
+
+  if /usr/libexec/PlistBuddy -c "Print" "${candidatePath}" 2>/dev/null | /usr/bin/grep -q "^[[:space:]]*HelpMessageLocalized_"; then
+    hasLocalizedHelpMessage="true"
+  fi
+
+  if [[ "${hasLegacyHelpMessage}" != "true" && "${hasLocalizedHelpMessage}" != "true" ]]; then
+    missingRequiredKeys+=("HelpMessage|HelpMessageLocalized_<code>")
+  fi
 
   if (( ${#missingRequiredKeys[@]} > 0 )); then
     echo "❌ Prior plist does not appear to be a DDM OS Reminder plist; missing required keys: ${(j:, :)missingRequiredKeys}" >&2
@@ -1143,11 +1157,30 @@ if [[ -f "${plistSample}" ]]; then
         /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
         /usr/bin/plutil -replace SupportAssistanceMessage -string "" "${plistOutput}"
 
-        currentHelpMessage="$(/usr/bin/plutil -extract HelpMessage raw -o - "${plistOutput}" 2>/dev/null || true)"
-        if [[ -n "${currentHelpMessage}" ]]; then
-          updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
-          /usr/bin/plutil -replace HelpMessage -string "${updatedHelpMessage}" "${plistOutput}"
-        fi
+        local helpMessageKey=""
+        local currentHelpMessage=""
+        local updatedHelpMessage=""
+        local -a helpMessageKeys=()
+
+        while IFS= read -r helpMessageKey; do
+          [[ -n "${helpMessageKey}" ]] && helpMessageKeys+=("${helpMessageKey}")
+        done < <(/usr/libexec/PlistBuddy -c "Print" "${plistOutput}" 2>/dev/null | awk '
+          /^    HelpMessage =/ { print "HelpMessage" }
+          /^    HelpMessageLocalized_/ {
+            key=$0
+            sub(/^    /, "", key)
+            sub(/ =.*/, "", key)
+            print key
+          }
+        ')
+
+        for helpMessageKey in "${helpMessageKeys[@]}"; do
+          currentHelpMessage="$(/usr/bin/plutil -extract "${helpMessageKey}" raw -o - "${plistOutput}" 2>/dev/null || true)"
+          if [[ -n "${currentHelpMessage}" ]]; then
+            updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
+            /usr/bin/plutil -replace "${helpMessageKey}" -string "${updatedHelpMessage}" "${plistOutput}"
+          fi
+        done
 
         messageWithKbHidden="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
         if [[ "${messageWithKbHidden}" == *"(?) button"* ]]; then

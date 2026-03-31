@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="3.1.0b5"
+scriptVersion="3.1.0b6"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
@@ -1262,7 +1262,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <key>InfoBox</key>
     <string>${infobox_xml}</string>
 
-    <!-- Help section -->
+    <!-- Help section: use HelpMessage for one shared help block across all languages;
+         add HelpMessageLocalized_<code> only when that language needs different copy. -->
     <key>HelpMessage</key>
     <string>${helpmessage_xml}</string>
     <key>HelpMessageLocalized_en</key>

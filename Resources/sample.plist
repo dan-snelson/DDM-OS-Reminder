@@ -4,7 +4,7 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 3.1.0b5 -->
+    <!-- Version: 3.1.0b6 -->
     <!-- Generated on: 2026-02-05-195817 -->
 
     <!-- Logging -->
@@ -619,7 +619,8 @@
     <key>InfoBox</key>
     <string>Sample&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
 
-    <!-- Help section -->
+    <!-- Help section: use HelpMessage for one shared help block across all languages;
+         add HelpMessageLocalized_<code> only when that language needs different copy. -->
     <key>HelpMessage</key>
     <string>Sample&lt;br&gt;&lt;br&gt;For assistance, please contact: **{supportTeamName}**&lt;br&gt;- **Telephone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Website:** {supportTeamWebsite}&lt;br&gt;- **Knowledge Base Article:** {supportKBURL}&lt;br&gt;&lt;br&gt;**User Information:**&lt;br&gt;- **Full Name:** {userfullname}&lt;br&gt;- **User Name:** {username}&lt;br&gt;&lt;br&gt;**Computer Information:**&lt;br&gt;- **Computer Name:** {computername}&lt;br&gt;- **Serial Number:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Script Information:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
     <key>HelpMessageLocalized_en</key>

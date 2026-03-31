@@ -26,6 +26,20 @@ ddmBuildVersionString=""
 ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}$'
 typeset -ga ddmRecentInstallLogWindow=()
 
+# Jamf Pro Date data type sentinel values for non-date resolver states.
+# 2000-01-01 00:00:00 = None / no pending update / already compliant
+# 2000-01-01 00:00:01 = conflict
+# 2000-01-01 00:00:02 = noMatch
+# 2000-01-01 00:00:03 = missing
+# 2000-01-01 00:00:04 = invalidVersion
+# 2000-01-01 00:00:05 = unexpected resolver fallback
+ddmDateCodeNone="2000-01-01 00:00:00"
+ddmDateCodeConflict="2000-01-01 00:00:01"
+ddmDateCodeNoMatch="2000-01-01 00:00:02"
+ddmDateCodeMissing="2000-01-01 00:00:03"
+ddmDateCodeInvalidVersion="2000-01-01 00:00:04"
+ddmDateCodeUnexpected="2000-01-01 00:00:05"
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -38,7 +52,32 @@ function emitResult() {
 }
 
 function emitNoneResult() {
-    emitResult "None"
+    emitResult "${ddmDateCodeNone}"
+}
+
+function emitResolverStatusDateCode() {
+    local resolverStatus="${1}"
+
+    case "${resolverStatus}" in
+        conflict)
+            emitResult "${ddmDateCodeConflict}"
+            ;;
+        noMatch)
+            emitResult "${ddmDateCodeNoMatch}"
+            ;;
+        missing)
+            emitResult "${ddmDateCodeMissing}"
+            ;;
+        invalidVersion)
+            emitResult "${ddmDateCodeInvalidVersion}"
+            ;;
+        None)
+            emitResult "${ddmDateCodeNone}"
+            ;;
+        *)
+            emitResult "${ddmDateCodeUnexpected}"
+            ;;
+    esac
 }
 
 function tailRecentInstallLogWindow() {
@@ -499,10 +538,10 @@ case "${ddmResolverStatus}" in
     resolved)
         ;;
     conflict|noMatch|missing|invalidVersion)
-        emitResult "${ddmResolverStatus}"
+        emitResolverStatusDateCode "${ddmResolverStatus}"
         ;;
     *)
-        emitResult "missing"
+        emitResolverStatusDateCode "missing"
         ;;
 esac
 

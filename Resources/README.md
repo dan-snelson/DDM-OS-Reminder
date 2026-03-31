@@ -237,8 +237,13 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 
 **4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
 Reports the date of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
-Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate date.
-Returns `None` only when no pending update should be reported because the resolved declaration already matches the current OS build.
+Because this Extension Attribute is typically configured with a Jamf Pro `Date` data type, non-resolved states return documented sentinel dates instead of text.
+`2000-01-01 00:00:00` = no pending update / already compliant (`None`)
+`2000-01-01 00:00:01` = `conflict`
+`2000-01-01 00:00:02` = `noMatch`
+`2000-01-01 00:00:03` = `missing`
+`2000-01-01 00:00:04` = `invalidVersion`
+`2000-01-01 00:00:05` = unexpected resolver fallback
 Uses a safe future padded enforcement date when one is present; otherwise falls back to the declared `EnforcedInstallDate`.
 
 ```

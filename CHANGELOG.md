@@ -3,6 +3,7 @@
 ## Changelog
 
 ### Version 3.1.0b5 (31-Mar-2026)
+- Added shipped Italian (`it`) localization to `Resources/sample.plist`, regenerated sample-derived deployment artifacts, and refreshed README / issue-template examples so the documented language set matches the repo state.
 - Replaced hard-coded dialog language allowlists in `reminderDialog.zsh` with dynamic localization detection, so any language with a `TitleLocalized_<code>` key in managed or local preferences is now recognized without additional script edits.
 - Added a second localized-preference loading pass so previously unknown `*Localized_<code>` keys are imported from `/Library/Managed Preferences` and `/Library/Preferences` using the existing local-then-managed precedence model.
 - Updated dialog locale fallback behavior so unknown language codes no longer force `en_US.UTF-8`, allowing weekday and date rendering to fall back to the system default locale when no explicit mapping exists.

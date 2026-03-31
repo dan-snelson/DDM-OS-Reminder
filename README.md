@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (3.1.0b4)
+# DDM OS Reminder (3.1.0b5)
 
 > A major update to Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **multiple language** support, significantly more robust **reminder display logic** and streamlined **upgrade functionality**
 
@@ -30,7 +30,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
 - :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
-- :new: **Full Multi-language Experience**: Version `3.1.0b4` fully supports English, German, French, Spanish, Dutch, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that automatically match the resolved language for a more polished, native-feeling user experience.
+- :new: **Full Multi-language Experience**: Version `3.1.0b5` fully supports English, German, French, Spanish, Italian, Dutch, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that automatically match the resolved language for a more polished, native-feeling user experience.
 
 
 ---
@@ -48,7 +48,7 @@ If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.pli
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.1.0b4)
+🧩 Assemble DDM OS Reminder (3.1.0b5)
 ===============================================================
 
 Full Paths:
@@ -200,6 +200,11 @@ rm -f /var/log/org.churchofjesuschrist.log
 defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "es"
 zsh reminderDialog.zsh
 
+# Italian screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "it"
+zsh reminderDialog.zsh
+
 # Portuguese screenshots
 rm -f /var/log/org.churchofjesuschrist.log
 defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "pt"
@@ -223,6 +228,7 @@ Optional verification in log output:
 - `LanguageOverride is 'de'; using 'de'`
 - `LanguageOverride is 'fr'; using 'fr'`
 - `LanguageOverride is 'es'; using 'es'`
+- `LanguageOverride is 'it'; using 'it'`
 - `LanguageOverride is 'nl'; using 'nl'`
 - `LanguageOverride is 'pt'; using 'pt'`
 - `LanguageOverride is 'ja'; using 'ja'`

@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 3.1.0b9 (31-Mar-2026)
+- Updated `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` to treat a resolved DDM `VersionString` as already compliant when it matches or trails the current macOS product version, covering Apple log patterns where `BuildVersionString:(null)` omits a usable build match.
+- Added internal `currentVersionOverride` and `currentBuildOverride` fixture hooks to the two pending-update Jamf Extension Attributes so remote feedback traces can be validated locally without editing the scripts.
+
 ### Version 3.1.0b8 (31-Mar-2026)
 - Applied the in-process DDM resolver parsing improvements from the Jamf Pro Extension Attributes to `reminderDialog.zsh`, reducing subprocess churn in the runtime conflict/no-match detection path.
 - Bumped `reminderDialog.zsh`, `launchDaemonManagement.zsh`, `assemble.zsh`, and the pending-update Jamf Pro Extension Attributes to `3.1.0b8`.

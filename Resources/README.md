@@ -253,7 +253,7 @@ Uses a safe future padded enforcement date when one is present; otherwise falls 
 **4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
 Reports the version of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
 Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate version.
-Returns `None` only when no pending update should be reported because the resolved declaration already matches the current OS build.
+Returns `None` only when no pending update should be reported because the resolved declaration already matches or is older than the current OS build/product version.
 
 ```
 26.2

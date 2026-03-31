@@ -1,6 +1,6 @@
 #!/bin/zsh --no-rcs
 # EA: DDM Pending OS Update Date
-# Version: 3.1.0b8
+# Version: 3.1.0b9
 # Reports a pending DDM-enforced macOS update date when install.log state is trustworthy.
 # Created by: @robjschroeder 10.10.2025
 # Hardened to fail closed on conflicting or invalid DDM declaration state
@@ -12,9 +12,9 @@ set -u
 # These are not supported admin-facing settings.
 installLogPath="${installLogPathOverride:-/var/log/install.log}"
 ddmResolverLookbackLines="${ddmResolverLookbackLinesOverride:-4000}"
+currentVersion="${currentVersionOverride:-$(/usr/bin/sw_vers -productVersion 2>/dev/null || true)}"
+currentBuild="${currentBuildOverride:-$(/usr/bin/sw_vers -buildVersion 2>/dev/null || true)}"
 
-# Current OS info
-currentBuild="$(/usr/bin/sw_vers -buildVersion 2>/dev/null || true)"
 ddmResolverStatus=""
 ddmResolverFailureMarker=""
 ddmResolverConflictSummary=""
@@ -39,6 +39,9 @@ ddmDateCodeNoMatch="2000-01-01 00:00:02"
 ddmDateCodeMissing="2000-01-01 00:00:03"
 ddmDateCodeInvalidVersion="2000-01-01 00:00:04"
 ddmDateCodeUnexpected="2000-01-01 00:00:05"
+
+# Load is-at-least for version comparison
+autoload -Uz is-at-least
 
 
 
@@ -78,6 +81,22 @@ function emitResolverStatusDateCode() {
             emitResult "${ddmDateCodeUnexpected}"
             ;;
     esac
+}
+
+function currentMacSatisfiesCandidate() {
+    if ! isValidDDMVersionString "${ddmVersionString}"; then
+        return 1
+    fi
+
+    if [[ -n "${currentBuild}" && -n "${ddmBuildVersionString}" && "${ddmBuildVersionString}" != "(null)" && "${currentBuild}" == "${ddmBuildVersionString}" ]]; then
+        return 0
+    fi
+
+    if [[ -n "${currentVersion}" ]] && isValidDDMVersionString "${currentVersion}" && is-at-least "${ddmVersionString}" "${currentVersion}"; then
+        return 0
+    fi
+
+    return 1
 }
 
 function tailRecentInstallLogWindow() {
@@ -534,6 +553,10 @@ function resolvePaddedEnforcementDateForCandidate() {
 
 resolveDDMEnforcementFromInstallLog
 
+if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesCandidate; then
+    emitNoneResult
+fi
+
 case "${ddmResolverStatus}" in
     resolved)
         ;;
@@ -544,10 +567,6 @@ case "${ddmResolverStatus}" in
         emitResolverStatusDateCode "missing"
         ;;
 esac
-
-if [[ -n "${currentBuild}" && -n "${ddmBuildVersionString}" && "${ddmBuildVersionString}" != "(null)" && "${currentBuild}" == "${ddmBuildVersionString}" ]]; then
-    emitNoneResult
-fi
 
 formattedDate=""
 paddedDateRaw="$(resolvePaddedEnforcementDateForCandidate "${ddmDeclarationLogTimestamp}" "${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}")"

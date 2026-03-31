@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 3.1.0b8 (31-Mar-2026)
+- Applied the in-process DDM resolver parsing improvements from the Jamf Pro Extension Attributes to `reminderDialog.zsh`, reducing subprocess churn in the runtime conflict/no-match detection path.
+- Bumped `reminderDialog.zsh`, `launchDaemonManagement.zsh`, `assemble.zsh`, and the pending-update Jamf Pro Extension Attributes to `3.1.0b8`.
+
 ### Version 3.1.0b7 (31-Mar-2026)
 - Changed `reminderDialog.zsh` to ship English built-in fallback text only; non-English interfaces now require localized `*Localized_<code>` keys in managed or local preferences.
     - `reminderDialog.zsh` is now nearly 14 percent leaner, reducing maintenance overhead while preserving localized deployment flexibility through plist-driven translations.

@@ -1,6 +1,6 @@
 #!/bin/zsh --no-rcs
 # EA: DDM Pending OS Update Date
-# Version: 3.1.0b7
+# Version: 3.1.0b8
 # Reports a pending DDM-enforced macOS update date when install.log state is trustworthy.
 # Created by: @robjschroeder 10.10.2025
 # Hardened to fail closed on conflicting or invalid DDM declaration state

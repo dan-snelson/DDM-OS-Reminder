@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0b7"
+scriptVersion="3.1.0b8"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -41,6 +41,7 @@ ddmResolvedPaddedEpoch=""
 ddmResolvedPaddedRawLine=""
 ddmResolverFailureMarker=""
 ddmResolverConflictSummary=""
+ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}$'
 typeset -ga ddmRecentInstallLogWindow=()
 
 # Load is-at-least for version comparison
@@ -1331,12 +1332,12 @@ function parseDDMDeclarationFromLine() {
         return 1
     fi
 
-    parsedDDMLogTimestamp=$(echo "${logLine}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+    parsedDDMLogTimestamp="${logLine[1,22]}"
     parsedDDMEnforcedInstallDate="${${logLine##*|EnforcedInstallDate:}%%|*}"
     parsedDDMVersionString="${${logLine##*|VersionString:}%%|*}"
     parsedDDMBuildVersionString="${${logLine##*|BuildVersionString:}%%|*}"
 
-    if [[ -z "${parsedDDMLogTimestamp}" || "${parsedDDMLogTimestamp}" == "${logLine}" ]]; then
+    if [[ ! "${parsedDDMLogTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
         return 1
     fi
 
@@ -1371,6 +1372,9 @@ function ddmSourcePriority() {
 
 function parseDDMDescriptorVersionFromLine() {
     local logLine="${1}"
+    local descriptorText=""
+    local descriptorToken=""
+    local -a descriptorTokens=( )
 
     parsedDDMDescriptorVersion=""
 
@@ -1378,7 +1382,15 @@ function parseDDMDescriptorVersionFromLine() {
         return 1
     fi
 
-    parsedDDMDescriptorVersion=$(echo "${logLine}" | sed -nE 's/.* SU:.* ([0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?) [A-Za-z0-9]+ .*/\1/p')
+    descriptorText="${logLine##* SU:}"
+    descriptorTokens=( ${=descriptorText} )
+
+    for descriptorToken in "${descriptorTokens[@]}"; do
+        if isValidDDMVersionString "${descriptorToken}"; then
+            parsedDDMDescriptorVersion="${descriptorToken}"
+            break
+        fi
+    done
 
     if [[ -z "${parsedDDMDescriptorVersion}" ]]; then
         return 1
@@ -1399,9 +1411,9 @@ function candidateHasNoMatchScanFailure() {
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
-        lineTimestamp=$(echo "${currentLine}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+        lineTimestamp="${currentLine[1,22]}"
 
-        if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${currentLine}" ]]; then
+        if [[ ! "${lineTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
             continue
         fi
 
@@ -1455,9 +1467,9 @@ function candidateHasConflictingEvidence() {
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
-        lineTimestamp=$(echo "${currentLine}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
+        lineTimestamp="${currentLine[1,22]}"
 
-        if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${currentLine}" ]]; then
+        if [[ ! "${lineTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
             continue
         fi
 

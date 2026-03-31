@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0b3"
+scriptVersion="3.1.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -81,6 +81,7 @@ pastDeadlineRestartEffective="Off"
 pastDeadlineRestartMinimumUptimeMinutes=75
 pastDeadlineRestartSuppressedForUptime="NO"
 dialogLanguage="en"
+declare -A preferenceExplicitlySet=()
 
 
 
@@ -935,16 +936,21 @@ function normalizePastDeadlineRestartBehaviorValue() {
 function setPreferenceValue() {
     local targetVariable="${1}"
     local managedValue="${2}"
-    local localValue="${3}"
-    local defaultValue="${4}"
+    local managedKeyExists="${3}"
+    local localValue="${4}"
+    local localKeyExists="${5}"
+    local defaultValue="${6}"
     local chosenValue=""
 
-    if [[ -n "${managedValue}" ]]; then
+    if [[ "${managedKeyExists}" == "true" ]]; then
         chosenValue="${managedValue}"
-    elif [[ -n "${localValue}" ]]; then
+        preferenceExplicitlySet["${targetVariable}"]="true"
+    elif [[ "${localKeyExists}" == "true" ]]; then
         chosenValue="${localValue}"
+        preferenceExplicitlySet["${targetVariable}"]="true"
     else
         chosenValue="${defaultValue}"
+        unset "preferenceExplicitlySet[${targetVariable}]"
     fi
 
     printf -v "${targetVariable}" '%s' "${chosenValue}"
@@ -1008,6 +1014,8 @@ function setBooleanPreferenceValue() {
 }
 
 function loadDefaultPreferences() {
+    preferenceExplicitlySet=()
+
     for prefKey in "${(@k)preferenceConfiguration}"; do
         local prefConfig="${preferenceConfiguration[$prefKey]}"
         local defaultValue="${prefConfig#*|}"
@@ -1016,6 +1024,7 @@ function loadDefaultPreferences() {
 }
 
 function loadPreferenceOverrides() {
+    preferenceExplicitlySet=()
     
     # Check if managed preferences exist
     local hasManagedPrefs=false
@@ -1076,7 +1085,7 @@ function loadPreferenceOverrides() {
                 if [[ "${prefKey}" == "acceptableAssertionApplicationNames" ]]; then
                     setAllowlistPreferenceValue "${prefKey}" "${managedValue}" "${managedKeyExists}" "${localValue}" "${localKeyExists}" "${defaultValue}"
                 else
-                    setPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                    setPreferenceValue "${prefKey}" "${managedValue}" "${managedKeyExists}" "${localValue}" "${localKeyExists}" "${defaultValue}"
                 fi
                 ;;
         esac
@@ -1327,6 +1336,15 @@ function applyLocalizedFieldValue() {
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
     local localizedVariable="${baseVariable}Localized${localizedSuffix}"
     local localizedValue="${(P)localizedVariable}"
+
+    if [[ "${preferenceExplicitlySet[${localizedVariable}]}" == "true" ]]; then
+        printf -v "${baseVariable}" '%s' "${localizedValue}"
+        return
+    fi
+
+    if [[ "${preferenceExplicitlySet[${baseVariable}]}" == "true" ]]; then
+        return
+    fi
 
     if [[ -n "${localizedValue}" ]]; then
         printf -v "${baseVariable}" '%s' "${localizedValue}"

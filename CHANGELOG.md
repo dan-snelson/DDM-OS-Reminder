@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 3.1.0b4 (30-Mar-2026)
+- Fixed localized text fallback so explicitly configured base scalar keys such as `HelpMessage`, `Message`, and related `*Localized_*` preference families are no longer silently overwritten by shipped localized defaults when no per-language override is present. This restores backward compatibility for older profiles while preserving explicit localized overrides. (Addresses Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87)thanks for the heads-up, @damian!)
+- Updated string preference loading to treat explicit plist keys as authoritative even when their value is an empty string, aligning runtime behavior with generated plist values such as `SupportAssistanceMessage=""` when Knowledge Base surfaces are disabled.
+
 ### Version 3.1.0b3 (30-Mar-2026)
 - Polished German localization across `reminderDialog.zsh` and `Resources/sample.plist`, switching the default user-facing copy to informal second-person phrasing and restoring umlauts in the shipped German strings. ([Pull Request #86](https://github.com/dan-snelson/DDM-OS-Reminder/pull/86); thanks, @AirBookMac!)
 - Added first-class Dutch (`nl`) localization support across runtime language detection, locale-aware deadline rendering, generated plist/mobileconfig output, and sample configuration defaults. ([Pull Request #85](https://github.com/dan-snelson/DDM-OS-Reminder/pull/85); thanks, @JordyThery!)

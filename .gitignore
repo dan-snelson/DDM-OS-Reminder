@@ -33,5 +33,4 @@ Icon?
 
 
 ### Project temp
-.deployDDMOSReminder.zsh
-.deployVersion.txt
+.deploy*

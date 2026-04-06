@@ -164,6 +164,9 @@ flowchart TD
   - `defaultApplicableDeclaration`
   - `foundDdmEnforcedInstall`
   - generic `EnforcedInstallDate` fallback
+- **Compliance evaluation**:
+  - A matching non-null `BuildVersionString` satisfies the declaration immediately
+  - When Apple logs omit a usable build match (`BuildVersionString:(null)`), the script treats the Mac as compliant when the installed macOS product version matches or exceeds the resolved `VersionString`
 
 ### 5. Effective Deadline Resolution
 - **Check**: Is a safe future `setPastDuePaddedEnforcementDate` present after the resolved declaration without a later conflicting declaration?

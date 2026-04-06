@@ -7,7 +7,7 @@ assignees: dan-snelson
 
 ---
 
-> **No Pull Request needed.** Simply fill out this form and the maintainer will apply your contribution directly.
+> **No Pull Request needed.** Simply fill out this form and the maintainer will apply your contribution directly. (See:[Language Translation: Italian](https://github.com/dan-snelson/DDM-OS-Reminder/issues/89) for an example of a completed issue.)
 > 
 > You're also welcome to discuss via the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
 

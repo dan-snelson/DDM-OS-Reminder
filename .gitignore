@@ -27,8 +27,10 @@ Icon?
 .zcompcache/
 *.zwc
 
+### Codex
+.codex/
+.envrc
 
 
 ### Project temp
-.deployDDMOSReminder.zsh
-.deployVersion.txt
+.deploy*

@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (3.0.1)
+# DDM OS Reminder (3.1.0)
 
 > A major update to Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **multiple language** support, significantly more robust **reminder display logic** and streamlined **upgrade functionality**
 
@@ -30,7 +30,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
 - :new: **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
-- :new: **Full Multi-language Experience**: Introduced in version `3.0.0` and fully supported in `3.0.1`, DDM OS Reminder supports English, German, French, Spanish, Portuguese, and Japanese across the reminder experience, with localized dialog content, support messaging, and human-readable deadline dates that automatically match the resolved language for a more polished, native-feeling user experience.
+- :new: **Full Multi-language Experience**: Version `3.1.0` ships English dialog defaults in-script and supports German, French, Spanish, Italian, Dutch, Portuguese, Japanese, and additional languages through localized `*Localized_<code>` preference keys, with locale-aware dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that match the resolved language.
 
 
 ---
@@ -48,7 +48,7 @@ If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.pli
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.1)
+🧩 Assemble DDM OS Reminder (3.1.0)
 ===============================================================
 
 Full Paths:
@@ -182,7 +182,20 @@ Deployment Artifacts:
   </tr>
 </table>
 
+## 🆕 Localization Contributions
+
+> For additional language support, contributors only need to edit [Resources/sample.plist](Resources/sample.plist). The runtime defaults and generated plist/mobileconfig output are derived from that localization surface.
+> 
+> See [Language Translation: Italian](https://github.com/dan-snelson/DDM-OS-Reminder/issues/89) for a real-world example.
+
+<img width="834" height="337" alt="Screenshot 2026-03-31 at 4 02 25 AM" src="images/Language_Translation.png" />
+
+
 Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
+
+For custom text authoring, use base keys such as `Message` and `HelpMessage` when you want one shared string across every language. Add `MessageLocalized_<code>` or `HelpMessageLocalized_<code>` only for languages that truly need an override.
+
+Starting with `3.1.0`, `reminderDialog.zsh` only ships English built-in fallback strings. To display a non-English interface, provide localized preference keys such as `TitleLocalized_it`, `MessageLocalized_it`, and related `*Localized_<code>` entries in managed or local preferences.
 
 ```zsh
 # German screenshots
@@ -200,9 +213,19 @@ rm -f /var/log/org.churchofjesuschrist.log
 defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "es"
 zsh reminderDialog.zsh
 
+# Italian screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "it"
+zsh reminderDialog.zsh
+
 # Portuguese screenshots
 rm -f /var/log/org.churchofjesuschrist.log
 defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "pt"
+zsh reminderDialog.zsh
+
+# Dutch screenshots
+rm -f /var/log/org.churchofjesuschrist.log
+defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverride -string "nl"
 zsh reminderDialog.zsh
 
 # Japanese screenshots
@@ -218,6 +241,8 @@ Optional verification in log output:
 - `LanguageOverride is 'de'; using 'de'`
 - `LanguageOverride is 'fr'; using 'fr'`
 - `LanguageOverride is 'es'; using 'es'`
+- `LanguageOverride is 'it'; using 'it'`
+- `LanguageOverride is 'nl'; using 'nl'`
 - `LanguageOverride is 'pt'; using 'pt'`
 - `LanguageOverride is 'ja'; using 'ja'`
 

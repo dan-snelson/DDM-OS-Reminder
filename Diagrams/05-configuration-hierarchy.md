@@ -112,8 +112,8 @@ ELSE:
 
 **Localization Resolution**:
 1. `LanguageOverride` (if not `auto`) sets the active language directly.
-2. Otherwise the script reads logged-in user `AppleLanguages:0` and normalizes to `en`, `de`, or `fr`.
-3. For each localized field, fallback is `selected language` → scalar key.
+2. Otherwise the script reads logged-in user `AppleLanguages:0`, normalizes built-in supported locales (`en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`), and can honor additional languages when matching `*Localized_<code>` keys are supplied in preferences.
+3. For each localized field, fallback is `selected language-specific key` → scalar/base key.
 
 ---
 

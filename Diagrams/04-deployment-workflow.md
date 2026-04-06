@@ -298,7 +298,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0)
+🧩 Assemble DDM OS Reminder (3.1.0)
 ===============================================================
 
 Full Paths:
@@ -579,6 +579,8 @@ Recommended bundled EAs:
 - `Resources/JamfEA-DDM-OS-Reminder-User-Clicks.zsh`
 
 The pending date/version EAs now fail closed and return `None` when recent `install.log` state is missing, conflicting, invalid, or no longer maps to an available update.
+
+As of `3.1.0`, those EAs also treat a matching or trailing current macOS `VersionString` as compliant when Apple omits a usable `BuildVersionString`, and expose internal `installLogPathOverride`, `currentVersionOverride`, and `currentBuildOverride` hooks for local trace replay during troubleshooting. These hooks are for manual validation only and are not configuration-profile keys.
 
 #### 6.3 Common Issues and Solutions
 

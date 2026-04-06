@@ -37,7 +37,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.0.0)
+🧩 Assemble DDM OS Reminder (3.1.0)
 ===============================================================
 
 Full Paths:
@@ -148,7 +148,7 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 
 > **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
-> **Localization (optional):** Configure `LanguageOverride` (`auto`, `en`, `de`, `fr`, `es`, `pt`, `ja`) and localized key families (`*_Localized_en`, `*_Localized_de`, `*_Localized_fr`, `*_Localized_es`, `*_Localized_pt`, `*_Localized_ja`) for dialog text, warnings, staging text, and support-assistance messaging.
+> **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, and past-deadline restart copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`.
 
 ---
 
@@ -237,7 +237,13 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 
 **4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
 Reports the date of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
-Returns `None` when DDM declaration state is missing, conflicting, invalid, no longer maps to an available update, or already matches the current OS build.
+Because this Extension Attribute is typically configured with a Jamf Pro `Date` data type, non-resolved states return documented sentinel dates instead of text.
+`2000-01-01 00:00:00` = no pending update / already compliant (`None`)
+`2000-01-01 00:00:01` = `conflict`
+`2000-01-01 00:00:02` = `noMatch`
+`2000-01-01 00:00:03` = `missing`
+`2000-01-01 00:00:04` = `invalidVersion`
+`2000-01-01 00:00:05` = unexpected resolver fallback
 Uses a safe future padded enforcement date when one is present; otherwise falls back to the declared `EnforcedInstallDate`.
 
 ```
@@ -246,7 +252,8 @@ Uses a safe future padded enforcement date when one is present; otherwise falls 
 
 **4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
 Reports the version of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
-Returns `None` when DDM declaration state is missing, conflicting, invalid, no longer maps to an available update, or already matches the current OS build.
+Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate version.
+Returns `None` only when no pending update should be reported because the resolved declaration already matches or is older than the current OS build/product version.
 
 ```
 26.2

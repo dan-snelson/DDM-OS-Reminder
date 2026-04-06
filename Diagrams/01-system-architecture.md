@@ -162,7 +162,7 @@ graph TB
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
 4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration
-5. **Version comparison** determines if update is required
+5. **Version comparison** determines if update is required, treating a matching `BuildVersionString` as compliant and falling back to product-version comparison when Apple omits a usable build match
 6. **Reminder gating** applies display-window, periodic reminder, and quiet-period logic
 7. **Post-deadline mode evaluation** determines update-flow vs restart-only (Prompt/Force)
 8. **Availability checks** apply meeting-delay only when >24h to deadline and not in Force mode

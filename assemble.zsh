@@ -622,6 +622,57 @@ function emitSupportedPlistPreferenceTypes() {
   ' "${messageScript}" | LC_ALL=C sort
 }
 
+function emitPlistEntryTypes() {
+  local plistPath="${1}"
+
+  /usr/bin/awk '
+    function trim(value) {
+      sub(/^[[:space:]]+/, "", value)
+      sub(/[[:space:]]+$/, "", value)
+      return value
+    }
+
+    BEGIN {
+      currentKey = ""
+    }
+
+    /^[[:space:]]*<key>[^<]+<\/key>[[:space:]]*$/ {
+      currentKey = $0
+      sub(/^[[:space:]]*<key>/, "", currentKey)
+      sub(/<\/key>[[:space:]]*$/, "", currentKey)
+      next
+    }
+
+    currentKey != "" {
+      line = trim($0)
+
+      if (line == "" || line ~ /^<!--/) {
+        next
+      }
+
+      if (line ~ /^<string>/) {
+        print currentKey "|string"
+        currentKey = ""
+        next
+      }
+
+      if (line ~ /^<integer>/ || line ~ /^<real>/) {
+        print currentKey "|numeric"
+        currentKey = ""
+        next
+      }
+
+      if (line ~ /^<(true|false)\/>/) {
+        print currentKey "|boolean"
+        currentKey = ""
+        next
+      }
+
+      currentKey = ""
+    }
+  ' "${plistPath}" | LC_ALL=C sort
+}
+
 function extractPlistKeys() {
   local plistPath="${1}"
 
@@ -682,6 +733,7 @@ function applyImportedPreferences() {
   local sourcePlist="${1}"
   local targetPlist="${2}"
   local emittedPreferenceTypes=""
+  local targetPlistPreferenceTypes=""
   local importedKey=""
   local importedValue=""
   local preferenceType=""
@@ -701,7 +753,15 @@ function applyImportedPreferences() {
     return 1
   fi
 
-  supportedPreferenceLines=("${(@f)${emittedPreferenceTypes}}")
+  if ! targetPlistPreferenceTypes="$(emitPlistEntryTypes "${targetPlist}")"; then
+    echo "    ❌ Failed to determine target plist entry types; aborting preference import."
+    return 1
+  fi
+
+  supportedPreferenceLines=(
+    "${(@f)${emittedPreferenceTypes}}"
+    "${(@f)${targetPlistPreferenceTypes}}"
+  )
 
   while IFS= read -r importedKey; do
     [[ -z "${importedKey}" ]] && continue

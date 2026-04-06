@@ -1112,9 +1112,9 @@ if [[ -f "${plistSample}" ]]; then
       echo "    🔓 Production mode: removing placeholder text for clean deployment"
       # Remove "<marker> " (with trailing space), then standalone marker
       sed -i.bak -E \
-        -e "s/${placeholderMarker}[[:space:]]+//gI" \
+        -e "s/${placeholderMarker}:?[[:space:]]+//gI" \
         -e "s/${placeholderMarker}//gI" \
-        -e "s/${legacyPlaceholderMarker}[[:space:]]+//gI" \
+        -e "s/${legacyPlaceholderMarker}:?[[:space:]]+//gI" \
         -e "s/${legacyPlaceholderMarker}//gI" \
         "${plistOutput}"
       ;;

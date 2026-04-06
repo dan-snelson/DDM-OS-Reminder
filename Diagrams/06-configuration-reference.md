@@ -54,6 +54,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | supportAssistanceMessageLocalizedDe | SupportAssistanceMessageLocalized_de | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedFr | SupportAssistanceMessageLocalized_fr | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedEs | SupportAssistanceMessageLocalized_es | String | [Localized support sentence] | Localization |
+| supportAssistanceMessageLocalizedIt | SupportAssistanceMessageLocalized_it | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedNl | SupportAssistanceMessageLocalized_nl | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedPt | SupportAssistanceMessageLocalized_pt | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedJa | SupportAssistanceMessageLocalized_ja | String | [Localized support sentence] | Localization |
@@ -62,6 +63,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | titleLocalizedDe | TitleLocalized_de | String | [Localized title] | Localization |
 | titleLocalizedFr | TitleLocalized_fr | String | [Localized title] | Localization |
 | titleLocalizedEs | TitleLocalized_es | String | [Localized title] | Localization |
+| titleLocalizedIt | TitleLocalized_it | String | [Localized title] | Localization |
 | titleLocalizedNl | TitleLocalized_nl | String | [Localized title] | Localization |
 | titleLocalizedPt | TitleLocalized_pt | String | [Localized title] | Localization |
 | titleLocalizedJa | TitleLocalized_ja | String | [Localized title] | Localization |
@@ -69,6 +71,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | button1textLocalizedDe | Button1TextLocalized_de | String | [Localized button text] | Localization |
 | button1textLocalizedFr | Button1TextLocalized_fr | String | [Localized button text] | Localization |
 | button1textLocalizedEs | Button1TextLocalized_es | String | [Localized button text] | Localization |
+| button1textLocalizedIt | Button1TextLocalized_it | String | [Localized button text] | Localization |
 | button1textLocalizedNl | Button1TextLocalized_nl | String | [Localized button text] | Localization |
 | button1textLocalizedPt | Button1TextLocalized_pt | String | [Localized button text] | Localization |
 | button1textLocalizedJa | Button1TextLocalized_ja | String | [Localized button text] | Localization |
@@ -76,6 +79,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | button2textLocalizedDe | Button2TextLocalized_de | String | [Localized button text] | Localization |
 | button2textLocalizedFr | Button2TextLocalized_fr | String | [Localized button text] | Localization |
 | button2textLocalizedEs | Button2TextLocalized_es | String | [Localized button text] | Localization |
+| button2textLocalizedIt | Button2TextLocalized_it | String | [Localized button text] | Localization |
 | button2textLocalizedNl | Button2TextLocalized_nl | String | [Localized button text] | Localization |
 | button2textLocalizedPt | Button2TextLocalized_pt | String | [Localized button text] | Localization |
 | button2textLocalizedJa | Button2TextLocalized_ja | String | [Localized button text] | Localization |
@@ -83,6 +87,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | infobuttontextLocalizedDe | InfoButtonTextLocalized_de | String | [Localized button text] | Localization |
 | infobuttontextLocalizedFr | InfoButtonTextLocalized_fr | String | [Localized button text] | Localization |
 | infobuttontextLocalizedEs | InfoButtonTextLocalized_es | String | [Localized button text] | Localization |
+| infobuttontextLocalizedIt | InfoButtonTextLocalized_it | String | [Localized button text] | Localization |
 | infobuttontextLocalizedNl | InfoButtonTextLocalized_nl | String | [Localized button text] | Localization |
 | infobuttontextLocalizedPt | InfoButtonTextLocalized_pt | String | [Localized button text] | Localization |
 | infobuttontextLocalizedJa | InfoButtonTextLocalized_ja | String | [Localized button text] | Localization |
@@ -90,6 +95,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | messageLocalizedDe | MessageLocalized_de | String | [Localized message] | Localization |
 | messageLocalizedFr | MessageLocalized_fr | String | [Localized message] | Localization |
 | messageLocalizedEs | MessageLocalized_es | String | [Localized message] | Localization |
+| messageLocalizedIt | MessageLocalized_it | String | [Localized message] | Localization |
 | messageLocalizedNl | MessageLocalized_nl | String | [Localized message] | Localization |
 | messageLocalizedPt | MessageLocalized_pt | String | [Localized message] | Localization |
 | messageLocalizedJa | MessageLocalized_ja | String | [Localized message] | Localization |
@@ -97,6 +103,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | helpmessageLocalizedDe | HelpMessageLocalized_de | String | [Localized help message] | Localization |
 | helpmessageLocalizedFr | HelpMessageLocalized_fr | String | [Localized help message] | Localization |
 | helpmessageLocalizedEs | HelpMessageLocalized_es | String | [Localized help message] | Localization |
+| helpmessageLocalizedIt | HelpMessageLocalized_it | String | [Localized help message] | Localization |
 | helpmessageLocalizedNl | HelpMessageLocalized_nl | String | [Localized help message] | Localization |
 | helpmessageLocalizedPt | HelpMessageLocalized_pt | String | [Localized help message] | Localization |
 | helpmessageLocalizedJa | HelpMessageLocalized_ja | String | [Localized help message] | Localization |
@@ -104,6 +111,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | excessiveUptimeWarningMessageLocalizedDe | ExcessiveUptimeWarningMessageLocalized_de | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedFr | ExcessiveUptimeWarningMessageLocalized_fr | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedEs | ExcessiveUptimeWarningMessageLocalized_es | String | [Localized warning] | Localization |
+| excessiveUptimeWarningMessageLocalizedIt | ExcessiveUptimeWarningMessageLocalized_it | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedNl | ExcessiveUptimeWarningMessageLocalized_nl | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedPt | ExcessiveUptimeWarningMessageLocalized_pt | String | [Localized warning] | Localization |
 | excessiveUptimeWarningMessageLocalizedJa | ExcessiveUptimeWarningMessageLocalized_ja | String | [Localized warning] | Localization |
@@ -111,6 +119,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | diskSpaceWarningMessageLocalizedDe | DiskSpaceWarningMessageLocalized_de | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedFr | DiskSpaceWarningMessageLocalized_fr | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedEs | DiskSpaceWarningMessageLocalized_es | String | [Localized warning] | Localization |
+| diskSpaceWarningMessageLocalizedIt | DiskSpaceWarningMessageLocalized_it | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedNl | DiskSpaceWarningMessageLocalized_nl | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedPt | DiskSpaceWarningMessageLocalized_pt | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedJa | DiskSpaceWarningMessageLocalized_ja | String | [Localized warning] | Localization |
@@ -118,6 +127,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | stagedUpdateMessageLocalizedDe | StagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedFr | StagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedEs | StagedUpdateMessageLocalized_es | String | [Localized staging message] | Localization |
+| stagedUpdateMessageLocalizedIt | StagedUpdateMessageLocalized_it | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedNl | StagedUpdateMessageLocalized_nl | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedPt | StagedUpdateMessageLocalized_pt | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedJa | StagedUpdateMessageLocalized_ja | String | [Localized staging message] | Localization |
@@ -125,6 +135,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | partiallyStagedUpdateMessageLocalizedDe | PartiallyStagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedFr | PartiallyStagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedEs | PartiallyStagedUpdateMessageLocalized_es | String | [Localized staging message] | Localization |
+| partiallyStagedUpdateMessageLocalizedIt | PartiallyStagedUpdateMessageLocalized_it | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedNl | PartiallyStagedUpdateMessageLocalized_nl | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedPt | PartiallyStagedUpdateMessageLocalized_pt | String | [Localized staging message] | Localization |
 | partiallyStagedUpdateMessageLocalizedJa | PartiallyStagedUpdateMessageLocalized_ja | String | [Localized staging message] | Localization |
@@ -132,6 +143,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | pendingDownloadMessageLocalizedDe | PendingDownloadMessageLocalized_de | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedFr | PendingDownloadMessageLocalized_fr | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedEs | PendingDownloadMessageLocalized_es | String | [Localized staging message] | Localization |
+| pendingDownloadMessageLocalizedIt | PendingDownloadMessageLocalized_it | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedNl | PendingDownloadMessageLocalized_nl | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedPt | PendingDownloadMessageLocalized_pt | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedJa | PendingDownloadMessageLocalized_ja | String | [Localized staging message] | Localization |
@@ -971,7 +983,7 @@ defaults write /Library/Preferences/org.churchofjesuschrist.dorm LanguageOverrid
 grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 ```
 
-**Localized Key Families** (`{lang}` = `en`, `de`, `fr`, `es`, `nl`, `pt`, `ja`):
+**Localized Key Families** (`{lang}` = `en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`):
 
 *Existing families (2.x+)*:
 - `TitleLocalized_{lang}`

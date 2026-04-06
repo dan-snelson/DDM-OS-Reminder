@@ -33,7 +33,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 scriptVersion="3.1.0"
 
 # Client-side Log
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/var/log/1.log"
 
 # Minimum Required Version of swiftDialog
 swiftDialogMinimumRequiredVersion="2.5.6.4805"
@@ -60,7 +60,7 @@ resetConfiguration="${4:-"All"}"
 humanReadableScriptName="DDM OS Reminder"
 
 # Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
+reverseDomainNameNotation="1"
 
 # Organization’s Script Name
 organizationScriptName="dor"
@@ -255,7 +255,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 scriptVersion="3.1.0"
 
 # Client-side Log
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="/var/log/1.log"
 
 # Install.log parsing
 # `installLogPathOverride` is an internal fixture-testing hook for local validation only.
@@ -289,7 +289,7 @@ autoload -Uz is-at-least
 humanReadableScriptName="DDM OS Reminder End-user Message"
 
 # Organization’s Reverse Domain Name Notation (i.e., com.company.division; used for plist domains)
-reverseDomainNameNotation="org.churchofjesuschrist"
+reverseDomainNameNotation="1"
 
 # Organization’s Script Name
 organizationScriptName="dorm"

@@ -170,7 +170,7 @@ extract_additional_localized_entries() {
             sub(/^[[:space:]]*<key>/, "", key)
             sub(/<\/key>[[:space:]]*$/, "", key)
 
-            if (key !~ /Localized_(en|de|fr|es|pt|ja|nl)$/) {
+            if (key !~ /Localized_(en|de|fr|es|it|pt|ja|nl)$/) {
                 print $0
                 emitValue = 1
                 next
@@ -224,6 +224,7 @@ defaultExcessiveUptimeWarningMessageLocalizedEn=$(extract_from_preference_map ex
 defaultExcessiveUptimeWarningMessageLocalizedDe=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedDe)
 defaultExcessiveUptimeWarningMessageLocalizedFr=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedFr)
 defaultExcessiveUptimeWarningMessageLocalizedEs=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedEs)
+defaultExcessiveUptimeWarningMessageLocalizedIt=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedIt)
 defaultExcessiveUptimeWarningMessageLocalizedPt=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedPt)
 defaultExcessiveUptimeWarningMessageLocalizedJa=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedJa)
 defaultExcessiveUptimeWarningMessageLocalizedNl=$(extract_from_preference_map excessiveUptimeWarningMessageLocalizedNl)
@@ -232,6 +233,7 @@ defaultDiskSpaceWarningMessageLocalizedEn=$(extract_from_preference_map diskSpac
 defaultDiskSpaceWarningMessageLocalizedDe=$(extract_from_preference_map diskSpaceWarningMessageLocalizedDe)
 defaultDiskSpaceWarningMessageLocalizedFr=$(extract_from_preference_map diskSpaceWarningMessageLocalizedFr)
 defaultDiskSpaceWarningMessageLocalizedEs=$(extract_from_preference_map diskSpaceWarningMessageLocalizedEs)
+defaultDiskSpaceWarningMessageLocalizedIt=$(extract_from_preference_map diskSpaceWarningMessageLocalizedIt)
 defaultDiskSpaceWarningMessageLocalizedPt=$(extract_from_preference_map diskSpaceWarningMessageLocalizedPt)
 defaultDiskSpaceWarningMessageLocalizedJa=$(extract_from_preference_map diskSpaceWarningMessageLocalizedJa)
 defaultDiskSpaceWarningMessageLocalizedNl=$(extract_from_preference_map diskSpaceWarningMessageLocalizedNl)
@@ -244,6 +246,7 @@ defaultStagedUpdateMessageLocalizedEn=$(extract_from_preference_map stagedUpdate
 defaultStagedUpdateMessageLocalizedDe=$(extract_from_preference_map stagedUpdateMessageLocalizedDe)
 defaultStagedUpdateMessageLocalizedFr=$(extract_from_preference_map stagedUpdateMessageLocalizedFr)
 defaultStagedUpdateMessageLocalizedEs=$(extract_from_preference_map stagedUpdateMessageLocalizedEs)
+defaultStagedUpdateMessageLocalizedIt=$(extract_from_preference_map stagedUpdateMessageLocalizedIt)
 defaultStagedUpdateMessageLocalizedPt=$(extract_from_preference_map stagedUpdateMessageLocalizedPt)
 defaultStagedUpdateMessageLocalizedJa=$(extract_from_preference_map stagedUpdateMessageLocalizedJa)
 defaultStagedUpdateMessageLocalizedNl=$(extract_from_preference_map stagedUpdateMessageLocalizedNl)
@@ -252,6 +255,7 @@ defaultPartiallyStagedUpdateMessageLocalizedEn=$(extract_from_preference_map par
 defaultPartiallyStagedUpdateMessageLocalizedDe=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedDe)
 defaultPartiallyStagedUpdateMessageLocalizedFr=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedFr)
 defaultPartiallyStagedUpdateMessageLocalizedEs=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedEs)
+defaultPartiallyStagedUpdateMessageLocalizedIt=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedIt)
 defaultPartiallyStagedUpdateMessageLocalizedPt=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedPt)
 defaultPartiallyStagedUpdateMessageLocalizedJa=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedJa)
 defaultPartiallyStagedUpdateMessageLocalizedNl=$(extract_from_preference_map partiallyStagedUpdateMessageLocalizedNl)
@@ -260,6 +264,7 @@ defaultPendingDownloadMessageLocalizedEn=$(extract_from_preference_map pendingDo
 defaultPendingDownloadMessageLocalizedDe=$(extract_from_preference_map pendingDownloadMessageLocalizedDe)
 defaultPendingDownloadMessageLocalizedFr=$(extract_from_preference_map pendingDownloadMessageLocalizedFr)
 defaultPendingDownloadMessageLocalizedEs=$(extract_from_preference_map pendingDownloadMessageLocalizedEs)
+defaultPendingDownloadMessageLocalizedIt=$(extract_from_preference_map pendingDownloadMessageLocalizedIt)
 defaultPendingDownloadMessageLocalizedPt=$(extract_from_preference_map pendingDownloadMessageLocalizedPt)
 defaultPendingDownloadMessageLocalizedJa=$(extract_from_preference_map pendingDownloadMessageLocalizedJa)
 defaultPendingDownloadMessageLocalizedNl=$(extract_from_preference_map pendingDownloadMessageLocalizedNl)
@@ -270,6 +275,7 @@ defaultTitleLocalizedEn=$(extract_from_preference_map titleLocalizedEn)
 defaultTitleLocalizedDe=$(extract_from_preference_map titleLocalizedDe)
 defaultTitleLocalizedFr=$(extract_from_preference_map titleLocalizedFr)
 defaultTitleLocalizedEs=$(extract_from_preference_map titleLocalizedEs)
+defaultTitleLocalizedIt=$(extract_from_preference_map titleLocalizedIt)
 defaultTitleLocalizedPt=$(extract_from_preference_map titleLocalizedPt)
 defaultTitleLocalizedJa=$(extract_from_preference_map titleLocalizedJa)
 defaultTitleLocalizedNl=$(extract_from_preference_map titleLocalizedNl)
@@ -277,6 +283,7 @@ defaultButton1textLocalizedEn=$(extract_from_preference_map button1textLocalized
 defaultButton1textLocalizedDe=$(extract_from_preference_map button1textLocalizedDe)
 defaultButton1textLocalizedFr=$(extract_from_preference_map button1textLocalizedFr)
 defaultButton1textLocalizedEs=$(extract_from_preference_map button1textLocalizedEs)
+defaultButton1textLocalizedIt=$(extract_from_preference_map button1textLocalizedIt)
 defaultButton1textLocalizedPt=$(extract_from_preference_map button1textLocalizedPt)
 defaultButton1textLocalizedJa=$(extract_from_preference_map button1textLocalizedJa)
 defaultButton1textLocalizedNl=$(extract_from_preference_map button1textLocalizedNl)
@@ -284,6 +291,7 @@ defaultButton2textLocalizedEn=$(extract_from_preference_map button2textLocalized
 defaultButton2textLocalizedDe=$(extract_from_preference_map button2textLocalizedDe)
 defaultButton2textLocalizedFr=$(extract_from_preference_map button2textLocalizedFr)
 defaultButton2textLocalizedEs=$(extract_from_preference_map button2textLocalizedEs)
+defaultButton2textLocalizedIt=$(extract_from_preference_map button2textLocalizedIt)
 defaultButton2textLocalizedPt=$(extract_from_preference_map button2textLocalizedPt)
 defaultButton2textLocalizedJa=$(extract_from_preference_map button2textLocalizedJa)
 defaultButton2textLocalizedNl=$(extract_from_preference_map button2textLocalizedNl)
@@ -291,6 +299,7 @@ defaultInfobuttontextLocalizedEn=$(extract_from_preference_map infobuttontextLoc
 defaultInfobuttontextLocalizedDe=$(extract_from_preference_map infobuttontextLocalizedDe)
 defaultInfobuttontextLocalizedFr=$(extract_from_preference_map infobuttontextLocalizedFr)
 defaultInfobuttontextLocalizedEs=$(extract_from_preference_map infobuttontextLocalizedEs)
+defaultInfobuttontextLocalizedIt=$(extract_from_preference_map infobuttontextLocalizedIt)
 defaultInfobuttontextLocalizedPt=$(extract_from_preference_map infobuttontextLocalizedPt)
 defaultInfobuttontextLocalizedJa=$(extract_from_preference_map infobuttontextLocalizedJa)
 defaultInfobuttontextLocalizedNl=$(extract_from_preference_map infobuttontextLocalizedNl)
@@ -308,6 +317,7 @@ defaultSupportAssistanceMessageLocalizedEn=$(extract_from_preference_map support
 defaultSupportAssistanceMessageLocalizedDe=$(extract_from_preference_map supportAssistanceMessageLocalizedDe)
 defaultSupportAssistanceMessageLocalizedFr=$(extract_from_preference_map supportAssistanceMessageLocalizedFr)
 defaultSupportAssistanceMessageLocalizedEs=$(extract_from_preference_map supportAssistanceMessageLocalizedEs)
+defaultSupportAssistanceMessageLocalizedIt=$(extract_from_preference_map supportAssistanceMessageLocalizedIt)
 defaultSupportAssistanceMessageLocalizedPt=$(extract_from_preference_map supportAssistanceMessageLocalizedPt)
 defaultSupportAssistanceMessageLocalizedJa=$(extract_from_preference_map supportAssistanceMessageLocalizedJa)
 defaultSupportAssistanceMessageLocalizedNl=$(extract_from_preference_map supportAssistanceMessageLocalizedNl)
@@ -315,6 +325,7 @@ defaultMessageLocalizedEn=$(extract_from_preference_map messageLocalizedEn)
 defaultMessageLocalizedDe=$(extract_from_preference_map messageLocalizedDe)
 defaultMessageLocalizedFr=$(extract_from_preference_map messageLocalizedFr)
 defaultMessageLocalizedEs=$(extract_from_preference_map messageLocalizedEs)
+defaultMessageLocalizedIt=$(extract_from_preference_map messageLocalizedIt)
 defaultMessageLocalizedPt=$(extract_from_preference_map messageLocalizedPt)
 defaultMessageLocalizedJa=$(extract_from_preference_map messageLocalizedJa)
 defaultMessageLocalizedNl=$(extract_from_preference_map messageLocalizedNl)
@@ -322,6 +333,7 @@ defaultHelpmessageLocalizedEn=$(extract_from_preference_map helpmessageLocalized
 defaultHelpmessageLocalizedDe=$(extract_from_preference_map helpmessageLocalizedDe)
 defaultHelpmessageLocalizedFr=$(extract_from_preference_map helpmessageLocalizedFr)
 defaultHelpmessageLocalizedEs=$(extract_from_preference_map helpmessageLocalizedEs)
+defaultHelpmessageLocalizedIt=$(extract_from_preference_map helpmessageLocalizedIt)
 defaultHelpmessageLocalizedPt=$(extract_from_preference_map helpmessageLocalizedPt)
 defaultHelpmessageLocalizedJa=$(extract_from_preference_map helpmessageLocalizedJa)
 defaultHelpmessageLocalizedNl=$(extract_from_preference_map helpmessageLocalizedNl)
@@ -330,6 +342,7 @@ defaultRelativeDeadlineTodayLocalizedEn=$(extract_from_preference_map relativeDe
 defaultRelativeDeadlineTodayLocalizedDe=$(extract_from_preference_map relativeDeadlineTodayLocalizedDe)
 defaultRelativeDeadlineTodayLocalizedFr=$(extract_from_preference_map relativeDeadlineTodayLocalizedFr)
 defaultRelativeDeadlineTodayLocalizedEs=$(extract_from_preference_map relativeDeadlineTodayLocalizedEs)
+defaultRelativeDeadlineTodayLocalizedIt=$(extract_from_preference_map relativeDeadlineTodayLocalizedIt)
 defaultRelativeDeadlineTodayLocalizedPt=$(extract_from_preference_map relativeDeadlineTodayLocalizedPt)
 defaultRelativeDeadlineTodayLocalizedJa=$(extract_from_preference_map relativeDeadlineTodayLocalizedJa)
 defaultRelativeDeadlineTodayLocalizedNl=$(extract_from_preference_map relativeDeadlineTodayLocalizedNl)
@@ -338,6 +351,7 @@ defaultRelativeDeadlineTomorrowLocalizedEn=$(extract_from_preference_map relativ
 defaultRelativeDeadlineTomorrowLocalizedDe=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedDe)
 defaultRelativeDeadlineTomorrowLocalizedFr=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedFr)
 defaultRelativeDeadlineTomorrowLocalizedEs=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedEs)
+defaultRelativeDeadlineTomorrowLocalizedIt=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedIt)
 defaultRelativeDeadlineTomorrowLocalizedPt=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedPt)
 defaultRelativeDeadlineTomorrowLocalizedJa=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedJa)
 defaultRelativeDeadlineTomorrowLocalizedNl=$(extract_from_preference_map relativeDeadlineTomorrowLocalizedNl)
@@ -346,6 +360,7 @@ defaultUpdateWordLocalizedEn=$(extract_from_preference_map updateWordLocalizedEn
 defaultUpdateWordLocalizedDe=$(extract_from_preference_map updateWordLocalizedDe)
 defaultUpdateWordLocalizedFr=$(extract_from_preference_map updateWordLocalizedFr)
 defaultUpdateWordLocalizedEs=$(extract_from_preference_map updateWordLocalizedEs)
+defaultUpdateWordLocalizedIt=$(extract_from_preference_map updateWordLocalizedIt)
 defaultUpdateWordLocalizedPt=$(extract_from_preference_map updateWordLocalizedPt)
 defaultUpdateWordLocalizedJa=$(extract_from_preference_map updateWordLocalizedJa)
 defaultUpdateWordLocalizedNl=$(extract_from_preference_map updateWordLocalizedNl)
@@ -357,6 +372,7 @@ defaultUpgradeWordLocalizedEn=$(extract_from_preference_map upgradeWordLocalized
 defaultUpgradeWordLocalizedDe=$(extract_from_preference_map upgradeWordLocalizedDe)
 defaultUpgradeWordLocalizedFr=$(extract_from_preference_map upgradeWordLocalizedFr)
 defaultUpgradeWordLocalizedEs=$(extract_from_preference_map upgradeWordLocalizedEs)
+defaultUpgradeWordLocalizedIt=$(extract_from_preference_map upgradeWordLocalizedIt)
 defaultUpgradeWordLocalizedPt=$(extract_from_preference_map upgradeWordLocalizedPt)
 defaultUpgradeWordLocalizedJa=$(extract_from_preference_map upgradeWordLocalizedJa)
 defaultUpgradeWordLocalizedNl=$(extract_from_preference_map upgradeWordLocalizedNl)
@@ -365,6 +381,7 @@ defaultSoftwareUpdateButtonTextUpdateLocalizedEn=$(extract_from_preference_map s
 defaultSoftwareUpdateButtonTextUpdateLocalizedDe=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedDe)
 defaultSoftwareUpdateButtonTextUpdateLocalizedFr=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedFr)
 defaultSoftwareUpdateButtonTextUpdateLocalizedEs=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedEs)
+defaultSoftwareUpdateButtonTextUpdateLocalizedIt=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedIt)
 defaultSoftwareUpdateButtonTextUpdateLocalizedPt=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedPt)
 defaultSoftwareUpdateButtonTextUpdateLocalizedJa=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedJa)
 defaultSoftwareUpdateButtonTextUpdateLocalizedNl=$(extract_from_preference_map softwareUpdateButtonTextUpdateLocalizedNl)
@@ -373,6 +390,7 @@ defaultSoftwareUpdateButtonTextUpgradeLocalizedEn=$(extract_from_preference_map 
 defaultSoftwareUpdateButtonTextUpgradeLocalizedDe=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedDe)
 defaultSoftwareUpdateButtonTextUpgradeLocalizedFr=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedFr)
 defaultSoftwareUpdateButtonTextUpgradeLocalizedEs=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedEs)
+defaultSoftwareUpdateButtonTextUpgradeLocalizedIt=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedIt)
 defaultSoftwareUpdateButtonTextUpgradeLocalizedPt=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedPt)
 defaultSoftwareUpdateButtonTextUpgradeLocalizedJa=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedJa)
 defaultSoftwareUpdateButtonTextUpgradeLocalizedNl=$(extract_from_preference_map softwareUpdateButtonTextUpgradeLocalizedNl)
@@ -381,6 +399,7 @@ defaultRestartNowButtonTextLocalizedEn=$(extract_from_preference_map restartNowB
 defaultRestartNowButtonTextLocalizedDe=$(extract_from_preference_map restartNowButtonTextLocalizedDe)
 defaultRestartNowButtonTextLocalizedFr=$(extract_from_preference_map restartNowButtonTextLocalizedFr)
 defaultRestartNowButtonTextLocalizedEs=$(extract_from_preference_map restartNowButtonTextLocalizedEs)
+defaultRestartNowButtonTextLocalizedIt=$(extract_from_preference_map restartNowButtonTextLocalizedIt)
 defaultRestartNowButtonTextLocalizedPt=$(extract_from_preference_map restartNowButtonTextLocalizedPt)
 defaultRestartNowButtonTextLocalizedJa=$(extract_from_preference_map restartNowButtonTextLocalizedJa)
 defaultRestartNowButtonTextLocalizedNl=$(extract_from_preference_map restartNowButtonTextLocalizedNl)
@@ -389,6 +408,7 @@ defaultInfoboxLabelCurrentLocalizedEn=$(extract_from_preference_map infoboxLabel
 defaultInfoboxLabelCurrentLocalizedDe=$(extract_from_preference_map infoboxLabelCurrentLocalizedDe)
 defaultInfoboxLabelCurrentLocalizedFr=$(extract_from_preference_map infoboxLabelCurrentLocalizedFr)
 defaultInfoboxLabelCurrentLocalizedEs=$(extract_from_preference_map infoboxLabelCurrentLocalizedEs)
+defaultInfoboxLabelCurrentLocalizedIt=$(extract_from_preference_map infoboxLabelCurrentLocalizedIt)
 defaultInfoboxLabelCurrentLocalizedPt=$(extract_from_preference_map infoboxLabelCurrentLocalizedPt)
 defaultInfoboxLabelCurrentLocalizedJa=$(extract_from_preference_map infoboxLabelCurrentLocalizedJa)
 defaultInfoboxLabelCurrentLocalizedNl=$(extract_from_preference_map infoboxLabelCurrentLocalizedNl)
@@ -397,6 +417,7 @@ defaultInfoboxLabelRequiredLocalizedEn=$(extract_from_preference_map infoboxLabe
 defaultInfoboxLabelRequiredLocalizedDe=$(extract_from_preference_map infoboxLabelRequiredLocalizedDe)
 defaultInfoboxLabelRequiredLocalizedFr=$(extract_from_preference_map infoboxLabelRequiredLocalizedFr)
 defaultInfoboxLabelRequiredLocalizedEs=$(extract_from_preference_map infoboxLabelRequiredLocalizedEs)
+defaultInfoboxLabelRequiredLocalizedIt=$(extract_from_preference_map infoboxLabelRequiredLocalizedIt)
 defaultInfoboxLabelRequiredLocalizedPt=$(extract_from_preference_map infoboxLabelRequiredLocalizedPt)
 defaultInfoboxLabelRequiredLocalizedJa=$(extract_from_preference_map infoboxLabelRequiredLocalizedJa)
 defaultInfoboxLabelRequiredLocalizedNl=$(extract_from_preference_map infoboxLabelRequiredLocalizedNl)
@@ -405,6 +426,7 @@ defaultInfoboxLabelDeadlineLocalizedEn=$(extract_from_preference_map infoboxLabe
 defaultInfoboxLabelDeadlineLocalizedDe=$(extract_from_preference_map infoboxLabelDeadlineLocalizedDe)
 defaultInfoboxLabelDeadlineLocalizedFr=$(extract_from_preference_map infoboxLabelDeadlineLocalizedFr)
 defaultInfoboxLabelDeadlineLocalizedEs=$(extract_from_preference_map infoboxLabelDeadlineLocalizedEs)
+defaultInfoboxLabelDeadlineLocalizedIt=$(extract_from_preference_map infoboxLabelDeadlineLocalizedIt)
 defaultInfoboxLabelDeadlineLocalizedPt=$(extract_from_preference_map infoboxLabelDeadlineLocalizedPt)
 defaultInfoboxLabelDeadlineLocalizedJa=$(extract_from_preference_map infoboxLabelDeadlineLocalizedJa)
 defaultInfoboxLabelDeadlineLocalizedNl=$(extract_from_preference_map infoboxLabelDeadlineLocalizedNl)
@@ -413,6 +435,7 @@ defaultInfoboxLabelDaysRemainingLocalizedEn=$(extract_from_preference_map infobo
 defaultInfoboxLabelDaysRemainingLocalizedDe=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedDe)
 defaultInfoboxLabelDaysRemainingLocalizedFr=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedFr)
 defaultInfoboxLabelDaysRemainingLocalizedEs=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedEs)
+defaultInfoboxLabelDaysRemainingLocalizedIt=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedIt)
 defaultInfoboxLabelDaysRemainingLocalizedPt=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedPt)
 defaultInfoboxLabelDaysRemainingLocalizedJa=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedJa)
 defaultInfoboxLabelDaysRemainingLocalizedNl=$(extract_from_preference_map infoboxLabelDaysRemainingLocalizedNl)
@@ -421,6 +444,7 @@ defaultInfoboxLabelLastRestartLocalizedEn=$(extract_from_preference_map infoboxL
 defaultInfoboxLabelLastRestartLocalizedDe=$(extract_from_preference_map infoboxLabelLastRestartLocalizedDe)
 defaultInfoboxLabelLastRestartLocalizedFr=$(extract_from_preference_map infoboxLabelLastRestartLocalizedFr)
 defaultInfoboxLabelLastRestartLocalizedEs=$(extract_from_preference_map infoboxLabelLastRestartLocalizedEs)
+defaultInfoboxLabelLastRestartLocalizedIt=$(extract_from_preference_map infoboxLabelLastRestartLocalizedIt)
 defaultInfoboxLabelLastRestartLocalizedPt=$(extract_from_preference_map infoboxLabelLastRestartLocalizedPt)
 defaultInfoboxLabelLastRestartLocalizedJa=$(extract_from_preference_map infoboxLabelLastRestartLocalizedJa)
 defaultInfoboxLabelLastRestartLocalizedNl=$(extract_from_preference_map infoboxLabelLastRestartLocalizedNl)
@@ -429,6 +453,7 @@ defaultInfoboxLabelFreeDiskSpaceLocalizedEn=$(extract_from_preference_map infobo
 defaultInfoboxLabelFreeDiskSpaceLocalizedDe=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedDe)
 defaultInfoboxLabelFreeDiskSpaceLocalizedFr=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedFr)
 defaultInfoboxLabelFreeDiskSpaceLocalizedEs=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedEs)
+defaultInfoboxLabelFreeDiskSpaceLocalizedIt=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedIt)
 defaultInfoboxLabelFreeDiskSpaceLocalizedPt=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedPt)
 defaultInfoboxLabelFreeDiskSpaceLocalizedJa=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedJa)
 defaultInfoboxLabelFreeDiskSpaceLocalizedNl=$(extract_from_preference_map infoboxLabelFreeDiskSpaceLocalizedNl)
@@ -437,6 +462,7 @@ defaultDeadlineEnforcementMessageAbsoluteLocalizedEn=$(extract_from_preference_m
 defaultDeadlineEnforcementMessageAbsoluteLocalizedDe=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedDe)
 defaultDeadlineEnforcementMessageAbsoluteLocalizedFr=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedFr)
 defaultDeadlineEnforcementMessageAbsoluteLocalizedEs=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedEs)
+defaultDeadlineEnforcementMessageAbsoluteLocalizedIt=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedIt)
 defaultDeadlineEnforcementMessageAbsoluteLocalizedPt=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedPt)
 defaultDeadlineEnforcementMessageAbsoluteLocalizedJa=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedJa)
 defaultDeadlineEnforcementMessageAbsoluteLocalizedNl=$(extract_from_preference_map deadlineEnforcementMessageAbsoluteLocalizedNl)
@@ -445,6 +471,7 @@ defaultDeadlineEnforcementMessageRelativeLocalizedEn=$(extract_from_preference_m
 defaultDeadlineEnforcementMessageRelativeLocalizedDe=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedDe)
 defaultDeadlineEnforcementMessageRelativeLocalizedFr=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedFr)
 defaultDeadlineEnforcementMessageRelativeLocalizedEs=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedEs)
+defaultDeadlineEnforcementMessageRelativeLocalizedIt=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedIt)
 defaultDeadlineEnforcementMessageRelativeLocalizedPt=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedPt)
 defaultDeadlineEnforcementMessageRelativeLocalizedJa=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedJa)
 defaultDeadlineEnforcementMessageRelativeLocalizedNl=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedNl)
@@ -453,6 +480,7 @@ defaultPastDeadlinePromptTitleLocalizedEn=$(extract_from_preference_map pastDead
 defaultPastDeadlinePromptTitleLocalizedDe=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedDe)
 defaultPastDeadlinePromptTitleLocalizedFr=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedFr)
 defaultPastDeadlinePromptTitleLocalizedEs=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedEs)
+defaultPastDeadlinePromptTitleLocalizedIt=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedIt)
 defaultPastDeadlinePromptTitleLocalizedPt=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedPt)
 defaultPastDeadlinePromptTitleLocalizedJa=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedJa)
 defaultPastDeadlinePromptTitleLocalizedNl=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedNl)
@@ -461,6 +489,7 @@ defaultPastDeadlinePromptMessageLocalizedEn=$(extract_from_preference_map pastDe
 defaultPastDeadlinePromptMessageLocalizedDe=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedDe)
 defaultPastDeadlinePromptMessageLocalizedFr=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedFr)
 defaultPastDeadlinePromptMessageLocalizedEs=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedEs)
+defaultPastDeadlinePromptMessageLocalizedIt=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedIt)
 defaultPastDeadlinePromptMessageLocalizedPt=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedPt)
 defaultPastDeadlinePromptMessageLocalizedJa=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedJa)
 defaultPastDeadlinePromptMessageLocalizedNl=$(extract_from_preference_map pastDeadlinePromptMessageLocalizedNl)
@@ -469,6 +498,7 @@ defaultPastDeadlineForceTitleLocalizedEn=$(extract_from_preference_map pastDeadl
 defaultPastDeadlineForceTitleLocalizedDe=$(extract_from_preference_map pastDeadlineForceTitleLocalizedDe)
 defaultPastDeadlineForceTitleLocalizedFr=$(extract_from_preference_map pastDeadlineForceTitleLocalizedFr)
 defaultPastDeadlineForceTitleLocalizedEs=$(extract_from_preference_map pastDeadlineForceTitleLocalizedEs)
+defaultPastDeadlineForceTitleLocalizedIt=$(extract_from_preference_map pastDeadlineForceTitleLocalizedIt)
 defaultPastDeadlineForceTitleLocalizedPt=$(extract_from_preference_map pastDeadlineForceTitleLocalizedPt)
 defaultPastDeadlineForceTitleLocalizedJa=$(extract_from_preference_map pastDeadlineForceTitleLocalizedJa)
 defaultPastDeadlineForceTitleLocalizedNl=$(extract_from_preference_map pastDeadlineForceTitleLocalizedNl)
@@ -477,6 +507,7 @@ defaultPastDeadlineForceMessageLocalizedEn=$(extract_from_preference_map pastDea
 defaultPastDeadlineForceMessageLocalizedDe=$(extract_from_preference_map pastDeadlineForceMessageLocalizedDe)
 defaultPastDeadlineForceMessageLocalizedFr=$(extract_from_preference_map pastDeadlineForceMessageLocalizedFr)
 defaultPastDeadlineForceMessageLocalizedEs=$(extract_from_preference_map pastDeadlineForceMessageLocalizedEs)
+defaultPastDeadlineForceMessageLocalizedIt=$(extract_from_preference_map pastDeadlineForceMessageLocalizedIt)
 defaultPastDeadlineForceMessageLocalizedPt=$(extract_from_preference_map pastDeadlineForceMessageLocalizedPt)
 defaultPastDeadlineForceMessageLocalizedJa=$(extract_from_preference_map pastDeadlineForceMessageLocalizedJa)
 defaultPastDeadlineForceMessageLocalizedNl=$(extract_from_preference_map pastDeadlineForceMessageLocalizedNl)
@@ -498,6 +529,7 @@ excessiveUptimeWarningMessageLocalizedEn_xml=$(process "$defaultExcessiveUptimeW
 excessiveUptimeWarningMessageLocalizedDe_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedDe")
 excessiveUptimeWarningMessageLocalizedFr_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedFr")
 excessiveUptimeWarningMessageLocalizedEs_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedEs")
+excessiveUptimeWarningMessageLocalizedIt_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedIt")
 excessiveUptimeWarningMessageLocalizedPt_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedPt")
 excessiveUptimeWarningMessageLocalizedJa_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedJa")
 excessiveUptimeWarningMessageLocalizedNl_xml=$(process "$defaultExcessiveUptimeWarningMessageLocalizedNl")
@@ -506,6 +538,7 @@ diskSpaceWarningMessageLocalizedEn_xml=$(process "$defaultDiskSpaceWarningMessag
 diskSpaceWarningMessageLocalizedDe_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedDe")
 diskSpaceWarningMessageLocalizedFr_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedFr")
 diskSpaceWarningMessageLocalizedEs_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedEs")
+diskSpaceWarningMessageLocalizedIt_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedIt")
 diskSpaceWarningMessageLocalizedPt_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedPt")
 diskSpaceWarningMessageLocalizedJa_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedJa")
 diskSpaceWarningMessageLocalizedNl_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedNl")
@@ -514,6 +547,7 @@ stagedUpdateMessageLocalizedEn_xml=$(process "${defaultStagedUpdateMessageLocali
 stagedUpdateMessageLocalizedDe_xml=$(process "${defaultStagedUpdateMessageLocalizedDe}")
 stagedUpdateMessageLocalizedFr_xml=$(process "${defaultStagedUpdateMessageLocalizedFr}")
 stagedUpdateMessageLocalizedEs_xml=$(process "${defaultStagedUpdateMessageLocalizedEs}")
+stagedUpdateMessageLocalizedIt_xml=$(process "${defaultStagedUpdateMessageLocalizedIt}")
 stagedUpdateMessageLocalizedPt_xml=$(process "${defaultStagedUpdateMessageLocalizedPt}")
 stagedUpdateMessageLocalizedJa_xml=$(process "${defaultStagedUpdateMessageLocalizedJa}")
 stagedUpdateMessageLocalizedNl_xml=$(process "${defaultStagedUpdateMessageLocalizedNl}")
@@ -522,6 +556,7 @@ partiallyStagedUpdateMessageLocalizedEn_xml=$(process "${defaultPartiallyStagedU
 partiallyStagedUpdateMessageLocalizedDe_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedDe}")
 partiallyStagedUpdateMessageLocalizedFr_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedFr}")
 partiallyStagedUpdateMessageLocalizedEs_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedEs}")
+partiallyStagedUpdateMessageLocalizedIt_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedIt}")
 partiallyStagedUpdateMessageLocalizedPt_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedPt}")
 partiallyStagedUpdateMessageLocalizedJa_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedJa}")
 partiallyStagedUpdateMessageLocalizedNl_xml=$(process "${defaultPartiallyStagedUpdateMessageLocalizedNl}")
@@ -530,6 +565,7 @@ pendingDownloadMessageLocalizedEn_xml=$(process "${defaultPendingDownloadMessage
 pendingDownloadMessageLocalizedDe_xml=$(process "${defaultPendingDownloadMessageLocalizedDe}")
 pendingDownloadMessageLocalizedFr_xml=$(process "${defaultPendingDownloadMessageLocalizedFr}")
 pendingDownloadMessageLocalizedEs_xml=$(process "${defaultPendingDownloadMessageLocalizedEs}")
+pendingDownloadMessageLocalizedIt_xml=$(process "${defaultPendingDownloadMessageLocalizedIt}")
 pendingDownloadMessageLocalizedPt_xml=$(process "${defaultPendingDownloadMessageLocalizedPt}")
 pendingDownloadMessageLocalizedJa_xml=$(process "${defaultPendingDownloadMessageLocalizedJa}")
 pendingDownloadMessageLocalizedNl_xml=$(process "${defaultPendingDownloadMessageLocalizedNl}")
@@ -543,6 +579,7 @@ titleLocalizedEn_xml=$(process "$defaultTitleLocalizedEn")
 titleLocalizedDe_xml=$(process "$defaultTitleLocalizedDe")
 titleLocalizedFr_xml=$(process "$defaultTitleLocalizedFr")
 titleLocalizedEs_xml=$(process "$defaultTitleLocalizedEs")
+titleLocalizedIt_xml=$(process "$defaultTitleLocalizedIt")
 titleLocalizedPt_xml=$(process "$defaultTitleLocalizedPt")
 titleLocalizedJa_xml=$(process "$defaultTitleLocalizedJa")
 titleLocalizedNl_xml=$(process "$defaultTitleLocalizedNl")
@@ -550,6 +587,7 @@ button1textLocalizedEn_xml=$(process "$defaultButton1textLocalizedEn")
 button1textLocalizedDe_xml=$(process "$defaultButton1textLocalizedDe")
 button1textLocalizedFr_xml=$(process "$defaultButton1textLocalizedFr")
 button1textLocalizedEs_xml=$(process "$defaultButton1textLocalizedEs")
+button1textLocalizedIt_xml=$(process "$defaultButton1textLocalizedIt")
 button1textLocalizedPt_xml=$(process "$defaultButton1textLocalizedPt")
 button1textLocalizedJa_xml=$(process "$defaultButton1textLocalizedJa")
 button1textLocalizedNl_xml=$(process "$defaultButton1textLocalizedNl")
@@ -557,6 +595,7 @@ button2textLocalizedEn_xml=$(process "$defaultButton2textLocalizedEn")
 button2textLocalizedDe_xml=$(process "$defaultButton2textLocalizedDe")
 button2textLocalizedFr_xml=$(process "$defaultButton2textLocalizedFr")
 button2textLocalizedEs_xml=$(process "$defaultButton2textLocalizedEs")
+button2textLocalizedIt_xml=$(process "$defaultButton2textLocalizedIt")
 button2textLocalizedPt_xml=$(process "$defaultButton2textLocalizedPt")
 button2textLocalizedJa_xml=$(process "$defaultButton2textLocalizedJa")
 button2textLocalizedNl_xml=$(process "$defaultButton2textLocalizedNl")
@@ -564,6 +603,7 @@ infobuttontextLocalizedEn_xml=$(process "$defaultInfobuttontextLocalizedEn")
 infobuttontextLocalizedDe_xml=$(process "$defaultInfobuttontextLocalizedDe")
 infobuttontextLocalizedFr_xml=$(process "$defaultInfobuttontextLocalizedFr")
 infobuttontextLocalizedEs_xml=$(process "$defaultInfobuttontextLocalizedEs")
+infobuttontextLocalizedIt_xml=$(process "$defaultInfobuttontextLocalizedIt")
 infobuttontextLocalizedPt_xml=$(process "$defaultInfobuttontextLocalizedPt")
 infobuttontextLocalizedJa_xml=$(process "$defaultInfobuttontextLocalizedJa")
 infobuttontextLocalizedNl_xml=$(process "$defaultInfobuttontextLocalizedNl")
@@ -571,6 +611,7 @@ messageLocalizedEn_xml=$(process "$defaultMessageLocalizedEn")
 messageLocalizedDe_xml=$(process "$defaultMessageLocalizedDe")
 messageLocalizedFr_xml=$(process "$defaultMessageLocalizedFr")
 messageLocalizedEs_xml=$(process "$defaultMessageLocalizedEs")
+messageLocalizedIt_xml=$(process "$defaultMessageLocalizedIt")
 messageLocalizedPt_xml=$(process "$defaultMessageLocalizedPt")
 messageLocalizedJa_xml=$(process "$defaultMessageLocalizedJa")
 messageLocalizedNl_xml=$(process "$defaultMessageLocalizedNl")
@@ -578,6 +619,7 @@ helpmessageLocalizedEn_xml=$(process "$defaultHelpmessageLocalizedEn")
 helpmessageLocalizedDe_xml=$(process "$defaultHelpmessageLocalizedDe")
 helpmessageLocalizedFr_xml=$(process "$defaultHelpmessageLocalizedFr")
 helpmessageLocalizedEs_xml=$(process "$defaultHelpmessageLocalizedEs")
+helpmessageLocalizedIt_xml=$(process "$defaultHelpmessageLocalizedIt")
 helpmessageLocalizedPt_xml=$(process "$defaultHelpmessageLocalizedPt")
 helpmessageLocalizedJa_xml=$(process "$defaultHelpmessageLocalizedJa")
 helpmessageLocalizedNl_xml=$(process "$defaultHelpmessageLocalizedNl")
@@ -598,6 +640,7 @@ supportAssistanceMessageLocalizedEn_xml=$(process "$defaultSupportAssistanceMess
 supportAssistanceMessageLocalizedDe_xml=$(process "$defaultSupportAssistanceMessageLocalizedDe")
 supportAssistanceMessageLocalizedFr_xml=$(process "$defaultSupportAssistanceMessageLocalizedFr")
 supportAssistanceMessageLocalizedEs_xml=$(process "$defaultSupportAssistanceMessageLocalizedEs")
+supportAssistanceMessageLocalizedIt_xml=$(process "$defaultSupportAssistanceMessageLocalizedIt")
 supportAssistanceMessageLocalizedPt_xml=$(process "$defaultSupportAssistanceMessageLocalizedPt")
 supportAssistanceMessageLocalizedJa_xml=$(process "$defaultSupportAssistanceMessageLocalizedJa")
 supportAssistanceMessageLocalizedNl_xml=$(process "$defaultSupportAssistanceMessageLocalizedNl")
@@ -606,6 +649,7 @@ relativeDeadlineTodayLocalizedEn_xml=$(process "$defaultRelativeDeadlineTodayLoc
 relativeDeadlineTodayLocalizedDe_xml=$(process "$defaultRelativeDeadlineTodayLocalizedDe")
 relativeDeadlineTodayLocalizedFr_xml=$(process "$defaultRelativeDeadlineTodayLocalizedFr")
 relativeDeadlineTodayLocalizedEs_xml=$(process "$defaultRelativeDeadlineTodayLocalizedEs")
+relativeDeadlineTodayLocalizedIt_xml=$(process "$defaultRelativeDeadlineTodayLocalizedIt")
 relativeDeadlineTodayLocalizedPt_xml=$(process "$defaultRelativeDeadlineTodayLocalizedPt")
 relativeDeadlineTodayLocalizedJa_xml=$(process "$defaultRelativeDeadlineTodayLocalizedJa")
 relativeDeadlineTodayLocalizedNl_xml=$(process "$defaultRelativeDeadlineTodayLocalizedNl")
@@ -614,6 +658,7 @@ relativeDeadlineTomorrowLocalizedEn_xml=$(process "$defaultRelativeDeadlineTomor
 relativeDeadlineTomorrowLocalizedDe_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedDe")
 relativeDeadlineTomorrowLocalizedFr_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedFr")
 relativeDeadlineTomorrowLocalizedEs_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedEs")
+relativeDeadlineTomorrowLocalizedIt_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedIt")
 relativeDeadlineTomorrowLocalizedPt_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedPt")
 relativeDeadlineTomorrowLocalizedJa_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedJa")
 relativeDeadlineTomorrowLocalizedNl_xml=$(process "$defaultRelativeDeadlineTomorrowLocalizedNl")
@@ -622,6 +667,7 @@ updateWordLocalizedEn_xml=$(process "$defaultUpdateWordLocalizedEn")
 updateWordLocalizedDe_xml=$(process "$defaultUpdateWordLocalizedDe")
 updateWordLocalizedFr_xml=$(process "$defaultUpdateWordLocalizedFr")
 updateWordLocalizedEs_xml=$(process "$defaultUpdateWordLocalizedEs")
+updateWordLocalizedIt_xml=$(process "$defaultUpdateWordLocalizedIt")
 updateWordLocalizedPt_xml=$(process "$defaultUpdateWordLocalizedPt")
 updateWordLocalizedJa_xml=$(process "$defaultUpdateWordLocalizedJa")
 updateWordLocalizedNl_xml=$(process "$defaultUpdateWordLocalizedNl")
@@ -630,6 +676,7 @@ upgradeWordLocalizedEn_xml=$(process "$defaultUpgradeWordLocalizedEn")
 upgradeWordLocalizedDe_xml=$(process "$defaultUpgradeWordLocalizedDe")
 upgradeWordLocalizedFr_xml=$(process "$defaultUpgradeWordLocalizedFr")
 upgradeWordLocalizedEs_xml=$(process "$defaultUpgradeWordLocalizedEs")
+upgradeWordLocalizedIt_xml=$(process "$defaultUpgradeWordLocalizedIt")
 upgradeWordLocalizedPt_xml=$(process "$defaultUpgradeWordLocalizedPt")
 upgradeWordLocalizedJa_xml=$(process "$defaultUpgradeWordLocalizedJa")
 upgradeWordLocalizedNl_xml=$(process "$defaultUpgradeWordLocalizedNl")
@@ -638,6 +685,7 @@ softwareUpdateButtonTextUpdateLocalizedEn_xml=$(process "$defaultSoftwareUpdateB
 softwareUpdateButtonTextUpdateLocalizedDe_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedDe")
 softwareUpdateButtonTextUpdateLocalizedFr_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedFr")
 softwareUpdateButtonTextUpdateLocalizedEs_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedEs")
+softwareUpdateButtonTextUpdateLocalizedIt_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedIt")
 softwareUpdateButtonTextUpdateLocalizedPt_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedPt")
 softwareUpdateButtonTextUpdateLocalizedJa_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedJa")
 softwareUpdateButtonTextUpdateLocalizedNl_xml=$(process "$defaultSoftwareUpdateButtonTextUpdateLocalizedNl")
@@ -646,6 +694,7 @@ softwareUpdateButtonTextUpgradeLocalizedEn_xml=$(process "$defaultSoftwareUpdate
 softwareUpdateButtonTextUpgradeLocalizedDe_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedDe")
 softwareUpdateButtonTextUpgradeLocalizedFr_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedFr")
 softwareUpdateButtonTextUpgradeLocalizedEs_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedEs")
+softwareUpdateButtonTextUpgradeLocalizedIt_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedIt")
 softwareUpdateButtonTextUpgradeLocalizedPt_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedPt")
 softwareUpdateButtonTextUpgradeLocalizedJa_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedJa")
 softwareUpdateButtonTextUpgradeLocalizedNl_xml=$(process "$defaultSoftwareUpdateButtonTextUpgradeLocalizedNl")
@@ -654,6 +703,7 @@ restartNowButtonTextLocalizedEn_xml=$(process "$defaultRestartNowButtonTextLocal
 restartNowButtonTextLocalizedDe_xml=$(process "$defaultRestartNowButtonTextLocalizedDe")
 restartNowButtonTextLocalizedFr_xml=$(process "$defaultRestartNowButtonTextLocalizedFr")
 restartNowButtonTextLocalizedEs_xml=$(process "$defaultRestartNowButtonTextLocalizedEs")
+restartNowButtonTextLocalizedIt_xml=$(process "$defaultRestartNowButtonTextLocalizedIt")
 restartNowButtonTextLocalizedPt_xml=$(process "$defaultRestartNowButtonTextLocalizedPt")
 restartNowButtonTextLocalizedJa_xml=$(process "$defaultRestartNowButtonTextLocalizedJa")
 restartNowButtonTextLocalizedNl_xml=$(process "$defaultRestartNowButtonTextLocalizedNl")
@@ -662,6 +712,7 @@ infoboxLabelCurrentLocalizedEn_xml=$(process "$defaultInfoboxLabelCurrentLocaliz
 infoboxLabelCurrentLocalizedDe_xml=$(process "$defaultInfoboxLabelCurrentLocalizedDe")
 infoboxLabelCurrentLocalizedFr_xml=$(process "$defaultInfoboxLabelCurrentLocalizedFr")
 infoboxLabelCurrentLocalizedEs_xml=$(process "$defaultInfoboxLabelCurrentLocalizedEs")
+infoboxLabelCurrentLocalizedIt_xml=$(process "$defaultInfoboxLabelCurrentLocalizedIt")
 infoboxLabelCurrentLocalizedPt_xml=$(process "$defaultInfoboxLabelCurrentLocalizedPt")
 infoboxLabelCurrentLocalizedJa_xml=$(process "$defaultInfoboxLabelCurrentLocalizedJa")
 infoboxLabelCurrentLocalizedNl_xml=$(process "$defaultInfoboxLabelCurrentLocalizedNl")
@@ -670,6 +721,7 @@ infoboxLabelRequiredLocalizedEn_xml=$(process "$defaultInfoboxLabelRequiredLocal
 infoboxLabelRequiredLocalizedDe_xml=$(process "$defaultInfoboxLabelRequiredLocalizedDe")
 infoboxLabelRequiredLocalizedFr_xml=$(process "$defaultInfoboxLabelRequiredLocalizedFr")
 infoboxLabelRequiredLocalizedEs_xml=$(process "$defaultInfoboxLabelRequiredLocalizedEs")
+infoboxLabelRequiredLocalizedIt_xml=$(process "$defaultInfoboxLabelRequiredLocalizedIt")
 infoboxLabelRequiredLocalizedPt_xml=$(process "$defaultInfoboxLabelRequiredLocalizedPt")
 infoboxLabelRequiredLocalizedJa_xml=$(process "$defaultInfoboxLabelRequiredLocalizedJa")
 infoboxLabelRequiredLocalizedNl_xml=$(process "$defaultInfoboxLabelRequiredLocalizedNl")
@@ -678,6 +730,7 @@ infoboxLabelDeadlineLocalizedEn_xml=$(process "$defaultInfoboxLabelDeadlineLocal
 infoboxLabelDeadlineLocalizedDe_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedDe")
 infoboxLabelDeadlineLocalizedFr_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedFr")
 infoboxLabelDeadlineLocalizedEs_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedEs")
+infoboxLabelDeadlineLocalizedIt_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedIt")
 infoboxLabelDeadlineLocalizedPt_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedPt")
 infoboxLabelDeadlineLocalizedJa_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedJa")
 infoboxLabelDeadlineLocalizedNl_xml=$(process "$defaultInfoboxLabelDeadlineLocalizedNl")
@@ -686,6 +739,7 @@ infoboxLabelDaysRemainingLocalizedEn_xml=$(process "$defaultInfoboxLabelDaysRema
 infoboxLabelDaysRemainingLocalizedDe_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedDe")
 infoboxLabelDaysRemainingLocalizedFr_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedFr")
 infoboxLabelDaysRemainingLocalizedEs_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedEs")
+infoboxLabelDaysRemainingLocalizedIt_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedIt")
 infoboxLabelDaysRemainingLocalizedPt_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedPt")
 infoboxLabelDaysRemainingLocalizedJa_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedJa")
 infoboxLabelDaysRemainingLocalizedNl_xml=$(process "$defaultInfoboxLabelDaysRemainingLocalizedNl")
@@ -694,6 +748,7 @@ infoboxLabelLastRestartLocalizedEn_xml=$(process "$defaultInfoboxLabelLastRestar
 infoboxLabelLastRestartLocalizedDe_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedDe")
 infoboxLabelLastRestartLocalizedFr_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedFr")
 infoboxLabelLastRestartLocalizedEs_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedEs")
+infoboxLabelLastRestartLocalizedIt_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedIt")
 infoboxLabelLastRestartLocalizedPt_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedPt")
 infoboxLabelLastRestartLocalizedJa_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedJa")
 infoboxLabelLastRestartLocalizedNl_xml=$(process "$defaultInfoboxLabelLastRestartLocalizedNl")
@@ -702,6 +757,7 @@ infoboxLabelFreeDiskSpaceLocalizedEn_xml=$(process "$defaultInfoboxLabelFreeDisk
 infoboxLabelFreeDiskSpaceLocalizedDe_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedDe")
 infoboxLabelFreeDiskSpaceLocalizedFr_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedFr")
 infoboxLabelFreeDiskSpaceLocalizedEs_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedEs")
+infoboxLabelFreeDiskSpaceLocalizedIt_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedIt")
 infoboxLabelFreeDiskSpaceLocalizedPt_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedPt")
 infoboxLabelFreeDiskSpaceLocalizedJa_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedJa")
 infoboxLabelFreeDiskSpaceLocalizedNl_xml=$(process "$defaultInfoboxLabelFreeDiskSpaceLocalizedNl")
@@ -710,6 +766,7 @@ deadlineEnforcementMessageAbsoluteLocalizedEn_xml=$(process "$defaultDeadlineEnf
 deadlineEnforcementMessageAbsoluteLocalizedDe_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedDe")
 deadlineEnforcementMessageAbsoluteLocalizedFr_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedFr")
 deadlineEnforcementMessageAbsoluteLocalizedEs_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedEs")
+deadlineEnforcementMessageAbsoluteLocalizedIt_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedIt")
 deadlineEnforcementMessageAbsoluteLocalizedPt_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedPt")
 deadlineEnforcementMessageAbsoluteLocalizedJa_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedJa")
 deadlineEnforcementMessageAbsoluteLocalizedNl_xml=$(process "$defaultDeadlineEnforcementMessageAbsoluteLocalizedNl")
@@ -718,6 +775,7 @@ deadlineEnforcementMessageRelativeLocalizedEn_xml=$(process "$defaultDeadlineEnf
 deadlineEnforcementMessageRelativeLocalizedDe_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedDe")
 deadlineEnforcementMessageRelativeLocalizedFr_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedFr")
 deadlineEnforcementMessageRelativeLocalizedEs_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedEs")
+deadlineEnforcementMessageRelativeLocalizedIt_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedIt")
 deadlineEnforcementMessageRelativeLocalizedPt_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedPt")
 deadlineEnforcementMessageRelativeLocalizedJa_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedJa")
 deadlineEnforcementMessageRelativeLocalizedNl_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedNl")
@@ -726,6 +784,7 @@ pastDeadlinePromptTitleLocalizedEn_xml=$(process "$defaultPastDeadlinePromptTitl
 pastDeadlinePromptTitleLocalizedDe_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedDe")
 pastDeadlinePromptTitleLocalizedFr_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedFr")
 pastDeadlinePromptTitleLocalizedEs_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedEs")
+pastDeadlinePromptTitleLocalizedIt_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedIt")
 pastDeadlinePromptTitleLocalizedPt_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedPt")
 pastDeadlinePromptTitleLocalizedJa_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedJa")
 pastDeadlinePromptTitleLocalizedNl_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedNl")
@@ -734,6 +793,7 @@ pastDeadlinePromptMessageLocalizedEn_xml=$(process "$defaultPastDeadlinePromptMe
 pastDeadlinePromptMessageLocalizedDe_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedDe")
 pastDeadlinePromptMessageLocalizedFr_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedFr")
 pastDeadlinePromptMessageLocalizedEs_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedEs")
+pastDeadlinePromptMessageLocalizedIt_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedIt")
 pastDeadlinePromptMessageLocalizedPt_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedPt")
 pastDeadlinePromptMessageLocalizedJa_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedJa")
 pastDeadlinePromptMessageLocalizedNl_xml=$(process "$defaultPastDeadlinePromptMessageLocalizedNl")
@@ -742,6 +802,7 @@ pastDeadlineForceTitleLocalizedEn_xml=$(process "$defaultPastDeadlineForceTitleL
 pastDeadlineForceTitleLocalizedDe_xml=$(process "$defaultPastDeadlineForceTitleLocalizedDe")
 pastDeadlineForceTitleLocalizedFr_xml=$(process "$defaultPastDeadlineForceTitleLocalizedFr")
 pastDeadlineForceTitleLocalizedEs_xml=$(process "$defaultPastDeadlineForceTitleLocalizedEs")
+pastDeadlineForceTitleLocalizedIt_xml=$(process "$defaultPastDeadlineForceTitleLocalizedIt")
 pastDeadlineForceTitleLocalizedPt_xml=$(process "$defaultPastDeadlineForceTitleLocalizedPt")
 pastDeadlineForceTitleLocalizedJa_xml=$(process "$defaultPastDeadlineForceTitleLocalizedJa")
 pastDeadlineForceTitleLocalizedNl_xml=$(process "$defaultPastDeadlineForceTitleLocalizedNl")
@@ -750,6 +811,7 @@ pastDeadlineForceMessageLocalizedEn_xml=$(process "$defaultPastDeadlineForceMess
 pastDeadlineForceMessageLocalizedDe_xml=$(process "$defaultPastDeadlineForceMessageLocalizedDe")
 pastDeadlineForceMessageLocalizedFr_xml=$(process "$defaultPastDeadlineForceMessageLocalizedFr")
 pastDeadlineForceMessageLocalizedEs_xml=$(process "$defaultPastDeadlineForceMessageLocalizedEs")
+pastDeadlineForceMessageLocalizedIt_xml=$(process "$defaultPastDeadlineForceMessageLocalizedIt")
 pastDeadlineForceMessageLocalizedPt_xml=$(process "$defaultPastDeadlineForceMessageLocalizedPt")
 pastDeadlineForceMessageLocalizedJa_xml=$(process "$defaultPastDeadlineForceMessageLocalizedJa")
 pastDeadlineForceMessageLocalizedNl_xml=$(process "$defaultPastDeadlineForceMessageLocalizedNl")
@@ -836,6 +898,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${supportAssistanceMessageLocalizedFr_xml}</string>
     <key>SupportAssistanceMessageLocalized_es</key>
     <string>${supportAssistanceMessageLocalizedEs_xml}</string>
+    <key>SupportAssistanceMessageLocalized_it</key>
+    <string>${supportAssistanceMessageLocalizedIt_xml}</string>
     <key>SupportAssistanceMessageLocalized_pt</key>
     <string>${supportAssistanceMessageLocalizedPt_xml}</string>
     <key>SupportAssistanceMessageLocalized_ja</key>
@@ -858,6 +922,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${titleLocalizedFr_xml}</string>
     <key>TitleLocalized_es</key>
     <string>${titleLocalizedEs_xml}</string>
+    <key>TitleLocalized_it</key>
+    <string>${titleLocalizedIt_xml}</string>
     <key>TitleLocalized_pt</key>
     <string>${titleLocalizedPt_xml}</string>
     <key>TitleLocalized_ja</key>
@@ -874,6 +940,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${button1textLocalizedFr_xml}</string>
     <key>Button1TextLocalized_es</key>
     <string>${button1textLocalizedEs_xml}</string>
+    <key>Button1TextLocalized_it</key>
+    <string>${button1textLocalizedIt_xml}</string>
     <key>Button1TextLocalized_pt</key>
     <string>${button1textLocalizedPt_xml}</string>
     <key>Button1TextLocalized_ja</key>
@@ -890,6 +958,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${button2textLocalizedFr_xml}</string>
     <key>Button2TextLocalized_es</key>
     <string>${button2textLocalizedEs_xml}</string>
+    <key>Button2TextLocalized_it</key>
+    <string>${button2textLocalizedIt_xml}</string>
     <key>Button2TextLocalized_pt</key>
     <string>${button2textLocalizedPt_xml}</string>
     <key>Button2TextLocalized_ja</key>
@@ -906,6 +976,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infobuttontextLocalizedFr_xml}</string>
     <key>InfoButtonTextLocalized_es</key>
     <string>${infobuttontextLocalizedEs_xml}</string>
+    <key>InfoButtonTextLocalized_it</key>
+    <string>${infobuttontextLocalizedIt_xml}</string>
     <key>InfoButtonTextLocalized_pt</key>
     <string>${infobuttontextLocalizedPt_xml}</string>
     <key>InfoButtonTextLocalized_ja</key>
@@ -922,6 +994,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${excessiveUptimeWarningMessageLocalizedFr_xml}</string>
     <key>ExcessiveUptimeWarningMessageLocalized_es</key>
     <string>${excessiveUptimeWarningMessageLocalizedEs_xml}</string>
+    <key>ExcessiveUptimeWarningMessageLocalized_it</key>
+    <string>${excessiveUptimeWarningMessageLocalizedIt_xml}</string>
     <key>ExcessiveUptimeWarningMessageLocalized_pt</key>
     <string>${excessiveUptimeWarningMessageLocalizedPt_xml}</string>
     <key>ExcessiveUptimeWarningMessageLocalized_ja</key>
@@ -938,6 +1012,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${diskSpaceWarningMessageLocalizedFr_xml}</string>
     <key>DiskSpaceWarningMessageLocalized_es</key>
     <string>${diskSpaceWarningMessageLocalizedEs_xml}</string>
+    <key>DiskSpaceWarningMessageLocalized_it</key>
+    <string>${diskSpaceWarningMessageLocalizedIt_xml}</string>
     <key>DiskSpaceWarningMessageLocalized_pt</key>
     <string>${diskSpaceWarningMessageLocalizedPt_xml}</string>
     <key>DiskSpaceWarningMessageLocalized_ja</key>
@@ -954,6 +1030,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${stagedUpdateMessageLocalizedFr_xml}</string>
     <key>StagedUpdateMessageLocalized_es</key>
     <string>${stagedUpdateMessageLocalizedEs_xml}</string>
+    <key>StagedUpdateMessageLocalized_it</key>
+    <string>${stagedUpdateMessageLocalizedIt_xml}</string>
     <key>StagedUpdateMessageLocalized_pt</key>
     <string>${stagedUpdateMessageLocalizedPt_xml}</string>
     <key>StagedUpdateMessageLocalized_ja</key>
@@ -970,6 +1048,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${partiallyStagedUpdateMessageLocalizedFr_xml}</string>
     <key>PartiallyStagedUpdateMessageLocalized_es</key>
     <string>${partiallyStagedUpdateMessageLocalizedEs_xml}</string>
+    <key>PartiallyStagedUpdateMessageLocalized_it</key>
+    <string>${partiallyStagedUpdateMessageLocalizedIt_xml}</string>
     <key>PartiallyStagedUpdateMessageLocalized_pt</key>
     <string>${partiallyStagedUpdateMessageLocalizedPt_xml}</string>
     <key>PartiallyStagedUpdateMessageLocalized_ja</key>
@@ -986,6 +1066,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pendingDownloadMessageLocalizedFr_xml}</string>
     <key>PendingDownloadMessageLocalized_es</key>
     <string>${pendingDownloadMessageLocalizedEs_xml}</string>
+    <key>PendingDownloadMessageLocalized_it</key>
+    <string>${pendingDownloadMessageLocalizedIt_xml}</string>
     <key>PendingDownloadMessageLocalized_pt</key>
     <string>${pendingDownloadMessageLocalizedPt_xml}</string>
     <key>PendingDownloadMessageLocalized_ja</key>
@@ -1004,6 +1086,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${relativeDeadlineTodayLocalizedFr_xml}</string>
     <key>RelativeDeadlineTodayLocalized_es</key>
     <string>${relativeDeadlineTodayLocalizedEs_xml}</string>
+    <key>RelativeDeadlineTodayLocalized_it</key>
+    <string>${relativeDeadlineTodayLocalizedIt_xml}</string>
     <key>RelativeDeadlineTodayLocalized_pt</key>
     <string>${relativeDeadlineTodayLocalizedPt_xml}</string>
     <key>RelativeDeadlineTodayLocalized_ja</key>
@@ -1020,6 +1104,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${relativeDeadlineTomorrowLocalizedFr_xml}</string>
     <key>RelativeDeadlineTomorrowLocalized_es</key>
     <string>${relativeDeadlineTomorrowLocalizedEs_xml}</string>
+    <key>RelativeDeadlineTomorrowLocalized_it</key>
+    <string>${relativeDeadlineTomorrowLocalizedIt_xml}</string>
     <key>RelativeDeadlineTomorrowLocalized_pt</key>
     <string>${relativeDeadlineTomorrowLocalizedPt_xml}</string>
     <key>RelativeDeadlineTomorrowLocalized_ja</key>
@@ -1036,6 +1122,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${updateWordLocalizedFr_xml}</string>
     <key>UpdateWordLocalized_es</key>
     <string>${updateWordLocalizedEs_xml}</string>
+    <key>UpdateWordLocalized_it</key>
+    <string>${updateWordLocalizedIt_xml}</string>
     <key>UpdateWordLocalized_pt</key>
     <string>${updateWordLocalizedPt_xml}</string>
     <key>UpdateWordLocalized_ja</key>
@@ -1052,6 +1140,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${upgradeWordLocalizedFr_xml}</string>
     <key>UpgradeWordLocalized_es</key>
     <string>${upgradeWordLocalizedEs_xml}</string>
+    <key>UpgradeWordLocalized_it</key>
+    <string>${upgradeWordLocalizedIt_xml}</string>
     <key>UpgradeWordLocalized_pt</key>
     <string>${upgradeWordLocalizedPt_xml}</string>
     <key>UpgradeWordLocalized_ja</key>
@@ -1068,6 +1158,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${softwareUpdateButtonTextUpdateLocalizedFr_xml}</string>
     <key>SoftwareUpdateButtonTextUpdateLocalized_es</key>
     <string>${softwareUpdateButtonTextUpdateLocalizedEs_xml}</string>
+    <key>SoftwareUpdateButtonTextUpdateLocalized_it</key>
+    <string>${softwareUpdateButtonTextUpdateLocalizedIt_xml}</string>
     <key>SoftwareUpdateButtonTextUpdateLocalized_pt</key>
     <string>${softwareUpdateButtonTextUpdateLocalizedPt_xml}</string>
     <key>SoftwareUpdateButtonTextUpdateLocalized_ja</key>
@@ -1084,6 +1176,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${softwareUpdateButtonTextUpgradeLocalizedFr_xml}</string>
     <key>SoftwareUpdateButtonTextUpgradeLocalized_es</key>
     <string>${softwareUpdateButtonTextUpgradeLocalizedEs_xml}</string>
+    <key>SoftwareUpdateButtonTextUpgradeLocalized_it</key>
+    <string>${softwareUpdateButtonTextUpgradeLocalizedIt_xml}</string>
     <key>SoftwareUpdateButtonTextUpgradeLocalized_pt</key>
     <string>${softwareUpdateButtonTextUpgradeLocalizedPt_xml}</string>
     <key>SoftwareUpdateButtonTextUpgradeLocalized_ja</key>
@@ -1100,6 +1194,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${restartNowButtonTextLocalizedFr_xml}</string>
     <key>RestartNowButtonTextLocalized_es</key>
     <string>${restartNowButtonTextLocalizedEs_xml}</string>
+    <key>RestartNowButtonTextLocalized_it</key>
+    <string>${restartNowButtonTextLocalizedIt_xml}</string>
     <key>RestartNowButtonTextLocalized_pt</key>
     <string>${restartNowButtonTextLocalizedPt_xml}</string>
     <key>RestartNowButtonTextLocalized_ja</key>
@@ -1116,6 +1212,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infoboxLabelCurrentLocalizedFr_xml}</string>
     <key>InfoboxLabelCurrentLocalized_es</key>
     <string>${infoboxLabelCurrentLocalizedEs_xml}</string>
+    <key>InfoboxLabelCurrentLocalized_it</key>
+    <string>${infoboxLabelCurrentLocalizedIt_xml}</string>
     <key>InfoboxLabelCurrentLocalized_pt</key>
     <string>${infoboxLabelCurrentLocalizedPt_xml}</string>
     <key>InfoboxLabelCurrentLocalized_ja</key>
@@ -1132,6 +1230,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infoboxLabelRequiredLocalizedFr_xml}</string>
     <key>InfoboxLabelRequiredLocalized_es</key>
     <string>${infoboxLabelRequiredLocalizedEs_xml}</string>
+    <key>InfoboxLabelRequiredLocalized_it</key>
+    <string>${infoboxLabelRequiredLocalizedIt_xml}</string>
     <key>InfoboxLabelRequiredLocalized_pt</key>
     <string>${infoboxLabelRequiredLocalizedPt_xml}</string>
     <key>InfoboxLabelRequiredLocalized_ja</key>
@@ -1148,6 +1248,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infoboxLabelDeadlineLocalizedFr_xml}</string>
     <key>InfoboxLabelDeadlineLocalized_es</key>
     <string>${infoboxLabelDeadlineLocalizedEs_xml}</string>
+    <key>InfoboxLabelDeadlineLocalized_it</key>
+    <string>${infoboxLabelDeadlineLocalizedIt_xml}</string>
     <key>InfoboxLabelDeadlineLocalized_pt</key>
     <string>${infoboxLabelDeadlineLocalizedPt_xml}</string>
     <key>InfoboxLabelDeadlineLocalized_ja</key>
@@ -1164,6 +1266,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infoboxLabelDaysRemainingLocalizedFr_xml}</string>
     <key>InfoboxLabelDaysRemainingLocalized_es</key>
     <string>${infoboxLabelDaysRemainingLocalizedEs_xml}</string>
+    <key>InfoboxLabelDaysRemainingLocalized_it</key>
+    <string>${infoboxLabelDaysRemainingLocalizedIt_xml}</string>
     <key>InfoboxLabelDaysRemainingLocalized_pt</key>
     <string>${infoboxLabelDaysRemainingLocalizedPt_xml}</string>
     <key>InfoboxLabelDaysRemainingLocalized_ja</key>
@@ -1180,6 +1284,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infoboxLabelLastRestartLocalizedFr_xml}</string>
     <key>InfoboxLabelLastRestartLocalized_es</key>
     <string>${infoboxLabelLastRestartLocalizedEs_xml}</string>
+    <key>InfoboxLabelLastRestartLocalized_it</key>
+    <string>${infoboxLabelLastRestartLocalizedIt_xml}</string>
     <key>InfoboxLabelLastRestartLocalized_pt</key>
     <string>${infoboxLabelLastRestartLocalizedPt_xml}</string>
     <key>InfoboxLabelLastRestartLocalized_ja</key>
@@ -1196,6 +1302,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${infoboxLabelFreeDiskSpaceLocalizedFr_xml}</string>
     <key>InfoboxLabelFreeDiskSpaceLocalized_es</key>
     <string>${infoboxLabelFreeDiskSpaceLocalizedEs_xml}</string>
+    <key>InfoboxLabelFreeDiskSpaceLocalized_it</key>
+    <string>${infoboxLabelFreeDiskSpaceLocalizedIt_xml}</string>
     <key>InfoboxLabelFreeDiskSpaceLocalized_pt</key>
     <string>${infoboxLabelFreeDiskSpaceLocalizedPt_xml}</string>
     <key>InfoboxLabelFreeDiskSpaceLocalized_ja</key>
@@ -1212,6 +1320,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${deadlineEnforcementMessageAbsoluteLocalizedFr_xml}</string>
     <key>DeadlineEnforcementMessageAbsoluteLocalized_es</key>
     <string>${deadlineEnforcementMessageAbsoluteLocalizedEs_xml}</string>
+    <key>DeadlineEnforcementMessageAbsoluteLocalized_it</key>
+    <string>${deadlineEnforcementMessageAbsoluteLocalizedIt_xml}</string>
     <key>DeadlineEnforcementMessageAbsoluteLocalized_pt</key>
     <string>${deadlineEnforcementMessageAbsoluteLocalizedPt_xml}</string>
     <key>DeadlineEnforcementMessageAbsoluteLocalized_ja</key>
@@ -1228,6 +1338,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${deadlineEnforcementMessageRelativeLocalizedFr_xml}</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_es</key>
     <string>${deadlineEnforcementMessageRelativeLocalizedEs_xml}</string>
+    <key>DeadlineEnforcementMessageRelativeLocalized_it</key>
+    <string>${deadlineEnforcementMessageRelativeLocalizedIt_xml}</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_pt</key>
     <string>${deadlineEnforcementMessageRelativeLocalizedPt_xml}</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_ja</key>
@@ -1244,6 +1356,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlinePromptTitleLocalizedFr_xml}</string>
     <key>PastDeadlinePromptTitleLocalized_es</key>
     <string>${pastDeadlinePromptTitleLocalizedEs_xml}</string>
+    <key>PastDeadlinePromptTitleLocalized_it</key>
+    <string>${pastDeadlinePromptTitleLocalizedIt_xml}</string>
     <key>PastDeadlinePromptTitleLocalized_pt</key>
     <string>${pastDeadlinePromptTitleLocalizedPt_xml}</string>
     <key>PastDeadlinePromptTitleLocalized_ja</key>
@@ -1260,6 +1374,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlinePromptMessageLocalizedFr_xml}</string>
     <key>PastDeadlinePromptMessageLocalized_es</key>
     <string>${pastDeadlinePromptMessageLocalizedEs_xml}</string>
+    <key>PastDeadlinePromptMessageLocalized_it</key>
+    <string>${pastDeadlinePromptMessageLocalizedIt_xml}</string>
     <key>PastDeadlinePromptMessageLocalized_pt</key>
     <string>${pastDeadlinePromptMessageLocalizedPt_xml}</string>
     <key>PastDeadlinePromptMessageLocalized_ja</key>
@@ -1276,6 +1392,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlineForceTitleLocalizedFr_xml}</string>
     <key>PastDeadlineForceTitleLocalized_es</key>
     <string>${pastDeadlineForceTitleLocalizedEs_xml}</string>
+    <key>PastDeadlineForceTitleLocalized_it</key>
+    <string>${pastDeadlineForceTitleLocalizedIt_xml}</string>
     <key>PastDeadlineForceTitleLocalized_pt</key>
     <string>${pastDeadlineForceTitleLocalizedPt_xml}</string>
     <key>PastDeadlineForceTitleLocalized_ja</key>
@@ -1292,6 +1410,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlineForceMessageLocalizedFr_xml}</string>
     <key>PastDeadlineForceMessageLocalized_es</key>
     <string>${pastDeadlineForceMessageLocalizedEs_xml}</string>
+    <key>PastDeadlineForceMessageLocalized_it</key>
+    <string>${pastDeadlineForceMessageLocalizedIt_xml}</string>
     <key>PastDeadlineForceMessageLocalized_pt</key>
     <string>${pastDeadlineForceMessageLocalizedPt_xml}</string>
     <key>PastDeadlineForceMessageLocalized_ja</key>
@@ -1308,6 +1428,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${messageLocalizedFr_xml}</string>
     <key>MessageLocalized_es</key>
     <string>${messageLocalizedEs_xml}</string>
+    <key>MessageLocalized_it</key>
+    <string>${messageLocalizedIt_xml}</string>
     <key>MessageLocalized_pt</key>
     <string>${messageLocalizedPt_xml}</string>
     <key>MessageLocalized_ja</key>
@@ -1331,6 +1453,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${helpmessageLocalizedFr_xml}</string>
     <key>HelpMessageLocalized_es</key>
     <string>${helpmessageLocalizedEs_xml}</string>
+    <key>HelpMessageLocalized_it</key>
+    <string>${helpmessageLocalizedIt_xml}</string>
     <key>HelpMessageLocalized_pt</key>
     <string>${helpmessageLocalizedPt_xml}</string>
     <key>HelpMessageLocalized_ja</key>
@@ -1421,6 +1545,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${supportAssistanceMessageLocalizedFr_xml}</string>
                                 <key>SupportAssistanceMessageLocalized_es</key>
                                 <string>${supportAssistanceMessageLocalizedEs_xml}</string>
+                                <key>SupportAssistanceMessageLocalized_it</key>
+                                <string>${supportAssistanceMessageLocalizedIt_xml}</string>
                                 <key>SupportAssistanceMessageLocalized_pt</key>
                                 <string>${supportAssistanceMessageLocalizedPt_xml}</string>
                                 <key>SupportAssistanceMessageLocalized_ja</key>
@@ -1439,6 +1565,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${titleLocalizedFr_xml}</string>
                                 <key>TitleLocalized_es</key>
                                 <string>${titleLocalizedEs_xml}</string>
+                                <key>TitleLocalized_it</key>
+                                <string>${titleLocalizedIt_xml}</string>
                                 <key>TitleLocalized_pt</key>
                                 <string>${titleLocalizedPt_xml}</string>
                                 <key>TitleLocalized_ja</key>
@@ -1455,6 +1583,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${button1textLocalizedFr_xml}</string>
                                 <key>Button1TextLocalized_es</key>
                                 <string>${button1textLocalizedEs_xml}</string>
+                                <key>Button1TextLocalized_it</key>
+                                <string>${button1textLocalizedIt_xml}</string>
                                 <key>Button1TextLocalized_pt</key>
                                 <string>${button1textLocalizedPt_xml}</string>
                                 <key>Button1TextLocalized_ja</key>
@@ -1471,6 +1601,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${button2textLocalizedFr_xml}</string>
                                 <key>Button2TextLocalized_es</key>
                                 <string>${button2textLocalizedEs_xml}</string>
+                                <key>Button2TextLocalized_it</key>
+                                <string>${button2textLocalizedIt_xml}</string>
                                 <key>Button2TextLocalized_pt</key>
                                 <string>${button2textLocalizedPt_xml}</string>
                                 <key>Button2TextLocalized_ja</key>
@@ -1487,6 +1619,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infobuttontextLocalizedFr_xml}</string>
                                 <key>InfoButtonTextLocalized_es</key>
                                 <string>${infobuttontextLocalizedEs_xml}</string>
+                                <key>InfoButtonTextLocalized_it</key>
+                                <string>${infobuttontextLocalizedIt_xml}</string>
                                 <key>InfoButtonTextLocalized_pt</key>
                                 <string>${infobuttontextLocalizedPt_xml}</string>
                                 <key>InfoButtonTextLocalized_ja</key>
@@ -1503,6 +1637,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${excessiveUptimeWarningMessageLocalizedFr_xml}</string>
                                 <key>ExcessiveUptimeWarningMessageLocalized_es</key>
                                 <string>${excessiveUptimeWarningMessageLocalizedEs_xml}</string>
+                                <key>ExcessiveUptimeWarningMessageLocalized_it</key>
+                                <string>${excessiveUptimeWarningMessageLocalizedIt_xml}</string>
                                 <key>ExcessiveUptimeWarningMessageLocalized_pt</key>
                                 <string>${excessiveUptimeWarningMessageLocalizedPt_xml}</string>
                                 <key>ExcessiveUptimeWarningMessageLocalized_ja</key>
@@ -1519,6 +1655,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${diskSpaceWarningMessageLocalizedFr_xml}</string>
                                 <key>DiskSpaceWarningMessageLocalized_es</key>
                                 <string>${diskSpaceWarningMessageLocalizedEs_xml}</string>
+                                <key>DiskSpaceWarningMessageLocalized_it</key>
+                                <string>${diskSpaceWarningMessageLocalizedIt_xml}</string>
                                 <key>DiskSpaceWarningMessageLocalized_pt</key>
                                 <string>${diskSpaceWarningMessageLocalizedPt_xml}</string>
                                 <key>DiskSpaceWarningMessageLocalized_ja</key>
@@ -1535,6 +1673,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${stagedUpdateMessageLocalizedFr_xml}</string>
                                 <key>StagedUpdateMessageLocalized_es</key>
                                 <string>${stagedUpdateMessageLocalizedEs_xml}</string>
+                                <key>StagedUpdateMessageLocalized_it</key>
+                                <string>${stagedUpdateMessageLocalizedIt_xml}</string>
                                 <key>StagedUpdateMessageLocalized_pt</key>
                                 <string>${stagedUpdateMessageLocalizedPt_xml}</string>
                                 <key>StagedUpdateMessageLocalized_ja</key>
@@ -1551,6 +1691,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${partiallyStagedUpdateMessageLocalizedFr_xml}</string>
                                 <key>PartiallyStagedUpdateMessageLocalized_es</key>
                                 <string>${partiallyStagedUpdateMessageLocalizedEs_xml}</string>
+                                <key>PartiallyStagedUpdateMessageLocalized_it</key>
+                                <string>${partiallyStagedUpdateMessageLocalizedIt_xml}</string>
                                 <key>PartiallyStagedUpdateMessageLocalized_pt</key>
                                 <string>${partiallyStagedUpdateMessageLocalizedPt_xml}</string>
                                 <key>PartiallyStagedUpdateMessageLocalized_ja</key>
@@ -1567,6 +1709,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pendingDownloadMessageLocalizedFr_xml}</string>
                                 <key>PendingDownloadMessageLocalized_es</key>
                                 <string>${pendingDownloadMessageLocalizedEs_xml}</string>
+                                <key>PendingDownloadMessageLocalized_it</key>
+                                <string>${pendingDownloadMessageLocalizedIt_xml}</string>
                                 <key>PendingDownloadMessageLocalized_pt</key>
                                 <string>${pendingDownloadMessageLocalizedPt_xml}</string>
                                 <key>PendingDownloadMessageLocalized_ja</key>
@@ -1585,6 +1729,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${relativeDeadlineTodayLocalizedFr_xml}</string>
                                 <key>RelativeDeadlineTodayLocalized_es</key>
                                 <string>${relativeDeadlineTodayLocalizedEs_xml}</string>
+                                <key>RelativeDeadlineTodayLocalized_it</key>
+                                <string>${relativeDeadlineTodayLocalizedIt_xml}</string>
                                 <key>RelativeDeadlineTodayLocalized_pt</key>
                                 <string>${relativeDeadlineTodayLocalizedPt_xml}</string>
                                 <key>RelativeDeadlineTodayLocalized_ja</key>
@@ -1601,6 +1747,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${relativeDeadlineTomorrowLocalizedFr_xml}</string>
                                 <key>RelativeDeadlineTomorrowLocalized_es</key>
                                 <string>${relativeDeadlineTomorrowLocalizedEs_xml}</string>
+                                <key>RelativeDeadlineTomorrowLocalized_it</key>
+                                <string>${relativeDeadlineTomorrowLocalizedIt_xml}</string>
                                 <key>RelativeDeadlineTomorrowLocalized_pt</key>
                                 <string>${relativeDeadlineTomorrowLocalizedPt_xml}</string>
                                 <key>RelativeDeadlineTomorrowLocalized_ja</key>
@@ -1617,6 +1765,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${updateWordLocalizedFr_xml}</string>
                                 <key>UpdateWordLocalized_es</key>
                                 <string>${updateWordLocalizedEs_xml}</string>
+                                <key>UpdateWordLocalized_it</key>
+                                <string>${updateWordLocalizedIt_xml}</string>
                                 <key>UpdateWordLocalized_pt</key>
                                 <string>${updateWordLocalizedPt_xml}</string>
                                 <key>UpdateWordLocalized_ja</key>
@@ -1633,6 +1783,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${upgradeWordLocalizedFr_xml}</string>
                                 <key>UpgradeWordLocalized_es</key>
                                 <string>${upgradeWordLocalizedEs_xml}</string>
+                                <key>UpgradeWordLocalized_it</key>
+                                <string>${upgradeWordLocalizedIt_xml}</string>
                                 <key>UpgradeWordLocalized_pt</key>
                                 <string>${upgradeWordLocalizedPt_xml}</string>
                                 <key>UpgradeWordLocalized_ja</key>
@@ -1649,6 +1801,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${softwareUpdateButtonTextUpdateLocalizedFr_xml}</string>
                                 <key>SoftwareUpdateButtonTextUpdateLocalized_es</key>
                                 <string>${softwareUpdateButtonTextUpdateLocalizedEs_xml}</string>
+                                <key>SoftwareUpdateButtonTextUpdateLocalized_it</key>
+                                <string>${softwareUpdateButtonTextUpdateLocalizedIt_xml}</string>
                                 <key>SoftwareUpdateButtonTextUpdateLocalized_pt</key>
                                 <string>${softwareUpdateButtonTextUpdateLocalizedPt_xml}</string>
                                 <key>SoftwareUpdateButtonTextUpdateLocalized_ja</key>
@@ -1665,6 +1819,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${softwareUpdateButtonTextUpgradeLocalizedFr_xml}</string>
                                 <key>SoftwareUpdateButtonTextUpgradeLocalized_es</key>
                                 <string>${softwareUpdateButtonTextUpgradeLocalizedEs_xml}</string>
+                                <key>SoftwareUpdateButtonTextUpgradeLocalized_it</key>
+                                <string>${softwareUpdateButtonTextUpgradeLocalizedIt_xml}</string>
                                 <key>SoftwareUpdateButtonTextUpgradeLocalized_pt</key>
                                 <string>${softwareUpdateButtonTextUpgradeLocalizedPt_xml}</string>
                                 <key>SoftwareUpdateButtonTextUpgradeLocalized_ja</key>
@@ -1681,6 +1837,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${restartNowButtonTextLocalizedFr_xml}</string>
                                 <key>RestartNowButtonTextLocalized_es</key>
                                 <string>${restartNowButtonTextLocalizedEs_xml}</string>
+                                <key>RestartNowButtonTextLocalized_it</key>
+                                <string>${restartNowButtonTextLocalizedIt_xml}</string>
                                 <key>RestartNowButtonTextLocalized_pt</key>
                                 <string>${restartNowButtonTextLocalizedPt_xml}</string>
                                 <key>RestartNowButtonTextLocalized_ja</key>
@@ -1697,6 +1855,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infoboxLabelCurrentLocalizedFr_xml}</string>
                                 <key>InfoboxLabelCurrentLocalized_es</key>
                                 <string>${infoboxLabelCurrentLocalizedEs_xml}</string>
+                                <key>InfoboxLabelCurrentLocalized_it</key>
+                                <string>${infoboxLabelCurrentLocalizedIt_xml}</string>
                                 <key>InfoboxLabelCurrentLocalized_pt</key>
                                 <string>${infoboxLabelCurrentLocalizedPt_xml}</string>
                                 <key>InfoboxLabelCurrentLocalized_ja</key>
@@ -1713,6 +1873,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infoboxLabelRequiredLocalizedFr_xml}</string>
                                 <key>InfoboxLabelRequiredLocalized_es</key>
                                 <string>${infoboxLabelRequiredLocalizedEs_xml}</string>
+                                <key>InfoboxLabelRequiredLocalized_it</key>
+                                <string>${infoboxLabelRequiredLocalizedIt_xml}</string>
                                 <key>InfoboxLabelRequiredLocalized_pt</key>
                                 <string>${infoboxLabelRequiredLocalizedPt_xml}</string>
                                 <key>InfoboxLabelRequiredLocalized_ja</key>
@@ -1729,6 +1891,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infoboxLabelDeadlineLocalizedFr_xml}</string>
                                 <key>InfoboxLabelDeadlineLocalized_es</key>
                                 <string>${infoboxLabelDeadlineLocalizedEs_xml}</string>
+                                <key>InfoboxLabelDeadlineLocalized_it</key>
+                                <string>${infoboxLabelDeadlineLocalizedIt_xml}</string>
                                 <key>InfoboxLabelDeadlineLocalized_pt</key>
                                 <string>${infoboxLabelDeadlineLocalizedPt_xml}</string>
                                 <key>InfoboxLabelDeadlineLocalized_ja</key>
@@ -1745,6 +1909,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infoboxLabelDaysRemainingLocalizedFr_xml}</string>
                                 <key>InfoboxLabelDaysRemainingLocalized_es</key>
                                 <string>${infoboxLabelDaysRemainingLocalizedEs_xml}</string>
+                                <key>InfoboxLabelDaysRemainingLocalized_it</key>
+                                <string>${infoboxLabelDaysRemainingLocalizedIt_xml}</string>
                                 <key>InfoboxLabelDaysRemainingLocalized_pt</key>
                                 <string>${infoboxLabelDaysRemainingLocalizedPt_xml}</string>
                                 <key>InfoboxLabelDaysRemainingLocalized_ja</key>
@@ -1761,6 +1927,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infoboxLabelLastRestartLocalizedFr_xml}</string>
                                 <key>InfoboxLabelLastRestartLocalized_es</key>
                                 <string>${infoboxLabelLastRestartLocalizedEs_xml}</string>
+                                <key>InfoboxLabelLastRestartLocalized_it</key>
+                                <string>${infoboxLabelLastRestartLocalizedIt_xml}</string>
                                 <key>InfoboxLabelLastRestartLocalized_pt</key>
                                 <string>${infoboxLabelLastRestartLocalizedPt_xml}</string>
                                 <key>InfoboxLabelLastRestartLocalized_ja</key>
@@ -1777,6 +1945,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${infoboxLabelFreeDiskSpaceLocalizedFr_xml}</string>
                                 <key>InfoboxLabelFreeDiskSpaceLocalized_es</key>
                                 <string>${infoboxLabelFreeDiskSpaceLocalizedEs_xml}</string>
+                                <key>InfoboxLabelFreeDiskSpaceLocalized_it</key>
+                                <string>${infoboxLabelFreeDiskSpaceLocalizedIt_xml}</string>
                                 <key>InfoboxLabelFreeDiskSpaceLocalized_pt</key>
                                 <string>${infoboxLabelFreeDiskSpaceLocalizedPt_xml}</string>
                                 <key>InfoboxLabelFreeDiskSpaceLocalized_ja</key>
@@ -1793,6 +1963,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${deadlineEnforcementMessageAbsoluteLocalizedFr_xml}</string>
                                 <key>DeadlineEnforcementMessageAbsoluteLocalized_es</key>
                                 <string>${deadlineEnforcementMessageAbsoluteLocalizedEs_xml}</string>
+                                <key>DeadlineEnforcementMessageAbsoluteLocalized_it</key>
+                                <string>${deadlineEnforcementMessageAbsoluteLocalizedIt_xml}</string>
                                 <key>DeadlineEnforcementMessageAbsoluteLocalized_pt</key>
                                 <string>${deadlineEnforcementMessageAbsoluteLocalizedPt_xml}</string>
                                 <key>DeadlineEnforcementMessageAbsoluteLocalized_ja</key>
@@ -1809,6 +1981,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${deadlineEnforcementMessageRelativeLocalizedFr_xml}</string>
                                 <key>DeadlineEnforcementMessageRelativeLocalized_es</key>
                                 <string>${deadlineEnforcementMessageRelativeLocalizedEs_xml}</string>
+                                <key>DeadlineEnforcementMessageRelativeLocalized_it</key>
+                                <string>${deadlineEnforcementMessageRelativeLocalizedIt_xml}</string>
                                 <key>DeadlineEnforcementMessageRelativeLocalized_pt</key>
                                 <string>${deadlineEnforcementMessageRelativeLocalizedPt_xml}</string>
                                 <key>DeadlineEnforcementMessageRelativeLocalized_ja</key>
@@ -1825,6 +1999,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlinePromptTitleLocalizedFr_xml}</string>
                                 <key>PastDeadlinePromptTitleLocalized_es</key>
                                 <string>${pastDeadlinePromptTitleLocalizedEs_xml}</string>
+                                <key>PastDeadlinePromptTitleLocalized_it</key>
+                                <string>${pastDeadlinePromptTitleLocalizedIt_xml}</string>
                                 <key>PastDeadlinePromptTitleLocalized_pt</key>
                                 <string>${pastDeadlinePromptTitleLocalizedPt_xml}</string>
                                 <key>PastDeadlinePromptTitleLocalized_ja</key>
@@ -1841,6 +2017,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlinePromptMessageLocalizedFr_xml}</string>
                                 <key>PastDeadlinePromptMessageLocalized_es</key>
                                 <string>${pastDeadlinePromptMessageLocalizedEs_xml}</string>
+                                <key>PastDeadlinePromptMessageLocalized_it</key>
+                                <string>${pastDeadlinePromptMessageLocalizedIt_xml}</string>
                                 <key>PastDeadlinePromptMessageLocalized_pt</key>
                                 <string>${pastDeadlinePromptMessageLocalizedPt_xml}</string>
                                 <key>PastDeadlinePromptMessageLocalized_ja</key>
@@ -1857,6 +2035,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlineForceTitleLocalizedFr_xml}</string>
                                 <key>PastDeadlineForceTitleLocalized_es</key>
                                 <string>${pastDeadlineForceTitleLocalizedEs_xml}</string>
+                                <key>PastDeadlineForceTitleLocalized_it</key>
+                                <string>${pastDeadlineForceTitleLocalizedIt_xml}</string>
                                 <key>PastDeadlineForceTitleLocalized_pt</key>
                                 <string>${pastDeadlineForceTitleLocalizedPt_xml}</string>
                                 <key>PastDeadlineForceTitleLocalized_ja</key>
@@ -1873,6 +2053,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlineForceMessageLocalizedFr_xml}</string>
                                 <key>PastDeadlineForceMessageLocalized_es</key>
                                 <string>${pastDeadlineForceMessageLocalizedEs_xml}</string>
+                                <key>PastDeadlineForceMessageLocalized_it</key>
+                                <string>${pastDeadlineForceMessageLocalizedIt_xml}</string>
                                 <key>PastDeadlineForceMessageLocalized_pt</key>
                                 <string>${pastDeadlineForceMessageLocalizedPt_xml}</string>
                                 <key>PastDeadlineForceMessageLocalized_ja</key>
@@ -1889,6 +2071,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${messageLocalizedFr_xml}</string>
                                 <key>MessageLocalized_es</key>
                                 <string>${messageLocalizedEs_xml}</string>
+                                <key>MessageLocalized_it</key>
+                                <string>${messageLocalizedIt_xml}</string>
                                 <key>MessageLocalized_pt</key>
                                 <string>${messageLocalizedPt_xml}</string>
                                 <key>MessageLocalized_ja</key>
@@ -1907,6 +2091,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${helpmessageLocalizedFr_xml}</string>
                                 <key>HelpMessageLocalized_es</key>
                                 <string>${helpmessageLocalizedEs_xml}</string>
+                                <key>HelpMessageLocalized_it</key>
+                                <string>${helpmessageLocalizedIt_xml}</string>
                                 <key>HelpMessageLocalized_pt</key>
                                 <string>${helpmessageLocalizedPt_xml}</string>
                                 <key>HelpMessageLocalized_ja</key>

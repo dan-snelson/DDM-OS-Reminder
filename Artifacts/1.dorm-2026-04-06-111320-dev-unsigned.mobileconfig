@@ -7,7 +7,7 @@
         <dict>
             <key>PayloadContent</key>
             <dict>
-                <key>org.churchofjesuschrist.dorm</key>
+                <key>1.dorm</key>
                 <dict>
                     <key>Forced</key>
                     <array>
@@ -481,7 +481,7 @@
                                 	<key>RestartNowButtonTextLocalized_pt</key>
                                 	<string>Reiniciar agora</string>
                                 	<key>ScriptLog</key>
-                                	<string>/var/log/org.churchofjesuschrist.log</string>
+                                	<string>/var/log/1.log</string>
                                 	<key>SoftwareUpdateButtonTextUpdate</key>
                                 	<string>Restart Now</string>
                                 	<key>SoftwareUpdateButtonTextUpdateLocalized_de</key>
@@ -551,7 +551,7 @@
                                 	<key>SupportAssistanceMessageLocalized_ja</key>
                                 	<string>&lt;br&gt;&lt;br&gt;Assembled サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
                                 	<key>SupportAssistanceMessageLocalized_nl</key>
-                                	<string>&lt;br&gt;&lt;br&gt;Assembled: Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
+                                	<string>&lt;br&gt;&lt;br&gt;Assembled Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
                                 	<key>SupportAssistanceMessageLocalized_pt</key>
                                 	<string>&lt;br&gt;&lt;br&gt;Assembled Para obter assistência, contacte a equipa **{supportTeamName}** clicando no botão (?) no canto inferior direito.</string>
                                 	<key>SupportKB</key>
@@ -630,26 +630,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>81E5D4FB-D967-47CC-A640-257AFDB4D769</string>
+            <string>802B4FD3-FAAB-4088-B868-1BA904CE60A1</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>81E5D4FB-D967-47CC-A640-257AFDB4D769</string>
+            <string>802B4FD3-FAAB-4088-B868-1BA904CE60A1</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (3.1.0) to org.churchofjesuschrist standards. Created: 2026-04-06-082410</string>
+    <string>Configures DDM OS Reminder (3.1.0) to 1 standards. Created: 2026-04-06-111320</string>
     <key>PayloadDisplayName</key>
-    <string>DDM OS Reminder: org.churchofjesuschrist</string>
+    <string>DDM OS Reminder: 1</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>78A7BCB6-5396-4539-B5B0-643ABA15575C</string>
+    <string>2571A6EC-0459-4705-82D9-98BFAE1C8434</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -659,7 +659,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>78A7BCB6-5396-4539-B5B0-643ABA15575C</string>
+    <string>2571A6EC-0459-4705-82D9-98BFAE1C8434</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

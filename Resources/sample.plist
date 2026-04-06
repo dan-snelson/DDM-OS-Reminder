@@ -78,7 +78,7 @@
     <key>SupportAssistanceMessageLocalized_ja</key>
     <string>&lt;br&gt;&lt;br&gt;Sample サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
     <key>SupportAssistanceMessageLocalized_nl</key>
-    <string>&lt;br&gt;&lt;br&gt;Sample: Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
+    <string>&lt;br&gt;&lt;br&gt;Sample Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
     <key>SupportAssistanceMessageLocalized_it</key>
     <string>&lt;br&gt;&lt;br&gt;Sample Per assistenza, contatta **{supportTeamName}** facendo clic sul pulsante (?) nell&apos;angolo in basso a destra.</string>
 

@@ -469,7 +469,7 @@
 	<key>RestartNowButtonTextLocalized_pt</key>
 	<string>Reiniciar agora</string>
 	<key>ScriptLog</key>
-	<string>/var/log/org.churchofjesuschrist.log</string>
+	<string>/var/log/1.log</string>
 	<key>SoftwareUpdateButtonTextUpdate</key>
 	<string>Restart Now</string>
 	<key>SoftwareUpdateButtonTextUpdateLocalized_de</key>
@@ -539,7 +539,7 @@
 	<key>SupportAssistanceMessageLocalized_ja</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled サポートが必要な場合は、右下の (?) ボタンをクリックして **{supportTeamName}** にお問い合わせください。</string>
 	<key>SupportAssistanceMessageLocalized_nl</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled: Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled Voor hulp kunt u contact opnemen met **{supportTeamName}** door op de (?) knop rechtsonder in de hoek te klikken.</string>
 	<key>SupportAssistanceMessageLocalized_pt</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Para obter assistência, contacte a equipa **{supportTeamName}** clicando no botão (?) no canto inferior direito.</string>
 	<key>SupportKB</key>

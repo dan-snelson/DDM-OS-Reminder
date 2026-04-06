@@ -182,6 +182,15 @@ Deployment Artifacts:
   </tr>
 </table>
 
+## 🆕 Localization Contributions
+
+> For additional language support, contributors only need to edit [Resources/sample.plist](Resources/sample.plist). The runtime defaults and generated plist/mobileconfig output are derived from that localization surface.
+> 
+> See [Language Translation: Italian](https://github.com/dan-snelson/DDM-OS-Reminder/issues/89) for a real-world example.
+
+<img width="834" height="337" alt="Screenshot 2026-03-31 at 4 02 25 AM" src="images/Language_Translation.png" />
+
+
 Use `LanguageOverride` to force a locale, run the script, capture screenshots, then restore `auto`.
 
 For custom text authoring, use base keys such as `Message` and `HelpMessage` when you want one shared string across every language. Add `MessageLocalized_<code>` or `HelpMessageLocalized_<code>` only for languages that truly need an override.

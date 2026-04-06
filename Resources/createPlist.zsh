@@ -11,10 +11,12 @@
 
 set -euo pipefail
 
-scriptVersion="3.1.0b7"
+scriptVersion="3.1.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
+declare -A samplePlistKeyLookup=()
+samplePlistKeyLookupInitialized="false"
 
 [[ -f "$SOURCE_SCRIPT" ]] || { echo "ERROR: Cannot find reminderDialog.zsh at ${SOURCE_SCRIPT}"; exit 1; }
 [[ -f "$SAMPLE_PLIST" ]] || { echo "ERROR: Cannot find sample.plist at ${SAMPLE_PLIST}"; exit 1; }
@@ -55,13 +57,55 @@ echo "Extracting preference values from ${SOURCE_SCRIPT#${SCRIPT_DIR}/} → $OUT
 # Extract value from preferenceConfiguration map (v2.3.0+ format)
 # Format: ["key"]="type|defaultValue"
 # ─────────────────────────────────────────────────────────────
+normalize_sample_key() {
+    printf "%s" "${${1:l}//_/}"
+}
+
+populate_sample_plist_key_lookup() {
+    local sampleKey
+    local normalizedSampleKey
+
+    [[ "${samplePlistKeyLookupInitialized}" == "true" ]] && return 0
+    [[ -f "${SAMPLE_PLIST}" ]] || return 0
+
+    while IFS= read -r sampleKey; do
+        normalizedSampleKey="$(normalize_sample_key "${sampleKey}")"
+        samplePlistKeyLookup[${normalizedSampleKey}]="${sampleKey}"
+    done < <(sed -n 's/^[[:space:]]*<key>\([^<]*\)<\/key>[[:space:]]*$/\1/p' "${SAMPLE_PLIST}")
+
+    samplePlistKeyLookupInitialized="true"
+}
+
+resolve_sample_plist_key() {
+    local requestedKey="${1}"
+    local normalizedRequestedKey
+
+    populate_sample_plist_key_lookup
+
+    normalizedRequestedKey="$(normalize_sample_key "${requestedKey}")"
+
+    if [[ -n "${samplePlistKeyLookup[${normalizedRequestedKey}]:-}" ]]; then
+        echo "${samplePlistKeyLookup[${normalizedRequestedKey}]}"
+        return 0
+    fi
+
+    return 1
+}
+
 extract_from_preference_map() {
     local key=$1
     local line
+    local samplePlistKey=""
     local value
 
-    if [[ "${key}" == *Localized_* ]] && [[ -f "${SAMPLE_PLIST}" ]]; then
-        value=$(/usr/libexec/PlistBuddy -c "Print :${key}" "${SAMPLE_PLIST}" 2>/dev/null || true)
+    if [[ "${key}" == *Localized* ]]; then
+        samplePlistKey="$(resolve_sample_plist_key "${key}" || true)"
+        value=""
+
+        if [[ -n "${samplePlistKey}" ]]; then
+            value=$(/usr/libexec/PlistBuddy -c "Print :${samplePlistKey}" "${SAMPLE_PLIST}" 2>/dev/null || true)
+        fi
+
         if [[ -n "${value}" ]]; then
             echo "${value}"
             return
@@ -121,8 +165,10 @@ extract_additional_localized_entries() {
     awk '
         BEGIN { emitValue = 0 }
 
-        match($0, /^[[:space:]]*<key>([^<]+Localized_[^<]+)<\/key>[[:space:]]*$/, matches) {
-            key = matches[1]
+        /^[[:space:]]*<key>[^<]+Localized_[^<]+<\/key>[[:space:]]*$/ {
+            key = $0
+            sub(/^[[:space:]]*<key>/, "", key)
+            sub(/<\/key>[[:space:]]*$/, "", key)
 
             if (key !~ /Localized_(en|de|fr|es|pt|ja|nl)$/) {
                 print $0

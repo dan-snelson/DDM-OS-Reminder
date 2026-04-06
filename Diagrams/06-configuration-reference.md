@@ -725,8 +725,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+)**:
-- `%a` / `%A` / `%b` / `%B` follow the resolved dialog language (`de`, `fr`, fallback `en`)
+**Locale Behavior (3.0.0+, expanded in 3.1.0)**:
+- `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
+- When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
 - Numeric-only formats (for example `%d.%m.%Y %H:%M`) are unchanged across locales
 
 ---
@@ -942,10 +943,10 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `LanguageOverride`
 **Type**: String
 **Default**: `auto`
-**Supported Values**: `auto`, `en`, `de`, `fr`, `es`, `nl`, `pt`, `ja`
+**Supported Values**: `auto`, `en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, plus additional language codes backed by matching localized preference keys
 
 **Description**: Selects the localization family used for dialog content.
-When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value and normalizes to `en`, `de`, `fr`, `es`, `nl`, `pt`, or `ja`.
+When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value, normalizes the built-in supported locales, and can honor additional languages when matching `*Localized_<code>` keys are present in managed or local preferences.
 
 **Fallback Chain**:
 1. Selected localized key (for example, `MessageLocalized_nl`)
@@ -986,7 +987,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `PartiallyStagedUpdateMessageLocalized_{lang}`
 - `PendingDownloadMessageLocalized_{lang}`
 
-*Dynamic localization primitives (3.1.0b1+)*:
+*Dynamic localization primitives (3.1.0+)*:
 - `RelativeDeadlineTodayLocalized_{lang}`
 - `RelativeDeadlineTomorrowLocalized_{lang}`
 - `UpdateWordLocalized_{lang}`
@@ -1558,7 +1559,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 3.0.0 |
+| `{scriptVersion}` | System | Script version | 3.1.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1573,6 +1574,8 @@ These placeholders are resolved at render time by swiftDialog itself. See the fu
 | `{osversion}` | HelpMessage | 15.1.1 |
 
 **Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. Invalid formats suppress reminder dialogs and emit a `[WARNING]` log entry.
+
+**3.1.0 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
 
 ### Placeholder Modifiers
 
@@ -2043,9 +2046,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 3.1.0b1 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
+| 3.1.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
+| 3.1.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
-**Last Updated**: 30-Mar-2026
-**DDM OS Reminder Version**: 3.1.0b1
+**Last Updated**: 06-Apr-2026
+**DDM OS Reminder Version**: 3.1.0

@@ -2,50 +2,14 @@
 
 ## Changelog
 
-### Version 3.1.0b9 (31-Mar-2026)
+### Version 3.1.0 (06-Apr-2026)
 - Updated `reminderDialog.zsh` to treat a resolved DDM `VersionString` as already compliant when it matches or trails the installed macOS product version, preventing false reminder suppression failures on Apple log patterns that omit a usable `BuildVersionString`.
 - Updated `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` to treat a resolved DDM `VersionString` as already compliant when it matches or trails the current macOS product version, covering Apple log patterns where `BuildVersionString:(null)` omits a usable build match.
 - Added internal `currentVersionOverride` and `currentBuildOverride` fixture hooks to the two pending-update Jamf Extension Attributes so remote feedback traces can be validated locally without editing the scripts.
 
-### Version 3.1.0b8 (31-Mar-2026)
-- Applied the in-process DDM resolver parsing improvements from the Jamf Pro Extension Attributes to `reminderDialog.zsh`, reducing subprocess churn in the runtime conflict/no-match detection path.
-- Bumped `reminderDialog.zsh`, `launchDaemonManagement.zsh`, `assemble.zsh`, and the pending-update Jamf Pro Extension Attributes to `3.1.0b8`.
-
-### Version 3.1.0b7 (31-Mar-2026)
-- Changed `reminderDialog.zsh` to ship English built-in fallback text only; non-English interfaces now require localized `*Localized_<code>` keys in managed or local preferences.
-    - `reminderDialog.zsh` is now nearly 14 percent leaner, reducing maintenance overhead while preserving localized deployment flexibility through plist-driven translations.
-- Updated `reminderDialog.zsh` DDM resolver classification so contradictory declaration state is tracked explicitly as `conflict`, while clean scan failures continue to classify as `noMatch` and missing/invalid declaration state is logged distinctly.
-- Updated `Resources/JamfEA-Pending_OS_Update_Date.zsh` to map non-resolved states to documented sentinel date codes so it remains valid for a Jamf Pro `Date` data type.
-- Updated `Resources/JamfEA-Pending_OS_Update_Version.zsh` to return specific resolver states (`conflict`, `noMatch`, `missing`, `invalidVersion`) instead of collapsing all trust failures to `None`.
-- Optimized the two pending-update Jamf Pro Extension Attributes by replacing per-line external parsing in the DDM resolver hot path with in-process Zsh parsing, substantially reducing execution time on large `install.log` files.
-- Hardened the shared contradiction check so a declaration that reappears after `No updates found for DDM to enforce` now classifies as `conflict`, including repeated identical declarations.
-    - clean non-failure `None` state is preserved internally; the version EA returns `None` literally while the date EA maps it to a documented sentinel date code.
-
-### Version 3.1.0b6 (31-Mar-2026)
-- Re-attempted to address Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87), thanks for the detailed testing feedback, @DamianFornagiel!)
-    - Updated `assemble.zsh` prior-plist validation to accept either legacy `HelpMessage` or one-or-more `HelpMessageLocalized_<code>` keys, so localized-only profiles are no longer rejected as invalid upgrade sources.
-    - Updated Knowledge Base suppression in `assemble.zsh` to remove the Knowledge Base row from every present help-message variant, including `HelpMessageLocalized_*`, instead of rewriting only the legacy `HelpMessage` key.
-    - Clarified README guidance so Mac Admins use base text keys for shared cross-language copy and reserve `*Localized_<code>` keys for explicit per-language overrides.
-
-### Version 3.1.0b5 (31-Mar-2026)
-- Added shipped Italian (`it`) localization to `Resources/sample.plist`, regenerated sample-derived deployment artifacts, and refreshed README / issue-template examples so the documented language set matches the repo state.
-- Replaced hard-coded dialog language allowlists in `reminderDialog.zsh` with dynamic localization detection, so any language with a `TitleLocalized_<code>` key in managed or local preferences is now recognized without additional script edits.
-- Added a second localized-preference loading pass so previously unknown `*Localized_<code>` keys are imported from `/Library/Managed Preferences` and `/Library/Preferences` using the existing local-then-managed precedence model.
-- Updated dialog locale fallback behavior so unknown language codes no longer force `en_US.UTF-8`, allowing weekday and date rendering to fall back to the system default locale when no explicit mapping exists.
-- Updated locale resolution to prefer any installed locale matching the active dialog language code, allowing plist-only translations to localize weekday names and `%a` / `%b` deadline dates without adding per-language script mappings.
-- Updated `Resources/createPlist.zsh` to preserve additional `*_Localized_<code>` keys from `Resources/sample.plist`, so optional plist/mobileconfig regeneration no longer drops new languages that are not hardcoded in the script.
-- Updated the Language Translation issue template to document the new auto-detection behavior and clarify the supported plist locations for demo testing.
-
-### Version 3.1.0b4 (30-Mar-2026)
-- Fixed localized text fallback so explicitly configured base scalar keys such as `HelpMessage`, `Message`, and related `*Localized_*` preference families are no longer silently overwritten by shipped localized defaults when no per-language override is present. This restores backward compatibility for older profiles while preserving explicit localized overrides. (Addresses Issue [#87](https://github.com/dan-snelson/DDM-OS-Reminder/issues/87), thanks for the heads-up, @DamianFornagiel!)
-- Updated string preference loading to treat explicit plist keys as authoritative even when their value is an empty string, aligning runtime behavior with generated plist values such as `SupportAssistanceMessage=""` when Knowledge Base surfaces are disabled.
-
-### Version 3.1.0b3 (30-Mar-2026)
-- Polished German localization across `reminderDialog.zsh` and `Resources/sample.plist`, switching the default user-facing copy to informal second-person phrasing and restoring umlauts in the shipped German strings. ([Pull Request #86](https://github.com/dan-snelson/DDM-OS-Reminder/pull/86); thanks, @AirBookMac!)
-- Added first-class Dutch (`nl`) localization support across runtime language detection, locale-aware deadline rendering, generated plist/mobileconfig output, and sample configuration defaults. ([Pull Request #85](https://github.com/dan-snelson/DDM-OS-Reminder/pull/85); thanks, @JordyThery!)
-- Externalized the remaining hard-coded localized runtime strings into plist-backed preferences, including update/upgrade vocabulary, relative deadline phrases, infobox labels, deadline enforcement messaging, and past-deadline restart dialog copy.
-- Updated `Resources/sample.plist`, `Resources/createPlist.zsh`, and release metadata so translators can work from the plist surface instead of code-localized strings.
-- Fixed DDM declaration resolution for newer macOS softwareupdate log patterns (thanks for the assist, @phillnz!)
+### Version 3.0.1 (30-Mar-2026)
+- Fixed DDM declaration resolution for newer macOS `softwareupdated` log patterns by recognizing `Found currently applicable declaration` entries and preferring the most recent declaration state before applying source priority. (thanks for the assist, @phillnz!)
+- Updated `reminderDialog.zsh` plus the bundled Jamf Pending OS Update EAs so real pending updates continue to resolve correctly when stale older declaration lines still exist in the recent `install.log` window.
 
 ### Version 3.0.0 (29-Mar-2026)
 - Hardened `reminderDialog.zsh` DDM resolution by replacing the old `EnforcedInstallDate | tail -n 1` heuristic with a recent-window resolver that:

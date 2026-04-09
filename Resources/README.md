@@ -3,9 +3,10 @@
 ## Scripts
 
 1. [Assemble](#1-assemble)
-2. [Create Self-extracting Script](#2-create-self-extracting-script)
-3. [Create `.plist`](#3-create-plist)
-4. [Extension Attributes](#4-extension-attributes)
+2. [Preference Preview](#2-preference-preview)
+3. [Create Self-extracting Script](#3-create-self-extracting-script)
+4. [Create `.plist`](#4-create-plist-optional)
+5. [Extension Attributes](#5-extension-attributes)
 
 ---
 
@@ -136,7 +137,7 @@ The `assemble.zsh` script creates **all three files you need for deployment**:
 All artifacts are saved to the `Artifacts/` folder and include the lane suffix:
 `-dev`, `-test`, or `-prod`.
 
-After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
+After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [3. Create Self-extracting Script](#3-create-self-extracting-script) below.
 
 When comparing a newly generated `.plist` to an older one, prefer a normalized diff instead of a raw XML comparison:
 
@@ -146,19 +147,48 @@ diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
 
 This filters out comment, key-order, and whitespace churn so you can focus on actual preference-value changes.
 
-> **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
+> **Note:** The [Create `.plist`](#4-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
 > **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, and past-deadline restart copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`.
 
 ---
 
-### 2. Create Self-extracting Script
+### 2. Preference Preview
+
+Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) to preview how the reminder dialog will render from deployed preferences without running the full DDM deadline-resolution workflow or LaunchDaemon logic.
+
+This helper:
+- Reads the same managed/local preference domain hierarchy as `reminderDialog.zsh`
+- Applies `LanguageOverride` and `*Localized_<code>` keys
+- Uses demo runtime values for deadline/version placeholders so the dialog is fully renderable
+- Wires the dialog buttons for preview use:
+  - Primary button opens Software Update in System Settings
+  - Secondary button dismisses the preview
+  - Info button opens `InfoButtonAction`
+
+**2.1.** Run the preview
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh
+zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
+```
+
+**2.2.** Notes
+
+- The script does not require root, though it can still be run with `sudo` when needed for preference access testing.
+- Use `--rdnn` to target the managed/local preference domain you want to validate.
+- If no deployed preferences exist yet, you can copy `Resources/sample.plist` into `/Library/Preferences/<rdnn>.dorm.plist` for quick local testing.
+- The preview script is intentionally limited to the standard reminder dialog; it does not simulate past-deadline restart modes or LaunchDaemon execution.
+
+---
+
+### 3. Create Self-extracting Script
 
 With some MDMs, it's easier to deploy a **self-extracting script**. After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
 
 This script automatically finds the **newest assembled script** in the `Artifacts/` folder and creates a base64-encoded, self-extracting version.
 
-**2.1.** Execute the script:
+**3.1.** Execute the script:
 
 ```zsh
 zsh Resources/createSelfExtracting.zsh
@@ -176,19 +206,19 @@ zsh Resources/createSelfExtracting.zsh
 When run, it will extract to /var/tmp/ddm-os-reminder-us.snelson-2026-01-08-054323.zsh and execute automatically.
 ```
 
-**2.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
+**3.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
 
 ```
 Artifacts/ddm-os-reminder-RDNN-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
 ```
 
-**2.3.** Deploy the assembled, self-extracting script
+**3.3.** Deploy the assembled, self-extracting script
 
 You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload to `/var/tmp` and executes it automatically.
 
 ---
 
-### 3. Create `.plist` (Optional)
+### 4. Create `.plist` (Optional)
 
 > **Note:** This step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files in the `Artifacts/` folder.
 > 
@@ -218,13 +248,13 @@ SUCCESS! mobileconfig generated:
 
 ---
 
-### 4. Extension Attributes
+### 5. Extension Attributes
 
 While the following Extension Attributes were created for and tested on **Jamf Pro**, they can likely be adapted for other MDMs.
 
 (For adaptation help, visit the [Mac Admins Slack](https://www.macadmins.org/) `#ddm-os-reminders` channel or open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).)
 
-**4.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
+**5.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
 Reports the user’s button clicks from the DDM OS Reminder message.
 
 ```
@@ -235,7 +265,7 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 2026-01-08 03:48:27 dan clicked KB0054571
 ```
 
-**4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
+**5.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
 Reports the date of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
 Because this Extension Attribute is typically configured with a Jamf Pro `Date` data type, non-resolved states return documented sentinel dates instead of text.
 `2000-01-01 00:00:00` = no pending update / already compliant (`None`)
@@ -250,7 +280,7 @@ Uses a safe future padded enforcement date when one is present; otherwise falls 
 2026-01-17 12:00:00
 ```
 
-**4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
+**5.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
 Reports the version of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
 Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate version.
 Returns `None` only when no pending update should be reported because the resolved declaration already matches or is older than the current OS build/product version.
@@ -259,14 +289,14 @@ Returns `None` only when no pending update should be reported because the resolv
 26.2
 ```
 
-**4.4.** [`JamfEA-DDM_Executed_OS_Update_Date.zsh`](JamfEA-DDM_Executed_OS_Update_Date.zsh)  
+**5.4.** [`JamfEA-DDM_Executed_OS_Update_Date.zsh`](JamfEA-DDM_Executed_OS_Update_Date.zsh)  
 Reports the date when the DDM-enforced macOS update was executed.
 
 ```
 Thu Nov 13 08:59:56 2025
 ```
 
-**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
+**5.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
 Reports all local users with SecureToken enabled (comma-separated).
 
 ```
@@ -279,7 +309,7 @@ On macOS earlier than 10.13, this EA reports:
 N/A (macOS X.Y.Z)
 ```
 
-**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
+**5.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
 Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
 
 ```

@@ -6,8 +6,9 @@
 # Declarative Device Management macOS Reminder: Preference Preview
 #
 # This standalone preview script reads DDM OS Reminder preferences, resolves
-# localized dialog content, and displays the standard reminder dialog with demo
-# runtime values so Mac Admins can validate Configuration Profile deployment.
+# localized dialog content, and displays the standard reminder dialog using
+# preview runtime values so Mac Admins can validate Configuration Profile
+# deployment.
 #
 # Usage:
 #   zsh Resources/reminderDialogPreferenceTest.zsh

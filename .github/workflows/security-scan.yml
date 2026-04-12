@@ -1,4 +1,4 @@
-# Protects DDM OS Reminder from common vulnerabilities with Semgrep, Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full repository, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content, then uploads findings to GitHub code scanning. Gitleaks scans the full git history for potential secrets. Tracked zsh files are validated with zsh -n, including main scripts, zsh helpers in Resources/, and tracked assembled zsh artifacts in Artifacts/. Tracked sh/bash files are checked with ShellCheck when present. ShellCheck treats SC1090/SC1091 as informational due to common dynamic sourcing patterns in shell projects.
+# Protects DDM OS Reminder from common vulnerabilities with Semgrep, Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full repository, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content, then uploads findings to GitHub code scanning. Gitleaks scans the full git history for potential secrets. Tracked zsh files are validated with zsh -n, including main scripts, zsh helpers in Resources/, and tracked assembled zsh artifacts in Artifacts/. Tracked shell-script files with bash/dash/ksh/sh shebangs are checked with ShellCheck when present. ShellCheck treats SC1090/SC1091 as informational due to common dynamic sourcing patterns in shell projects.
 
 name: Security Scan
 
@@ -170,7 +170,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - name: Check Out Repository
         # Fetch full history so Gitleaks can scan past commits on protected branches.
@@ -182,11 +181,7 @@ jobs:
         id: gitleaks_mode
         shell: bash
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name || '' }}" != "${GITHUB_REPOSITORY}" ]]; then
-            echo "enable_comments=false" >> "${GITHUB_OUTPUT}"
-          else
-            echo "enable_comments=true" >> "${GITHUB_OUTPUT}"
-          fi
+          echo "enable_comments=false" >> "${GITHUB_OUTPUT}"
 
       - name: Run Gitleaks (Blocking)
         id: gitleaks_scan
@@ -214,9 +209,7 @@ jobs:
               echo "✅ No leaks found"
               echo
               echo "Coverage: full git history for repository content, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
-              if [[ "${{ steps.gitleaks_mode.outputs.enable_comments }}" == "false" ]]; then
-                echo "PR comments were disabled for this fork pull request."
-              fi
+              echo "PR comments are disabled in this workflow to keep Gitleaks read-only."
             } >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
@@ -227,9 +220,7 @@ jobs:
             echo "❌ Potential secrets detected or Gitleaks execution failed."
             echo
             echo "Coverage: full git history for repository content, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
-            if [[ "${{ steps.gitleaks_mode.outputs.enable_comments }}" == "false" ]]; then
-              echo "PR comments were disabled for this fork pull request."
-            fi
+            echo "PR comments are disabled in this workflow to keep Gitleaks read-only."
             echo "Tune accepted false positives with \`.gitleaks.toml\` or \`.gitleaksignore\` if needed."
           } >> "${GITHUB_STEP_SUMMARY}"
           exit 1

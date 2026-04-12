@@ -47,7 +47,7 @@ You should receive an acknowledgment within **48 hours**. We will work with you 
 - This repository is scanned with **Semgrep** using the `p/r2c-security-audit`, `p/ci`, and `p/secrets` rulesets.
 - **Gitleaks** scans repository history for potential credential or secret exposure.
 - Tracked `*.zsh` files and zsh-shebang helpers are validated with **`zsh -n`**, including the main entrypoints, zsh helpers under `Resources/`, and tracked assembled zsh artifacts under `Artifacts/`.
-- Tracked `*.sh` and `*.bash` files are checked with **ShellCheck** when present.
+- Tracked shell-script files with `bash`, `dash`, `ksh`, or `sh` shebangs are checked with **ShellCheck** when present.
 - Changes are reviewed with attention to shell quoting, install-log parsing, download and install paths, LaunchDaemon deployment, plist/mobileconfig generation, and preference handling.
 - The current deployment script validates downloaded swiftDialog installers with **Team ID** verification before installation.
 

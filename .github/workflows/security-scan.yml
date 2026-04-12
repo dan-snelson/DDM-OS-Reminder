@@ -1,0 +1,531 @@
+# Protects DDM OS Reminder from common vulnerabilities with Semgrep, Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full repository, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content, then uploads findings to GitHub code scanning. Gitleaks scans the full git history for potential secrets. Tracked zsh files are validated with zsh -n, including main scripts, zsh helpers in Resources/, and tracked assembled zsh artifacts in Artifacts/. Tracked shell-script files with bash/dash/ksh/sh shebangs are checked with ShellCheck when present. ShellCheck treats SC1090/SC1091 as informational due to common dynamic sourcing patterns in shell projects.
+
+name: Security Scan
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  pull_request:
+    branches:
+      - main
+      - development
+  schedule:
+    - cron: '43 2 * * 3'
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: security-scan-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      # Uncomment for private/internal repos if GitHub code scanning upload requires it.
+      # actions: read
+    env:
+      SEMGREP_RULES: >-
+        --config p/r2c-security-audit
+        --config p/ci
+        --config p/secrets
+    steps:
+      - name: Check Out Repository
+        # Fetch full history so diff-aware scans and code scanning uploads have the right context.
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Semgrep CLI
+        # Use the CLI directly so the blocking scan and SARIF export come from the same execution path.
+        run: python3 -m pip install --upgrade semgrep
+
+      - name: Run Semgrep CLI (Blocking + SARIF)
+        id: semgrep_sarif
+        # Always attempt SARIF generation so findings can land in the Security tab even when blocking scan fails.
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+
+          baseline_args=()
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${{ github.event.pull_request.base.sha }}" ]]; then
+            baseline_args+=(--baseline-commit "${{ github.event.pull_request.base.sha }}")
+          fi
+
+          semgrep scan \
+            --error \
+            --sarif \
+            --output semgrep.sarif \
+            ${SEMGREP_RULES} \
+            "${baseline_args[@]}"
+
+      - name: Normalize SARIF For GitHub
+        id: normalize_sarif
+        if: hashFiles('semgrep.sarif') != ''
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          sarif_path = Path("semgrep.sarif")
+          data = json.loads(sarif_path.read_text())
+
+          severity_map = {
+              "critical": "9.0",
+              "high": "8.9",
+              "medium": "6.9",
+              "low": "3.9",
+              "info": "0.1",
+              "warning": "5.0",
+              "error": "8.0",
+          }
+
+          for run in data.get("runs", []):
+              for rule in run.get("tool", {}).get("driver", {}).get("rules", []):
+                  properties = rule.setdefault("properties", {})
+                  value = properties.get("security-severity")
+                  if isinstance(value, str) and not value.replace(".", "", 1).isdigit():
+                      properties["security-severity"] = severity_map.get(value.lower(), "5.0")
+
+              for result in run.get("results", []):
+                  properties = result.setdefault("properties", {})
+                  value = properties.get("security-severity")
+                  if isinstance(value, str) and not value.replace(".", "", 1).isdigit():
+                      properties["security-severity"] = severity_map.get(value.lower(), "5.0")
+
+          sarif_path.write_text(json.dumps(data))
+          PY
+
+      - name: Upload Semgrep Findings To Code Scanning
+        id: upload_sarif
+        if: hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        # Repo Actions permissions must allow SARIF uploads or this step will fail even with security-events: write.
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Finalize Semgrep Result
+        if: success() || failure()
+        shell: bash
+        run: |
+          sarif_outcome="${{ steps.semgrep_sarif.outcome }}"
+          upload_outcome="${{ steps.upload_sarif.outcome }}"
+          trusted_upload_context="${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}"
+
+          if [[ "${sarif_outcome}" == "success" ]]; then
+            if [[ "${trusted_upload_context}" == "true" && "${upload_outcome}" != "success" ]]; then
+              {
+                echo "### Semgrep"
+                echo
+                echo "❌ Semgrep scan passed, but SARIF upload needs attention."
+                echo
+                echo "Coverage: full repository scan, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
+                echo "SARIF upload did not complete in a trusted context. Check repository Actions permissions and upload step logs."
+              } >> "${GITHUB_STEP_SUMMARY}"
+              exit 1
+            fi
+
+            {
+              echo "### Semgrep"
+              echo
+              echo "✅ No issues found"
+              echo
+              echo "Coverage: full repository scan, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
+              if [[ "${trusted_upload_context}" == "true" ]]; then
+                echo "SARIF uploaded to GitHub code scanning successfully."
+              else
+                echo "SARIF upload skipped for fork pull requests because code scanning write permissions are not available."
+              fi
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          {
+            echo "### Semgrep"
+            echo
+            echo "❌ Findings detected or Semgrep execution needs attention."
+            echo
+            echo "Coverage: full repository scan, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
+            if [[ "${upload_outcome}" == "success" ]]; then
+              echo "Findings were uploaded to GitHub code scanning."
+            elif [[ "${trusted_upload_context}" != "true" ]]; then
+              echo "SARIF upload was skipped for a fork pull request."
+            else
+              echo "SARIF upload did not complete. Check repository Actions permissions and Semgrep output."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
+
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check Out Repository
+        # Fetch full history so Gitleaks can scan past commits on protected branches.
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine Gitleaks Comment Mode
+        id: gitleaks_mode
+        shell: bash
+        run: |
+          echo "enable_comments=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Run Gitleaks (Blocking)
+        id: gitleaks_scan
+        continue-on-error: true
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: ${{ steps.gitleaks_mode.outputs.enable_comments }}
+          GITLEAKS_ENABLE_SUMMARY: "true"
+          # Future tuning examples:
+          # GITLEAKS_CONFIG: .gitleaks.toml
+          # Use `.gitleaksignore` or allowlists for accepted false positives.
+          # Org-owned repos also need GITLEAKS_LICENSE in repository or organization secrets.
+
+      - name: Finalize Gitleaks Result
+        if: success() || failure()
+        shell: bash
+        run: |
+          scan_outcome="${{ steps.gitleaks_scan.outcome }}"
+
+          if [[ "${scan_outcome}" == "success" ]]; then
+            {
+              echo "### Gitleaks"
+              echo
+              echo "✅ No leaks found"
+              echo
+              echo "Coverage: full git history for repository content, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
+              echo "PR comments are disabled in this workflow to keep Gitleaks read-only."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          {
+            echo "### Gitleaks"
+            echo
+            echo "❌ Potential secrets detected or Gitleaks execution failed."
+            echo
+            echo "Coverage: full git history for repository content, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content."
+            echo "PR comments are disabled in this workflow to keep Gitleaks read-only."
+            echo "Tune accepted false positives with \`.gitleaks.toml\` or \`.gitleaksignore\` if needed."
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
+
+  zsh_syntax:
+    name: Zsh Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Zsh
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes zsh
+
+      - name: Collect Zsh Targets
+        id: collect_targets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          shebang_pattern = re.compile(r"^#!.*(?:/| )zsh(?:\s|$)")
+          output_path = Path("zsh-targets.txt")
+          targets = []
+
+          files = subprocess.check_output(
+              ["git", "ls-files", "*.zsh", "*.sh", "*.bash"],
+              text=True,
+          ).splitlines()
+
+          for file_name in files:
+              file_path = Path(file_name)
+              first_line = file_path.open(encoding="utf-8", errors="ignore").readline().strip()
+              if file_name.endswith(".zsh") or shebang_pattern.search(first_line):
+                  targets.append(file_name)
+
+          output_path.write_text("".join(f"{target}\n" for target in targets))
+          PY
+          count="$(grep -c '.' zsh-targets.txt || true)"
+          echo "count=${count}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run zsh -n
+        id: zsh_syntax
+        if: steps.collect_targets.outputs.count != '0'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          status=0
+
+          while IFS= read -r file; do
+            [[ -z "${file}" ]] && continue
+            if ! zsh -n "${file}"; then
+              status=1
+            fi
+          done < zsh-targets.txt
+
+          set -e
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+
+      - name: Finalize Zsh Syntax Result
+        if: success() || failure()
+        shell: bash
+        run: |
+          target_count="${{ steps.collect_targets.outputs.count }}"
+          syntax_status="${{ steps.zsh_syntax.outputs.status }}"
+
+          if [[ "${target_count}" == "0" ]]; then
+            {
+              echo "### Zsh Syntax"
+              echo
+              echo "✅ No tracked zsh files matched the scan patterns."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          {
+            echo "### Zsh Syntax"
+            echo
+            echo "- Files scanned: ${target_count}"
+            echo "- Coverage: tracked zsh files and zsh-shebang helpers, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, zsh helpers in Resources/, and tracked assembled zsh artifacts in Artifacts/."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [[ "${syntax_status}" == "0" ]]; then
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
+            echo "✅ All zsh files passed \`zsh -n\`" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "❌ zsh syntax errors found" >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Collect Shell Targets
+        id: collect_targets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          shebang_pattern = re.compile(r"^#!.*(?:/| )(?:bash|dash|ksh|sh)(?:\s|$)")
+          output_path = Path("shellcheck-targets.txt")
+          targets = []
+
+          files = subprocess.check_output(
+              ["git", "ls-files", "*.sh", "*.bash"],
+              text=True,
+          ).splitlines()
+
+          for file_name in files:
+              file_path = Path(file_name)
+              first_line = file_path.open(encoding="utf-8", errors="ignore").readline().strip()
+              if shebang_pattern.search(first_line):
+                  targets.append(file_name)
+
+          output_path.write_text("".join(f"{target}\n" for target in targets))
+          PY
+          count="$(grep -c '.' shellcheck-targets.txt || true)"
+          echo "count=${count}" >> "${GITHUB_OUTPUT}"
+
+      - name: Install ShellCheck
+        if: steps.collect_targets.outputs.count != '0'
+        # Native ShellCheck keeps permissions minimal while still producing strong annotations.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+
+      - name: Run Blocking ShellCheck Pass
+        id: shellcheck_blocking
+        if: steps.collect_targets.outputs.count != '0'
+        continue-on-error: true
+        shell: bash
+        run: |
+          mapfile -t shell_files < shellcheck-targets.txt
+
+          set +e
+          shellcheck --severity=style --format=gcc -e SC1090,SC1091 "${shell_files[@]}" > shellcheck-blocking.gcc
+          status=$?
+          set -e
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def escape_workflow_command(value):
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          pattern = re.compile(r"^(.*?):(\d+):(\d+):\s+([a-z]+):\s+(.*)$")
+          for line in Path("shellcheck-blocking.gcc").read_text().splitlines():
+              match = pattern.match(line)
+              if not match:
+                  print(line)
+                  continue
+              file_path, line_no, col_no, level, message = match.groups()
+              annotation = "error" if level == "error" else "warning"
+              print(f"::{annotation} file={file_path},line={line_no},col={col_no}::{escape_workflow_command(message)}")
+          PY
+
+          issue_count="$(grep -c '.' shellcheck-blocking.gcc || true)"
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          echo "issue_count=${issue_count}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run Informational ShellCheck Pass
+        id: shellcheck_info
+        if: steps.collect_targets.outputs.count != '0'
+        continue-on-error: true
+        shell: bash
+        run: |
+          mapfile -t shell_files < shellcheck-targets.txt
+
+          set +e
+          shellcheck --severity=style --format=gcc -i SC1090,SC1091 "${shell_files[@]}" > shellcheck-info.gcc
+          status=$?
+          set -e
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def escape_workflow_command(value):
+              return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          pattern = re.compile(r"^(.*?):(\d+):(\d+):\s+([a-z]+):\s+(.*)$")
+          for line in Path("shellcheck-info.gcc").read_text().splitlines():
+              match = pattern.match(line)
+              if not match:
+                  print(line)
+                  continue
+              file_path, line_no, col_no, _, message = match.groups()
+              print(f"::notice file={file_path},line={line_no},col={col_no}::{escape_workflow_command(message)}")
+          PY
+
+          issue_count="$(grep -c '.' shellcheck-info.gcc || true)"
+          echo "status=${status}" >> "${GITHUB_OUTPUT}"
+          echo "issue_count=${issue_count}" >> "${GITHUB_OUTPUT}"
+
+      - name: Finalize ShellCheck Result
+        if: success() || failure()
+        shell: bash
+        run: |
+          target_count="${{ steps.collect_targets.outputs.count }}"
+          blocking_status="${{ steps.shellcheck_blocking.outputs.status }}"
+          blocking_issues="${{ steps.shellcheck_blocking.outputs.issue_count }}"
+          info_issues="${{ steps.shellcheck_info.outputs.issue_count }}"
+
+          if [[ "${target_count}" == "0" ]]; then
+            {
+              echo "### ShellCheck"
+              echo
+              echo "✅ No tracked sh/bash files matched the scan patterns."
+              echo
+              echo "Coverage: future tracked sh/bash helpers will be scanned automatically when added to the repository."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          {
+            echo "### ShellCheck"
+            echo
+            echo "- Files scanned: ${target_count}"
+            echo "- Blocking findings: ${blocking_issues:-0}"
+            echo "- Informational findings (SC1090/SC1091): ${info_issues:-0}"
+            echo "- Coverage: tracked sh/bash-shebang helpers across repository content when present."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [[ "${blocking_status}" == "0" ]]; then
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
+            echo "✅ No blocking ShellCheck issues found" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          echo "" >> "${GITHUB_STEP_SUMMARY}"
+          echo "❌ Blocking ShellCheck issues found" >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
+
+  summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - semgrep
+      - gitleaks
+      - zsh_syntax
+      - shellcheck
+    steps:
+      - name: Security Scan Complete
+        if: success() || failure()
+        shell: bash
+        run: |
+          semgrep_result="${{ needs.semgrep.result }}"
+          gitleaks_result="${{ needs.gitleaks.result }}"
+          zsh_syntax_result="${{ needs.zsh_syntax.result }}"
+          shellcheck_result="${{ needs.shellcheck.result }}"
+
+          badge() {
+            case "$1" in
+              success) printf "✅" ;;
+              skipped) printf "⏭️" ;;
+              cancelled) printf "🚫" ;;
+              *) printf "❌" ;;
+            esac
+          }
+
+          semgrep_badge="$(badge "${semgrep_result}")"
+          gitleaks_badge="$(badge "${gitleaks_result}")"
+          zsh_syntax_badge="$(badge "${zsh_syntax_result}")"
+          shellcheck_badge="$(badge "${shellcheck_result}")"
+
+          {
+            echo "## Security Scan Summary"
+            echo
+            echo "Semgrep ${semgrep_badge} | Gitleaks ${gitleaks_badge} | Zsh Syntax ${zsh_syntax_badge} | ShellCheck ${shellcheck_badge}"
+            echo
+            echo "Coverage: reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, tracked zsh helpers in Resources/, tracked assembled zsh artifacts in Artifacts/, future tracked sh/bash helpers, plus full-repository Semgrep and Gitleaks scans."
+            echo
+            if [[ "${semgrep_result}" == "success" && "${gitleaks_result}" == "success" && "${zsh_syntax_result}" == "success" && "${shellcheck_result}" == "success" ]]; then
+              echo "DDM OS Reminder security scan passed."
+            else
+              echo "DDM OS Reminder security scan requires attention."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          echo "Semgrep ${semgrep_badge} | Gitleaks ${gitleaks_badge} | Zsh Syntax ${zsh_syntax_badge} | ShellCheck ${shellcheck_badge}"
+          echo "Coverage: reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, tracked zsh helpers in Resources/, tracked assembled zsh artifacts in Artifacts/, future tracked sh/bash helpers, plus full-repository Semgrep and Gitleaks scans."
+          if [[ "${semgrep_result}" == "success" && "${gitleaks_result}" == "success" && "${zsh_syntax_result}" == "success" && "${shellcheck_result}" == "success" ]]; then
+            echo "DDM OS Reminder security scan passed."
+            exit 0
+          fi
+
+          echo "DDM OS Reminder security scan requires attention."
+          exit 1

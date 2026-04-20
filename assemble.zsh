@@ -79,6 +79,7 @@ infoButtonAction=""
 supportKBURL=""
 infoButtonText=""
 enableKnowledgeBase="true"
+enableSupportPhone="true"
 organizationOverlayIconURL=""
 organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
@@ -868,6 +869,7 @@ if [[ "${interactiveMode}" == true ]]; then
 
     defaultSupportTeamName="IT Support"
     defaultSupportTeamPhone="+1 (801) 555-1212"
+    defaultEnableSupportPhone="YES"
     defaultSupportTeamEmail="rescue@${derivedDomain}"
     defaultSupportTeamWebsite="https://support.${derivedDomain}"
     defaultEnableKnowledgeBase="YES"
@@ -881,7 +883,22 @@ if [[ "${interactiveMode}" == true ]]; then
     defaultDaysPastDeadlineRestartWorkflow="2"
 
     promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
-    promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
+    promptWithDefault "Support Team Phone ('YES' to include; 'NO' to hide)" "${defaultEnableSupportPhone}" "enableSupportPhone"
+    enableSupportPhone="$(normalizeBoolean "${enableSupportPhone}")"
+    if [[ -z "${enableSupportPhone}" ]]; then
+      echo "⚠️  Invalid input for Support Team Phone prompt; defaulting to ${defaultEnableSupportPhone}"
+      enableSupportPhone="$(normalizeBoolean "${defaultEnableSupportPhone}")"
+    fi
+
+    if [[ "${enableSupportPhone}" == "true" ]]; then
+      promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
+    else
+      supportTeamPhone=""
+      echo ""
+      echo "ℹ️  Support team phone hidden; phone row will be removed from 'helpmessage'."
+      echo ""
+    fi
+
     promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
     promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
     promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
@@ -1247,6 +1264,33 @@ if [[ -f "${plistSample}" ]]; then
           echo "    ⚠️  Message still references '(?) button' while Knowledge Base is disabled."
         fi
       fi
+
+      if [[ "${enableSupportPhone}" != "true" ]]; then
+        local phoneHelpMessageKey=""
+        local currentPhoneHelpMessage=""
+        local updatedPhoneHelpMessage=""
+        local -a phoneHelpMessageKeys=()
+
+        while IFS= read -r phoneHelpMessageKey; do
+          [[ -n "${phoneHelpMessageKey}" ]] && phoneHelpMessageKeys+=("${phoneHelpMessageKey}")
+        done < <(/usr/libexec/PlistBuddy -c "Print" "${plistOutput}" 2>/dev/null | awk '
+          /^    HelpMessage =/ { print "HelpMessage" }
+          /^    HelpMessageLocalized_/ {
+            key=$0
+            sub(/^    /, "", key)
+            sub(/ =.*/, "", key)
+            print key
+          }
+        ')
+
+        for phoneHelpMessageKey in "${phoneHelpMessageKeys[@]}"; do
+          currentPhoneHelpMessage="$(/usr/bin/plutil -extract "${phoneHelpMessageKey}" raw -o - "${plistOutput}" 2>/dev/null || true)"
+          if [[ -n "${currentPhoneHelpMessage}" ]]; then
+            updatedPhoneHelpMessage="$(printf "%s" "${currentPhoneHelpMessage}" | /usr/bin/sed 's#<br>- \*\*[^*]*\*\* {supportTeamPhone}##g')"
+            /usr/bin/plutil -replace "${phoneHelpMessageKey}" -string "${updatedPhoneHelpMessage}" "${plistOutput}"
+          fi
+        done
+      fi
     fi
   fi
 
@@ -1461,6 +1505,9 @@ case "${deploymentMode}" in
         fi
         if [[ "${enableKnowledgeBase}" != "true" ]]; then
           echo "    - Knowledge Base surfaces hidden (Info button, KB row in help, QR help image)"
+        fi
+        if [[ "${enableSupportPhone}" != "true" ]]; then
+          echo "    - Support team phone hidden (phone row in help message)"
         fi
       fi
     else

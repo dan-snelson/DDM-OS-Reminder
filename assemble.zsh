@@ -895,7 +895,7 @@ if [[ "${interactiveMode}" == true ]]; then
     else
       supportTeamPhone=""
       echo ""
-      echo "ℹ️  Support team phone hidden; phone row will be removed from 'helpmessage'."
+      echo "ℹ️  Support team phone hidden; phone row will be removed from 'HelpMessage'."
       echo ""
     fi
 

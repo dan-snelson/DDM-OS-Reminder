@@ -63,7 +63,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.2.0b1"
+scriptVersion="3.2.0b2"
 humanReadableScriptName="DDM OS Reminder Preference Preview"
 errorCount=0
 
@@ -385,9 +385,9 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     while IFS= read -r rawKey; do
         [[ -n "${rawKey}" ]] && plistKeys+=("${rawKey}")
     done < <(/usr/libexec/PlistBuddy -c "Print" "${plistPath}" 2>/dev/null | awk '
-        /^    / && /Localized_/ {
+        /^[[:space:]]+/ && /Localized_/ {
             key=$0
-            sub(/^    /, "", key)
+            sub(/^[[:space:]]+/, "", key)
             sub(/ =.*/, "", key)
             print key
         }

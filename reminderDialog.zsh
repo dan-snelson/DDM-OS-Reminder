@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0b1"
+scriptVersion="3.2.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -624,11 +624,16 @@ function loadDefaultPreferences() {
 }
 
 function isKnownPreferencePlistKey() {
+    internalPreferenceKeyForPlistKey "${1}" >/dev/null 2>&1
+}
+
+function internalPreferenceKeyForPlistKey() {
     local plistKey="${1}"
     local prefKey=""
 
     for prefKey in "${(@k)preferenceConfiguration}"; do
         if [[ "${plistKeyMap[$prefKey]:-$prefKey}" == "${plistKey}" ]]; then
+            echo "${prefKey}"
             return 0
         fi
     done
@@ -666,7 +671,11 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
             continue
         fi
 
-        internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        if internalBase="$(internalPreferenceKeyForPlistKey "${baseRaw}")"; then
+            :
+        else
+            internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        fi
         internalSuffix="$(languageSuffixForCode "${codePart}")"
         internalKey="${internalBase}Localized${internalSuffix}"
         dynamicValue=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)

@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0"
+scriptVersion="3.2.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -651,6 +651,13 @@ function formatDateWithDialogLocale() {
     echo "${formattedDate}"
 }
 
+function trimSurroundingWhitespace() {
+    local value="${1}"
+
+    value=$(printf '%s' "${value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    echo "${value}"
+}
+
 function formatDeadlineFromISO8601() {
     local sourceTimestamp="${1}"
     local requestedFormat="${2}"
@@ -661,6 +668,7 @@ function formatDeadlineFromISO8601() {
         formattedDeadline=$(formatDateWithDialogLocale "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
+    formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
 }
 
@@ -674,6 +682,7 @@ function formatDeadlineFromEpoch() {
         formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
+    formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
 }
 
@@ -692,6 +701,7 @@ function formatTimeHumanReadableFromEpoch() {
 
     timeHumanReadable=${timeHumanReadable// AM/ a.m.}
     timeHumanReadable=${timeHumanReadable// PM/ p.m.}
+    timeHumanReadable="$(trimSurroundingWhitespace "${timeHumanReadable}")"
 
     echo "${timeHumanReadable}"
 }
@@ -724,6 +734,7 @@ function formatRelativeDeadlineHumanReadable() {
         relativeDeadlineHumanReadable="${absoluteFallback}"
     fi
 
+    relativeDeadlineHumanReadable="$(trimSurroundingWhitespace "${relativeDeadlineHumanReadable}")"
     echo "${relativeDeadlineHumanReadable}"
 }
 
@@ -845,11 +856,16 @@ function loadDefaultPreferences() {
 }
 
 function isKnownPreferencePlistKey() {
+    internalPreferenceKeyForPlistKey "${1}" >/dev/null 2>&1
+}
+
+function internalPreferenceKeyForPlistKey() {
     local plistKey="${1}"
     local prefKey=""
 
     for prefKey in "${(@k)preferenceConfiguration}"; do
         if [[ "${plistKeyMap[$prefKey]:-$prefKey}" == "${plistKey}" ]]; then
+            echo "${prefKey}"
             return 0
         fi
     done
@@ -887,7 +903,11 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
             continue
         fi
 
-        internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        if internalBase="$(internalPreferenceKeyForPlistKey "${baseRaw}")"; then
+            :
+        else
+            internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        fi
         internalSuffix="$(languageSuffixForCode "${codePart}")"
         internalKey="${internalBase}Localized${internalSuffix}"
         dynamicValue=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
@@ -1186,6 +1206,147 @@ function localizedWeekdayName() {
     echo "${localizedWeekday}"
 }
 
+function localizedDurationSeparator() {
+    case "${dialogLanguage}" in
+        ja) echo "、" ;;
+        *)  echo ", " ;;
+    esac
+}
+
+function localizedDurationComponent() {
+    local quantity="${1}"
+    local unit="${2}"
+    local localizedComponent=""
+
+    case "${dialogLanguage}" in
+        de)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "Tag" || echo "Tage")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "Stunde" || echo "Stunden")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "Minute" || echo "Minuten")" ;;
+            esac
+            ;;
+        es)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "día" || echo "días")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "hora" || echo "horas")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuto" || echo "minutos")" ;;
+            esac
+            ;;
+        fr)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "jour" || echo "jours")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "heure" || echo "heures")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minute" || echo "minutes")" ;;
+            esac
+            ;;
+        it)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "giorno" || echo "giorni")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "ora" || echo "ore")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuto" || echo "minuti")" ;;
+            esac
+            ;;
+        ja)
+            case "${unit}" in
+                day)    localizedComponent="${quantity}日" ;;
+                hour)   localizedComponent="${quantity}時間" ;;
+                minute) localizedComponent="${quantity}分" ;;
+            esac
+            ;;
+        nl)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "dag" || echo "dagen")" ;;
+                hour)   localizedComponent="${quantity} uur" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuut" || echo "minuten")" ;;
+            esac
+            ;;
+        pt)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "dia" || echo "dias")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "hora" || echo "horas")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuto" || echo "minutos")" ;;
+            esac
+            ;;
+        en|*)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "day" || echo "days")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "hour" || echo "hours")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minute" || echo "minutes")" ;;
+            esac
+            ;;
+    esac
+
+    echo "${localizedComponent}"
+}
+
+function localizedLessThanOneMinute() {
+    case "${dialogLanguage}" in
+        de) echo "weniger als 1 Minute" ;;
+        es) echo "menos de 1 minuto" ;;
+        fr) echo "moins d'une minute" ;;
+        it) echo "meno di 1 minuto" ;;
+        ja) echo "1分未満" ;;
+        nl) echo "minder dan 1 minuut" ;;
+        pt) echo "menos de 1 minuto" ;;
+        en|*) echo "less than 1 minute" ;;
+    esac
+}
+
+function localizedDiskAvailabilitySuffix() {
+    local percentage="${1}"
+
+    case "${dialogLanguage}" in
+        de) echo "(${percentage}% verfügbar)" ;;
+        es) echo "(${percentage}% disponible)" ;;
+        fr) echo "(${percentage}% disponibles)" ;;
+        it) echo "(${percentage}% disponibile)" ;;
+        ja) echo "(${percentage}% 利用可能)" ;;
+        nl) echo "(${percentage}% beschikbaar)" ;;
+        pt) echo "(${percentage}% disponível)" ;;
+        en|*) echo "(${percentage}% available)" ;;
+    esac
+}
+
+function refreshLocalizedRuntimeFacts() {
+    local separator=""
+    local component=""
+    local -a durationComponents=()
+
+    if [[ "${upTimeDays:-0}" =~ ^[0-9]+$ ]] && (( upTimeDays > 0 )); then
+        durationComponents+=( "$(localizedDurationComponent "${upTimeDays}" day)" )
+    fi
+
+    if [[ "${upTimeHoursRemainder:-0}" =~ ^[0-9]+$ ]] && (( upTimeHoursRemainder > 0 )); then
+        durationComponents+=( "$(localizedDurationComponent "${upTimeHoursRemainder}" hour)" )
+    fi
+
+    if [[ "${upTimeMinutesRemainder:-0}" =~ ^[0-9]+$ ]] && (( upTimeMinutesRemainder > 0 )); then
+        durationComponents+=( "$(localizedDurationComponent "${upTimeMinutesRemainder}" minute)" )
+    fi
+
+    if (( ${#durationComponents[@]} > 0 )); then
+        separator="$(localizedDurationSeparator)"
+        uptimeHumanReadable=""
+
+        for component in "${durationComponents[@]}"; do
+            if [[ -n "${uptimeHumanReadable}" ]]; then
+                uptimeHumanReadable="${uptimeHumanReadable}${separator}"
+            fi
+
+            uptimeHumanReadable="${uptimeHumanReadable}${component}"
+        done
+    else
+        uptimeHumanReadable="$(localizedLessThanOneMinute)"
+    fi
+
+    if [[ -n "${freeSpace:-}" && -n "${freePercentage:-}" && "${freePercentage}" != "Unknown" ]]; then
+        diskSpaceHumanReadable="${freeSpace} $(localizedDiskAvailabilitySuffix "${freePercentage}")"
+    else
+        diskSpaceHumanReadable="${freeSpace:-Unknown}"
+    fi
+}
+
 function resolveDialogLanguage() {
     local normalizedOverride=""
     local detectedLanguage=""
@@ -1288,6 +1449,7 @@ function updateRequiredVariables() {
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
     applyLocalizedDialogText
     applyLocalizedUpdateVocabulary
+    refreshLocalizedRuntimeFacts
     applyLocalizedInfoboxLabels
     
     computeDynamicWarnings
@@ -2426,6 +2588,7 @@ function computeDeadlineEnforcementMessage() {
     local baseDeadlineEnforcementMessage=""
     local deadlineTemplateVariable="deadlineEnforcementMessageAbsolute"
 
+    deadlineDisplay="$(trimSurroundingWhitespace "${deadlineDisplay}")"
     if [[ "${deadlineDisplay}" != "${ddmEnforcedInstallDateHumanReadable}" ]]; then
         deadlineTemplateVariable="deadlineEnforcementMessageRelative"
     fi
@@ -2455,6 +2618,8 @@ function computeInfoboxHighlights() {
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
     local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+
+    infoboxDeadlineDisplay="$(trimSurroundingWhitespace "${infoboxDeadlineDisplay}")"
 
     if [[ "${dialogSupportsMarkdownColor}" != "YES" ]]; then
         return

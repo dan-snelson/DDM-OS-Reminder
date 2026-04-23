@@ -44,12 +44,17 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
 | supportTeamName | SupportTeamName | String | IT Support | Support |
 | supportTeamPhone | SupportTeamPhone | String | +1 (801) 555-1212 | Support |
+| hideSupportTeamPhone | HideSupportTeamPhone | Boolean | NO | Support |
 | supportTeamEmail | SupportTeamEmail | String | rescue@domain.org | Support |
+| hideSupportTeamEmail | HideSupportTeamEmail | Boolean | NO | Support |
 | supportTeamWebsite | SupportTeamWebsite | String | https://support.domain.org | Support |
+| hideSupportTeamWebsite | HideSupportTeamWebsite | Boolean | NO | Support |
 | supportKB | SupportKB | String | Update macOS on Mac | Support |
+| hideSupportKB | HideSupportKB | Boolean | NO | Support |
 | infobuttonaction | InfoButtonAction | String | https://support.apple.com/108382 | Support |
 | supportKBURL | SupportKBURL | String | [Markdown link] | Support |
 | supportAssistanceMessage | SupportAssistanceMessage | String | [Support sentence with (?) button] | Support |
+| hideSupportAssistanceMessage | HideSupportAssistanceMessage | Boolean | NO | Support |
 | supportAssistanceMessageLocalizedEn | SupportAssistanceMessageLocalized_en | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedDe | SupportAssistanceMessageLocalized_de | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedFr | SupportAssistanceMessageLocalized_fr | String | [Localized support sentence] | Localization |
@@ -795,6 +800,23 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>+1 (555) 123-4567</string>
 ```
 
+**Related Visibility Control**: `HideSupportTeamPhone`
+
+---
+
+#### hideSupportTeamPhone
+**Plist Key**: `HideSupportTeamPhone`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the phone row from `HelpMessage` before placeholder replacement and blanks `{supportTeamPhone}` for any custom support copy.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportTeamPhone</key>
+<true/>
+```
+
 ---
 
 #### supportTeamEmail
@@ -818,6 +840,23 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>helpdesk@company.com</string>
 ```
 
+**Related Visibility Control**: `HideSupportTeamEmail`
+
+---
+
+#### hideSupportTeamEmail
+**Plist Key**: `HideSupportTeamEmail`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the email row from `HelpMessage` before placeholder replacement and blanks `{supportTeamEmail}` for any custom support copy.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportTeamEmail</key>
+<true/>
+```
+
 ---
 
 #### supportTeamWebsite
@@ -839,6 +878,23 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```xml
 <key>SupportTeamWebsite</key>
 <string>https://helpdesk.company.com</string>
+```
+
+**Related Visibility Control**: `HideSupportTeamWebsite`
+
+---
+
+#### hideSupportTeamWebsite
+**Plist Key**: `HideSupportTeamWebsite`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the website row from `HelpMessage` before placeholder replacement and blanks `{supportTeamWebsite}` for any custom support copy.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportTeamWebsite</key>
+<true/>
 ```
 
 ---
@@ -920,7 +976,22 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>[How to Update macOS](https://kb.company.com/updates)</string>
 ```
 
-**Important**: Setting `SupportKBURL` to an empty string does not automatically remove the KB row from `HelpMessage`; that row must be removed from `HelpMessage` content (or generated via `assemble.zsh --interactive` with KB features disabled).
+**Related Visibility Control**: `HideSupportKB`
+
+---
+
+#### hideSupportKB
+**Plist Key**: `HideSupportKB`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the KB row from `HelpMessage` before placeholder replacement and blanks `{supportKB}` / `{supportKBURL}` without hiding the info button or QR help image.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportKB</key>
+<true/>
+```
 
 ---
 
@@ -945,7 +1016,22 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
 ```
 
-**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` sets `SupportAssistanceMessage` to an empty string so `Message` no longer references the `(?)` button.
+**Related Visibility Control**: `HideSupportAssistanceMessage`
+
+---
+
+#### hideSupportAssistanceMessage
+**Plist Key**: `HideSupportAssistanceMessage`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, suppresses `{supportAssistanceMessage}` in the main dialog body while leaving `HelpMessage` and the info button unchanged.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportAssistanceMessage</key>
+<true/>
+```
 
 ---
 
@@ -1687,19 +1773,21 @@ message = "Contact {supportTeamInfo}"
 <key>OrganizationOverlayIconURL</key>
 <string></string>
 
-<!-- Simple support info -->
+<!-- Keep simple support info -->
 <key>SupportTeamName</key>
 <string>IT</string>
+
+<!-- Show only phone -->
 <key>SupportTeamPhone</key>
 <string>x1234</string>
-
-<!-- Hide info button -->
-<key>InfoButtonText</key>
-<string>hide</string>
-
-<!-- Hide help image -->
-<key>HelpImage</key>
-<string>hide</string>
+<key>HideSupportTeamEmail</key>
+<true/>
+<key>HideSupportTeamWebsite</key>
+<true/>
+<key>HideSupportKB</key>
+<true/>
+<key>HideSupportAssistanceMessage</key>
+<true/>
 ```
 
 ---
@@ -1787,6 +1875,27 @@ message = "Contact {supportTeamInfo}"
 <!-- Generous meeting delay -->
 <key>MeetingDelay</key>
 <integer>120</integer>
+```
+
+---
+
+### Scenario 8: Self-Service Portal Only
+
+**Goal**: Keep info button + portal access while hiding direct contact rows
+
+```xml
+<key>InfoButtonText</key>
+<string>Support Portal</string>
+<key>InfoButtonAction</key>
+<string>https://support.company.com</string>
+<key>HideSupportTeamPhone</key>
+<true/>
+<key>HideSupportTeamEmail</key>
+<true/>
+<key>HideSupportTeamWebsite</key>
+<true/>
+<key>HideSupportKB</key>
+<true/>
 ```
 
 ---

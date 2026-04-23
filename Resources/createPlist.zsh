@@ -202,6 +202,11 @@ acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAsse
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
 swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
 hideStagedInfo_raw=$(extract_from_preference_map hideStagedInfo)
+hideSupportTeamPhone_raw=$(extract_from_preference_map hideSupportTeamPhone)
+hideSupportTeamEmail_raw=$(extract_from_preference_map hideSupportTeamEmail)
+hideSupportTeamWebsite_raw=$(extract_from_preference_map hideSupportTeamWebsite)
+hideSupportKB_raw=$(extract_from_preference_map hideSupportKB)
+hideSupportAssistanceMessage_raw=$(extract_from_preference_map hideSupportAssistanceMessage)
 minimumDiskFreePercentage=$(extract_from_preference_map minimumDiskFreePercentage)
 languageOverride=$(extract_from_preference_map languageOverride)
 
@@ -213,6 +218,31 @@ esac
 case "${hideStagedInfo_raw:u}" in
     YES|TRUE|1) hideStagedInfo_xml="<true/>" ;;
     *)          hideStagedInfo_xml="<false/>" ;;
+esac
+
+case "${hideSupportTeamPhone_raw:u}" in
+    YES|TRUE|1) hideSupportTeamPhone_xml="<true/>" ;;
+    *)          hideSupportTeamPhone_xml="<false/>" ;;
+esac
+
+case "${hideSupportTeamEmail_raw:u}" in
+    YES|TRUE|1) hideSupportTeamEmail_xml="<true/>" ;;
+    *)          hideSupportTeamEmail_xml="<false/>" ;;
+esac
+
+case "${hideSupportTeamWebsite_raw:u}" in
+    YES|TRUE|1) hideSupportTeamWebsite_xml="<true/>" ;;
+    *)          hideSupportTeamWebsite_xml="<false/>" ;;
+esac
+
+case "${hideSupportKB_raw:u}" in
+    YES|TRUE|1) hideSupportKB_xml="<true/>" ;;
+    *)          hideSupportKB_xml="<false/>" ;;
+esac
+
+case "${hideSupportAssistanceMessage_raw:u}" in
+    YES|TRUE|1) hideSupportAssistanceMessage_xml="<true/>" ;;
+    *)          hideSupportAssistanceMessage_xml="<false/>" ;;
 esac
 
 # ─────────────────────────────────────────────────────────────
@@ -307,12 +337,17 @@ defaultOverlayiconURL=$(extract_from_preference_map organizationOverlayiconURL)
 defaultOverlayiconURLdark=$(extract_from_preference_map organizationOverlayiconURLdark)
 defaultSupportTeamName=$(extract_from_preference_map supportTeamName)
 defaultSupportTeamPhone=$(extract_from_preference_map supportTeamPhone)
+defaultHideSupportTeamPhone=$(extract_from_preference_map hideSupportTeamPhone)
 defaultSupportTeamEmail=$(extract_from_preference_map supportTeamEmail)
+defaultHideSupportTeamEmail=$(extract_from_preference_map hideSupportTeamEmail)
 defaultSupportTeamWebsite=$(extract_from_preference_map supportTeamWebsite)
+defaultHideSupportTeamWebsite=$(extract_from_preference_map hideSupportTeamWebsite)
 defaultSupportKB=$(extract_from_preference_map supportKB)
+defaultHideSupportKB=$(extract_from_preference_map hideSupportKB)
 defaultInfobuttonaction=$(extract_from_preference_map infobuttonaction)
 defaultSupportKBURL=$(extract_from_preference_map supportKBURL)
 defaultSupportAssistanceMessage=$(extract_from_preference_map supportAssistanceMessage)
+defaultHideSupportAssistanceMessage=$(extract_from_preference_map hideSupportAssistanceMessage)
 defaultSupportAssistanceMessageLocalizedEn=$(extract_from_preference_map supportAssistanceMessageLocalizedEn)
 defaultSupportAssistanceMessageLocalizedDe=$(extract_from_preference_map supportAssistanceMessageLocalizedDe)
 defaultSupportAssistanceMessageLocalizedFr=$(extract_from_preference_map supportAssistanceMessageLocalizedFr)
@@ -878,18 +913,28 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${supportTeamName_xml}</string>
     <key>SupportTeamPhone</key>
     <string>${supportTeamPhone_xml}</string>
+    <key>HideSupportTeamPhone</key>
+    ${hideSupportTeamPhone_xml}
     <key>SupportTeamEmail</key>
     <string>${supportTeamEmail_xml}</string>
+    <key>HideSupportTeamEmail</key>
+    ${hideSupportTeamEmail_xml}
     <key>SupportTeamWebsite</key>
     <string>${supportTeamWebsite_xml}</string>
+    <key>HideSupportTeamWebsite</key>
+    ${hideSupportTeamWebsite_xml}
     <key>SupportKB</key>
     <string>${supportKB_xml}</string>
+    <key>HideSupportKB</key>
+    ${hideSupportKB_xml}
     <key>InfoButtonAction</key>
     <string>${infobuttonaction_xml}</string>
     <key>SupportKBURL</key>
     <string>${supportKBURL_xml}</string>
     <key>SupportAssistanceMessage</key>
     <string>${supportAssistanceMessage_xml}</string>
+    <key>HideSupportAssistanceMessage</key>
+    ${hideSupportAssistanceMessage_xml}
     <key>SupportAssistanceMessageLocalized_en</key>
     <string>${supportAssistanceMessageLocalizedEn_xml}</string>
     <key>SupportAssistanceMessageLocalized_de</key>
@@ -1525,18 +1570,28 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${supportTeamName_xml}</string>
                                 <key>SupportTeamPhone</key>
                                 <string>${supportTeamPhone_xml}</string>
+                                <key>HideSupportTeamPhone</key>
+                                ${hideSupportTeamPhone_xml}
                                 <key>SupportTeamEmail</key>
                                 <string>${supportTeamEmail_xml}</string>
+                                <key>HideSupportTeamEmail</key>
+                                ${hideSupportTeamEmail_xml}
                                 <key>SupportTeamWebsite</key>
                                 <string>${supportTeamWebsite_xml}</string>
+                                <key>HideSupportTeamWebsite</key>
+                                ${hideSupportTeamWebsite_xml}
                                 <key>SupportKB</key>
                                 <string>${supportKB_xml}</string>
+                                <key>HideSupportKB</key>
+                                ${hideSupportKB_xml}
                                 <key>InfoButtonAction</key>
                                 <string>${infobuttonaction_xml}</string>
                                 <key>SupportKBURL</key>
                                 <string>${supportKBURL_xml}</string>
                                 <key>SupportAssistanceMessage</key>
                                 <string>${supportAssistanceMessage_xml}</string>
+                                <key>HideSupportAssistanceMessage</key>
+                                ${hideSupportAssistanceMessage_xml}
                                 <key>SupportAssistanceMessageLocalized_en</key>
                                 <string>${supportAssistanceMessageLocalizedEn_xml}</string>
                                 <key>SupportAssistanceMessageLocalized_de</key>

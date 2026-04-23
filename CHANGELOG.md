@@ -8,7 +8,7 @@
 - Refined the sample preference profile’s French (`fr`) translations for Issue #93, including dialog copy, support/help text, and past-deadline restart messaging.
 - Resolve dynamic localized overrides through `plistKeyMap` before falling back to lowercasing the plist key prefix (thanks for the heads-up, @Tony Do!)
 - Updated `Resources/reminderDialogPreferenceTest.zsh` usage output to document `--rdnn <your.reverse.domain.notation>`
-- Added per-field support-contact visibility controls (Addresses Feature Request #95)
+- Added per-field support-contact visibility controls (Addresses Feature Request #95; thanks for the inspiring PR #94, @mattmothersbaugh!)
 
 ### Version 3.1.0 (06-Apr-2026)
 - Updated `reminderDialog.zsh` to treat a resolved DDM `VersionString` as already compliant when it matches or trails the installed macOS product version, preventing false reminder suppression failures on Apple log patterns that omit a usable `BuildVersionString`.

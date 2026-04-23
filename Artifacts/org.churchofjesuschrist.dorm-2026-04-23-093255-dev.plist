@@ -146,6 +146,16 @@
 	<string>Assembled&lt;br&gt;&lt;br&gt;Para obter assistência, contacte: **{supportTeamName}**&lt;br&gt;- **Telefone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Site web:** {supportTeamWebsite}&lt;br&gt;- **Artigo da base de conhecimento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informações do utilizador:**&lt;br&gt;- **Nome completo:** {userfullname}&lt;br&gt;- **Nome de utilizador:** {username}&lt;br&gt;&lt;br&gt;**Informações do computador:**&lt;br&gt;- **Nome do computador:** {computername}&lt;br&gt;- **Número de série:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Informações do script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
 	<key>HideStagedUpdateInfo</key>
 	<false/>
+	<key>HideSupportAssistanceMessage</key>
+	<false/>
+	<key>HideSupportKB</key>
+	<false/>
+	<key>HideSupportTeamEmail</key>
+	<false/>
+	<key>HideSupportTeamPhone</key>
+	<false/>
+	<key>HideSupportTeamWebsite</key>
+	<false/>
 	<key>InfoBox</key>
 	<string>Assembled&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
 	<key>InfoButtonAction</key>

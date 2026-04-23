@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0b3"
+scriptVersion="3.2.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0b2"
+scriptVersion="3.2.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -433,12 +433,17 @@ declare -A preferenceConfiguration=(
     # Support Team
     ["supportTeamName"]="string|IT Support"
     ["supportTeamPhone"]="string|+1 (801) 555-1212"
+    ["hideSupportTeamPhone"]="boolean|NO"
     ["supportTeamEmail"]="string|rescue@domain.org"
+    ["hideSupportTeamEmail"]="boolean|NO"
     ["supportTeamWebsite"]="string|https://support.domain.org"
+    ["hideSupportTeamWebsite"]="boolean|NO"
     ["supportKB"]="string|Update macOS on Mac"
+    ["hideSupportKB"]="boolean|NO"
     ["infobuttonaction"]="string|https://support.apple.com/108382"
     ["supportKBURL"]="string|[Update macOS on Mac](https://support.apple.com/108382)"
     ["supportAssistanceMessage"]="string|<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["hideSupportAssistanceMessage"]="boolean|NO"
     
     # Localization
     ["languageOverride"]="string|auto"
@@ -503,13 +508,18 @@ declare -A plistKeyMap=(
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["supportTeamName"]="SupportTeamName"
     ["supportTeamPhone"]="SupportTeamPhone"
+    ["hideSupportTeamPhone"]="HideSupportTeamPhone"
     ["supportTeamEmail"]="SupportTeamEmail"
+    ["hideSupportTeamEmail"]="HideSupportTeamEmail"
     ["supportTeamWebsite"]="SupportTeamWebsite"
+    ["hideSupportTeamWebsite"]="HideSupportTeamWebsite"
     ["supportKB"]="SupportKB"
+    ["hideSupportKB"]="HideSupportKB"
     ["infobuttonaction"]="InfoButtonAction"
     ["supportKBURL"]="SupportKBURL"
     ["languageOverride"]="LanguageOverride"
     ["supportAssistanceMessage"]="SupportAssistanceMessage"
+    ["hideSupportAssistanceMessage"]="HideSupportAssistanceMessage"
     ["title"]="Title"
     ["button1text"]="Button1Text"
     ["button2text"]="Button2Text"
@@ -1091,6 +1101,62 @@ function replacePlaceholders() {
     printf -v "${targetVariable}" '%s' "${value}"
 }
 
+function removeHelpMessageRowForPlaceholder() {
+    local placeholderName="${1}"
+
+    helpmessage="$(printf "%s" "${helpmessage}" | /usr/bin/perl -0pe '
+        BEGIN { $placeholder = shift @ARGV }
+        s#<br>- [^{}]*\{\Q$placeholder\E\}##g
+    ' "${placeholderName}")"
+}
+
+function removeHelpMessageSupportIntro() {
+    helpmessage="$(printf "%s" "${helpmessage}" | /usr/bin/perl -0pe '
+        s#^.*?(?=<br><br>\*\*[^{}]*\*\*<br>- \*\*[^{}]*\*\*: \{(?:userfullname|username|computername|serialnumber|osversion|dialogVersion|scriptVersion)\})##s
+    ')"
+}
+
+function applySupportFieldVisibility() {
+    local allSupportRowsHidden="YES"
+
+    if [[ "${hideSupportTeamPhone}" == "YES" ]]; then
+        supportTeamPhone=""
+        removeHelpMessageRowForPlaceholder "supportTeamPhone"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportTeamEmail}" == "YES" ]]; then
+        supportTeamEmail=""
+        removeHelpMessageRowForPlaceholder "supportTeamEmail"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportTeamWebsite}" == "YES" ]]; then
+        supportTeamWebsite=""
+        removeHelpMessageRowForPlaceholder "supportTeamWebsite"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportKB}" == "YES" ]]; then
+        supportKB=""
+        supportKBURL=""
+        removeHelpMessageRowForPlaceholder "supportKBURL"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportAssistanceMessage}" == "YES" || "${infobuttontext}" == "hide" ]]; then
+        supportAssistanceMessage=""
+    fi
+
+    if [[ "${allSupportRowsHidden}" == "YES" && "${helpmessage}" == *"{supportTeamName}"* ]]; then
+        removeHelpMessageSupportIntro
+    fi
+}
+
 function setHideSecondaryButtonState() {
     local secondsUntilDeadlineValue="${1}"
     local hideThresholdSecondsValue="${2}"
@@ -1458,9 +1524,7 @@ function updateRequiredVariables() {
     computeInfoboxHighlights
     applyPastDeadlineDialogOverrides
 
-    if [[ "${infobuttontext}" == "hide" ]]; then
-        supportAssistanceMessage=""
-    fi
+    applySupportFieldVisibility
 
     buildPlaceholderMap
     
@@ -2933,7 +2997,7 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "When the sun beats down and I lie on the bench …"
+    quitOut "A cloud of eiderdown draws around me …"
 
     exit "${1}"
 

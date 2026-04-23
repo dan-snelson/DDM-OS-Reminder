@@ -158,6 +158,16 @@
                                 	<string>Assembled&lt;br&gt;&lt;br&gt;Para obter assistência, contacte: **{supportTeamName}**&lt;br&gt;- **Telefone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Site web:** {supportTeamWebsite}&lt;br&gt;- **Artigo da base de conhecimento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informações do utilizador:**&lt;br&gt;- **Nome completo:** {userfullname}&lt;br&gt;- **Nome de utilizador:** {username}&lt;br&gt;&lt;br&gt;**Informações do computador:**&lt;br&gt;- **Nome do computador:** {computername}&lt;br&gt;- **Número de série:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Informações do script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
                                 	<key>HideStagedUpdateInfo</key>
                                 	<false/>
+                                	<key>HideSupportAssistanceMessage</key>
+                                	<false/>
+                                	<key>HideSupportKB</key>
+                                	<false/>
+                                	<key>HideSupportTeamEmail</key>
+                                	<false/>
+                                	<key>HideSupportTeamPhone</key>
+                                	<false/>
+                                	<key>HideSupportTeamWebsite</key>
+                                	<false/>
                                 	<key>InfoBox</key>
                                 	<string>Assembled&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
                                 	<key>InfoButtonAction</key>
@@ -630,26 +640,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>50B3F791-9CAC-4872-AA86-E5ADF2EDA96A</string>
+            <string>2D945036-059D-4E2D-BF57-90A3BE6BA010</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>50B3F791-9CAC-4872-AA86-E5ADF2EDA96A</string>
+            <string>2D945036-059D-4E2D-BF57-90A3BE6BA010</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (3.2.0b3) to org.churchofjesuschrist standards. Created: 2026-04-23-070806</string>
+    <string>Configures DDM OS Reminder (3.2.0b4) to org.churchofjesuschrist standards. Created: 2026-04-23-093255</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>74CC62D0-3D1C-4AC0-8276-7A68328E1BA8</string>
+    <string>0F60F75D-57EF-420B-B860-9BFDBCEACC72</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -659,7 +669,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>74CC62D0-3D1C-4AC0-8276-7A68328E1BA8</string>
+    <string>0F60F75D-57EF-420B-B860-9BFDBCEACC72</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

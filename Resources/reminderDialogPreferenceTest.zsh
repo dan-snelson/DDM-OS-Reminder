@@ -3,22 +3,22 @@
 
 ####################################################################################################
 #
-# Declarative Device Management macOS Reminder: Preference Preview
+# Declarative Device Management macOS Reminder: Dialog Preference Test
 #
-# This standalone preview script reads DDM OS Reminder preferences, resolves
+# This standalone test script reads DDM OS Reminder preferences, resolves
 # localized dialog content, and displays the standard reminder dialog using
-# preview runtime values so Mac Admins can validate Configuration Profile
+# test runtime values so Mac Admins can validate Configuration Profile
 # deployment.
 #
 # Usage:
 #   zsh Resources/reminderDialogPreferenceTest.zsh
-#   zsh Resources/reminderDialogPreferenceTest.zsh --rdnn org.churchofjesuschrist
+#   zsh Resources/reminderDialogPreferenceTest.zsh --rdnn <your.reverse.domain.name.notation>
 #
 # Notes:
 # - To test another language, set `LanguageOverride` in the target preference
 #   domain (for example: `defaults write /Library/Preferences/org.churchofjesuschrist.dorm
 #   LanguageOverride -string "de"`), then re-run this script.
-# - This script previews dialog appearance only. It intentionally omits DDM log
+# - This script tests dialog appearance only. It intentionally omits DDM log
 #   parsing, LaunchDaemon behavior, meeting-aware delays, and enforcement logic.
 #
 # http://snelson.us/ddm
@@ -34,12 +34,17 @@
 ####################################################################################################
 
 cliReverseDomainNameNotation=""
+scriptRelativePath="Resources/reminderDialogPreferenceTest.zsh"
+defaultUsage="zsh ${scriptRelativePath}"
+rdnnUsage="zsh ${scriptRelativePath} --rdnn <your.reverse.domain.name.notation>"
 
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
         --rdnn)
             if [[ -z "${2:-}" ]]; then
-                echo "Usage: zsh Resources/reminderDialogPreferenceTest.zsh [--rdnn <value>]"
+                echo "Usage:"
+                echo "  ${defaultUsage}"
+                echo "  ${rdnnUsage}"
                 exit 64
             fi
 
@@ -47,7 +52,9 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo "Usage: zsh Resources/reminderDialogPreferenceTest.zsh [--rdnn <value>]"
+            echo "Usage:"
+            echo "  ${defaultUsage}"
+            echo "  ${rdnnUsage}"
             exit 64
             ;;
     esac
@@ -64,7 +71,7 @@ done
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 scriptVersion="3.2.0b2"
-humanReadableScriptName="DDM OS Reminder Preference Preview"
+humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
 autoload -Uz is-at-least
@@ -90,11 +97,16 @@ requestedAppearanceMode=""
 
 reverseDomainNameNotation="${cliReverseDomainNameNotation:-org.churchofjesuschrist}"
 organizationScriptName="dorm"
+rerunCommand="${defaultUsage}"
 
 # Preference plist domains
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
+
+if [[ -n "${cliReverseDomainNameNotation}" ]]; then
+    rerunCommand="zsh ${scriptRelativePath} --rdnn ${reverseDomainNameNotation}"
+fi
 
 
 
@@ -1433,18 +1445,18 @@ preFlight "Initiating …"
 
 if ! loadPreferenceOverrides; then
     echo
-    echo "No managed or local preferences were found for '${preferenceDomain}'."
+    echo "⚠️  No Managed or Local preferences were found for '${preferenceDomain}'."
     echo
-    echo "Expected one of:"
-    echo "  ${managedPreferencesPlist}.plist"
-    echo "  ${localPreferencesPlist}.plist"
+    echo "📍 Expected one of:"
+    echo "  • Managed Preferences: '${managedPreferencesPlist}.plist'"
+    echo "  • Local Preferences: '${localPreferencesPlist}.plist'"
     echo
-    echo "Install your Configuration Profile or local plist, then re-run:"
-    echo "  zsh Resources/reminderDialogPreferenceTest.zsh"
+    echo "🔎 If you have already deployed your Configuration Profile, you can preview it using:"
+    echo "  ${rdnnUsage}"
     echo
-    echo "Alternatively, you can copy the 'sample.plist' to the appropriate location:"
-    echo "  cp -v Resources/sample.plist /Library/Preferences/org.churchofjesuschrist.dorm.plist"
-    echo "  zsh Resources/reminderDialogPreferenceTest.zsh"
+    echo "🧪 Alternatively, you can copy the 'sample.plist' to an expected location:"
+    echo "  cp -v Resources/sample.plist ${localPreferencesPlist}.plist"
+    echo "  ${rerunCommand}"
     echo
     echo
     exit 0

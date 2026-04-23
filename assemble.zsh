@@ -37,7 +37,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.2.0b2"
+scriptVersion="3.2.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -64,6 +64,8 @@ priorPlistImported=false
 priorPlistPrompted=false
 rdnnInferredFromPriorPlist=false
 modeInferredFromPriorPlist=false
+validLaneArgumentProvided=false
+nearMissDeploymentModeToken=""
 interactiveConfigurationHeaderShown=false
 
 placeholderMarker="Assembled"
@@ -95,7 +97,7 @@ function printUsage() {
   echo "Options:"
   echo "  --lane <dev|test|prod>       Select deployment mode"
   echo "  --interactive                Prompt for optional prior .plist import, IT support, branding and restart policy values"
-  echo "  prior-plist                  Auto-enables interactive mode and infers RDNN and deployment mode from the provided .plist"
+  echo "  prior-plist                  Auto-enables interactive mode and infers RDNN plus deployment mode only when filename ends with -dev.plist, -test.plist or -prod.plist"
   echo "  --help, -h                   Show this help"
   echo
 }
@@ -109,6 +111,15 @@ for argument in "$@"; do
       exit 0
       ;;
   esac
+done
+
+for (( argumentIndex=1; argumentIndex <= $#; argumentIndex++ )); do
+  if [[ "${@[argumentIndex]}" == "--lane" ]] && (( argumentIndex < $# )); then
+    if [[ "${@[$((argumentIndex + 1))]}" =~ ^(dev|test|prod)$ ]]; then
+      validLaneArgumentProvided=true
+      break
+    fi
+  fi
 done
 
 
@@ -357,6 +368,16 @@ function inferDeploymentModeFromPriorPlist() {
   esac
 }
 
+function detectNearMissDeploymentModeTokenFromPriorPlist() {
+  local plistFilename="${1:t:l}"
+
+  case "${plistFilename}" in
+    *-dev-*.plist)  echo "dev" ;;
+    *-test-*.plist) echo "test" ;;
+    *-prod-*.plist) echo "prod" ;;
+  esac
+}
+
 function showInteractiveConfigurationHeader() {
   if [[ "${interactiveConfigurationHeaderShown}" == true ]]; then
     return
@@ -375,6 +396,7 @@ function applyPriorPlistSelections() {
   local plistPath="${1}"
   local inferredRDNN=""
   local inferredDeploymentMode=""
+  local nearMissModeToken=""
 
   priorPlistPath="${plistPath}"
   priorPlistImported=true
@@ -398,7 +420,13 @@ function applyPriorPlistSelections() {
       deploymentMode="${inferredDeploymentMode}"
       skipModePrompt=true
       modeInferredFromPriorPlist=true
+      nearMissDeploymentModeToken=""
       echo "🔎 Inferred deployment mode from prior plist: '${deploymentMode}'"
+    elif [[ "${validLaneArgumentProvided}" == false ]]; then
+      nearMissModeToken="$(detectNearMissDeploymentModeTokenFromPriorPlist "${priorPlistPath}")"
+      if [[ -n "${nearMissModeToken}" ]]; then
+        nearMissDeploymentModeToken="${nearMissModeToken}"
+      fi
     fi
   fi
 }
@@ -952,6 +980,13 @@ fi
 
 # Prompt for deployment mode if not specified via CLI
 if [[ "${skipModePrompt}" == false ]]; then
+  if [[ -n "${nearMissDeploymentModeToken}" ]]; then
+    echo
+    echo "⚠️  Prior plist filename includes '-${nearMissDeploymentModeToken}-', but deployment mode was not inferred."
+    echo "    Exact filename suffix required: -dev.plist, -test.plist or -prod.plist"
+    echo "    Re-run with --lane ${nearMissDeploymentModeToken}, or rename prior plist to exact supported suffix."
+  fi
+
   echo
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "Select Deployment Mode:"

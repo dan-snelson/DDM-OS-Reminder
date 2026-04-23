@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder)
 
-# DDM OS Reminder (3.1.0)
+# DDM OS Reminder (3.2.0b3)
 
 > A major update to Mac Admins’ favorite MDM-agnostic, **“set-it-and-forget-it”** reminder now adds **multiple language** support, significantly more robust **reminder display logic** and streamlined **upgrade functionality**
 
@@ -39,7 +39,8 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
 
-If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that suffix still import supported values, but continue to prompt for deployment mode.
+If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that exact suffix still import supported values, but continue to prompt for deployment mode.
+Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.
 
 <details>
 <summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>
@@ -48,7 +49,7 @@ If the prior plist filename ends with `-dev.plist`, `-test.plist`, or `-prod.pli
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.1.0)
+🧩 Assemble DDM OS Reminder (3.2.0b3)
 ===============================================================
 
 Full Paths:

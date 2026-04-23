@@ -52,7 +52,7 @@ zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelso
 🧩 Assemble DDM OS Reminder (3.2.0b4)
 ===============================================================
 
-Full Paths:
+📍 Full Paths:
 
         Reminder Dialog: ~/Downloads/DDM-OS-Reminder-main/reminderDialog.zsh
 LaunchDaemon Management: ~/Downloads/DDM-OS-Reminder-main/launchDaemonManagement.zsh
@@ -76,12 +76,12 @@ LaunchDaemon Management: ~/Downloads/DDM-OS-Reminder-main/launchDaemonManagement
 🔎 Inferred RDNN from prior plist: 'us.snelson'
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Using 'us.snelson' as the Reverse Domain Name Notation
+🏷️  Using 'us.snelson' as the Reverse Domain Name Notation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Interactive Configuration
+🛠️  Interactive Configuration
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
@@ -89,12 +89,12 @@ Interactive Configuration
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Select Deployment Mode:
+🚦 Select Deployment Mode:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  1) Development - Keep placeholder text for local testing
-  2) Testing     - Replace placeholder text with 'TEST' for staging
-  3) Production  - Remove placeholder text for clean deployment
+  1) 🧪 Development - Keep placeholder text for local testing
+  2) 🔬 Testing     - Replace placeholder text with 'TEST' for staging
+  3) 🚀 Production  - Remove placeholder text for clean deployment
 
   [Press ‘X’ to exit]
 

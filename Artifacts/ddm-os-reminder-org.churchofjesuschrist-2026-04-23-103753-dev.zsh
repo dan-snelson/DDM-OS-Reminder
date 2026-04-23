@@ -1113,6 +1113,7 @@ function removeHelpMessageRowForPlaceholder() {
 function removeHelpMessageSupportIntro() {
     helpmessage="$(printf "%s" "${helpmessage}" | /usr/bin/perl -0pe '
         s#^.*?(?=<br><br>\*\*[^{}]*\*\*<br>- \*\*[^{}]*\*\*: \{(?:userfullname|username|computername|serialnumber|osversion|dialogVersion|scriptVersion)\})##s
+        s#^(?:<br>)+##
     ')"
 }
 

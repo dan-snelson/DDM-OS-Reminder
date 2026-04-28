@@ -1,4 +1,4 @@
-# DDM OS Reminder - Documentation Diagrams
+# DDM OS Reminder (3.2.0) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -491,7 +491,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.6 | 06-Apr-2026 | Refreshed diagram documentation for the `3.1.0` release, including final-version metadata, current localization behavior, `VersionString`-based compliance fallback when `BuildVersionString` is unavailable, and bundled EA fixture-hook guidance |
+| 1.0.6 | 06-Apr-2026 | Refreshed diagram documentation for the `3.2.0` release, including final-version metadata, current localization behavior, `VersionString`-based compliance fallback when `BuildVersionString` is unavailable, and bundled EA fixture-hook guidance |
 | 1.0.5 | 28-Mar-2026 | Updated overview, deployment workflow, and configuration reference markdown for `3.0.0` prior-plist upgrade-assist, lane-suffixed artifact names, and `2.2.0+` documented compatibility |
 | 1.0.4 | 25-Mar-2026 | Updated runtime and deployment diagrams for the hardened DDM resolver, corrected `dorm.zsh` client-script paths, refreshed EA documentation, and converted 00-overview source to Mermaid |
 | 1.0.3 | 05-Mar-2026 | Added 00 Executive Overview diagram and PNG export; renumbered diagram index and updated rendering guidance for 00–05 |
@@ -509,4 +509,4 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 ---
 
 **Last Updated**: 06-Apr-2026
-**DDM OS Reminder Version**: 3.1.0
+**DDM OS Reminder Version**: 3.2.0

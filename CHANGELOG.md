@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 3.2.0b4 (23-Apr-2026)
+### Version 3.2.0 (01-May-2026)
 - Expanded locale-aware runtime rendering in `reminderDialog.zsh` and `Resources/reminderDialogPreferenceTest.zsh` so relative deadlines, date/time strings, uptime duration text, and free-disk availability reflect the resolved dialog language instead of remaining partly English.
 - Trimmed surrounding whitespace from localized deadline/time placeholders before building deadline messaging and infobox content, preventing stray spacing from breaking relative-deadline display and markdown highlighting.
 - Refined the sample preference profile’s French (`fr`) translations for Issue #93, including dialog copy, support/help text, and past-deadline restart messaging.

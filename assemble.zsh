@@ -37,7 +37,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.2.0b4"
+scriptVersion="3.2.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"

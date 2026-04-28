@@ -30,13 +30,13 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0b4"
+scriptVersion="3.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
-swiftDialogMinimumRequiredVersion="2.5.6.4805"
+swiftDialogMinimumRequiredVersion="3.0.1.4955" 
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0b4"
+scriptVersion="3.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -820,16 +820,30 @@ function setAllowlistPreferenceValue() {
 function setNumericPreferenceValue() {
     local targetVariable="${1}"
     local managedValue="${2}"
-    local localValue="${3}"
-    local defaultValue="${4}"
-    local candidate=""
+    local managedKeyExists="${3}"
+    local localValue="${4}"
+    local localKeyExists="${5}"
+    local defaultValue="${6}"
+    local candidate="${defaultValue}"
 
-    if [[ "${managedValue}" =~ ^[0-9]+$ ]] && (( managedValue >= 0 && managedValue <= 999 )); then
-        candidate="${managedValue}"
-    elif [[ -n "${localValue}" && "${localValue}" == <-> ]]; then
-        candidate="${localValue}"
+    if [[ "${managedKeyExists}" == "true" ]]; then
+        if [[ "${managedValue}" =~ ^[0-9]+$ ]] && (( managedValue >= 0 && managedValue <= 999 )); then
+            candidate="${managedValue}"
+            preferenceExplicitlySet["${targetVariable}"]="true"
+        else
+            warning "Invalid managed numeric preference '${targetVariable}' value '${managedValue}'; using default '${defaultValue}'."
+            unset "preferenceExplicitlySet[${targetVariable}]"
+        fi
+    elif [[ "${localKeyExists}" == "true" ]]; then
+        if [[ "${localValue}" =~ ^[0-9]+$ ]] && (( localValue >= 0 && localValue <= 999 )); then
+            candidate="${localValue}"
+            preferenceExplicitlySet["${targetVariable}"]="true"
+        else
+            warning "Invalid local numeric preference '${targetVariable}' value '${localValue}'; using default '${defaultValue}'."
+            unset "preferenceExplicitlySet[${targetVariable}]"
+        fi
     else
-        candidate="${defaultValue}"
+        unset "preferenceExplicitlySet[${targetVariable}]"
     fi
 
     printf -v "${targetVariable}" '%s' "${candidate}"
@@ -980,7 +994,7 @@ function loadPreferenceOverrides() {
         # Apply the preference based on type
         case "${prefType}" in
             numeric)
-                setNumericPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                setNumericPreferenceValue "${prefKey}" "${managedValue}" "${managedKeyExists}" "${localValue}" "${localKeyExists}" "${defaultValue}"
                 ;;
             boolean)
                 setBooleanPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"

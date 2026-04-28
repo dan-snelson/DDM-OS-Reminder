@@ -7,6 +7,7 @@
 3. [Create Self-extracting Script](#3-create-self-extracting-script)
 4. [Create `.plist`](#4-create-plist-optional)
 5. [Extension Attributes](#5-extension-attributes)
+6. [Using `reminderDialogPreferenceTest.zsh`](#6-using-reminderdialogpreferencetestzsh)
 
 ---
 
@@ -39,7 +40,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.1.0)
+🧩 Assemble DDM OS Reminder (3.2.0)
 ===============================================================
 
 Full Paths:
@@ -322,3 +323,62 @@ On systems where APFS volume ownership cannot be determined, this EA reports:
 ```
 Unable to determine
 ```
+
+---
+
+### 6. Using `reminderDialogPreferenceTest.zsh`
+
+Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when you want to validate dialog copy, localization, branding, support contact details, button visibility, and infobox rendering from deployed preferences without waiting for a real DDM deadline.
+
+**6.1.** Prerequisites
+
+- `swiftDialog` must be installed at `/usr/local/bin/dialog`
+- Your target preference domain should exist as either:
+   - `/Library/Managed Preferences/<rdnn>.dorm.plist`
+   - `/Library/Preferences/<rdnn>.dorm.plist`
+- If both exist, the script follows the same precedence as the main reminder workflow: managed preferences first, then local preferences, then built-in defaults
+
+**6.2.** Run against deployed preferences
+
+Use the default project RDNN:
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh
+```
+
+Target a different tenant or test domain:
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
+```
+
+The script prints a resolved preference summary, shows the exact `swiftDialog` arguments it will use, then opens preview dialog.
+
+**6.3.** Quick local test workflow
+
+If you have not deployed preferences yet, seed local preferences from [`sample.plist`](sample.plist) and test from there:
+
+```zsh
+sudo cp Resources/sample.plist /Library/Preferences/us.snelson.dorm.plist
+zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
+```
+
+After copying, edit `/Library/Preferences/us.snelson.dorm.plist` with values you want to verify, then rerun preview. This is useful for checking localization keys such as `LanguageOverride` and any matching `*Localized_<code>` entries before shipping a profile.
+
+**6.4.** What preview does and does not do
+
+The preview intentionally uses test runtime values so dialog can render end-to-end:
+
+- Primary button opens Software Update in System Settings
+- Secondary button dismisses preview
+- Info button opens `InfoButtonAction`
+
+The preview does **not** simulate:
+
+- `/var/log/install.log` parsing
+- LaunchDaemon scheduling or execution context
+- Meeting-delay logic
+- Past-deadline restart workflows
+- Real deadline resolution from current DDM state
+
+Use this script for appearance and preference validation. Use `zsh reminderDialog.zsh demo` when you need a broader reminder-dialog smoke test.

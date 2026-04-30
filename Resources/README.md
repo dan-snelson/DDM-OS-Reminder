@@ -3,11 +3,10 @@
 ## Scripts
 
 1. [Assemble](#1-assemble)
-2. [Preference Preview](#2-preference-preview)
-3. [Create Self-extracting Script](#3-create-self-extracting-script)
-4. [Create `.plist`](#4-create-plist-optional)
-5. [Extension Attributes](#5-extension-attributes)
-6. [Using `reminderDialogPreferenceTest.zsh`](#6-using-reminderdialogpreferencetestzsh)
+2. [Create Self-extracting Script](#2-create-self-extracting-script)
+3. [Create `.plist`](#3-create-plist-optional)
+4. [Extension Attributes](#4-extension-attributes)
+5. [Using `reminderDialogPreferenceTest.zsh`](#5-using-reminderdialogpreferencetestzsh)
 
 ---
 
@@ -155,42 +154,13 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 
 ---
 
-### 2. Preference Preview
-
-Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) to preview how the reminder dialog will render from deployed preferences without running the full DDM deadline-resolution workflow or LaunchDaemon logic.
-
-This helper:
-- Reads the same managed/local preference domain hierarchy as `reminderDialog.zsh`
-- Applies `LanguageOverride` and `*Localized_<code>` keys
-- Uses demo runtime values for deadline/version placeholders so the dialog is fully renderable
-- Wires the dialog buttons for preview use:
-  - Primary button opens Software Update in System Settings
-  - Secondary button dismisses the preview
-  - Info button opens `InfoButtonAction`
-
-**2.1.** Run the preview
-
-```zsh
-zsh Resources/reminderDialogPreferenceTest.zsh
-zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
-```
-
-**2.2.** Notes
-
-- The script does not require root, though it can still be run with `sudo` when needed for preference access testing.
-- Use `--rdnn` to target the managed/local preference domain you want to validate.
-- If no deployed preferences exist yet, you can copy `Resources/sample.plist` into `/Library/Preferences/<rdnn>.dorm.plist` for quick local testing.
-- The preview script is intentionally limited to the standard reminder dialog; it does not simulate past-deadline restart modes or LaunchDaemon execution.
-
----
-
-### 3. Create Self-extracting Script
+### 2. Create Self-extracting Script
 
 With some MDMs, it's easier to deploy a **self-extracting script**. After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
 
 This script automatically finds the **newest assembled script** in the `Artifacts/` folder and creates a base64-encoded, self-extracting version.
 
-**3.1.** Execute the script:
+**2.1.** Execute the script:
 
 ```zsh
 zsh Resources/createSelfExtracting.zsh
@@ -220,7 +190,7 @@ You can deploy the assembled, self-extracting script to your Macs using your MDM
 
 ---
 
-### 4. Create `.plist` (Optional)
+### 3. Create `.plist` (Optional)
 
 > **Note:** This step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files in the `Artifacts/` folder.
 > 
@@ -250,13 +220,13 @@ SUCCESS! mobileconfig generated:
 
 ---
 
-### 5. Extension Attributes
+### 4. Extension Attributes
 
 While the following Extension Attributes were created for and tested on **Jamf Pro**, they can likely be adapted for other MDMs.
 
 (For adaptation help, visit the [Mac Admins Slack](https://www.macadmins.org/) `#ddm-os-reminders` channel or open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).)
 
-**5.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
+**4.1.** [`JamfEA-DDM-OS-Reminder-User-Clicks.zsh`](JamfEA-DDM-OS-Reminder-User-Clicks.zsh)  
 Reports the user’s button clicks from the DDM OS Reminder message.
 
 ```
@@ -267,7 +237,7 @@ Reports the user’s button clicks from the DDM OS Reminder message.
 2026-01-08 03:48:27 dan clicked KB0054571
 ```
 
-**5.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
+**4.2.** [`JamfEA-Pending_OS_Update_Date.zsh`](JamfEA-Pending_OS_Update_Date.zsh)  
 Reports the date of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
 Because this Extension Attribute is typically configured with a Jamf Pro `Date` data type, non-resolved states return documented sentinel dates instead of text.
 `2000-01-01 00:00:00` = no pending update / already compliant (`None`)
@@ -282,7 +252,7 @@ Uses a safe future padded enforcement date when one is present; otherwise falls 
 2026-01-17 12:00:00
 ```
 
-**5.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
+**4.3.** [`JamfEA-Pending_OS_Update_Version.zsh`](JamfEA-Pending_OS_Update_Version.zsh)  
 Reports the version of a pending DDM-enforced macOS update when the recent `install.log` state is trustworthy.
 Returns the specific resolver states `conflict`, `noMatch`, `missing`, or `invalidVersion` when the EA cannot safely determine an accurate version.
 Returns `None` only when no pending update should be reported because the resolved declaration already matches or is older than the current OS build/product version.
@@ -291,14 +261,14 @@ Returns `None` only when no pending update should be reported because the resolv
 26.2
 ```
 
-**5.4.** [`JamfEA-DDM_Executed_OS_Update_Date.zsh`](JamfEA-DDM_Executed_OS_Update_Date.zsh)  
+**4.4.** [`JamfEA-DDM_Executed_OS_Update_Date.zsh`](JamfEA-DDM_Executed_OS_Update_Date.zsh)  
 Reports the date when the DDM-enforced macOS update was executed.
 
 ```
 Thu Nov 13 08:59:56 2025
 ```
 
-**5.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
+**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
 Reports all local users with SecureToken enabled (comma-separated).
 
 ```
@@ -311,7 +281,7 @@ On macOS earlier than 10.13, this EA reports:
 N/A (macOS X.Y.Z)
 ```
 
-**5.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
+**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
 Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
 
 ```
@@ -326,11 +296,11 @@ Unable to determine
 
 ---
 
-### 6. Using `reminderDialogPreferenceTest.zsh`
+### 5. Using `reminderDialogPreferenceTest.zsh`
 
 Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when you want to validate dialog copy, localization, branding, support contact details, button visibility, and infobox rendering from deployed preferences without waiting for a real DDM deadline.
 
-**6.1.** Prerequisites
+**5.1.** Prerequisites
 
 - `swiftDialog` must be installed at `/usr/local/bin/dialog`
 - Your target preference domain should exist as either:
@@ -338,7 +308,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
    - `/Library/Preferences/<rdnn>.dorm.plist`
 - If both exist, the script follows the same precedence as the main reminder workflow: managed preferences first, then local preferences, then built-in defaults
 
-**6.2.** Run against deployed preferences
+**5.2.** Run against deployed preferences
 
 Use the default project RDNN:
 
@@ -354,7 +324,7 @@ zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
 
 The script prints a resolved preference summary, shows the exact `swiftDialog` arguments it will use, then opens preview dialog.
 
-**6.3.** Quick local test workflow
+**5.3.** Quick local test workflow
 
 If you have not deployed preferences yet, seed local preferences from [`sample.plist`](sample.plist) and test from there:
 
@@ -365,7 +335,7 @@ zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
 
 After copying, edit `/Library/Preferences/us.snelson.dorm.plist` with values you want to verify, then rerun preview. This is useful for checking localization keys such as `LanguageOverride` and any matching `*Localized_<code>` entries before shipping a profile.
 
-**6.4.** What preview does and does not do
+**5.4.** What preview does and does not do
 
 The preview intentionally uses test runtime values so dialog can render end-to-end:
 

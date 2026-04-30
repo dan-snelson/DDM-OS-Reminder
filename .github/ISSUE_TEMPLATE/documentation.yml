@@ -1,0 +1,80 @@
+name: Documentation
+description: Report missing, unclear, or outdated documentation for DDM OS Reminder
+title: "[Docs]: "
+labels: ["documentation"]
+assignees:
+  - dan-snelson
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for documentation-only issues: README gaps, deployment or packaging guidance, diagram drift, preference reference problems, screenshots, examples, or wording updates.
+
+        If your report includes a runtime defect, use the **Bug Report** form instead.
+        If your report is specifically about translated copy, use the **Language translation** form instead.
+
+  - type: dropdown
+    id: docs-area
+    attributes:
+      label: Which documentation area needs attention?
+      options:
+        - README.md
+        - CHANGELOG.md
+        - Diagrams
+        - Resources documentation or deployment handout
+        - Preference reference or sample.plist guidance
+        - Issue templates
+        - Deployment, assembly, or packaging guidance
+        - Website or public documentation
+        - Screenshots or images
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: What kind of documentation problem is this?
+      options:
+        - Incorrect or outdated information
+        - Missing instructions or example
+        - Confusing wording or structure
+        - Broken link or bad reference
+        - Screenshot or diagram drift
+        - Typo or grammar issue
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-docs
+    attributes:
+      label: What is wrong today?
+      description: Describe the current documentation problem.
+      placeholder: |
+        Example: README does not explain that `assemble.zsh` embeds `reminderDialog.zsh` into `launchDaemonManagement.zsh`, so reminder logic changes require re-assembly before deployment.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-update
+    attributes:
+      label: What should it say instead?
+      description: Suggest corrected wording, structure, or content when possible.
+      placeholder: |
+        Example: Add a short note to the deployment workflow explaining that source changes in `reminderDialog.zsh` are not present in the assembled management script until `zsh assemble.zsh` is run.
+    validations:
+      required: true
+
+  - type: input
+    id: affected-links
+    attributes:
+      label: Affected file or URL
+      description: Add the repo path, section heading, or public URL that needs updating.
+      placeholder: "e.g. README.md, Diagrams/04-deployment-workflow.md, or Resources/DDM-OS-Reminder-MSP-Deployment-Handout.md"
+
+  - type: textarea
+    id: supporting-context
+    attributes:
+      label: Supporting context
+      description: Add screenshots, references, related commits, or release/version context.

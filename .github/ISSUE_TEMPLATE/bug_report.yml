@@ -1,0 +1,155 @@
+name: Bug Report
+description: Something is sideways with DDM OS Reminder 
+title: "[Bug]: "
+labels: ["bug"]
+assignees:
+  - dan-snelson
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thank you** for taking time to file a bug report for DDM OS Reminder!
+        
+        Please complete the following form with as much detail as possible.
+        
+        If you're not sure about something, do your best. (The more information included, the easier it is to investigate and _hopefully_ resolve your issue.)
+
+        If you haven't already, please review [5.5 Troubleshooting](https://snelson.us/ddm#5) using the latest release of DDM OS Reminder. (If you’d like to first discuss your issue, please join us over on the Mac Admins Slack [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel. For dialog rendering issues, please first review [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues).)
+        
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you submit
+      options:
+        - label: I have completed [5.5 Troubleshooting](https://snelson.us/ddm#5) using the latest release of DDM OS Reminder
+          required: true
+
+  - type: input
+    id: installed-macos-version
+    attributes:
+      label: Installed macOS version
+      description: From **About This Mac** or `sw_vers -productVersion`
+      placeholder: "e.g. 15.7.5"
+    validations:
+      required: true
+
+  - type: input
+    id: target-macos-version
+    attributes:
+      label: Target macOS version
+      description: As specified by your Declarative Device Management (DDM) software update declaration.
+      placeholder: "e.g. 26.4.1"
+    validations:
+      required: true
+
+  - type: input
+    id: script-version
+    attributes:
+      label: Script version
+      description: Which version of DDM OS Reminder are you deploying?
+      placeholder: "e.g. 3.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: swiftDialog-version
+    attributes:
+      label: swiftDialog version
+      description: From `dialog --version`.
+      placeholder: "e.g. 3.0.1.4955"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device-management-solution
+    attributes:
+      label: Which device management solution do you use?
+      description: Select the primary device management / MDM / UEM solution used in your environment.
+      options:
+        - Addigy
+        - Apple Business
+        - Cisco Meraki
+        - Citrix Endpoint Management
+        - FileWave
+        - Fleet
+        - Google Workspace
+        - Hexnode
+        - IBM MaaS360
+        - Iru
+        - Ivanti
+        - Jamf
+        - ManageEngine
+        - Microsoft Intune
+        - Mosyle
+        - Omnissa Workspace ONE
+        - SOTI MobiControl
+        - Custom built
+        - Something else not on this list
+      validations:
+        required: true
+
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Which area looks broken?
+      options:
+        - Deadline parsing / declaration resolution
+        - Dialog rendering / button behavior
+        - LaunchDaemon deployment / loading
+        - Preference loading / precedence
+        - Localization / translated copy
+        - Demo mode only
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe actual behavior.
+      placeholder: |
+        Example: The LaunchDaemon fired, but the reminder never appeared even though the deadline was within the display window.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: What did you expect to happen?
+      placeholder: |
+        Example: The reminder dialog should have appeared with the configured title, message, and deferral button state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps make bugs much easier to act on.
+      placeholder: |
+        1. Deploy DDM OS Reminder with RDNN `us.snelson`
+        2. Install or update the managed preferences profile
+        3. Trigger the script from Terminal or wait for the LaunchDaemon
+        4. Observe the unexpected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic artifacts
+      description: Drag and drop exported Terminal output, log archives, screenshots, or other **sanitized** attachments here.
+      placeholder: |
+        Attach any of the following when available:
+        - Exported `zsh -x` Terminal trace
+        - `scriptLog` and `/var/log/install.log` archive
+        - Screenshots or screen recordings
+        - Relevant preference plist excerpts
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Anything else
+      description: Include related log excerpts, workarounds, declaration context, or environment details that do not fit above.

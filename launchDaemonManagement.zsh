@@ -1,4 +1,4 @@
-#!/bin/zsh --no-rcs 
+#!/bin/zsh --no-rcs
 # shellcheck shell=bash
 
 ####################################################################################################
@@ -30,13 +30,13 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0"
+scriptVersion="3.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
-swiftDialogMinimumRequiredVersion="2.5.6.4805"
+swiftDialogMinimumRequiredVersion="3.0.1.4955"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least

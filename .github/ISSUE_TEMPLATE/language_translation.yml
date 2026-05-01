@@ -1,0 +1,95 @@
+name: Language translation
+description: Contribute a new language or improve an existing translation for DDM OS Reminder.
+title: "[Localization]: "
+labels: ["localization"]
+assignees:
+  - dan-snelson
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No pull request is needed. Fill out this form and the maintainer can apply the translation directly.
+
+        Example completed issue: [Language Translation: Italian #89](https://github.com/dan-snelson/DDM-OS-Reminder/issues/89)
+
+        Translation workflow:
+
+        1. Download `Resources/sample.plist` from `main`.
+        2. For every key ending in `_Localized_en`, add a matching `_Localized_<code>` key.
+        3. Set `LanguageOverride` to your language code in a local copy of the plist.
+        4. Place that plist in one of these supported locations:
+           - `/Library/Managed Preferences/org.churchofjesuschrist.dorm.plist`
+           - `/Library/Preferences/org.churchofjesuschrist.dorm.plist`
+        5. Run demo mode to verify rendering:
+
+           ```zsh
+           zsh reminderDialog.zsh demo
+           ```
+
+        6. Paste the complete updated `sample.plist` into this form and attach at least one screenshot.
+
+        If you want to discuss translation details first, Mac Admins Slack `#ddm-os-reminders` is also available:
+        https://slack.com/app_redirect?channel=C09LVE2NVML
+
+  - type: input
+    id: language-name
+    attributes:
+      label: Language name
+      placeholder: "e.g. Italian"
+    validations:
+      required: true
+
+  - type: input
+    id: language-code
+    attributes:
+      label: Language code
+      description: Use the locale suffix that will be added to `*Localized_<code>` keys.
+      placeholder: "e.g. it"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribution-type
+    attributes:
+      label: Contribution type
+      options:
+        - New language
+        - Improve existing language
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: translation-checklist
+    attributes:
+      label: Translation checklist
+      options:
+        - label: I updated matching `*Localized_<code>` keys throughout the plist.
+          required: true
+        - label: I tested with `LanguageOverride` set to this language.
+          required: true
+        - label: I attached at least one screenshot from `zsh reminderDialog.zsh demo`.
+          required: true
+
+  - type: textarea
+    id: screenshot-attachments
+    attributes:
+      label: Demo screenshots
+      description: Drag and drop at least one screenshot showing demo mode running with your translation active.
+      placeholder: Attach screenshot files here.
+
+  - type: textarea
+    id: updated-sample-plist
+    attributes:
+      label: Updated `Resources/sample.plist`
+      description: Paste the complete updated plist, not only the changed keys.
+      render: xml
+      placeholder: |
+        <!-- Paste the full updated Resources/sample.plist here -->
+    validations:
+      required: true
+
+  - type: textarea
+    id: translation-notes
+    attributes:
+      label: Translation notes
+      description: Note any tone, formality, character set, truncation, or wording decisions.

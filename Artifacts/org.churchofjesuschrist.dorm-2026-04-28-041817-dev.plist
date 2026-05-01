@@ -13,7 +13,7 @@
 	<key>Button1TextLocalized_es</key>
 	<string>Assembled Abrir Actualización de software</string>
 	<key>Button1TextLocalized_fr</key>
-	<string>Assembled Ouvrir Mise a jour de logiciels</string>
+	<string>Assembled Ouvrir Mise à jour de logiciels</string>
 	<key>Button1TextLocalized_it</key>
 	<string>Assembled Apri Aggiornamento Software</string>
 	<key>Button1TextLocalized_ja</key>
@@ -31,7 +31,7 @@
 	<key>Button2TextLocalized_es</key>
 	<string>Assembled Recordármelo más tarde</string>
 	<key>Button2TextLocalized_fr</key>
-	<string>Assembled Me le rappeler plus tard</string>
+	<string>Assembled Me rappeler plus tard</string>
 	<key>Button2TextLocalized_it</key>
 	<string>Assembled Ricordamelo più tardi</string>
 	<key>Button2TextLocalized_ja</key>
@@ -61,7 +61,7 @@
 	<key>DeadlineEnforcementMessageAbsoluteLocalized_es</key>
 	<string>De lo contrario, su Mac **se reiniciará automáticamente y aplicará la {titleMessageUpdateOrUpgrade:l}** el **{deadlineDisplay}**.</string>
 	<key>DeadlineEnforcementMessageAbsoluteLocalized_fr</key>
-	<string>Sinon, votre Mac **redemarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** le **{deadlineDisplay}**.</string>
+	<string>Sinon, votre Mac **redémarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** le **{deadlineDisplay}**.</string>
 	<key>DeadlineEnforcementMessageAbsoluteLocalized_it</key>
 	<string>Tuttavia, il tuo Mac **si riavvierà automaticamente ed eseguirà l'{titleMessageUpdateOrUpgrade:l}** il **{deadlineDisplay}** se non hai completato l'{titleMessageUpdateOrUpgrade:l} entro la scadenza.</string>
 	<key>DeadlineEnforcementMessageAbsoluteLocalized_ja</key>
@@ -79,7 +79,7 @@
 	<key>DeadlineEnforcementMessageRelativeLocalized_es</key>
 	<string>De lo contrario, su Mac **se reiniciará automáticamente y aplicará la {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
 	<key>DeadlineEnforcementMessageRelativeLocalized_fr</key>
-	<string>Sinon, votre Mac **redemarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
+	<string>Sinon, votre Mac **redémarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
 	<key>DeadlineEnforcementMessageRelativeLocalized_it</key>
 	<string>Tuttavia, il tuo Mac **si riavvierà automaticamente ed eseguirà l'{titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** se non hai completato l'{titleMessageUpdateOrUpgrade:l} entro la scadenza.</string>
 	<key>DeadlineEnforcementMessageRelativeLocalized_ja</key>
@@ -97,7 +97,7 @@
 	<key>DiskSpaceWarningMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Nota:** Su Mac solo dispone de **{diskSpaceHumanReadable}**, lo que puede impedir esta {titleMessageUpdateOrUpgrade:l} de macOS.</string>
 	<key>DiskSpaceWarningMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled **Note :** Votre Mac ne dispose que de **{diskSpaceHumanReadable}**, ce qui peut empecher cette {titleMessageUpdateOrUpgrade:l} macOS.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled **Note :** Votre Mac ne dispose que de **{diskSpaceHumanReadable}**, ce qui peut empêcher cette {titleMessageUpdateOrUpgrade:l} macOS.</string>
 	<key>DiskSpaceWarningMessageLocalized_it</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Nota:** Il tuo Mac ha solo **{diskSpaceHumanReadable}** disponibili, il che potrebbe impedire questo {titleMessageUpdateOrUpgrade:l} di macOS.</string>
 	<key>DiskSpaceWarningMessageLocalized_ja</key>
@@ -115,7 +115,7 @@
 	<key>ExcessiveUptimeWarningMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Nota:** Su Mac lleva **{uptimeHumanReadable}** encendido. Para obtener resultados más fiables, reinícielo manualmente antes de continuar.</string>
 	<key>ExcessiveUptimeWarningMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled **Note :** Votre Mac est allume depuis **{uptimeHumanReadable}**. Redemarrez-le manuellement pour de meilleurs resultats.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled **Note :** Votre Mac est allumé depuis **{uptimeHumanReadable}**. Redémarrez-le manuellement pour de meilleurs résultats.</string>
 	<key>ExcessiveUptimeWarningMessageLocalized_it</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Nota:** Il tuo Mac è acceso da **{uptimeHumanReadable}**. Per risultati più affidabili, riavvia manualmente il Mac prima di procedere.</string>
 	<key>ExcessiveUptimeWarningMessageLocalized_ja</key>
@@ -135,7 +135,7 @@
 	<key>HelpMessageLocalized_es</key>
 	<string>Assembled&lt;br&gt;&lt;br&gt;Para obtener ayuda, contacte con: **{supportTeamName}**&lt;br&gt;- **Teléfono:** {supportTeamPhone}&lt;br&gt;- **Correo electrónico:** {supportTeamEmail}&lt;br&gt;- **Sitio web:** {supportTeamWebsite}&lt;br&gt;- **Artículo de la base de conocimiento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Información del usuario:**&lt;br&gt;- **Nombre completo:** {userfullname}&lt;br&gt;- **Nombre de usuario:** {username}&lt;br&gt;&lt;br&gt;**Información del ordenador:**&lt;br&gt;- **Nombre del ordenador:** {computername}&lt;br&gt;- **Número de serie:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Información del script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
 	<key>HelpMessageLocalized_fr</key>
-	<string>Assembled&lt;br&gt;&lt;br&gt;Pour obtenir de l'aide, veuillez contacter : **{supportTeamName}**&lt;br&gt;- **Telephone :** {supportTeamPhone}&lt;br&gt;- **E-mail :** {supportTeamEmail}&lt;br&gt;- **Site web :** {supportTeamWebsite}&lt;br&gt;- **Article de la base de connaissances :** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informations utilisateur :**&lt;br&gt;- **Nom complet :** {userfullname}&lt;br&gt;- **Nom d'utilisateur :** {username}&lt;br&gt;&lt;br&gt;**Informations de l'ordinateur :**&lt;br&gt;- **Nom de l'ordinateur :** {computername}&lt;br&gt;- **Numero de serie :** {serialnumber}&lt;br&gt;- **macOS :** {osversion}&lt;br&gt;&lt;br&gt;**Informations du script :**&lt;br&gt;- **Dialog :** {dialogVersion}&lt;br&gt;- **Script :** {scriptVersion}&lt;br&gt;</string>
+	<string>Assembled&lt;br&gt;&lt;br&gt;Pour obtenir de l'aide, veuillez contacter : **{supportTeamName}**&lt;br&gt;- **Téléphone :** {supportTeamPhone}&lt;br&gt;- **E-mail :** {supportTeamEmail}&lt;br&gt;- **Site web :** {supportTeamWebsite}&lt;br&gt;- **Article de la base de connaissances :** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informations utilisateur :**&lt;br&gt;- **Nom complet :** {userfullname}&lt;br&gt;- **Nom d'utilisateur :** {username}&lt;br&gt;&lt;br&gt;**Informations de l'ordinateur :**&lt;br&gt;- **Nom de l'ordinateur :** {computername}&lt;br&gt;- **Numéro de série :** {serialnumber}&lt;br&gt;- **macOS :** {osversion}&lt;br&gt;&lt;br&gt;**Informations du script :**&lt;br&gt;- **Dialog :** {dialogVersion}&lt;br&gt;- **Script :** {scriptVersion}&lt;br&gt;</string>
 	<key>HelpMessageLocalized_it</key>
 	<string>Assembled&lt;br&gt;&lt;br&gt;Per assistenza, contatta: **{supportTeamName}**&lt;br&gt;- **Telefono:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Sito web:** {supportTeamWebsite}&lt;br&gt;- **Articolo della knowledge base:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informazioni utente:**&lt;br&gt;- **Nome completo:** {userfullname}&lt;br&gt;- **Nome utente:** {username}&lt;br&gt;&lt;br&gt;**Informazioni computer:**&lt;br&gt;- **Nome computer:** {computername}&lt;br&gt;- **Numero di serie:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Informazioni script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
 	<key>HelpMessageLocalized_ja</key>
@@ -145,6 +145,16 @@
 	<key>HelpMessageLocalized_pt</key>
 	<string>Assembled&lt;br&gt;&lt;br&gt;Para obter assistência, contacte: **{supportTeamName}**&lt;br&gt;- **Telefone:** {supportTeamPhone}&lt;br&gt;- **Email:** {supportTeamEmail}&lt;br&gt;- **Site web:** {supportTeamWebsite}&lt;br&gt;- **Artigo da base de conhecimento:** {supportKBURL}&lt;br&gt;&lt;br&gt;**Informações do utilizador:**&lt;br&gt;- **Nome completo:** {userfullname}&lt;br&gt;- **Nome de utilizador:** {username}&lt;br&gt;&lt;br&gt;**Informações do computador:**&lt;br&gt;- **Nome do computador:** {computername}&lt;br&gt;- **Número de série:** {serialnumber}&lt;br&gt;- **macOS:** {osversion}&lt;br&gt;&lt;br&gt;**Informações do script:**&lt;br&gt;- **Dialog:** {dialogVersion}&lt;br&gt;- **Script:** {scriptVersion}&lt;br&gt;</string>
 	<key>HideStagedUpdateInfo</key>
+	<false/>
+	<key>HideSupportAssistanceMessage</key>
+	<false/>
+	<key>HideSupportKB</key>
+	<false/>
+	<key>HideSupportTeamEmail</key>
+	<false/>
+	<key>HideSupportTeamPhone</key>
+	<false/>
+	<key>HideSupportTeamWebsite</key>
 	<false/>
 	<key>InfoBox</key>
 	<string>Assembled&lt;br&gt;&lt;br&gt;**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}&lt;br&gt;&lt;br&gt;**{infoboxLabelRequired}:** macOS {ddmVersionString}&lt;br&gt;&lt;br&gt;**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}&lt;br&gt;&lt;br&gt;**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}</string>
@@ -159,7 +169,7 @@
 	<key>InfoButtonTextLocalized_es</key>
 	<string>Assembled Actualizar macOS en el Mac</string>
 	<key>InfoButtonTextLocalized_fr</key>
-	<string>Assembled Mettre a jour macOS sur Mac</string>
+	<string>Assembled Mettre à jour macOS sur Mac</string>
 	<key>InfoButtonTextLocalized_it</key>
 	<string>Assembled Aggiorna macOS su Mac</string>
 	<key>InfoButtonTextLocalized_ja</key>
@@ -177,7 +187,7 @@
 	<key>InfoboxLabelCurrentLocalized_es</key>
 	<string>Actual</string>
 	<key>InfoboxLabelCurrentLocalized_fr</key>
-	<string>Actuel</string>
+	<string>Version actuelle</string>
 	<key>InfoboxLabelCurrentLocalized_it</key>
 	<string>Corrente</string>
 	<key>InfoboxLabelCurrentLocalized_ja</key>
@@ -213,7 +223,7 @@
 	<key>InfoboxLabelDeadlineLocalized_es</key>
 	<string>Fecha límite</string>
 	<key>InfoboxLabelDeadlineLocalized_fr</key>
-	<string>Echeance</string>
+	<string>Échéance</string>
 	<key>InfoboxLabelDeadlineLocalized_it</key>
 	<string>Scadenza</string>
 	<key>InfoboxLabelDeadlineLocalized_ja</key>
@@ -249,7 +259,7 @@
 	<key>InfoboxLabelLastRestartLocalized_es</key>
 	<string>Último reinicio</string>
 	<key>InfoboxLabelLastRestartLocalized_fr</key>
-	<string>Dernier redemarrage</string>
+	<string>Dernier redémarrage</string>
 	<key>InfoboxLabelLastRestartLocalized_it</key>
 	<string>Ultimo riavvio</string>
 	<key>InfoboxLabelLastRestartLocalized_ja</key>
@@ -267,7 +277,7 @@
 	<key>InfoboxLabelRequiredLocalized_es</key>
 	<string>Requerido</string>
 	<key>InfoboxLabelRequiredLocalized_fr</key>
-	<string>Requis</string>
+	<string>Version requise</string>
 	<key>InfoboxLabelRequiredLocalized_it</key>
 	<string>Richiesto</string>
 	<key>InfoboxLabelRequiredLocalized_ja</key>
@@ -289,7 +299,7 @@
 	<key>MessageLocalized_es</key>
 	<string>Assembled **Ya está disponible una {titleMessageUpdateOrUpgrade:l} obligatoria de macOS**&lt;br&gt;&lt;br&gt;¡Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Realice la {titleMessageUpdateOrUpgrade:l} a macOS **{ddmVersionString}** para mantener su Mac seguro y en cumplimiento con las políticas de la organización.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para realizar la {titleMessageUpdateOrUpgrade:l} ahora, haga clic en **{button1text}**, revise las instrucciones en pantalla y luego haga clic en **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si no puede realizar esta {titleMessageUpdateOrUpgrade:l} ahora, haga clic en **{button2text}** para recibir otro recordatorio más tarde (esta opción se desactiva cuando se acerca la fecha límite).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 	<key>MessageLocalized_fr</key>
-	<string>Assembled **Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**&lt;br&gt;&lt;br&gt;Bonjour, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin de maintenir la securite et la conformite de votre Mac aux politiques de votre organisation.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions a l'ecran, puis cliquez sur **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un nouveau rappel plus tard (ce bouton est desactive lorsque l'echeance est imminente).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<string>Assembled **Une {titleMessageUpdateOrUpgrade:l} macOS requise est maintenant disponible**&lt;br&gt;&lt;br&gt;Bonjour, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Veuillez effectuer la {titleMessageUpdateOrUpgrade:l} vers macOS **{ddmVersionString}** afin de maintenir la sécurité et la conformité de votre Mac aux politiques de votre organisation.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button1text}**, suivez les instructions à l'écran, puis cliquez sur **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Si vous ne pouvez pas effectuer cette {titleMessageUpdateOrUpgrade:l} maintenant, cliquez sur **{button2text}** pour recevoir un nouveau rappel plus tard (ce bouton est désactivé lorsque l'échéance est imminente).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 	<key>MessageLocalized_it</key>
 	<string>Assembled **È ora disponibile un {titleMessageUpdateOrUpgrade:l} obbligatorio di macOS**&lt;br&gt;&lt;br&gt;Salve, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Esegui l'{titleMessageUpdateOrUpgrade:l} a macOS **{ddmVersionString}** per garantire che il tuo Mac rimanga sicuro e conforme alle politiche organizzative.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Per eseguire l'{titleMessageUpdateOrUpgrade:l} ora, fai clic su **{button1text}**, segui le istruzioni sullo schermo, quindi fai clic su **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Se non puoi eseguire l'{titleMessageUpdateOrUpgrade:l} ora, fai clic su **{button2text}** per ricevere un promemoria in seguito (disabilitato quando la scadenza è imminente).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 	<key>MessageLocalized_ja</key>
@@ -313,7 +323,7 @@
 	<key>PartiallyStagedUpdateMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Su Mac ha comenzado a descargar y preparar los componentes necesarios de actualización de macOS. La instalación será más rápida cuando finalice la preparación de todos los recursos.</string>
 	<key>PartiallyStagedUpdateMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled Votre Mac a commence a telecharger et preparer les composants requis de mise a jour macOS. L'installation sera ensuite plus rapide.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled Votre Mac a commencé à télécharger et à préparer les composants requis de mise à jour macOS. L'installation sera ensuite plus rapide.</string>
 	<key>PartiallyStagedUpdateMessageLocalized_it</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Il tuo Mac ha iniziato a scaricare e preparare i componenti necessari per l'aggiornamento di macOS. L'installazione sarà più rapida una volta completata la preparazione di tutti i componenti.</string>
 	<key>PartiallyStagedUpdateMessageLocalized_ja</key>
@@ -331,7 +341,7 @@
 	<key>PastDeadlineForceMessageLocalized_es</key>
 	<string>**Su Mac se reiniciará cuando expire el temporizador de abajo.**&lt;br&gt;&lt;br&gt;Hola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;Su Mac ha superado la fecha límite de **{ddmVersionStringDeadlineHumanReadable}** para instalar macOS {ddmVersionString} y debe reiniciarse para ayudar a completar la {titleMessageUpdateOrUpgrade:l}, o bien puede hacer clic en **{button1text}**.&lt;br&gt;&lt;br&gt;(Este recordatorio permanecerá visible hasta que se reinicie su Mac.)</string>
 	<key>PastDeadlineForceMessageLocalized_fr</key>
-	<string>**Votre Mac redemarrera quand le minuteur ci-dessous expirera.**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a depasse l'echeance **{ddmVersionStringDeadlineHumanReadable}** pour macOS {ddmVersionString}. Un redemarrage est requis pour terminer la {titleMessageUpdateOrUpgrade:l}, ou cliquez sur **{button1text}**.&lt;br&gt;&lt;br&gt;(Ce rappel restera affiche jusqu'au redemarrage de votre Mac.)</string>
+	<string>**Votre Mac redémarrera lorsque le minuteur ci-dessous expirera.**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a dépassé l'échéance **{ddmVersionStringDeadlineHumanReadable}** pour macOS {ddmVersionString}. Un redémarrage est requis pour terminer la {titleMessageUpdateOrUpgrade:l} ; vous pouvez aussi cliquer sur **{button1text}**.&lt;br&gt;&lt;br&gt;(Ce rappel restera affiché jusqu'au redémarrage de votre Mac.)</string>
 	<key>PastDeadlineForceMessageLocalized_it</key>
 	<string>**Il tuo Mac si riavvierà allo scadere del timer sottostante.**&lt;br&gt;&lt;br&gt;Buon {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Il tuo Mac ha superato la scadenza del **{ddmVersionStringDeadlineHumanReadable}** per installare macOS {ddmVersionString} e deve essere riavviato per completare il processo di {titleMessageUpdateOrUpgrade:l}, oppure puoi fare clic su **{button1text}**.&lt;br&gt;&lt;br&gt;(Questo promemoria rimarrà visibile fino al riavvio del Mac.)</string>
 	<key>PastDeadlineForceMessageLocalized_ja</key>
@@ -349,7 +359,7 @@
 	<key>PastDeadlineForceTitleLocalized_es</key>
 	<string>Su Mac se está reiniciando</string>
 	<key>PastDeadlineForceTitleLocalized_fr</key>
-	<string>Votre Mac redemarre</string>
+	<string>Votre Mac redémarrera</string>
 	<key>PastDeadlineForceTitleLocalized_it</key>
 	<string>Il tuo Mac si sta riavviando</string>
 	<key>PastDeadlineForceTitleLocalized_ja</key>
@@ -367,7 +377,7 @@
 	<key>PastDeadlinePromptMessageLocalized_es</key>
 	<string>**Reinicie su Mac ahora**&lt;br&gt;&lt;br&gt;Hola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;Su Mac ha superado la fecha límite de **{ddmVersionStringDeadlineHumanReadable}** para aplicar la {titleMessageUpdateOrUpgrade:l} a macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Haga clic en **{button1text}** para reiniciar ahora y ayudar a completar la {titleMessageUpdateOrUpgrade:l} requerida.&lt;br&gt;&lt;br&gt;(Este recordatorio permanecerá visible hasta que se reinicie su Mac.)</string>
 	<key>PastDeadlinePromptMessageLocalized_fr</key>
-	<string>**Veuillez redemarrer votre Mac maintenant**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a depasse l'echeance **{ddmVersionStringDeadlineHumanReadable}** pour la {titleMessageUpdateOrUpgrade:l} vers macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Cliquez sur **{button1text}** pour redemarrer maintenant et terminer la {titleMessageUpdateOrUpgrade:l} requise.&lt;br&gt;&lt;br&gt;(Ce rappel restera affiche jusqu'au redemarrage de votre Mac.)</string>
+	<string>**Veuillez redémarrer votre Mac maintenant**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a dépassé l'échéance **{ddmVersionStringDeadlineHumanReadable}** pour la {titleMessageUpdateOrUpgrade:l} vers macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Cliquez sur **{button1text}** pour redémarrer maintenant et terminer la {titleMessageUpdateOrUpgrade:l} requise.&lt;br&gt;&lt;br&gt;(Ce rappel restera affiché jusqu'au redémarrage de votre Mac.)</string>
 	<key>PastDeadlinePromptMessageLocalized_it</key>
 	<string>**Riavvia subito il tuo Mac**&lt;br&gt;&lt;br&gt;Buon {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Il tuo Mac ha superato la scadenza del **{ddmVersionStringDeadlineHumanReadable}** per eseguire l'{titleMessageUpdateOrUpgrade:l} a macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Fai clic su **{button1text}** per riavviare ora e completare l'{titleMessageUpdateOrUpgrade:l} richiesto.&lt;br&gt;&lt;br&gt;(Questo promemoria rimarrà visibile fino al riavvio del Mac.)</string>
 	<key>PastDeadlinePromptMessageLocalized_ja</key>
@@ -385,7 +395,7 @@
 	<key>PastDeadlinePromptTitleLocalized_es</key>
 	<string>Reinicie su Mac</string>
 	<key>PastDeadlinePromptTitleLocalized_fr</key>
-	<string>Redemarrez votre Mac</string>
+	<string>Redémarrez votre Mac</string>
 	<key>PastDeadlinePromptTitleLocalized_it</key>
 	<string>Riavvia il tuo Mac</string>
 	<key>PastDeadlinePromptTitleLocalized_ja</key>
@@ -405,7 +415,7 @@
 	<key>PendingDownloadMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Su Mac comenzará a descargar la actualización en breve.</string>
 	<key>PendingDownloadMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled Votre Mac commencera bientot a telecharger la mise a jour.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled Votre Mac commencera bientôt à télécharger la mise à jour.</string>
 	<key>PendingDownloadMessageLocalized_it</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Il tuo Mac inizierà a scaricare l'aggiornamento a breve.</string>
 	<key>PendingDownloadMessageLocalized_ja</key>
@@ -459,7 +469,7 @@
 	<key>RestartNowButtonTextLocalized_es</key>
 	<string>Reiniciar ahora</string>
 	<key>RestartNowButtonTextLocalized_fr</key>
-	<string>Redemarrer maintenant</string>
+	<string>Redémarrer maintenant</string>
 	<key>RestartNowButtonTextLocalized_it</key>
 	<string>Riavvia ora</string>
 	<key>RestartNowButtonTextLocalized_ja</key>
@@ -479,7 +489,7 @@
 	<key>SoftwareUpdateButtonTextUpdateLocalized_es</key>
 	<string>Reiniciar ahora</string>
 	<key>SoftwareUpdateButtonTextUpdateLocalized_fr</key>
-	<string>Redemarrer maintenant</string>
+	<string>Redémarrer maintenant</string>
 	<key>SoftwareUpdateButtonTextUpdateLocalized_it</key>
 	<string>Riavvia ora</string>
 	<key>SoftwareUpdateButtonTextUpdateLocalized_ja</key>
@@ -497,7 +507,7 @@
 	<key>SoftwareUpdateButtonTextUpgradeLocalized_es</key>
 	<string>Actualizar ahora</string>
 	<key>SoftwareUpdateButtonTextUpgradeLocalized_fr</key>
-	<string>Mettre a niveau maintenant</string>
+	<string>Mettre à niveau maintenant</string>
 	<key>SoftwareUpdateButtonTextUpgradeLocalized_it</key>
 	<string>Esegui upgrade ora</string>
 	<key>SoftwareUpdateButtonTextUpgradeLocalized_ja</key>
@@ -515,7 +525,7 @@
 	<key>StagedUpdateMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **¡Buenas noticias!** La actualización de macOS {ddmVersionString} ya se ha descargado en su Mac y está lista para instalarse. La instalación será más rápida cuando haga clic en **{button1text}**.</string>
 	<key>StagedUpdateMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled **Bonne nouvelle !** La mise a jour macOS {ddmVersionString} est deja telechargee. L'installation sera rapide apres clic sur **{button1text}**.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled **Bonne nouvelle !** La mise à jour macOS {ddmVersionString} est déjà téléchargée. L'installation démarrera rapidement après avoir cliqué sur **{button1text}**.</string>
 	<key>StagedUpdateMessageLocalized_it</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Buone notizie!** L'aggiornamento di macOS {ddmVersionString} è già stato scaricato sul tuo Mac ed è pronto per l'installazione. L'installazione procederà rapidamente quando fai clic su **{button1text}**.</string>
 	<key>StagedUpdateMessageLocalized_ja</key>
@@ -533,7 +543,7 @@
 	<key>SupportAssistanceMessageLocalized_es</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Para obtener ayuda, contacte con **{supportTeamName}** haciendo clic en el botón (?) de la esquina inferior derecha.</string>
 	<key>SupportAssistanceMessageLocalized_fr</key>
-	<string>&lt;br&gt;&lt;br&gt;Assembled Pour obtenir de l'aide, contactez **{supportTeamName}** via le bouton (?) en bas a droite.</string>
+	<string>&lt;br&gt;&lt;br&gt;Assembled Pour obtenir de l'aide, contactez **{supportTeamName}** via le bouton (?) en bas à droite.</string>
 	<key>SupportAssistanceMessageLocalized_it</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Per assistenza, contatta **{supportTeamName}** facendo clic sul pulsante (?) nell'angolo in basso a destra.</string>
 	<key>SupportAssistanceMessageLocalized_ja</key>
@@ -565,7 +575,7 @@
 	<key>TitleLocalized_es</key>
 	<string>Assembled {titleMessageUpdateOrUpgrade} obligatoria de macOS</string>
 	<key>TitleLocalized_fr</key>
-	<string>Assembled mise a jour macOS obligatoire</string>
+	<string>Assembled {titleMessageUpdateOrUpgrade} macOS obligatoire</string>
 	<key>TitleLocalized_it</key>
 	<string>Assembled {titleMessageUpdateOrUpgrade} di macOS richiesto</string>
 	<key>TitleLocalized_ja</key>
@@ -583,7 +593,7 @@
 	<key>UpdateWordLocalized_es</key>
 	<string>Actualización</string>
 	<key>UpdateWordLocalized_fr</key>
-	<string>Mise a jour</string>
+	<string>Mise à jour</string>
 	<key>UpdateWordLocalized_it</key>
 	<string>aggiornamento</string>
 	<key>UpdateWordLocalized_ja</key>
@@ -601,7 +611,7 @@
 	<key>UpgradeWordLocalized_es</key>
 	<string>Actualización</string>
 	<key>UpgradeWordLocalized_fr</key>
-	<string>Mise a niveau</string>
+	<string>Mise à niveau</string>
 	<key>UpgradeWordLocalized_it</key>
 	<string>upgrade</string>
 	<key>UpgradeWordLocalized_ja</key>

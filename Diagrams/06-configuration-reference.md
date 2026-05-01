@@ -44,12 +44,17 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
 | supportTeamName | SupportTeamName | String | IT Support | Support |
 | supportTeamPhone | SupportTeamPhone | String | +1 (801) 555-1212 | Support |
+| hideSupportTeamPhone | HideSupportTeamPhone | Boolean | NO | Support |
 | supportTeamEmail | SupportTeamEmail | String | rescue@domain.org | Support |
+| hideSupportTeamEmail | HideSupportTeamEmail | Boolean | NO | Support |
 | supportTeamWebsite | SupportTeamWebsite | String | https://support.domain.org | Support |
+| hideSupportTeamWebsite | HideSupportTeamWebsite | Boolean | NO | Support |
 | supportKB | SupportKB | String | Update macOS on Mac | Support |
+| hideSupportKB | HideSupportKB | Boolean | NO | Support |
 | infobuttonaction | InfoButtonAction | String | https://support.apple.com/108382 | Support |
 | supportKBURL | SupportKBURL | String | [Markdown link] | Support |
 | supportAssistanceMessage | SupportAssistanceMessage | String | [Support sentence with (?) button] | Support |
+| hideSupportAssistanceMessage | HideSupportAssistanceMessage | Boolean | NO | Support |
 | supportAssistanceMessageLocalizedEn | SupportAssistanceMessageLocalized_en | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedDe | SupportAssistanceMessageLocalized_de | String | [Localized support sentence] | Localization |
 | supportAssistanceMessageLocalizedFr | SupportAssistanceMessageLocalized_fr | String | [Localized support sentence] | Localization |
@@ -737,7 +742,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+, expanded in 3.1.0)**:
+**Locale Behavior (3.0.0+, expanded in 3.2.0)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
 - When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
 - Numeric-only formats (for example `%d.%m.%Y %H:%M`) are unchanged across locales
@@ -795,6 +800,23 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>+1 (555) 123-4567</string>
 ```
 
+**Related Visibility Control**: `HideSupportTeamPhone`
+
+---
+
+#### hideSupportTeamPhone
+**Plist Key**: `HideSupportTeamPhone`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the phone row from `HelpMessage` before placeholder replacement and blanks `{supportTeamPhone}` for any custom support copy.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportTeamPhone</key>
+<true/>
+```
+
 ---
 
 #### supportTeamEmail
@@ -818,6 +840,23 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>helpdesk@company.com</string>
 ```
 
+**Related Visibility Control**: `HideSupportTeamEmail`
+
+---
+
+#### hideSupportTeamEmail
+**Plist Key**: `HideSupportTeamEmail`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the email row from `HelpMessage` before placeholder replacement and blanks `{supportTeamEmail}` for any custom support copy.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportTeamEmail</key>
+<true/>
+```
+
 ---
 
 #### supportTeamWebsite
@@ -839,6 +878,23 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```xml
 <key>SupportTeamWebsite</key>
 <string>https://helpdesk.company.com</string>
+```
+
+**Related Visibility Control**: `HideSupportTeamWebsite`
+
+---
+
+#### hideSupportTeamWebsite
+**Plist Key**: `HideSupportTeamWebsite`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the website row from `HelpMessage` before placeholder replacement and blanks `{supportTeamWebsite}` for any custom support copy.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportTeamWebsite</key>
+<true/>
 ```
 
 ---
@@ -920,7 +976,22 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>[How to Update macOS](https://kb.company.com/updates)</string>
 ```
 
-**Important**: Setting `SupportKBURL` to an empty string does not automatically remove the KB row from `HelpMessage`; that row must be removed from `HelpMessage` content (or generated via `assemble.zsh --interactive` with KB features disabled).
+**Related Visibility Control**: `HideSupportKB`
+
+---
+
+#### hideSupportKB
+**Plist Key**: `HideSupportKB`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, removes the KB row from `HelpMessage` before placeholder replacement and blanks `{supportKB}` / `{supportKBURL}` without hiding the info button or QR help image.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportKB</key>
+<true/>
+```
 
 ---
 
@@ -945,7 +1016,22 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>&lt;br&gt;&lt;br&gt;For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner.</string>
 ```
 
-**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` sets `SupportAssistanceMessage` to an empty string so `Message` no longer references the `(?)` button.
+**Related Visibility Control**: `HideSupportAssistanceMessage`
+
+---
+
+#### hideSupportAssistanceMessage
+**Plist Key**: `HideSupportAssistanceMessage`
+**Type**: Boolean
+**Default**: `NO`
+
+**Description**: When `YES`, suppresses `{supportAssistanceMessage}` in the main dialog body while leaving `HelpMessage` and the info button unchanged.
+
+**Configuration Profile**:
+```xml
+<key>HideSupportAssistanceMessage</key>
+<true/>
+```
 
 ---
 
@@ -999,7 +1085,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `PartiallyStagedUpdateMessageLocalized_{lang}`
 - `PendingDownloadMessageLocalized_{lang}`
 
-*Dynamic localization primitives (3.1.0+)*:
+*Dynamic localization primitives (3.2.0+)*:
 - `RelativeDeadlineTodayLocalized_{lang}`
 - `RelativeDeadlineTomorrowLocalized_{lang}`
 - `UpdateWordLocalized_{lang}`
@@ -1571,7 +1657,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 3.1.0 |
+| `{scriptVersion}` | System | Script version | 3.2.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1587,7 +1673,7 @@ These placeholders are resolved at render time by swiftDialog itself. See the fu
 
 **Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. Invalid formats suppress reminder dialogs and emit a `[WARNING]` log entry.
 
-**3.1.0 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
+**3.2.0 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
 
 ### Placeholder Modifiers
 
@@ -1687,19 +1773,21 @@ message = "Contact {supportTeamInfo}"
 <key>OrganizationOverlayIconURL</key>
 <string></string>
 
-<!-- Simple support info -->
+<!-- Keep simple support info -->
 <key>SupportTeamName</key>
 <string>IT</string>
+
+<!-- Show only phone -->
 <key>SupportTeamPhone</key>
 <string>x1234</string>
-
-<!-- Hide info button -->
-<key>InfoButtonText</key>
-<string>hide</string>
-
-<!-- Hide help image -->
-<key>HelpImage</key>
-<string>hide</string>
+<key>HideSupportTeamEmail</key>
+<true/>
+<key>HideSupportTeamWebsite</key>
+<true/>
+<key>HideSupportKB</key>
+<true/>
+<key>HideSupportAssistanceMessage</key>
+<true/>
 ```
 
 ---
@@ -1787,6 +1875,27 @@ message = "Contact {supportTeamInfo}"
 <!-- Generous meeting delay -->
 <key>MeetingDelay</key>
 <integer>120</integer>
+```
+
+---
+
+### Scenario 8: Self-Service Portal Only
+
+**Goal**: Keep info button + portal access while hiding direct contact rows
+
+```xml
+<key>InfoButtonText</key>
+<string>Support Portal</string>
+<key>InfoButtonAction</key>
+<string>https://support.company.com</string>
+<key>HideSupportTeamPhone</key>
+<true/>
+<key>HideSupportTeamEmail</key>
+<true/>
+<key>HideSupportTeamWebsite</key>
+<true/>
+<key>HideSupportKB</key>
+<true/>
 ```
 
 ---
@@ -2058,10 +2167,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 3.1.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
-| 3.1.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
+| 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
+| 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
 **Last Updated**: 06-Apr-2026
-**DDM OS Reminder Version**: 3.1.0
+**DDM OS Reminder Version**: 3.2.0

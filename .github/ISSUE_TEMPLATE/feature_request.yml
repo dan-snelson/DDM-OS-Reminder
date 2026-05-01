@@ -1,0 +1,72 @@
+name: Feature Request
+description: Suggest an improvement for DDM OS Reminder
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees:
+  - dan-snelson
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Note:** While all requests are welcome, finding available cycles to custom-code a feature we won’t use in our production environment is always challenging.
+
+        You're also invited to discuss via the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders Channel](https://slack.com/app_redirect?channel=C09LVE2NVML).
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the Mac Admin or end-user pain in concrete terms.
+      placeholder: |
+        Example: We need a clearer way to surface support contact details only after the deadline passes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe what DDM OS Reminder should do instead.
+      placeholder: |
+        Example: Add a preference-controlled infobox variant that only appears after the deadline, with separate copy for managed and local support workflows.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Include workarounds, adjacent tools, or partial solutions you already tried.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which part of the project would this affect most?
+      options:
+        - End-user reminder experience
+        - Deadline parsing / enforcement behavior
+        - LaunchDaemon deployment / management
+        - Preferences / configuration profile surface
+        - Localization / translated copy
+        - Assembly / artifact generation
+        - Documentation / examples
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who benefits most?
+      options:
+        - Mac Admins
+        - End-users
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Anything else
+      description: Add screenshots, sample preference shapes, UI sketches, or deployment constraints.

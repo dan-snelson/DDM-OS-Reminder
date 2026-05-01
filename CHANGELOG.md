@@ -2,6 +2,14 @@
 
 ## Changelog
 
+### Version 3.2.0 (01-May-2026)
+- Expanded locale-aware runtime rendering in `reminderDialog.zsh` and `Resources/reminderDialogPreferenceTest.zsh` so relative deadlines, date/time strings, uptime duration text, and free-disk availability reflect the resolved dialog language instead of remaining partly English.
+- Trimmed surrounding whitespace from localized deadline/time placeholders before building deadline messaging and infobox content, preventing stray spacing from breaking relative-deadline display and markdown highlighting.
+- Refined the sample preference profile’s French (`fr`) translations for Issue #93, including dialog copy, support/help text, and past-deadline restart messaging.
+- Resolve dynamic localized overrides through `plistKeyMap` before falling back to lowercasing the plist key prefix (thanks for the heads-up, @Tony Do!)
+- Updated `Resources/reminderDialogPreferenceTest.zsh` usage output to document `--rdnn <your.reverse.domain.notation>`
+- Added per-field support-contact visibility controls (Addresses Feature Request #95; thanks for the inspiring PR #94, @mattmothersbaugh!)
+
 ### Version 3.1.0 (06-Apr-2026)
 - Updated `reminderDialog.zsh` to treat a resolved DDM `VersionString` as already compliant when it matches or trails the installed macOS product version, preventing false reminder suppression failures on Apple log patterns that omit a usable `BuildVersionString`.
 - Updated `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` to treat a resolved DDM `VersionString` as already compliant when it matches or trails the current macOS product version, covering Apple log patterns where `BuildVersionString:(null)` omits a usable build match.

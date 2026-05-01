@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Mac Admins Slack `#ddm-os-reminders`
+    url: https://slack.com/app_redirect?channel=C09LVE2NVML
+    about: Ask usage or deployment questions before filing an issue.
+  - name: DDM OS Reminder Blog Post
+    url: https://snelson.us/ddm
+    about: Review setup, upgrade, localization, and demo-mode guidance.
+  - name: swiftDialog upstream issues
+    url: https://github.com/swiftDialog/swiftDialog/issues
+    about: For dialog-engine issues that are outside this project.

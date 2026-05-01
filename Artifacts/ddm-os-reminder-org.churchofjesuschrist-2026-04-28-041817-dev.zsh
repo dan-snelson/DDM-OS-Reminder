@@ -1,4 +1,4 @@
-#!/bin/zsh --no-rcs 
+#!/bin/zsh --no-rcs
 # shellcheck shell=bash
 
 ####################################################################################################
@@ -30,13 +30,13 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0"
+scriptVersion="3.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
-swiftDialogMinimumRequiredVersion="2.5.6.4805"
+swiftDialogMinimumRequiredVersion="3.0.1.4955"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.1.0"
+scriptVersion="3.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -433,12 +433,17 @@ declare -A preferenceConfiguration=(
     # Support Team
     ["supportTeamName"]="string|IT Support"
     ["supportTeamPhone"]="string|+1 (801) 555-1212"
+    ["hideSupportTeamPhone"]="boolean|NO"
     ["supportTeamEmail"]="string|rescue@domain.org"
+    ["hideSupportTeamEmail"]="boolean|NO"
     ["supportTeamWebsite"]="string|https://support.domain.org"
+    ["hideSupportTeamWebsite"]="boolean|NO"
     ["supportKB"]="string|Update macOS on Mac"
+    ["hideSupportKB"]="boolean|NO"
     ["infobuttonaction"]="string|https://support.apple.com/108382"
     ["supportKBURL"]="string|[Update macOS on Mac](https://support.apple.com/108382)"
     ["supportAssistanceMessage"]="string|<br><br>For assistance, please contact **{supportTeamName}** by clicking the (?) button in the bottom, right-hand corner."
+    ["hideSupportAssistanceMessage"]="boolean|NO"
     
     # Localization
     ["languageOverride"]="string|auto"
@@ -503,13 +508,18 @@ declare -A plistKeyMap=(
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["supportTeamName"]="SupportTeamName"
     ["supportTeamPhone"]="SupportTeamPhone"
+    ["hideSupportTeamPhone"]="HideSupportTeamPhone"
     ["supportTeamEmail"]="SupportTeamEmail"
+    ["hideSupportTeamEmail"]="HideSupportTeamEmail"
     ["supportTeamWebsite"]="SupportTeamWebsite"
+    ["hideSupportTeamWebsite"]="HideSupportTeamWebsite"
     ["supportKB"]="SupportKB"
+    ["hideSupportKB"]="HideSupportKB"
     ["infobuttonaction"]="InfoButtonAction"
     ["supportKBURL"]="SupportKBURL"
     ["languageOverride"]="LanguageOverride"
     ["supportAssistanceMessage"]="SupportAssistanceMessage"
+    ["hideSupportAssistanceMessage"]="HideSupportAssistanceMessage"
     ["title"]="Title"
     ["button1text"]="Button1Text"
     ["button2text"]="Button2Text"
@@ -651,6 +661,13 @@ function formatDateWithDialogLocale() {
     echo "${formattedDate}"
 }
 
+function trimSurroundingWhitespace() {
+    local value="${1}"
+
+    value=$(printf '%s' "${value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    echo "${value}"
+}
+
 function formatDeadlineFromISO8601() {
     local sourceTimestamp="${1}"
     local requestedFormat="${2}"
@@ -661,6 +678,7 @@ function formatDeadlineFromISO8601() {
         formattedDeadline=$(formatDateWithDialogLocale "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
+    formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
 }
 
@@ -674,6 +692,7 @@ function formatDeadlineFromEpoch() {
         formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
+    formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
 }
 
@@ -692,6 +711,7 @@ function formatTimeHumanReadableFromEpoch() {
 
     timeHumanReadable=${timeHumanReadable// AM/ a.m.}
     timeHumanReadable=${timeHumanReadable// PM/ p.m.}
+    timeHumanReadable="$(trimSurroundingWhitespace "${timeHumanReadable}")"
 
     echo "${timeHumanReadable}"
 }
@@ -724,6 +744,7 @@ function formatRelativeDeadlineHumanReadable() {
         relativeDeadlineHumanReadable="${absoluteFallback}"
     fi
 
+    relativeDeadlineHumanReadable="$(trimSurroundingWhitespace "${relativeDeadlineHumanReadable}")"
     echo "${relativeDeadlineHumanReadable}"
 }
 
@@ -799,16 +820,30 @@ function setAllowlistPreferenceValue() {
 function setNumericPreferenceValue() {
     local targetVariable="${1}"
     local managedValue="${2}"
-    local localValue="${3}"
-    local defaultValue="${4}"
-    local candidate=""
+    local managedKeyExists="${3}"
+    local localValue="${4}"
+    local localKeyExists="${5}"
+    local defaultValue="${6}"
+    local candidate="${defaultValue}"
 
-    if [[ "${managedValue}" =~ ^[0-9]+$ ]] && (( managedValue >= 0 && managedValue <= 999 )); then
-        candidate="${managedValue}"
-    elif [[ -n "${localValue}" && "${localValue}" == <-> ]]; then
-        candidate="${localValue}"
+    if [[ "${managedKeyExists}" == "true" ]]; then
+        if [[ "${managedValue}" =~ ^[0-9]+$ ]] && (( managedValue >= 0 && managedValue <= 999 )); then
+            candidate="${managedValue}"
+            preferenceExplicitlySet["${targetVariable}"]="true"
+        else
+            warning "Invalid managed numeric preference '${targetVariable}' value '${managedValue}'; using default '${defaultValue}'."
+            unset "preferenceExplicitlySet[${targetVariable}]"
+        fi
+    elif [[ "${localKeyExists}" == "true" ]]; then
+        if [[ "${localValue}" =~ ^[0-9]+$ ]] && (( localValue >= 0 && localValue <= 999 )); then
+            candidate="${localValue}"
+            preferenceExplicitlySet["${targetVariable}"]="true"
+        else
+            warning "Invalid local numeric preference '${targetVariable}' value '${localValue}'; using default '${defaultValue}'."
+            unset "preferenceExplicitlySet[${targetVariable}]"
+        fi
     else
-        candidate="${defaultValue}"
+        unset "preferenceExplicitlySet[${targetVariable}]"
     fi
 
     printf -v "${targetVariable}" '%s' "${candidate}"
@@ -845,11 +880,16 @@ function loadDefaultPreferences() {
 }
 
 function isKnownPreferencePlistKey() {
+    internalPreferenceKeyForPlistKey "${1}" >/dev/null 2>&1
+}
+
+function internalPreferenceKeyForPlistKey() {
     local plistKey="${1}"
     local prefKey=""
 
     for prefKey in "${(@k)preferenceConfiguration}"; do
         if [[ "${plistKeyMap[$prefKey]:-$prefKey}" == "${plistKey}" ]]; then
+            echo "${prefKey}"
             return 0
         fi
     done
@@ -887,7 +927,11 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
             continue
         fi
 
-        internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        if internalBase="$(internalPreferenceKeyForPlistKey "${baseRaw}")"; then
+            :
+        else
+            internalBase="${baseRaw:0:1:l}${baseRaw:1}"
+        fi
         internalSuffix="$(languageSuffixForCode "${codePart}")"
         internalKey="${internalBase}Localized${internalSuffix}"
         dynamicValue=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
@@ -950,7 +994,7 @@ function loadPreferenceOverrides() {
         # Apply the preference based on type
         case "${prefType}" in
             numeric)
-                setNumericPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
+                setNumericPreferenceValue "${prefKey}" "${managedValue}" "${managedKeyExists}" "${localValue}" "${localKeyExists}" "${defaultValue}"
                 ;;
             boolean)
                 setBooleanPreferenceValue "${prefKey}" "${managedValue}" "${localValue}" "${defaultValue}"
@@ -1071,6 +1115,63 @@ function replacePlaceholders() {
     printf -v "${targetVariable}" '%s' "${value}"
 }
 
+function removeHelpMessageRowForPlaceholder() {
+    local placeholderName="${1}"
+
+    helpmessage="$(printf "%s" "${helpmessage}" | /usr/bin/perl -0pe '
+        BEGIN { $placeholder = shift @ARGV }
+        s#<br>- [^{}]*\{\Q$placeholder\E\}##g
+    ' "${placeholderName}")"
+}
+
+function removeHelpMessageSupportIntro() {
+    helpmessage="$(printf "%s" "${helpmessage}" | /usr/bin/perl -0pe '
+        s#^.*?(?=<br><br>\*\*[^{}]*\*\*<br>- \*\*[^{}]*\*\*: \{(?:userfullname|username|computername|serialnumber|osversion|dialogVersion|scriptVersion)\})##s
+        s#^(?:<br>)+##
+    ')"
+}
+
+function applySupportFieldVisibility() {
+    local allSupportRowsHidden="YES"
+
+    if [[ "${hideSupportTeamPhone}" == "YES" ]]; then
+        supportTeamPhone=""
+        removeHelpMessageRowForPlaceholder "supportTeamPhone"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportTeamEmail}" == "YES" ]]; then
+        supportTeamEmail=""
+        removeHelpMessageRowForPlaceholder "supportTeamEmail"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportTeamWebsite}" == "YES" ]]; then
+        supportTeamWebsite=""
+        removeHelpMessageRowForPlaceholder "supportTeamWebsite"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportKB}" == "YES" ]]; then
+        supportKB=""
+        supportKBURL=""
+        removeHelpMessageRowForPlaceholder "supportKBURL"
+    else
+        allSupportRowsHidden="NO"
+    fi
+
+    if [[ "${hideSupportAssistanceMessage}" == "YES" || "${infobuttontext}" == "hide" ]]; then
+        supportAssistanceMessage=""
+    fi
+
+    if [[ "${allSupportRowsHidden}" == "YES" && "${helpmessage}" == *"{supportTeamName}"* ]]; then
+        removeHelpMessageSupportIntro
+    fi
+}
+
 function setHideSecondaryButtonState() {
     local secondsUntilDeadlineValue="${1}"
     local hideThresholdSecondsValue="${2}"
@@ -1186,6 +1287,147 @@ function localizedWeekdayName() {
     echo "${localizedWeekday}"
 }
 
+function localizedDurationSeparator() {
+    case "${dialogLanguage}" in
+        ja) echo "、" ;;
+        *)  echo ", " ;;
+    esac
+}
+
+function localizedDurationComponent() {
+    local quantity="${1}"
+    local unit="${2}"
+    local localizedComponent=""
+
+    case "${dialogLanguage}" in
+        de)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "Tag" || echo "Tage")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "Stunde" || echo "Stunden")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "Minute" || echo "Minuten")" ;;
+            esac
+            ;;
+        es)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "día" || echo "días")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "hora" || echo "horas")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuto" || echo "minutos")" ;;
+            esac
+            ;;
+        fr)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "jour" || echo "jours")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "heure" || echo "heures")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minute" || echo "minutes")" ;;
+            esac
+            ;;
+        it)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "giorno" || echo "giorni")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "ora" || echo "ore")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuto" || echo "minuti")" ;;
+            esac
+            ;;
+        ja)
+            case "${unit}" in
+                day)    localizedComponent="${quantity}日" ;;
+                hour)   localizedComponent="${quantity}時間" ;;
+                minute) localizedComponent="${quantity}分" ;;
+            esac
+            ;;
+        nl)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "dag" || echo "dagen")" ;;
+                hour)   localizedComponent="${quantity} uur" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuut" || echo "minuten")" ;;
+            esac
+            ;;
+        pt)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "dia" || echo "dias")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "hora" || echo "horas")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minuto" || echo "minutos")" ;;
+            esac
+            ;;
+        en|*)
+            case "${unit}" in
+                day)    localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "day" || echo "days")" ;;
+                hour)   localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "hour" || echo "hours")" ;;
+                minute) localizedComponent="${quantity} $([[ "${quantity}" -eq 1 ]] && echo "minute" || echo "minutes")" ;;
+            esac
+            ;;
+    esac
+
+    echo "${localizedComponent}"
+}
+
+function localizedLessThanOneMinute() {
+    case "${dialogLanguage}" in
+        de) echo "weniger als 1 Minute" ;;
+        es) echo "menos de 1 minuto" ;;
+        fr) echo "moins d'une minute" ;;
+        it) echo "meno di 1 minuto" ;;
+        ja) echo "1分未満" ;;
+        nl) echo "minder dan 1 minuut" ;;
+        pt) echo "menos de 1 minuto" ;;
+        en|*) echo "less than 1 minute" ;;
+    esac
+}
+
+function localizedDiskAvailabilitySuffix() {
+    local percentage="${1}"
+
+    case "${dialogLanguage}" in
+        de) echo "(${percentage}% verfügbar)" ;;
+        es) echo "(${percentage}% disponible)" ;;
+        fr) echo "(${percentage}% disponibles)" ;;
+        it) echo "(${percentage}% disponibile)" ;;
+        ja) echo "(${percentage}% 利用可能)" ;;
+        nl) echo "(${percentage}% beschikbaar)" ;;
+        pt) echo "(${percentage}% disponível)" ;;
+        en|*) echo "(${percentage}% available)" ;;
+    esac
+}
+
+function refreshLocalizedRuntimeFacts() {
+    local separator=""
+    local component=""
+    local -a durationComponents=()
+
+    if [[ "${upTimeDays:-0}" =~ ^[0-9]+$ ]] && (( upTimeDays > 0 )); then
+        durationComponents+=( "$(localizedDurationComponent "${upTimeDays}" day)" )
+    fi
+
+    if [[ "${upTimeHoursRemainder:-0}" =~ ^[0-9]+$ ]] && (( upTimeHoursRemainder > 0 )); then
+        durationComponents+=( "$(localizedDurationComponent "${upTimeHoursRemainder}" hour)" )
+    fi
+
+    if [[ "${upTimeMinutesRemainder:-0}" =~ ^[0-9]+$ ]] && (( upTimeMinutesRemainder > 0 )); then
+        durationComponents+=( "$(localizedDurationComponent "${upTimeMinutesRemainder}" minute)" )
+    fi
+
+    if (( ${#durationComponents[@]} > 0 )); then
+        separator="$(localizedDurationSeparator)"
+        uptimeHumanReadable=""
+
+        for component in "${durationComponents[@]}"; do
+            if [[ -n "${uptimeHumanReadable}" ]]; then
+                uptimeHumanReadable="${uptimeHumanReadable}${separator}"
+            fi
+
+            uptimeHumanReadable="${uptimeHumanReadable}${component}"
+        done
+    else
+        uptimeHumanReadable="$(localizedLessThanOneMinute)"
+    fi
+
+    if [[ -n "${freeSpace:-}" && -n "${freePercentage:-}" && "${freePercentage}" != "Unknown" ]]; then
+        diskSpaceHumanReadable="${freeSpace} $(localizedDiskAvailabilitySuffix "${freePercentage}")"
+    else
+        diskSpaceHumanReadable="${freeSpace:-Unknown}"
+    fi
+}
+
 function resolveDialogLanguage() {
     local normalizedOverride=""
     local detectedLanguage=""
@@ -1288,6 +1530,7 @@ function updateRequiredVariables() {
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
     applyLocalizedDialogText
     applyLocalizedUpdateVocabulary
+    refreshLocalizedRuntimeFacts
     applyLocalizedInfoboxLabels
     
     computeDynamicWarnings
@@ -1296,9 +1539,7 @@ function updateRequiredVariables() {
     computeInfoboxHighlights
     applyPastDeadlineDialogOverrides
 
-    if [[ "${infobuttontext}" == "hide" ]]; then
-        supportAssistanceMessage=""
-    fi
+    applySupportFieldVisibility
 
     buildPlaceholderMap
     
@@ -2426,6 +2667,7 @@ function computeDeadlineEnforcementMessage() {
     local baseDeadlineEnforcementMessage=""
     local deadlineTemplateVariable="deadlineEnforcementMessageAbsolute"
 
+    deadlineDisplay="$(trimSurroundingWhitespace "${deadlineDisplay}")"
     if [[ "${deadlineDisplay}" != "${ddmEnforcedInstallDateHumanReadable}" ]]; then
         deadlineTemplateVariable="deadlineEnforcementMessageRelative"
     fi
@@ -2455,6 +2697,8 @@ function computeInfoboxHighlights() {
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
     local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+
+    infoboxDeadlineDisplay="$(trimSurroundingWhitespace "${infoboxDeadlineDisplay}")"
 
     if [[ "${dialogSupportsMarkdownColor}" != "YES" ]]; then
         return
@@ -2768,7 +3012,7 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
 
-    quitOut "When the sun beats down and I lie on the bench …"
+    quitOut "A cloud of eiderdown draws around me …"
 
     exit "${1}"
 

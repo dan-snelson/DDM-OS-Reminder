@@ -37,7 +37,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.1.0"
+scriptVersion="3.2.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -64,6 +64,8 @@ priorPlistImported=false
 priorPlistPrompted=false
 rdnnInferredFromPriorPlist=false
 modeInferredFromPriorPlist=false
+validLaneArgumentProvided=false
+nearMissDeploymentModeToken=""
 interactiveConfigurationHeaderShown=false
 
 placeholderMarker="Assembled"
@@ -72,13 +74,19 @@ legacyPlaceholderMarker="Sample"
 # IT Support, Branding & Restart Policy (interactive prompts)
 supportTeamName=""
 supportTeamPhone=""
+hideSupportTeamPhone=""
 supportTeamEmail=""
+hideSupportTeamEmail=""
 supportTeamWebsite=""
+hideSupportTeamWebsite=""
 supportKB=""
+hideSupportKB=""
 infoButtonAction=""
 supportKBURL=""
 infoButtonText=""
+enableInfoButton="true"
 enableKnowledgeBase="true"
+hideSupportAssistanceMessage=""
 organizationOverlayIconURL=""
 organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
@@ -95,7 +103,7 @@ function printUsage() {
   echo "Options:"
   echo "  --lane <dev|test|prod>       Select deployment mode"
   echo "  --interactive                Prompt for optional prior .plist import, IT support, branding and restart policy values"
-  echo "  prior-plist                  Auto-enables interactive mode and infers RDNN and deployment mode from the provided .plist"
+  echo "  prior-plist                  Auto-enables interactive mode and infers RDNN plus deployment mode only when filename ends with -dev.plist, -test.plist or -prod.plist"
   echo "  --help, -h                   Show this help"
   echo
 }
@@ -111,6 +119,15 @@ for argument in "$@"; do
   esac
 done
 
+for (( argumentIndex=1; argumentIndex <= $#; argumentIndex++ )); do
+  if [[ "${@[argumentIndex]}" == "--lane" ]] && (( argumentIndex < $# )); then
+    if [[ "${@[$((argumentIndex + 1))]}" =~ ^(dev|test|prod)$ ]]; then
+      validLaneArgumentProvided=true
+      break
+    fi
+  fi
+done
+
 
 
 ####################################################################################################
@@ -122,7 +139,7 @@ echo "==============================================================="
 echo "🧩 Assemble DDM OS Reminder (${scriptVersion})"
 echo "==============================================================="
 echo
-echo "Full Paths:"
+echo "📍 Full Paths:"
 echo
 echo "        Reminder Dialog: ${messageScript}"
 echo "LaunchDaemon Management: ${baseScript}"
@@ -357,6 +374,16 @@ function inferDeploymentModeFromPriorPlist() {
   esac
 }
 
+function detectNearMissDeploymentModeTokenFromPriorPlist() {
+  local plistFilename="${1:t:l}"
+
+  case "${plistFilename}" in
+    *-dev-*.plist)  echo "dev" ;;
+    *-test-*.plist) echo "test" ;;
+    *-prod-*.plist) echo "prod" ;;
+  esac
+}
+
 function showInteractiveConfigurationHeader() {
   if [[ "${interactiveConfigurationHeaderShown}" == true ]]; then
     return
@@ -364,7 +391,7 @@ function showInteractiveConfigurationHeader() {
 
   echo
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Interactive Configuration"
+  echo "🛠️  Interactive Configuration"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo
 
@@ -375,6 +402,7 @@ function applyPriorPlistSelections() {
   local plistPath="${1}"
   local inferredRDNN=""
   local inferredDeploymentMode=""
+  local nearMissModeToken=""
 
   priorPlistPath="${plistPath}"
   priorPlistImported=true
@@ -398,7 +426,13 @@ function applyPriorPlistSelections() {
       deploymentMode="${inferredDeploymentMode}"
       skipModePrompt=true
       modeInferredFromPriorPlist=true
+      nearMissDeploymentModeToken=""
       echo "🔎 Inferred deployment mode from prior plist: '${deploymentMode}'"
+    elif [[ "${validLaneArgumentProvided}" == false ]]; then
+      nearMissModeToken="$(detectNearMissDeploymentModeTokenFromPriorPlist "${priorPlistPath}")"
+      if [[ -n "${nearMissModeToken}" ]]; then
+        nearMissDeploymentModeToken="${nearMissModeToken}"
+      fi
     fi
   fi
 }
@@ -485,7 +519,7 @@ function promptWithDefault() {
   read -r "?${promptText} [${defaultValue}] (or ‘X’ to exit): " inputValue
 
   if [[ "${inputValue}" == [Xx] ]]; then
-    echo "Exiting at user request."
+    echo "❎ Exiting at user request."
     exit 0
   fi
 
@@ -539,7 +573,7 @@ function promptForPriorPlistImport() {
     read -r "?Drag-and-drop an earlier DOR .plist to import [Return to skip] (or ‘X’ to exit): " candidatePath
 
     if [[ "${candidatePath}" == [Xx] ]]; then
-      echo "Exiting at user request."
+      echo "❎ Exiting at user request."
       exit 0
     fi
 
@@ -814,7 +848,7 @@ if [[ "${skipRDNNPrompt}" == false ]]; then
     read -r "?Enter Your Organization’s Reverse Domain Name Notation [${currentRDNN}] (or ‘X’ to exit): " userRDNN
 
     if [[ "${userRDNN}" == [Xx] ]]; then
-      echo "Exiting at user request."
+      echo "❎ Exiting at user request."
       exit 0
     fi
 
@@ -823,7 +857,7 @@ if [[ "${skipRDNNPrompt}" == false ]]; then
     read -r "?Enter Your Organization’s Reverse Domain Name Notation (or ‘X’ to exit): " newRDNN
 
     if [[ "${newRDNN}" == [Xx] ]]; then
-      echo "Exiting at user request."
+      echo "❎ Exiting at user request."
       exit 0
     fi
   fi
@@ -840,7 +874,7 @@ resolvedScriptLogPath="/var/log/${newRDNN}.log"
 
 echo
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Using '${newRDNN}' as the Reverse Domain Name Notation"
+echo "🏷️  Using '${newRDNN}' as the Reverse Domain Name Notation"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo
 
@@ -862,7 +896,7 @@ if [[ "${interactiveMode}" == true ]]; then
 
     showInteractiveConfigurationHeader
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "IT Support, Branding & Restart Policy (Interactive)"
+    echo "🎛️  IT Support, Branding & Restart Policy (Interactive)"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
@@ -870,9 +904,16 @@ if [[ "${interactiveMode}" == true ]]; then
     defaultSupportTeamPhone="+1 (801) 555-1212"
     defaultSupportTeamEmail="rescue@${derivedDomain}"
     defaultSupportTeamWebsite="https://support.${derivedDomain}"
+    defaultHideSupportTeamPhone="NO"
+    defaultHideSupportTeamEmail="NO"
+    defaultHideSupportTeamWebsite="NO"
+    defaultHideSupportKB="NO"
+    defaultHideSupportAssistanceMessage="NO"
+    defaultEnableInfoButton="YES"
     defaultEnableKnowledgeBase="YES"
     defaultSupportKB="Update macOS on Mac"
     defaultInfoButtonAction="${defaultSupportTeamWebsite}"
+    defaultInfoButtonText="${defaultSupportKB}"
     defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
     defaultOrganizationOverlayIconURL="https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     defaultOrganizationOverlayIconURLdark="https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
@@ -882,34 +923,76 @@ if [[ "${interactiveMode}" == true ]]; then
 
     promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
     promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
+    promptWithDefault "Hide Support Team Phone (YES/NO)" "${defaultHideSupportTeamPhone}" "hideSupportTeamPhone"
     promptWithDefault "Support Team Email" "${defaultSupportTeamEmail}" "supportTeamEmail"
+    promptWithDefault "Hide Support Team Email (YES/NO)" "${defaultHideSupportTeamEmail}" "hideSupportTeamEmail"
     promptWithDefault "Support Team Website" "${defaultSupportTeamWebsite}" "supportTeamWebsite"
-    promptWithDefault "Knowledge Base ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
-    enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
-    if [[ -z "${enableKnowledgeBase}" ]]; then
-      echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
-      enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
+    promptWithDefault "Hide Support Team Website (YES/NO)" "${defaultHideSupportTeamWebsite}" "hideSupportTeamWebsite"
+    defaultInfoButtonAction="${supportTeamWebsite}"
+
+    hideSupportTeamPhone="$(normalizeBoolean "${hideSupportTeamPhone}")"
+    if [[ -z "${hideSupportTeamPhone}" ]]; then
+      echo "⚠️  Invalid input for HideSupportTeamPhone; defaulting to ${defaultHideSupportTeamPhone}"
+      hideSupportTeamPhone="$(normalizeBoolean "${defaultHideSupportTeamPhone}")"
     fi
 
-    if [[ "${enableKnowledgeBase}" == "true" ]]; then
-      promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
+    hideSupportTeamEmail="$(normalizeBoolean "${hideSupportTeamEmail}")"
+    if [[ -z "${hideSupportTeamEmail}" ]]; then
+      echo "⚠️  Invalid input for HideSupportTeamEmail; defaulting to ${defaultHideSupportTeamEmail}"
+      hideSupportTeamEmail="$(normalizeBoolean "${defaultHideSupportTeamEmail}")"
+    fi
 
-      supportKbSlug="${supportKB// /-}"
-      defaultInfoButtonAction="${supportTeamWebsite}/${supportKbSlug}"
+    hideSupportTeamWebsite="$(normalizeBoolean "${hideSupportTeamWebsite}")"
+    if [[ -z "${hideSupportTeamWebsite}" ]]; then
+      echo "⚠️  Invalid input for HideSupportTeamWebsite; defaulting to ${defaultHideSupportTeamWebsite}"
+      hideSupportTeamWebsite="$(normalizeBoolean "${defaultHideSupportTeamWebsite}")"
+    fi
+
+    promptWithDefault "Info Button ('YES' to specify; 'NO' to hide)" "${defaultEnableInfoButton}" "enableInfoButton"
+    enableInfoButton="$(normalizeBoolean "${enableInfoButton}")"
+    if [[ -z "${enableInfoButton}" ]]; then
+      echo "⚠️  Invalid input for Info Button prompt; defaulting to ${defaultEnableInfoButton}"
+      enableInfoButton="$(normalizeBoolean "${defaultEnableInfoButton}")"
+    fi
+
+    if [[ "${enableInfoButton}" == "true" ]]; then
+      promptWithDefault "Info Button Text" "${defaultInfoButtonText}" "infoButtonText"
       promptWithDefault "Info Button Action" "${defaultInfoButtonAction}" "infoButtonAction"
 
-      defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
-      promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+      promptWithDefault "Knowledge Base Row ('YES' to specify; 'NO' to hide)" "${defaultEnableKnowledgeBase}" "enableKnowledgeBase"
+      enableKnowledgeBase="$(normalizeBoolean "${enableKnowledgeBase}")"
+      if [[ -z "${enableKnowledgeBase}" ]]; then
+        echo "⚠️  Invalid input for Knowledge Base prompt; defaulting to ${defaultEnableKnowledgeBase}"
+        enableKnowledgeBase="$(normalizeBoolean "${defaultEnableKnowledgeBase}")"
+      fi
 
-      infoButtonText="${supportKB}"
+      if [[ "${enableKnowledgeBase}" == "true" ]]; then
+        hideSupportKB="false"
+        promptWithDefault "Support KB Title" "${defaultSupportKB}" "supportKB"
+
+        defaultSupportKBURL="[${supportKB}](${infoButtonAction})"
+        promptWithDefault "Support KB Markdown Link" "${defaultSupportKBURL}" "supportKBURL"
+      else
+        hideSupportKB="true"
+        supportKB=""
+        supportKBURL=""
+      fi
     else
+      hideSupportKB="true"
       supportKB=""
       infoButtonAction=""
       supportKBURL=""
       infoButtonText="hide"
       echo ""
-      echo "ℹ️  Knowledge Base features disabled; hiding 'infobutton', KB row in 'helpmessage' and QR help image."
+      echo "ℹ️  Info button hidden; support help surface will not be shown."
       echo ""
+    fi
+
+    promptWithDefault "Hide Support Assistance Message (YES/NO)" "${defaultHideSupportAssistanceMessage}" "hideSupportAssistanceMessage"
+    hideSupportAssistanceMessage="$(normalizeBoolean "${hideSupportAssistanceMessage}")"
+    if [[ -z "${hideSupportAssistanceMessage}" ]]; then
+      echo "⚠️  Invalid input for HideSupportAssistanceMessage; defaulting to ${defaultHideSupportAssistanceMessage}"
+      hideSupportAssistanceMessage="$(normalizeBoolean "${defaultHideSupportAssistanceMessage}")"
     fi
 
     promptWithDefault "Overlay Icon URL (Light)" "${defaultOrganizationOverlayIconURL}" "organizationOverlayIconURL"
@@ -952,16 +1035,23 @@ fi
 
 # Prompt for deployment mode if not specified via CLI
 if [[ "${skipModePrompt}" == false ]]; then
+  if [[ -n "${nearMissDeploymentModeToken}" ]]; then
+    echo
+    echo "⚠️  Prior plist filename includes '-${nearMissDeploymentModeToken}-', but deployment mode was not inferred."
+    echo "    Exact filename suffix required: -dev.plist, -test.plist or -prod.plist"
+    echo "    Re-run with --lane ${nearMissDeploymentModeToken}, or rename prior plist to exact supported suffix."
+  fi
+
   echo
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "Select Deployment Mode:"
+  echo "🚦 Select Deployment Mode:"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo
-  echo "  1) Development - Keep placeholder text for local testing"
-  echo "  2) Testing     - Replace placeholder text with 'TEST' for staging"
-  echo "  3) Production  - Remove placeholder text for clean deployment"
+  echo "  1) 🧪 Development - Keep placeholder text for local testing"
+  echo "  2) 🔬 Testing     - Replace placeholder text with 'TEST' for staging"
+  echo "  3) 🚀 Production  - Remove placeholder text for clean deployment"
   echo
-  echo "  [Press ‘X’ to exit]"
+  echo "  [Press ‘X’ to exit ❎]"
   echo
   read -r "?Enter mode [1/2/3]: " modeChoice
 
@@ -972,7 +1062,7 @@ if [[ "${skipModePrompt}" == false ]]; then
       deploymentMode="prod"
       ;;
     [Xx])
-      echo "Exiting at user request."
+      echo "❎ Exiting at user request."
       exit 0
       ;;
     *)
@@ -1198,12 +1288,17 @@ if [[ -f "${plistSample}" ]]; then
       echo "    🔧 Applying IT support, branding and restart policy values …"
       /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
       /usr/bin/plutil -replace SupportTeamPhone -string "${supportTeamPhone}" "${plistOutput}"
+      /usr/bin/plutil -replace HideSupportTeamPhone -bool "${hideSupportTeamPhone}" "${plistOutput}"
       /usr/bin/plutil -replace SupportTeamEmail -string "${supportTeamEmail}" "${plistOutput}"
+      /usr/bin/plutil -replace HideSupportTeamEmail -bool "${hideSupportTeamEmail}" "${plistOutput}"
       /usr/bin/plutil -replace SupportTeamWebsite -string "${supportTeamWebsite}" "${plistOutput}"
+      /usr/bin/plutil -replace HideSupportTeamWebsite -bool "${hideSupportTeamWebsite}" "${plistOutput}"
       /usr/bin/plutil -replace SupportKB -string "${supportKB}" "${plistOutput}"
+      /usr/bin/plutil -replace HideSupportKB -bool "${hideSupportKB}" "${plistOutput}"
       /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
       /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
       /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
+      /usr/bin/plutil -replace HideSupportAssistanceMessage -bool "${hideSupportAssistanceMessage}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
       /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
@@ -1213,39 +1308,8 @@ if [[ -f "${plistSample}" ]]; then
         /usr/bin/plutil -replace DaysPastDeadlineRestartWorkflow -integer "${daysPastDeadlineRestartWorkflow}" "${plistOutput}"
       fi
 
-      if [[ "${enableKnowledgeBase}" != "true" ]]; then
+      if [[ "${enableInfoButton}" != "true" ]]; then
         /usr/bin/plutil -replace HelpImage -string "hide" "${plistOutput}"
-        /usr/bin/plutil -replace SupportAssistanceMessage -string "" "${plistOutput}"
-
-        local helpMessageKey=""
-        local currentHelpMessage=""
-        local updatedHelpMessage=""
-        local -a helpMessageKeys=()
-
-        while IFS= read -r helpMessageKey; do
-          [[ -n "${helpMessageKey}" ]] && helpMessageKeys+=("${helpMessageKey}")
-        done < <(/usr/libexec/PlistBuddy -c "Print" "${plistOutput}" 2>/dev/null | awk '
-          /^    HelpMessage =/ { print "HelpMessage" }
-          /^    HelpMessageLocalized_/ {
-            key=$0
-            sub(/^    /, "", key)
-            sub(/ =.*/, "", key)
-            print key
-          }
-        ')
-
-        for helpMessageKey in "${helpMessageKeys[@]}"; do
-          currentHelpMessage="$(/usr/bin/plutil -extract "${helpMessageKey}" raw -o - "${plistOutput}" 2>/dev/null || true)"
-          if [[ -n "${currentHelpMessage}" ]]; then
-            updatedHelpMessage="$(printf "%s" "${currentHelpMessage}" | /usr/bin/sed 's#<br>- \*\*Knowledge Base Article:\*\* {supportKBURL}##g')"
-            /usr/bin/plutil -replace "${helpMessageKey}" -string "${updatedHelpMessage}" "${plistOutput}"
-          fi
-        done
-
-        messageWithKbHidden="$(/usr/bin/plutil -extract Message raw -o - "${plistOutput}" 2>/dev/null || true)"
-        if [[ "${messageWithKbHidden}" == *"(?) button"* ]]; then
-          echo "    ⚠️  Message still references '(?) button' while Knowledge Base is disabled."
-        fi
       fi
     fi
   fi
@@ -1416,7 +1480,7 @@ rm -f "${outputScript}.bak" 2>/dev/null || true
 echo
 echo "🏁 Done."
 echo
-echo "Deployment Artifacts:"
+echo "📦 Deployment Artifacts:"
 echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
@@ -1429,7 +1493,7 @@ echo
 
 case "${deploymentMode}" in
   dev)
-    echo "  Development Artifacts Generated:"
+    echo "  🧪 Development Artifacts Generated:"
     echo "    - Legacy 'Sample' placeholders replaced with '${placeholderMarker}'"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Supported configuration values imported from prior plist"

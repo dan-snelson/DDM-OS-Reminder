@@ -1,4 +1,4 @@
-name: Bug report
+name: Bug Report
 description: Something is sideways with DDM OS Reminder 
 title: "[Bug]: "
 labels: ["bug"]
@@ -86,8 +86,8 @@ body:
         - SOTI MobiControl
         - Custom built
         - Something else not on this list
-      validations:
-        required: true
+    validations:
+      required: true
 
   - type: dropdown
     id: affected-area

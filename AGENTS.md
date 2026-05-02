@@ -84,13 +84,14 @@ DDM OS Reminder should give Mac admins prominent, actionable, customizable user 
 1. Preserve trustworthy DDM deadline/version resolution from `/var/log/install.log`.
 2. Preserve RDNN consistency end-to-end. Silent RDNN mismatch is highest-risk configuration bug.
 3. Keep preference behavior stable: `Managed Preferences -> Local Preferences -> Defaults`.
-4. Keep user-facing reminder behavior clear, actionable, and observable through structured logging.
-5. Keep assembled deployment workflow predictable across script, plist, mobileconfig, and self-extracting helper paths.
+4. Keep subtle reminder semantics stable: quiet period begins after user interaction, not dialog display; past-due enforcement state may wait up to 5 minutes for refreshed DDM state before acting.
+5. Keep user-facing reminder behavior clear, actionable, and observable through structured logging.
+6. Keep assembled deployment workflow predictable across script, plist, mobileconfig, and self-extracting helper paths.
 
 
 ## Key Files
 - `reminderDialog.zsh`: core runtime logic, deadline parsing, user checks, dialog rendering, logging
-- `launchDaemonManagement.zsh`: deployment/reset logic, LaunchDaemon creation/loading, embedded reminder script writer
+- `launchDaemonManagement.zsh`: deployment/reset logic, LaunchDaemon creation/loading, embedded reminder script writer, MDM Script Parameter 4 reset/uninstall handling (`All`, `LaunchDaemon`, `Script`, `Uninstall`, or blank)
 - `assemble.zsh`: artifact builder, RDNN harmonization, heredoc embedding, syntax checks, plist/mobileconfig generation
 - `README.md`: current project overview, features, upgrade notes, operator guidance
 - `Resources/README.md`: assembly, packaging, plist/mobileconfig, EA, and preference-test instructions
@@ -103,6 +104,7 @@ DDM OS Reminder should give Mac admins prominent, actionable, customizable user 
 ## Repository Rules
 - Repo does not use `VERSION.txt`. Release-state truth comes from script `scriptVersion` values plus `README.md` and `CHANGELOG.md`.
 - `assemble.zsh` is enforcement point for RDNN alignment and deployable artifact generation.
+- Default RDNN placeholder is `org.churchofjesuschrist`. Preserve suffix meanings: `dor` = LaunchDaemon label, `dorm` = deployed reminder script.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until you run `assemble.zsh`.
 - Treat `Artifacts/` as generated but potentially tracked output. Do not rebuild or replace artifacts unless task specifically calls for it.
 - Localization additions should usually start in `Resources/sample.plist`; runtime and config generators are designed to carry those keys forward.
@@ -141,9 +143,10 @@ Maintain established style in shipped scripts unless user explicitly requests ot
 1. Run `zsh -n` on every modified Zsh script. This is required.
 2. For `reminderDialog.zsh` behavior changes, run `zsh reminderDialog.zsh demo`.
 3. For `assemble.zsh` or deployment-flow changes, review generated artifact expectations against `Resources/README.md` and relevant docs before calling work complete.
-4. For `AGENTS.md` or docs-only changes, verify Markdown structure, terminology, links, and repo references.
-5. When behavior, preferences, or operator workflows change, update affected docs in `README.md`, `Resources/README.md`, `Diagrams/`, and `CHANGELOG.md` as needed.
-6. Do not add new production dependencies without explicit confirmation.
+4. For packaging changes, account for self-extracting bundle workflow in `Resources/createSelfExtracting.zsh` and generated `.mobileconfig` validation via `/usr/bin/plutil -lint`.
+5. For `AGENTS.md` or docs-only changes, verify Markdown structure, terminology, links, and repo references.
+6. When behavior, preferences, or operator workflows change, update affected docs in `README.md`, `Resources/README.md`, `Diagrams/`, and `CHANGELOG.md` as needed.
+7. Do not add new production dependencies without explicit confirmation.
 
 
 ## Release / Build Checklist

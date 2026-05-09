@@ -2,6 +2,9 @@
 
 ## Changelog
 
+### Version 3.2.1b1 (08-May-2026)
+- Fixed localized preference precedence and explicit-setting lookup so base values like `InfoButtonText=hide` now override localized variants, correctly hiding the info button in both preview and runtime paths. (Thanks for the heads-up, @James Anzaldua!)
+
 ### Version 3.2.0 (01-May-2026)
 - Expanded locale-aware runtime rendering in `reminderDialog.zsh` and `Resources/reminderDialogPreferenceTest.zsh` so relative deadlines, date/time strings, uptime duration text, and free-disk availability reflect the resolved dialog language instead of remaining partly English.
 - Trimmed surrounding whitespace from localized deadline/time placeholders before building deadline messaging and infobox content, preventing stray spacing from breaking relative-deadline display and markdown highlighting.

@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0"
+scriptVersion="3.2.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0"
+scriptVersion="3.2.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1467,12 +1467,12 @@ function applyLocalizedFieldValue() {
     local localizedVariable="${baseVariable}Localized${localizedSuffix}"
     local localizedValue="${(P)localizedVariable}"
 
-    if [[ "${preferenceExplicitlySet[${localizedVariable}]}" == "true" ]]; then
-        printf -v "${baseVariable}" '%s' "${localizedValue}"
+    if [[ "${preferenceExplicitlySet["${baseVariable}"]}" == "true" ]]; then
         return
     fi
 
-    if [[ "${preferenceExplicitlySet[${baseVariable}]}" == "true" ]]; then
+    if [[ "${preferenceExplicitlySet["${localizedVariable}"]}" == "true" ]]; then
+        printf -v "${baseVariable}" '%s' "${localizedValue}"
         return
     fi
 

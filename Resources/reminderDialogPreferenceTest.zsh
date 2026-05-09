@@ -70,7 +70,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.2.0"
+scriptVersion="3.2.1b1"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -860,12 +860,12 @@ function applyLocalizedFieldValue() {
     localizedVariable="${baseVariable}Localized${localizedSuffix}"
     localizedValue="${(P)localizedVariable}"
 
-    if [[ "${preferenceExplicitlySet[${localizedVariable}]}" == "true" ]]; then
-        printf -v "${baseVariable}" '%s' "${localizedValue}"
+    if [[ "${preferenceExplicitlySet["${baseVariable}"]}" == "true" ]]; then
         return
     fi
 
-    if [[ "${preferenceExplicitlySet[${baseVariable}]}" == "true" ]]; then
+    if [[ "${preferenceExplicitlySet["${localizedVariable}"]}" == "true" ]]; then
+        printf -v "${baseVariable}" '%s' "${localizedValue}"
         return
     fi
 

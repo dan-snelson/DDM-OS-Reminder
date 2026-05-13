@@ -2,9 +2,10 @@
 
 ## Changelog
 
-### Version 3.3.0b1 (08-May-2026)
+### Version 3.3.0b2 (13-May-2026)
 - Fixed localized preference precedence and explicit-setting lookup so base values like `InfoButtonText=hide` now override localized variants, correctly hiding the info button in both preview and runtime paths. (Thanks for the heads-up, @James Anzaldua!)
-- Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` fallback support for exact locale and base language variants, and aligned preview/runtime relative deadline time formatting with the same resolved locale-aware date/time policy.
+- Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` fallback support for exact locale and base language variants, and aligned preview/runtime relative deadline time formatting with the same resolved locale-aware date/time policy. (Thanks for the suggestion, @coalliera!)
+- Restored localized dialog-text override precedence when both shared base keys and matching `*Localized_<code>` values are present, while preserving the `InfoButtonText=hide` sentinel in preview and runtime paths. (Thanks for the heads-up, @coalliera!)
 
 ### Version 3.2.0 (01-May-2026)
 - Expanded locale-aware runtime rendering in `reminderDialog.zsh` and `Resources/reminderDialogPreferenceTest.zsh` so relative deadlines, date/time strings, uptime duration text, and free-disk availability reflect the resolved dialog language instead of remaining partly English.

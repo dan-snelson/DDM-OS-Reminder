@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0b1"
+scriptVersion="3.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1384,8 +1384,11 @@ function applyLocalizedFieldValue() {
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
     local localizedVariable="${baseVariable}Localized${localizedSuffix}"
     local localizedValue="${(P)localizedVariable}"
+    local baseValue="${(P)baseVariable}"
 
-    if [[ "${preferenceExplicitlySet["${baseVariable}"]}" == "true" ]]; then
+    # Base values remain shared fallback text; matching localized overrides should
+    # still win when present. Preserve the special InfoButtonText=hide sentinel.
+    if [[ "${baseVariable}" == "infobuttontext" && "${preferenceExplicitlySet["${baseVariable}"]}" == "true" && "${baseValue}" == "hide" ]]; then
         return
     fi
 

@@ -884,12 +884,16 @@ function resolveDateFormatDeadlineHumanReadable() {
     local exactValue=""
     local baseValue=""
     local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
+    local resolvedDateFormatSource="built-in default"
 
     requestedLanguageCode="$(requestedDialogLanguageCode)"
     baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
     resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
 
     deadlineFormatLanguageCode="${resolvedDialogLanguage:-en}"
+    if [[ "${preferenceExplicitlySet["dateFormatDeadlineHumanReadable"]}" == "true" ]]; then
+        resolvedDateFormatSource="global preference"
+    fi
 
     if [[ -n "${requestedLanguageCode}" ]]; then
         exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
@@ -900,6 +904,7 @@ function resolveDateFormatDeadlineHumanReadable() {
             if [[ -n "${exactValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${exactValue}"
                 deadlineFormatLanguageCode="${requestedLanguageCode}"
+                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
             fi
         fi
     fi
@@ -913,6 +918,7 @@ function resolveDateFormatDeadlineHumanReadable() {
             if [[ -n "${baseValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${baseValue}"
                 deadlineFormatLanguageCode="${baseLanguageCode}"
+                resolvedDateFormatSource="base language preference (${baseLanguageCode})"
             fi
         fi
     fi
@@ -922,6 +928,7 @@ function resolveDateFormatDeadlineHumanReadable() {
     [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
 
     relativeDeadlineTimeFormatHumanReadable="$(deriveRelativeDeadlineTimeFormat "${dateFormatDeadlineHumanReadable}")"
+    notice "Resolved deadline date format using ${resolvedDateFormatSource}: requested language '${requestedLanguageCode:-auto}', dialog language '${resolvedDialogLanguage:-en}', format language '${deadlineFormatLanguageCode}', absolute format '${dateFormatDeadlineHumanReadable}', relative time format '${relativeDeadlineTimeFormatHumanReadable}'"
 }
 
 function validatePreferenceLoad() {

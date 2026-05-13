@@ -1099,7 +1099,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `PartiallyStagedUpdateMessageLocalized_{lang}`
 - `PendingDownloadMessageLocalized_{lang}`
 
-*Dynamic localization primitives (3.3.0b1+)*:
+*Dynamic localization primitives (3.2.0+)*:
 - `RelativeDeadlineTodayLocalized_{lang}`
 - `RelativeDeadlineTomorrowLocalized_{lang}`
 - `UpdateWordLocalized_{lang}`
@@ -1687,7 +1687,7 @@ These placeholders are resolved at render time by swiftDialog itself. See the fu
 
 **Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. Invalid formats suppress reminder dialogs and emit a `[WARNING]` log entry.
 
-**3.3.0b1 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
+**3.2.0 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
 
 ### Placeholder Modifiers
 
@@ -2181,10 +2181,11 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 3.3.0b1 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
-| 3.3.0b1 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
+| 3.3.0b1 | 13-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
+| 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
+| 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
-**Last Updated**: 06-Apr-2026
+**Last Updated**: 13-May-2026
 **DDM OS Reminder Version**: 3.3.0b1

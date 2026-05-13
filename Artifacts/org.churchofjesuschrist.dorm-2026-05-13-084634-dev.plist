@@ -42,6 +42,12 @@
 	<string>Assembled Lembrar-me mais tarde</string>
 	<key>DateFormatDeadlineHumanReadable</key>
 	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
+	<key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
+	<string>+%a, %d/%m/%Y %H:%M</string>
+	<key>DateFormatDeadlineHumanReadableLocalized_fr</key>
+	<string>+%a %d/%m/%Y %H:%M</string>
+	<key>DateFormatDeadlineHumanReadableLocalized_fr_CA</key>
+	<string>+%a %Y-%m-%d %H:%M</string>
 	<key>DaysBeforeDeadlineBlurscreen</key>
 	<integer>3</integer>
 	<key>DaysBeforeDeadlineDisplayReminder</key>

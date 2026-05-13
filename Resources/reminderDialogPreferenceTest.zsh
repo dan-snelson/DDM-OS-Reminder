@@ -70,7 +70,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.2.1b1"
+scriptVersion="3.3.0b1"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -82,6 +82,8 @@ declare -A preferenceExplicitlySet=()
 foundManagedPreferences="false"
 foundLocalPreferences="false"
 dialogLanguage="en"
+deadlineFormatLanguageCode="en"
+relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
 dialogSupportsMarkdownColor="NO"
 hideSecondaryButton="NO"
 blurscreen="--noblurscreen"
@@ -392,11 +394,70 @@ function setStringPreferenceValue() {
 }
 
 function languageSuffixForCode() {
-    local code="${1:l}"
+    local code=""
+    local firstSegment=""
+    local segmentIndex=0
+    local -a codeSegments=()
 
-    [[ -z "${code}" || "${code}" == "en" ]] && echo "En" && return
+    code="$(sanitizeLanguageCode "${1}")"
+    [[ -z "${code}" ]] && echo "" && return
 
-    echo "${(C)code}"
+    IFS='_' read -r -A codeSegments <<< "${code}"
+    firstSegment="${codeSegments[1]:l}"
+    code="${(C)firstSegment}"
+
+    if (( ${#codeSegments[@]} > 1 )); then
+        for (( segmentIndex=2; segmentIndex<=${#codeSegments[@]}; segmentIndex++ )); do
+            code="${code}_${codeSegments[segmentIndex]:u}"
+        done
+    fi
+
+    echo "${code}"
+}
+
+function sanitizeLanguageCode() {
+    local languageCode="${1:l}"
+
+    languageCode="${languageCode#\"}"
+    languageCode="${languageCode%\"}"
+    languageCode="${languageCode#\'}"
+    languageCode="${languageCode%\'}"
+    languageCode="${languageCode//-/_}"
+    languageCode="${languageCode// /}"
+
+    while [[ "${languageCode}" == *"__"* ]]; do
+        languageCode="${languageCode//__/_}"
+    done
+
+    while [[ "${languageCode}" == _* ]]; do
+        languageCode="${languageCode#_}"
+    done
+
+    while [[ "${languageCode}" == *_ ]]; do
+        languageCode="${languageCode%_}"
+    done
+
+    echo "${languageCode}"
+}
+
+function baseLanguageCodeForCode() {
+    local languageCode=""
+
+    languageCode="$(sanitizeLanguageCode "${1}")"
+    echo "${languageCode%%_*}"
+}
+
+function requestedDialogLanguageCode() {
+    local requestedLanguageCode=""
+
+    if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
+        requestedLanguageCode="${languageOverride}"
+    else
+        requestedLanguageCode="$(detectLoggedInUserLanguageCode)"
+    fi
+
+    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageCode}")"
+    echo "${requestedLanguageCode}"
 }
 
 function loadDynamicLocalizedPreferenceOverridesFromPlist() {
@@ -502,7 +563,7 @@ function loadPreferenceOverrides() {
         loadDynamicLocalizedPreferenceOverridesFromPlist "${managedPreferencesPlist}.plist"
     fi
 
-    [[ -n "${dateFormatDeadlineHumanReadable}" && "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+    resolveDateFormatDeadlineHumanReadable
 
     preFlight "Preferences loaded"
     return 0
@@ -515,8 +576,12 @@ function loadPreferenceOverrides() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function localeForDialogLanguageCode() {
-    local languageCode="${1:l}"
+    local languageCode=""
+    local baseLanguageCode=""
     local discoveredLocale=""
+
+    languageCode="$(sanitizeLanguageCode "${1}")"
+    baseLanguageCode="$(baseLanguageCodeForCode "${languageCode}")"
 
     discoveredLocale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
         BEGIN { IGNORECASE = 1 }
@@ -534,7 +599,7 @@ function localeForDialogLanguageCode() {
         return
     fi
 
-    case "${languageCode}" in
+    case "${baseLanguageCode}" in
         de) echo "de_DE.UTF-8" ;;
         en) echo "en_US.UTF-8" ;;
         es) echo "es_ES.UTF-8" ;;
@@ -547,14 +612,15 @@ function localeForDialogLanguageCode() {
     esac
 }
 
-function formatDateWithDialogLocale() {
-    local inputFormat="${1}"
-    local inputValue="${2}"
-    local outputFormat="${3}"
+function formatDateWithLanguageCode() {
+    local languageCode="${1}"
+    local inputFormat="${2}"
+    local inputValue="${3}"
+    local outputFormat="${4}"
     local localeForDate=""
     local formattedDate=""
 
-    localeForDate="$(localeForDialogLanguageCode "${dialogLanguage}")"
+    localeForDate="$(localeForDialogLanguageCode "${languageCode}")"
 
     if [[ -n "${localeForDate}" ]]; then
         formattedDate=$(LC_TIME="${localeForDate}" date -jf "${inputFormat}" "${inputValue}" "${outputFormat}" 2>/dev/null)
@@ -565,6 +631,14 @@ function formatDateWithDialogLocale() {
     fi
 
     echo "${formattedDate}"
+}
+
+function formatDateWithDialogLocale() {
+    local inputFormat="${1}"
+    local inputValue="${2}"
+    local outputFormat="${3}"
+
+    formatDateWithLanguageCode "${dialogLanguage}" "${inputFormat}" "${inputValue}" "${outputFormat}"
 }
 
 function trimSurroundingWhitespace() {
@@ -579,13 +653,37 @@ function formatDeadlineFromEpoch() {
     local requestedFormat="${2}"
     local formattedDeadline=""
 
-    formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "${requestedFormat}")
+    formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${sourceEpoch}" "${requestedFormat}")
     if [[ -z "${formattedDeadline}" ]]; then
-        formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
+        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
     formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
+}
+
+function deriveRelativeDeadlineTimeFormat() {
+    local deadlineFormat="${1}"
+    local normalizedFormat="${deadlineFormat#+}"
+    local derivedFormat=""
+
+    derivedFormat=$(printf '%s' "${normalizedFormat}" | /usr/bin/perl -ne '
+        if (/(%[-_0^#]*[kKlHIrRTX].*)/) {
+            $value = $1;
+            $value =~ s/^[[:space:],;:|\/.-]+//;
+            print "+$value";
+            exit;
+        }
+    ')
+
+    if [[ -z "${derivedFormat}" ]]; then
+        case "${deadlineFormat}" in
+            *%H*|*%k*|*%R*|*%T*) derivedFormat="+%H:%M" ;;
+            *)                   derivedFormat="+%-l:%M %p" ;;
+        esac
+    fi
+
+    echo "${derivedFormat}"
 }
 
 function formatTimeHumanReadableFromEpoch() {
@@ -596,7 +694,7 @@ function formatTimeHumanReadableFromEpoch() {
         return 1
     fi
 
-    timeHumanReadable=$(formatDateWithDialogLocale "%s" "${targetEpoch}" "+%-l:%M %p")
+    timeHumanReadable=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${targetEpoch}" "${relativeDeadlineTimeFormatHumanReadable}")
     [[ -z "${timeHumanReadable}" ]] && return 1
 
     timeHumanReadable=${timeHumanReadable// AM/ a.m.}
@@ -646,13 +744,10 @@ function detectLoggedInUserLanguageCode() {
 }
 
 function normalizeDialogLanguageCode() {
-    local languageCode="${1:l}"
+    local languageCode=""
     local sentinelKey=""
 
-    languageCode="${languageCode#\"}"
-    languageCode="${languageCode%\"}"
-    languageCode="${languageCode#\'}"
-    languageCode="${languageCode%\'}"
+    languageCode="$(sanitizeLanguageCode "${1}")"
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
@@ -670,6 +765,62 @@ function normalizeDialogLanguageCode() {
     fi
 
     echo "en"
+}
+
+function resolveDateFormatDeadlineHumanReadable() {
+    local requestedLanguageCode=""
+    local baseLanguageCode=""
+    local resolvedDialogLanguage=""
+    local exactVariableName=""
+    local baseVariableName=""
+    local exactValue=""
+    local baseValue=""
+    local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
+    local resolvedDateFormatSource="built-in default"
+
+    requestedLanguageCode="$(requestedDialogLanguageCode)"
+    baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
+    resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
+
+    deadlineFormatLanguageCode="${resolvedDialogLanguage:-en}"
+    if [[ "${preferenceExplicitlySet["dateFormatDeadlineHumanReadable"]}" == "true" ]]; then
+        resolvedDateFormatSource="global preference"
+    fi
+
+    if [[ -n "${requestedLanguageCode}" ]]; then
+        exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
+        exactValue="${(P)exactVariableName}"
+
+        if [[ "${preferenceExplicitlySet["${exactVariableName}"]}" == "true" || -n "${exactValue}" ]]; then
+            exactValue="$(trimSurroundingWhitespace "${exactValue}")"
+            if [[ -n "${exactValue}" ]]; then
+                dateFormatDeadlineHumanReadable="${exactValue}"
+                deadlineFormatLanguageCode="${requestedLanguageCode}"
+                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
+            fi
+        fi
+    fi
+
+    if [[ "${deadlineFormatLanguageCode}" == "${resolvedDialogLanguage:-en}" && -n "${baseLanguageCode}" && "${baseLanguageCode}" != "${requestedLanguageCode}" ]]; then
+        baseVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${baseLanguageCode}")"
+        baseValue="${(P)baseVariableName}"
+
+        if [[ "${preferenceExplicitlySet["${baseVariableName}"]}" == "true" || -n "${baseValue}" ]]; then
+            baseValue="$(trimSurroundingWhitespace "${baseValue}")"
+            if [[ -n "${baseValue}" ]]; then
+                dateFormatDeadlineHumanReadable="${baseValue}"
+                deadlineFormatLanguageCode="${baseLanguageCode}"
+                resolvedDateFormatSource="base language preference (${baseLanguageCode})"
+            fi
+        fi
+    fi
+
+    dateFormatDeadlineHumanReadable="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadable}")"
+    [[ -z "${dateFormatDeadlineHumanReadable}" ]] && dateFormatDeadlineHumanReadable="${defaultFormat}"
+    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+
+    relativeDeadlineTimeFormatHumanReadable="$(deriveRelativeDeadlineTimeFormat "${dateFormatDeadlineHumanReadable}")"
+    notice "Resolved deadline date format using ${resolvedDateFormatSource}: requested language '${requestedLanguageCode:-auto}', dialog language '${resolvedDialogLanguage:-en}', format language '${deadlineFormatLanguageCode}', absolute format '${dateFormatDeadlineHumanReadable}', relative time format '${relativeDeadlineTimeFormatHumanReadable}'"
 }
 
 function localizedWeekdayName() {

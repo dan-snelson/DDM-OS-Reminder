@@ -114,6 +114,7 @@ ELSE:
 1. `LanguageOverride` (if not `auto`) sets the active language directly.
 2. Otherwise the script reads logged-in user `AppleLanguages:0`, normalizes built-in supported locales (`en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`), and can honor additional languages when matching `*Localized_<code>` keys are supplied in preferences.
 3. For each localized field, fallback is `selected language-specific key` → scalar/base key.
+4. `DateFormatDeadlineHumanReadable` also supports locale-aware overrides with `DateFormatDeadlineHumanReadableLocalized_<code>` and resolves as `exact locale` → `base language` → global `DateFormatDeadlineHumanReadable` → built-in script default.
 
 ---
 

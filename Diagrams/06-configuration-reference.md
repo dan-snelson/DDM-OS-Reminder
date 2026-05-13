@@ -742,10 +742,24 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+, expanded in 3.2.0)**:
+**Locale Behavior (3.0.0+, expanded in 3.3.0b1)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
 - When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
+- Optional region-aware overrides use `DateFormatDeadlineHumanReadableLocalized_<code>` and resolve as exact locale (for example `fr_CA`) → base language (for example `fr`) → global `DateFormatDeadlineHumanReadable` → built-in script default
+- Relative `Today` / `Tomorrow` deadline strings reuse the same resolved locale-aware time policy as the absolute deadline formatter
 - Numeric-only formats (for example `%d.%m.%Y %H:%M`) are unchanged across locales
+
+**Region-aware Example**:
+```xml
+<key>DateFormatDeadlineHumanReadable</key>
+<string>+%a, %d-%b-%Y, %-l:%M %p</string>
+<key>DateFormatDeadlineHumanReadableLocalized_fr</key>
+<string>+%a %d/%m/%Y %H:%M</string>
+<key>DateFormatDeadlineHumanReadableLocalized_fr_CA</key>
+<string>+%a %Y-%m-%d %H:%M</string>
+<key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
+<string>+%a, %d/%m/%Y %H:%M</string>
+```
 
 ---
 
@@ -1657,7 +1671,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 3.2.0 |
+| `{scriptVersion}` | System | Script version | 3.3.0b1 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2167,10 +2181,11 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
+| 3.3.0b1 | 13-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
 | 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
-**Last Updated**: 06-Apr-2026
-**DDM OS Reminder Version**: 3.2.0
+**Last Updated**: 13-May-2026
+**DDM OS Reminder Version**: 3.3.0b1

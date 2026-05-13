@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (3.2.0)
+# DDM OS Reminder (3.3.0b1)
 
 > A **Mac Admin quality-of-life** update to the new favorite MDM-agnostic, **“set-it-and-forget-it”** reminder with **improved multiple language** support, **granular control for displaying IT Support information** and a **new, easy-to-use `reminderDialogPreferenceTest.zsh`** script for validating preference configurations and dialog appearance in real-time
 
@@ -50,7 +50,7 @@ Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now pri
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.2.0)
+🧩 Assemble DDM OS Reminder (3.3.0b1)
 ===============================================================
 
 📍 Full Paths:
@@ -252,13 +252,35 @@ Optional verification in log output:
 
 ## Deadline Date Format
 
-`DateFormatDeadlineHumanReadable` remains the single date format key.
+`DateFormatDeadlineHumanReadable` remains global fallback key. Add optional `DateFormatDeadlineHumanReadableLocalized_<code>` overrides when one deployment needs locale-specific formats such as `fr_CA`, `fr`, or `en_GB`.
+
+Fallback order for deadline formatting is:
+
+1. exact locale key, such as `DateFormatDeadlineHumanReadableLocalized_fr_CA`
+2. base language key, such as `DateFormatDeadlineHumanReadableLocalized_fr`
+3. global `DateFormatDeadlineHumanReadable`
+4. built-in script default
+
+Preview and runtime now use same fallback order, including relative `Today` / `Tomorrow` time rendering.
 
 Swiss-style numeric format example:
 
 ```zsh
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     DateFormatDeadlineHumanReadable -string "+%d.%m.%Y %H:%M"
+```
+
+Region-aware Configuration Profile example:
+
+```xml
+<key>DateFormatDeadlineHumanReadable</key>
+<string>+%a, %d-%b-%Y, %-l:%M %p</string>
+<key>DateFormatDeadlineHumanReadableLocalized_fr</key>
+<string>+%a %d/%m/%Y %H:%M</string>
+<key>DateFormatDeadlineHumanReadableLocalized_fr_CA</key>
+<string>+%a %Y-%m-%d %H:%M</string>
+<key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
+<string>+%a, %d/%m/%Y %H:%M</string>
 ```
 
 ## Support

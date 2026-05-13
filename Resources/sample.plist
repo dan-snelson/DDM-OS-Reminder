@@ -4,7 +4,7 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 3.2.1b1 -->
+    <!-- Version: 3.3.0b1 -->
     <!-- Generated on: 2026-05-08-204946 -->
 
     <!-- Logging -->
@@ -47,6 +47,12 @@
     <false/>
     <key>DateFormatDeadlineHumanReadable</key>
     <string>+%a, %d-%b-%Y, %-l:%M %p</string>
+     <key>DateFormatDeadlineHumanReadableLocalized_fr</key>
+     <string>+%a %d/%m/%Y %H:%M</string>
+     <key>DateFormatDeadlineHumanReadableLocalized_fr_CA</key>
+     <string>+%a %Y-%m-%d %H:%M</string>
+     <key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
+     <string>+%a, %d/%m/%Y %H:%M</string>
 
     <!-- Support block -->
     <key>SupportTeamName</key>

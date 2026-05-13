@@ -1,4 +1,4 @@
-# DDM OS Reminder - Copilot Instructions (3.2.0)
+# DDM OS Reminder - Copilot Instructions (3.3.0b1)
 
 ## Big Picture
 - DDM OS Reminder is a macOS-only, MDM-agnostic reminder system for DDM-enforced OS update deadlines. It reads `/var/log/install.log` and shows a swiftDialog prompt via a LaunchDaemon.
@@ -30,7 +30,7 @@
   - `DaysOfExcessiveUptimeWarning`: 0
   - `MinimumDiskFreePercentage`: 99
 - `Resources/sample.plist` can intentionally use sample/demo-friendly values. Do not "fix" sample values to script defaults unless requested.
-- 3.2.0 adds granular support visibility preferences such as `HideSupportTeamPhone`, `HideSupportTeamEmail`, `HideSupportTeamWebsite`, `HideSupportKB`, and `HideSupportAssistanceMessage`.
+- 3.3.0b1 adds granular support visibility preferences such as `HideSupportTeamPhone`, `HideSupportTeamEmail`, `HideSupportTeamWebsite`, `HideSupportKB`, and `HideSupportAssistanceMessage`.
 - Localization supports `LanguageOverride` and matching `*Localized_<code>` preference keys.
 
 ## Logging

@@ -115,33 +115,6 @@ function extractDDMLogTimestamp() {
     return 0
 }
 
-function normalizeDDMLogTimestamp() {
-    local rawTimestamp="${1}"
-    local dateToken="${rawTimestamp%% *}"
-    local timeAndOffset="${rawTimestamp#* }"
-    local timeToken="${timeAndOffset[1,8]}"
-    local offsetToken="${timeAndOffset[9,-1]}"
-
-    if [[ -z "${timeToken}" || -z "${offsetToken}" ]]; then
-        return 1
-    fi
-
-    case "${offsetToken}" in
-        [+-][0-9][0-9])
-            offsetToken="${offsetToken}00"
-            ;;
-        [+-][0-9][0-9]:[0-9][0-9])
-            offsetToken="${offsetToken/:/}"
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-
-    echo "${dateToken} ${timeToken}${offsetToken}"
-    return 0
-}
-
 function ddmDaysFromCivil() {
     local year="${1}"
     local month="${2}"
@@ -241,6 +214,10 @@ function ddmLogTimestampToEpoch() {
 
 function parseDDMDeclarationFieldsFromText() {
     local declarationText="${1}"
+
+    if [[ "${declarationText}" != *"|EnforcedInstallDate:"* || "${declarationText}" != *"|VersionString:"* || "${declarationText}" != *"|BuildVersionString:"* ]]; then
+        return 1
+    fi
 
     parsedDDMEnforcedInstallDate="${${declarationText##*|EnforcedInstallDate:}%%|*}"
     parsedDDMVersionString="${${declarationText##*|VersionString:}%%|*}"

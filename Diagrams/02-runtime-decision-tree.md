@@ -156,7 +156,7 @@ flowchart TD
 - **Check**: Can the script resolve one trustworthy DDM declaration from the recent `/var/log/install.log` window, and is update still required?
 - **Exit if**:
   - No DDM enforcement entry found
-  - Only invalid stale declarations remain after Apple rejects or removes them
+  - Only invalid stale declarations remain after Apple explicitly rejects them as invalid
   - Multiple conflicting declarations exist in the highest-priority source class
   - The resolved declaration has an invalid version string
   - The resolved declaration no longer maps to an available update (`MADownloadNoMatchFound` / `pallasNoPMVMatchFound`)

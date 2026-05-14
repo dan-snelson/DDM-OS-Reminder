@@ -1466,6 +1466,10 @@ if [[ -f "${plistSample}" ]]; then
     echo "❌ Failed to filter localized keys in ${plistOutput}."
     exit 1
   }
+  if ! /usr/bin/plutil -lint "${plistOutput}" >/dev/null 2>&1; then
+    echo "❌ Filtered plist failed validation: ${plistOutput}"
+    exit 1
+  fi
   if [[ "${removedLocalizedKeyCount}" != "0" ]]; then
     echo "    🌐 Removed ${removedLocalizedKeyCount} localized key(s) from generated plist"
   fi
@@ -1588,7 +1592,8 @@ echo "🔍 Performing syntax check on '${mobileconfigOutput#$projectDir/}' …"
 if /usr/bin/plutil -lint "${mobileconfigOutput}" >/dev/null 2>&1; then
   echo "    ✅ Profile syntax check passed."
 else
-  echo "    ⚠️  Warning: profile syntax check failed!"
+  echo "❌ Profile syntax check failed: ${mobileconfigOutput}"
+  exit 1
 fi
 
 

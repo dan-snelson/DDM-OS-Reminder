@@ -171,6 +171,7 @@ function shouldKeepLocalizedPlistKey() {
 
 function localizationFilterSummary() {
     local code=""
+    local -a configuredCodes
     local -a summaryCodes
     local -A seenSummaryCodes
 
@@ -182,7 +183,9 @@ function localizationFilterSummary() {
             echo "minimal localization surface (base keys + English localized keys)"
             ;;
         subset)
-            for code in "en" ${${(s:,:)localizationFilterLanguagesCSV}}; do
+            configuredCodes=(${(s:,:)localizationFilterLanguagesCSV})
+
+            for code in "en" "${configuredCodes[@]}"; do
                 [[ -z "${code}" ]] && continue
                 if [[ -z "${seenSummaryCodes[${code}]:-}" ]]; then
                     summaryCodes+=("${code}")
@@ -200,9 +203,11 @@ function localizationFilterSummary() {
 
 function filterLocalizedKeysInXmlFile() {
     local targetFile="${1}"
+    local targetDir=""
     local tmpFile=""
     local line=""
     local currentKey=""
+    local originalMode=""
     local skipNextValue="false"
     local removedKeyCount=0
 
@@ -214,13 +219,15 @@ function filterLocalizedKeysInXmlFile() {
     fi
 
     # Stream-edit the XML so generated comments, ordering, and non-localized keys stay intact.
-    tmpFile="$(mktemp)"
+    targetDir="${targetFile:h}"
+    originalMode="$(stat -f '%Lp' "${targetFile}")" || return 1
+    tmpFile="$(mktemp "${targetDir}/localizationFilter.XXXXXX")" || return 1
 
     while IFS= read -r line || [[ -n "${line}" ]]; do
         if [[ "${skipNextValue}" == "true" ]]; then
             # After removing a localized <key>, also drop its following value node while tolerating
             # comments/blank lines that may sit between them.
-            if [[ "${line}" == [[:space:]]#'<!--'* ]] || [[ "${line}" == [[:space:]]# ]]; then
+            if [[ "${line}" =~ '^[[:space:]]*$' ]] || [[ "${line}" =~ '^[[:space:]]*<!--' ]]; then
                 continue
             fi
 
@@ -241,6 +248,7 @@ function filterLocalizedKeysInXmlFile() {
         printf "%s\n" "${line}" >> "${tmpFile}"
     done < "${targetFile}"
 
+    chmod "${originalMode}" "${tmpFile}" || return 1
     mv "${tmpFile}" "${targetFile}"
     echo "${removedKeyCount}"
 }

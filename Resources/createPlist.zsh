@@ -1632,6 +1632,10 @@ removedLocalizedKeyCount="$(filterLocalizedKeysInXmlFile "${OUTPUT_PLIST_FILE}")
     exit 1
 }
 stop_progress_animation
+if ! /usr/bin/plutil -lint "${OUTPUT_PLIST_FILE}" >/dev/null 2>&1; then
+    echo "ERROR: Filtered .plist failed validation: ${OUTPUT_PLIST_FILE}"
+    exit 1
+fi
 if [[ "${removedLocalizedKeyCount}" != "0" ]]; then
     echo "Filtered ${removedLocalizedKeyCount} localized key(s) from generated .plist"
 fi
@@ -2330,6 +2334,10 @@ removedLocalizedMobileconfigKeyCount="$(filterLocalizedKeysInXmlFile "${OUTPUT_M
     exit 1
 }
 stop_progress_animation
+if ! /usr/bin/plutil -lint "${OUTPUT_MOBILECONFIG_FILE}" >/dev/null 2>&1; then
+    echo "ERROR: Filtered .mobileconfig failed validation: ${OUTPUT_MOBILECONFIG_FILE}"
+    exit 1
+fi
 if [[ "${removedLocalizedMobileconfigKeyCount}" != "0" ]]; then
     echo "Filtered ${removedLocalizedMobileconfigKeyCount} localized key(s) from generated .mobileconfig"
 fi

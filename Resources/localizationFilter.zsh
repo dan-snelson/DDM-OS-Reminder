@@ -248,7 +248,13 @@ function filterLocalizedKeysInXmlFile() {
         printf "%s\n" "${line}" >> "${tmpFile}"
     done < "${targetFile}"
 
-    chmod "${originalMode}" "${tmpFile}" || return 1
-    mv "${tmpFile}" "${targetFile}"
+    chmod "${originalMode}" "${tmpFile}" || {
+        rm -f "${tmpFile}" 2>/dev/null || true
+        return 1
+    }
+    mv "${tmpFile}" "${targetFile}" || {
+        rm -f "${tmpFile}" 2>/dev/null || true
+        return 1
+    }
     echo "${removedKeyCount}"
 }

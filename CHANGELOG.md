@@ -2,7 +2,10 @@
 
 ## Changelog
 
-### Version 3.3.0b3 (14-May-2026)
+### Version 3.3.0b4 (14-May-2026)
+- Added localization-surface filtering to `assemble.zsh` and `Resources/createPlist.zsh`, with support for full output, `--minimal` output (base keys plus English localized keys), and `--languages <csv>` subset generation for leaner `.plist` and `.mobileconfig` artifacts. (Addresses Issue #100)
+- Extended `assemble.zsh --interactive` with localization artifact selection prompts, and pruned imported localized keys that fall outside the selected artifact mode so prior-plist upgrades stay explicit and predictable.
+- Shortened skipped-localization import logs to a concise count plus sample keys, and tightened `--minimal` filtering so it keeps exact `_Localized_en` keys without carrying English region variants such as `en_GB`.
 - Fixed localized preference precedence and explicit-setting lookup so base values like `InfoButtonText=hide` now override localized variants, correctly hiding the info button in both preview and runtime paths. (Thanks for the heads-up, @James Anzaldua!)
 - Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` fallback support for exact locale and base language variants, and aligned preview/runtime relative deadline time formatting with the same resolved locale-aware date/time policy. (Thanks for the suggestion, @coalliera!)
 - Restored localized dialog-text override precedence when both shared base keys and matching `*Localized_<code>` values are present, while preserving the `InfoButtonText=hide` sentinel in preview and runtime paths. (Thanks for the heads-up, @coalliera!)

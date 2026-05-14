@@ -37,13 +37,14 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.3.0b3"
+scriptVersion="3.3.0b4"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
 baseScript="${projectDir}/launchDaemonManagement.zsh"
 messageScript="${projectDir}/reminderDialog.zsh"
 plistSample="${resourcesDir}/sample.plist"
+localizationHelper="${resourcesDir}/localizationFilter.zsh"
 timestamp="$(date '+%Y-%m-%d-%H%M%S')"
 outputScript="${artifactsDir}/ddm-os-reminder-assembled-${timestamp}.zsh"
 tmpScript="${outputScript}.tmp"
@@ -92,17 +93,22 @@ organizationOverlayIconURLdark=""
 swapOverlayAndLogo=""
 pastDeadlineRestartBehavior=""
 daysPastDeadlineRestartWorkflow=""
+requestedLocalizationMode="full"
+requestedLocalizationLanguages=""
+localizationSelectionProvidedViaCLI=false
 
 
 
 function printUsage() {
   echo
   echo "Usage:"
-  echo "  zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--help]"
+  echo "  zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--minimal|--languages <csv>] [--help]"
   echo
   echo "Options:"
   echo "  --lane <dev|test|prod>       Select deployment mode"
   echo "  --interactive                Prompt for optional prior .plist import, IT support, branding and restart policy values"
+  echo "  --minimal                    Keep base keys plus English localized keys only"
+  echo "  --languages <csv>            Keep base keys, English localized keys, and selected language families"
   echo "  prior-plist                  Auto-enables interactive mode and infers RDNN plus deployment mode only when filename ends with -dev.plist, -test.plist or -prod.plist"
   echo "  --help, -h                   Show this help"
   echo
@@ -156,7 +162,10 @@ echo
 [[ -f "${baseScript}" ]]    || { echo "❌ Base script not found: ${baseScript}"; exit 1; }
 [[ -f "${messageScript}" ]] || { echo "❌ Message script not found: ${messageScript}"; exit 1; }
 [[ -f "${plistSample}" ]]   || { echo "❌ Sample .plist not found: ${plistSample}"; exit 1; }
+[[ -f "${localizationHelper}" ]] || { echo "❌ Localization helper not found: ${localizationHelper}"; exit 1; }
 [[ -d "${artifactsDir}" ]]  || { echo "⚠️ Artifacts directory missing — creating it."; mkdir -p "${artifactsDir}"; }
+
+source "${localizationHelper}"
 
 
 
@@ -447,6 +456,31 @@ while [[ $# -gt 0 ]]; do
       interactiveMode=true
       shift
       ;;
+    --minimal)
+      if [[ "${requestedLocalizationMode}" == "subset" ]]; then
+        echo "❌ --minimal cannot be combined with --languages."
+        exit 1
+      fi
+      requestedLocalizationMode="minimal"
+      requestedLocalizationLanguages=""
+      localizationSelectionProvidedViaCLI=true
+      shift
+      ;;
+    --languages)
+      if [[ "${requestedLocalizationMode}" == "minimal" ]]; then
+        echo "❌ --languages cannot be combined with --minimal."
+        exit 1
+      fi
+      if [[ -n "${2:-}" ]]; then
+        requestedLocalizationMode="subset"
+        requestedLocalizationLanguages="${2}"
+        localizationSelectionProvidedViaCLI=true
+        shift 2
+      else
+        echo "❌ Missing value for --languages. Example: --languages en,fr"
+        exit 1
+      fi
+      ;;
     --lane)
       if [[ -n "${2:-}" ]] && [[ "${2}" =~ ^(dev|test|prod)$ ]]; then
         deploymentMode="${2}"
@@ -528,6 +562,86 @@ function promptWithDefault() {
   fi
 
   typeset -g "${variableName}=${inputValue}"
+}
+
+function normalizeLocalizationModeSelection() {
+  local value="${1}"
+  local normalizedValue="${value//[[:space:]]/}"
+
+  case "${normalizedValue:l}" in
+    full|f) echo "full" ;;
+    minimal|m) echo "minimal" ;;
+    selected|select|subset|languages|language|s|l) echo "subset" ;;
+    *) echo "" ;;
+  esac
+}
+
+function localizationModePromptDefault() {
+  case "${requestedLocalizationMode}" in
+    minimal)
+      echo "Minimal"
+      ;;
+    subset)
+      echo "Selected"
+      ;;
+    *)
+      echo "Full"
+      ;;
+  esac
+}
+
+function promptForLocalizationSelection() {
+  local localizationModeChoice=""
+  local normalizedLocalizationModeChoice=""
+  local defaultLocalizationLanguages=""
+
+  showInteractiveConfigurationHeader
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🌐 Localization Artifact Mode"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  while true; do
+    promptWithDefault "Localization Output (Full / [M]inimal / [S]elected languages)" "$(localizationModePromptDefault)" "localizationModeChoice"
+    normalizedLocalizationModeChoice="$(normalizeLocalizationModeSelection "${localizationModeChoice}")"
+
+    if [[ -n "${normalizedLocalizationModeChoice}" ]]; then
+      requestedLocalizationMode="${normalizedLocalizationModeChoice}"
+      break
+    fi
+
+    echo "⚠️  Invalid localization mode; valid values: Full, Minimal, Selected."
+  done
+
+  case "${requestedLocalizationMode}" in
+    full|minimal)
+      requestedLocalizationLanguages=""
+      ;;
+    subset)
+      defaultLocalizationLanguages="${requestedLocalizationLanguages:-en,fr}"
+
+      while true; do
+        promptWithDefault "Languages CSV (for example: en,fr or fr_CA,ja)" "${defaultLocalizationLanguages}" "requestedLocalizationLanguages"
+
+        if configureLocalizationFilter "subset" "${requestedLocalizationLanguages}" >/dev/null 2>&1; then
+          requestedLocalizationMode="${localizationFilterMode}"
+          requestedLocalizationLanguages="${localizationFilterLanguagesCSV}"
+          break
+        fi
+
+        echo "⚠️  Invalid language list. Use comma-separated locale codes such as en,fr or fr_CA,ja."
+      done
+      ;;
+  esac
+
+  configureLocalizationFilter "${requestedLocalizationMode}" "${requestedLocalizationLanguages}" >/dev/null 2>&1 || {
+    echo "❌ Failed to configure localization filter from interactive input."
+    exit 1
+  }
+
+  echo
+  echo "ℹ️  Localization mode set to: $(localizationFilterSummary)"
+  echo
 }
 
 function normalizeBoolean() {
@@ -776,6 +890,8 @@ function applyImportedPreferences() {
   local -a supportedPreferenceLines
   local -A unsupportedImportedKeySet
   local -a unsupportedImportedKeys
+  local -A skippedLocalizedImportedKeySet
+  local -a skippedLocalizedImportedKeys
 
   if ! emittedPreferenceTypes="$(emitSupportedPlistPreferenceTypes)"; then
     echo "    ❌ Failed to determine supported preference types; aborting preference import."
@@ -796,9 +912,14 @@ function applyImportedPreferences() {
     "${(@f)${emittedPreferenceTypes}}"
     "${(@f)${targetPlistPreferenceTypes}}"
   )
+  supportedPreferenceLines=("${(@u)supportedPreferenceLines}")
 
   while IFS= read -r importedKey; do
     [[ -z "${importedKey}" ]] && continue
+    if isLocalizedPlistKey "${importedKey}" && ! shouldKeepLocalizedPlistKey "${importedKey}"; then
+      skippedLocalizedImportedKeySet["${importedKey}"]=1
+      continue
+    fi
     if ! preferenceType="$(preferenceTypeForPlistKey "${importedKey}" "${supportedPreferenceLines[@]}")"; then
       unsupportedImportedKeySet["${importedKey}"]=1
     fi
@@ -809,10 +930,23 @@ function applyImportedPreferences() {
     echo "    ⚠️  Ignoring unsupported imported keys: ${(j:, :)unsupportedImportedKeys}"
   fi
 
+  if (( ${#skippedLocalizedImportedKeySet[@]} > 0 )); then
+    skippedLocalizedImportedKeys=("${(@ok)skippedLocalizedImportedKeySet}")
+    if (( ${#skippedLocalizedImportedKeys[@]} <= 5 )); then
+      echo "    ℹ️  Skipping ${#skippedLocalizedImportedKeys[@]} imported localized key(s) outside selected artifact mode: ${(j:, :)skippedLocalizedImportedKeys}"
+    else
+      echo "    ℹ️  Skipping ${#skippedLocalizedImportedKeys[@]} imported localized key(s) outside selected artifact mode (for example: ${(j:, :)skippedLocalizedImportedKeys[1,5]})"
+    fi
+  fi
+
   for preferenceLine in "${supportedPreferenceLines[@]}"; do
     candidateKey="${preferenceLine%%|*}"
     preferenceType="${preferenceLine#*|}"
     importedKey="${candidateKey}"
+
+    if isLocalizedPlistKey "${importedKey}" && ! shouldKeepLocalizedPlistKey "${importedKey}"; then
+      continue
+    fi
 
     if ! /usr/libexec/PlistBuddy -c "Print :${importedKey}" "${sourcePlist}" >/dev/null 2>&1; then
       continue
@@ -1026,6 +1160,18 @@ if [[ "${interactiveMode}" == true ]]; then
     fi
   fi
 fi
+
+if [[ "${interactiveMode}" == true && "${localizationSelectionProvidedViaCLI}" == false ]]; then
+  promptForLocalizationSelection
+fi
+
+if ! configureLocalizationFilter "${requestedLocalizationMode}" "${requestedLocalizationLanguages}"; then
+  echo "❌ Invalid localization filter selection."
+  exit 1
+fi
+
+echo "🌐 Artifact Localization: $(localizationFilterSummary)"
+echo
 
 
 
@@ -1316,6 +1462,18 @@ if [[ -f "${plistSample}" ]]; then
 
   /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${plistOutput}"
 
+  removedLocalizedKeyCount="$(filterLocalizedKeysInXmlFile "${plistOutput}")" || {
+    echo "❌ Failed to filter localized keys in ${plistOutput}."
+    exit 1
+  }
+  if ! /usr/bin/plutil -lint "${plistOutput}" >/dev/null 2>&1; then
+    echo "❌ Filtered plist failed validation: ${plistOutput}"
+    exit 1
+  fi
+  if [[ "${removedLocalizedKeyCount}" != "0" ]]; then
+    echo "    🌐 Removed ${removedLocalizedKeyCount} localized key(s) from generated plist"
+  fi
+
   # Cleanup
   rm -f "${plistOutput}.bak" 2>/dev/null || true
 
@@ -1434,7 +1592,8 @@ echo "🔍 Performing syntax check on '${mobileconfigOutput#$projectDir/}' …"
 if /usr/bin/plutil -lint "${mobileconfigOutput}" >/dev/null 2>&1; then
   echo "    ✅ Profile syntax check passed."
 else
-  echo "    ⚠️  Warning: profile syntax check failed!"
+  echo "❌ Profile syntax check failed: ${mobileconfigOutput}"
+  exit 1
 fi
 
 
@@ -1512,6 +1671,7 @@ case "${deploymentMode}" in
   prod)
     echo "  Production Artifacts Generated:"
     echo "    - All placeholder text removed (clean output)"
+    echo "    - Localization artifact mode: $(localizationFilterSummary)"
     if [[ "${interactiveMode}" == true ]]; then
       if [[ "${priorPlistImported}" == true ]]; then
         echo "    - Supported configuration values imported from prior plist"
@@ -1534,6 +1694,7 @@ case "${deploymentMode}" in
     echo
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
+    echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"
     elif [[ "${interactiveMode}" == true && "${enableKnowledgeBase}" != "true" ]]; then

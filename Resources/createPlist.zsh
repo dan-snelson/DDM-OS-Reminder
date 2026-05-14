@@ -11,20 +11,130 @@
 
 set -euo pipefail
 
-scriptVersion="3.1.0"
+scriptVersion="3.3.0b4"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
+LOCALIZATION_HELPER="${SCRIPT_DIR}/localizationFilter.zsh"
 declare -A samplePlistKeyLookup=()
 samplePlistKeyLookupInitialized="false"
+requestedLocalizationMode="full"
+requestedLocalizationLanguages=""
 
 [[ -f "$SOURCE_SCRIPT" ]] || { echo "ERROR: Cannot find reminderDialog.zsh at ${SOURCE_SCRIPT}"; exit 1; }
 [[ -f "$SAMPLE_PLIST" ]] || { echo "ERROR: Cannot find sample.plist at ${SAMPLE_PLIST}"; exit 1; }
+[[ -f "$LOCALIZATION_HELPER" ]] || { echo "ERROR: Cannot find localization helper at ${LOCALIZATION_HELPER}"; exit 1; }
+
+source "${LOCALIZATION_HELPER}"
+
+progressAnimationPID=""
+progressAnimationLabel=""
+
+print_usage() {
+    echo
+    echo "Usage:"
+    echo "  zsh Resources/createPlist.zsh [--testing] [--minimal|--languages <csv>] [--help]"
+    echo
+    echo "Options:"
+    echo "  --testing                    Allow default org.churchofjesuschrist values for local generation"
+    echo "  --minimal                    Keep base keys plus English localized keys only"
+    echo "  --languages <csv>            Keep base keys, English localized keys, and selected language families"
+    echo "  --help, -h                   Show this help"
+    echo
+}
+
+start_progress_animation() {
+    local label="${1}"
+
+    setopt local_options no_bgnice
+
+    [[ -t 1 ]] || return 0
+    [[ -n "${progressAnimationPID}" ]] && return 0
+
+    progressAnimationLabel="${label}"
+
+    (
+        local frames=('⠋ ' '⠙ ' '⠹ ' '⠸ ' '⠼ ' '⠴ ' '⠦ ' '⠧ ' '⠇ ' '⠏ ')
+        local frameIndex=1
+
+        while true; do
+            printf "\r%s %s" "${progressAnimationLabel}" "${frames[frameIndex]}"
+            frameIndex=$(( frameIndex % ${#frames[@]} + 1 ))
+            sleep 0.15
+        done
+    ) &
+
+    progressAnimationPID=$!
+}
+
+update_progress_animation() {
+    local label="${1}"
+
+    [[ -t 1 ]] || return 0
+    [[ -n "${progressAnimationPID}" ]] || return 0
+
+    progressAnimationLabel="${label}"
+}
+
+stop_progress_animation() {
+    [[ -n "${progressAnimationPID}" ]] || return 0
+
+    kill "${progressAnimationPID}" >/dev/null 2>&1 || true
+    wait "${progressAnimationPID}" 2>/dev/null || true
+    progressAnimationPID=""
+
+    if [[ -t 1 ]]; then
+        printf "\r%*s\r" 100 ""
+    fi
+}
+
+trap 'stop_progress_animation' EXIT
 
 testingMode="no"
-if [[ "${1:-}" == "--testing" ]]; then
-    testingMode="yes"
-    shift
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+        --help|-h)
+            print_usage
+            exit 0
+            ;;
+        --testing)
+            testingMode="yes"
+            shift
+            ;;
+        --minimal)
+            if [[ "${requestedLocalizationMode}" == "subset" ]]; then
+                echo "ERROR: --minimal cannot be combined with --languages."
+                exit 1
+            fi
+            requestedLocalizationMode="minimal"
+            requestedLocalizationLanguages=""
+            shift
+            ;;
+        --languages)
+            if [[ "${requestedLocalizationMode}" == "minimal" ]]; then
+                echo "ERROR: --languages cannot be combined with --minimal."
+                exit 1
+            fi
+            if [[ -n "${2:-}" ]]; then
+                requestedLocalizationMode="subset"
+                requestedLocalizationLanguages="${2}"
+                shift 2
+            else
+                echo "ERROR: Missing value for --languages. Example: --languages en,fr"
+                exit 1
+            fi
+            ;;
+        *)
+            echo "ERROR: Unknown argument '${1}'"
+            print_usage
+            exit 1
+            ;;
+    esac
+done
+
+if ! configureLocalizationFilter "${requestedLocalizationMode}" "${requestedLocalizationLanguages}"; then
+    echo "ERROR: Invalid localization filter selection"
+    exit 1
 fi
 
 reverseDomainNameNotation=$(awk -F'"' '/^reverseDomainNameNotation=/{print $2}' "$SOURCE_SCRIPT")
@@ -52,6 +162,8 @@ PROFILE_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
 MANAGEDCLIENT_PAYLOAD_UUID="$(uuidgen | tr '[:lower:]' '[:upper:]')"
 
 echo "Extracting preference values from ${SOURCE_SCRIPT#${SCRIPT_DIR}/} → $OUTPUT_PLIST_FILE"
+echo "Localization output: $(localizationFilterSummary)"
+start_progress_animation "Preparing localized values … "
 
 # ─────────────────────────────────────────────────────────────
 # Extract value from preferenceConfiguration map (v2.3.0+ format)
@@ -862,6 +974,7 @@ languageOverride_xml=$(echo "$languageOverride" | xml_escape)
 # ─────────────────────────────────────────────────────────────
 # Generate plist
 # ─────────────────────────────────────────────────────────────
+update_progress_animation "Writing .plist..."
 cat > "$OUTPUT_PLIST_FILE" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1513,6 +1626,20 @@ ${additionalLocalizedEntries}
 </plist>
 EOF
 
+update_progress_animation "Filtering .plist..."
+removedLocalizedKeyCount="$(filterLocalizedKeysInXmlFile "${OUTPUT_PLIST_FILE}")" || {
+    echo "ERROR: Failed to filter localized keys in ${OUTPUT_PLIST_FILE}"
+    exit 1
+}
+stop_progress_animation
+if ! /usr/bin/plutil -lint "${OUTPUT_PLIST_FILE}" >/dev/null 2>&1; then
+    echo "ERROR: Filtered .plist failed validation: ${OUTPUT_PLIST_FILE}"
+    exit 1
+fi
+if [[ "${removedLocalizedKeyCount}" != "0" ]]; then
+    echo "Filtered ${removedLocalizedKeyCount} localized key(s) from generated .plist"
+fi
+
 echo "SUCCESS! .plist generated:"
 echo "   → $OUTPUT_PLIST_FILE"
 echo ""
@@ -1521,6 +1648,7 @@ echo "Extracting preference values from ${SOURCE_SCRIPT#${SCRIPT_DIR}/} → $OUT
 # ─────────────────────────────────────────────────────────────
 # Generate mobileconfig
 # ─────────────────────────────────────────────────────────────
+start_progress_animation "Writing .mobileconfig..."
 cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -2199,6 +2327,20 @@ ${additionalLocalizedEntriesMobileconfig}
 </dict>
 </plist>
 EOF
+
+update_progress_animation "Filtering .mobileconfig..."
+removedLocalizedMobileconfigKeyCount="$(filterLocalizedKeysInXmlFile "${OUTPUT_MOBILECONFIG_FILE}")" || {
+    echo "ERROR: Failed to filter localized keys in ${OUTPUT_MOBILECONFIG_FILE}"
+    exit 1
+}
+stop_progress_animation
+if ! /usr/bin/plutil -lint "${OUTPUT_MOBILECONFIG_FILE}" >/dev/null 2>&1; then
+    echo "ERROR: Filtered .mobileconfig failed validation: ${OUTPUT_MOBILECONFIG_FILE}"
+    exit 1
+fi
+if [[ "${removedLocalizedMobileconfigKeyCount}" != "0" ]]; then
+    echo "Filtered ${removedLocalizedMobileconfigKeyCount} localized key(s) from generated .mobileconfig"
+fi
 
 echo "SUCCESS! .mobileconfig generated:"
 echo "   → ${OUTPUT_MOBILECONFIG_FILE}"

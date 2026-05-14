@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (3.3.0b3)
+# DDM OS Reminder (3.3.0b4)
 
 > A **Mac Admin quality-of-life** update to the new favorite MDM-agnostic, **“set-it-and-forget-it”** reminder with **improved multiple language** support, **granular control for displaying IT Support information** and a **new, easy-to-use `reminderDialogPreferenceTest.zsh`** script for validating preference configurations and dialog appearance in real-time
 
@@ -31,6 +31,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
 - **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
 - **Full Multi-language Experience**: Beginning with version `3.1.0`, English dialog defaults are provided in-script, with `.plist` support for: German, French, Spanish, Italian, Dutch, Portuguese, and Japanese. Additional languages through localized `*Localized_<code>` preference keys, with locale-aware dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that match the resolved language.
+- **Lean Artifact Options**: `assemble.zsh` and `Resources/createPlist.zsh` can keep the full localization surface, generate a minimal artifact (`--minimal` = base keys + English localized keys), or retain only selected language families with `--languages <csv>`.
 - :new: **Granular Control for Displaying IT Support Information**: New `HideSupport*` preferences allow Mac Admins to easily choose which IT Support fields are displayed to their end-users.
 - :new: **Use [`Resources/reminderDialogPreferenceTest.zsh`](Resources/reminderDialogPreferenceTest.zsh)** when you want to easily validate dialog copy, localization, branding, support contact details, button visibility, and infobox rendering from deployed preferences without waiting for an actual DDM deadline.
 
@@ -50,7 +51,7 @@ Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now pri
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.3.0b3)
+🧩 Assemble DDM OS Reminder (3.3.0b4)
 ===============================================================
 
 📍 Full Paths:
@@ -198,6 +199,8 @@ Use `LanguageOverride` to force a locale, run the script, capture screenshots, t
 For custom text authoring, use base keys such as `Message` and `HelpMessage` when you want one shared string across every language. Add `MessageLocalized_<code>` or `HelpMessageLocalized_<code>` only for languages that truly need an override.
 
 Starting with `3.1.0`, `reminderDialog.zsh` only ships English built-in fallback strings. To display a non-English interface, provide localized preference keys such as `TitleLocalized_it`, `MessageLocalized_it`, and related `*Localized_<code>` entries in managed or local preferences.
+
+Artifact generation keeps the full localization surface by default. Use `zsh assemble.zsh --minimal` for base keys plus exact `_Localized_en` keys, or `zsh assemble.zsh --languages en,fr` when deployment artifacts need English plus additional language families.
 
 ```zsh
 # German screenshots

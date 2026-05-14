@@ -70,7 +70,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.3.0b1"
+scriptVersion="3.3.0b2"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -1006,12 +1006,16 @@ function applyLocalizedFieldValue() {
     local localizedSuffix=""
     local localizedVariable=""
     local localizedValue=""
+    local baseValue=""
 
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
     localizedVariable="${baseVariable}Localized${localizedSuffix}"
     localizedValue="${(P)localizedVariable}"
+    baseValue="${(P)baseVariable}"
 
-    if [[ "${preferenceExplicitlySet["${baseVariable}"]}" == "true" ]]; then
+    # Base values remain shared fallback text; matching localized overrides should
+    # still win when present. Preserve the special InfoButtonText=hide sentinel.
+    if [[ "${baseVariable}" == "infobuttontext" && "${preferenceExplicitlySet["${baseVariable}"]}" == "true" && "${baseValue}" == "hide" ]]; then
         return
     fi
 

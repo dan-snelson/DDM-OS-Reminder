@@ -11,7 +11,7 @@ flowchart TD
     CheckUser -->|No| Exit1[FATAL ERROR<br/>No user after 120s]
     CheckUser -->|Yes| LoadPrefs[Load Preferences<br/>Managed → Local → Defaults]
 
-    LoadPrefs --> ParseLog[Resolve trusted DDM declaration<br/>from recent install.log window]
+    LoadPrefs --> ParseLog[Resolve trusted DDM declaration<br/>from recent install.log window<br/>ignore invalid stale candidates]
     ParseLog --> CheckDDM{Trusted DDM<br/>declaration resolved?}
     CheckDDM -->|No - Missing / conflict / noMatch| Exit2[Exit Silently<br/>Log: No valid DDM enforcement]
     CheckDDM -->|Yes| GetVersions[Get Installed & Required<br/>macOS Versions]
@@ -156,14 +156,19 @@ flowchart TD
 - **Check**: Can the script resolve one trustworthy DDM declaration from the recent `/var/log/install.log` window, and is update still required?
 - **Exit if**:
   - No DDM enforcement entry found
+  - Only invalid stale declarations remain after Apple rejects or removes them
   - Multiple conflicting declarations exist in the highest-priority source class
   - The resolved declaration has an invalid version string
   - The resolved declaration no longer maps to an available update (`MADownloadNoMatchFound` / `pallasNoPMVMatchFound`)
   - Installed macOS is already compliant
 - **Resolver priority**:
+  - `currentApplicableDeclaration`
   - `defaultApplicableDeclaration`
   - `foundDdmEnforcedInstall`
-  - generic `EnforcedInstallDate` fallback
+  - lowest-priority generic `EnforcedInstallDate` fallback
+- **Conflict handling**:
+  - Candidates rejected by `Failed to add declaration: ... Invalid declaration:` are ignored as stale invalid state
+  - If same surviving declaration persists after `No updates found for DDM to enforce`, resolver fails closed with conflict suppression
 - **Compliance evaluation**:
   - A matching non-null `BuildVersionString` satisfies the declaration immediately
   - When Apple logs omit a usable build match (`BuildVersionString:(null)`), the script treats the Mac as compliant when the installed macOS product version matches or exceeds the resolved `VersionString`

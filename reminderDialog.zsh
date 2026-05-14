@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0b2"
+scriptVersion="3.3.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -41,8 +41,12 @@ ddmResolvedPaddedEpoch=""
 ddmResolvedPaddedRawLine=""
 ddmResolverFailureMarker=""
 ddmResolverConflictSummary=""
-ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}$'
+ddmResolverIgnoredInvalidSummary=""
+ddmResolverIgnoredInvalidContext=""
+ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}(:[0-9]{2})?$'
 typeset -ga ddmRecentInstallLogWindow=()
+typeset -gA ddmTimestampEpochCache=()
+typeset -gA ddmInvalidCandidateContexts=()
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -1704,6 +1708,167 @@ function tailRecentInstallLogWindow() {
     return 0
 }
 
+function extractDDMLogTimestamp() {
+    local logLine="${1}"
+    local dateToken="${logLine%% *}"
+    local remainder="${logLine#* }"
+    local timeToken=""
+
+    parsedDDMLogTimestamp=""
+
+    if [[ "${remainder}" == "${logLine}" ]]; then
+        return 1
+    fi
+
+    timeToken="${remainder%% *}"
+    parsedDDMLogTimestamp="${dateToken} ${timeToken}"
+
+    if [[ ! "${parsedDDMLogTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
+        parsedDDMLogTimestamp=""
+        return 1
+    fi
+
+    return 0
+}
+
+function normalizeDDMLogTimestamp() {
+    local rawTimestamp="${1}"
+    local dateToken="${rawTimestamp%% *}"
+    local timeAndOffset="${rawTimestamp#* }"
+    local timeToken="${timeAndOffset[1,8]}"
+    local offsetToken="${timeAndOffset[9,-1]}"
+
+    if [[ -z "${timeToken}" || -z "${offsetToken}" ]]; then
+        return 1
+    fi
+
+    case "${offsetToken}" in
+        [+-][0-9][0-9])
+            offsetToken="${offsetToken}00"
+            ;;
+        [+-][0-9][0-9]:[0-9][0-9])
+            offsetToken="${offsetToken/:/}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    echo "${dateToken} ${timeToken}${offsetToken}"
+    return 0
+}
+
+function ddmDaysFromCivil() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local monthAdjustment=9
+    local era=0
+    local yearOfEra=0
+    local dayOfYear=0
+    local dayOfEra=0
+
+    if (( month <= 2 )); then
+        (( year-- ))
+    fi
+
+    if (( month > 2 )); then
+        monthAdjustment=-3
+    fi
+
+    if (( year >= 0 )); then
+        (( era = year / 400 ))
+    else
+        (( era = (year - 399) / 400 ))
+    fi
+
+    (( yearOfEra = year - (era * 400) ))
+    (( dayOfYear = ((153 * (month + monthAdjustment)) + 2) / 5 + day - 1 ))
+    (( dayOfEra = (yearOfEra * 365) + (yearOfEra / 4) - (yearOfEra / 100) + dayOfYear ))
+
+    ddmDaysFromCivilResult=$(( (era * 146097) + dayOfEra - 719468 ))
+    return 0
+}
+
+function ddmLogTimestampToEpoch() {
+    local rawTimestamp="${1}"
+    local dateToken="${rawTimestamp%% *}"
+    local timeAndOffset="${rawTimestamp#* }"
+    local timeToken="${timeAndOffset[1,8]}"
+    local offsetToken="${timeAndOffset[9,-1]}"
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local offsetSign=""
+    local offsetHours=0
+    local offsetMinutes=0
+    local totalOffsetMinutes=0
+    local days=0
+    local parsedEpoch=""
+
+    parsedDDMLogTimestampEpoch=""
+
+    if [[ -n "${ddmTimestampEpochCache[${rawTimestamp}]:-}" ]]; then
+        parsedDDMLogTimestampEpoch="${ddmTimestampEpochCache[${rawTimestamp}]}"
+        return 0
+    fi
+
+    case "${offsetToken}" in
+        [+-][0-9][0-9])
+            offsetSign="${offsetToken[1,1]}"
+            offsetHours=$(( 10#${offsetToken[2,3]} ))
+            offsetMinutes=0
+            ;;
+        [+-][0-9][0-9]:[0-9][0-9])
+            offsetSign="${offsetToken[1,1]}"
+            offsetHours=$(( 10#${offsetToken[2,3]} ))
+            offsetMinutes=$(( 10#${offsetToken[5,6]} ))
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    year=$(( 10#${dateToken[1,4]} ))
+    month=$(( 10#${dateToken[6,7]} ))
+    day=$(( 10#${dateToken[9,10]} ))
+    hour=$(( 10#${timeToken[1,2]} ))
+    minute=$(( 10#${timeToken[4,5]} ))
+    second=$(( 10#${timeToken[7,8]} ))
+
+    if ! ddmDaysFromCivil "${year}" "${month}" "${day}"; then
+        return 1
+    fi
+    days="${ddmDaysFromCivilResult}"
+
+    totalOffsetMinutes=$(( (offsetHours * 60) + offsetMinutes ))
+    if [[ "${offsetSign}" == "-" ]]; then
+        totalOffsetMinutes=$(( -totalOffsetMinutes ))
+    fi
+
+    parsedEpoch=$(( (days * 86400) + (hour * 3600) + (minute * 60) + second - (totalOffsetMinutes * 60) ))
+    ddmTimestampEpochCache[${rawTimestamp}]="${parsedEpoch}"
+    parsedDDMLogTimestampEpoch="${parsedEpoch}"
+    return 0
+}
+
+function parseDDMDeclarationFieldsFromText() {
+    local declarationText="${1}"
+
+    parsedDDMEnforcedInstallDate="${${declarationText##*|EnforcedInstallDate:}%%|*}"
+    parsedDDMVersionString="${${declarationText##*|VersionString:}%%|*}"
+    parsedDDMBuildVersionString="${${declarationText##*|BuildVersionString:}%%|*}"
+
+    if [[ -z "${parsedDDMEnforcedInstallDate}" || -z "${parsedDDMVersionString}" || -z "${parsedDDMBuildVersionString}" ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
 function parseDDMDeclarationFromLine() {
     local logLine="${1}"
 
@@ -1720,22 +1885,17 @@ function parseDDMDeclarationFromLine() {
         parsedDDMSourceType="defaultApplicableDeclaration"
     elif [[ "${logLine}" == *"Found DDM enforced install ("* ]]; then
         parsedDDMSourceType="foundDdmEnforcedInstall"
-    elif [[ "${logLine}" == *"EnforcedInstallDate:"* ]]; then
+    elif [[ "${logLine}" == *"EnforcedInstallDate:"* && "${logLine}" == *"softwareupdated["* ]]; then
         parsedDDMSourceType="genericEnforcedInstallDate"
     else
         return 1
     fi
 
-    parsedDDMLogTimestamp="${logLine[1,22]}"
-    parsedDDMEnforcedInstallDate="${${logLine##*|EnforcedInstallDate:}%%|*}"
-    parsedDDMVersionString="${${logLine##*|VersionString:}%%|*}"
-    parsedDDMBuildVersionString="${${logLine##*|BuildVersionString:}%%|*}"
-
-    if [[ ! "${parsedDDMLogTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
+    if ! extractDDMLogTimestamp "${logLine}"; then
         return 1
     fi
 
-    if [[ -z "${parsedDDMEnforcedInstallDate}" || -z "${parsedDDMVersionString}" || -z "${parsedDDMBuildVersionString}" ]]; then
+    if ! parseDDMDeclarationFieldsFromText "${logLine}"; then
         return 1
     fi
 
@@ -1793,29 +1953,79 @@ function parseDDMDescriptorVersionFromLine() {
     return 0
 }
 
+function noteInvalidDDMDeclarationFromLine() {
+    local logLine="${1}"
+    local candidateSignature=""
+
+    if [[ "${logLine}" != *"Failed to add declaration:"* || "${logLine}" != *"Invalid declaration:"* ]]; then
+        return 1
+    fi
+
+    if ! extractDDMLogTimestamp "${logLine}"; then
+        return 1
+    fi
+
+    if ! parseDDMDeclarationFieldsFromText "${logLine}"; then
+        return 1
+    fi
+
+    candidateSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+    ddmInvalidCandidateContexts[${candidateSignature}]="${logLine}"
+
+    return 0
+}
+
+function latestDDMResolverContextLine() {
+    local lineIndex=0
+
+    ddmResolverIgnoredInvalidContext=""
+
+    for (( lineIndex = ${#ddmRecentInstallLogWindow[@]}; lineIndex >= 1; lineIndex-- )); do
+        if [[ "${ddmRecentInstallLogWindow[$lineIndex]}" == *"Failed to add declaration:"* && "${ddmRecentInstallLogWindow[$lineIndex]}" == *"Invalid declaration:"* ]]; then
+            ddmResolverIgnoredInvalidContext="${ddmRecentInstallLogWindow[$lineIndex]}"
+            return 0
+        fi
+    done
+
+    for (( lineIndex = ${#ddmRecentInstallLogWindow[@]}; lineIndex >= 1; lineIndex-- )); do
+        if [[ "${ddmRecentInstallLogWindow[$lineIndex]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
+            ddmResolverIgnoredInvalidContext="${ddmRecentInstallLogWindow[$lineIndex]}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 function candidateHasNoMatchScanFailure() {
     local candidateVersion="${1}"
-    local declarationTimestamp="${2}"
+    local declarationEpoch="${2}"
     local lineIndex=0
     local currentLine=""
     local lineTimestamp=""
+    local lineEpoch=""
     local segmentActive="NO"
 
     ddmResolverFailureMarker=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
-        lineTimestamp="${currentLine[1,22]}"
-
-        if [[ ! "${lineTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
-            continue
-        fi
-
-        if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
-            continue
-        fi
 
         if [[ "${currentLine}" == *"requestedPMV="* ]]; then
+            if ! extractDDMLogTimestamp "${currentLine}"; then
+                continue
+            fi
+            lineTimestamp="${parsedDDMLogTimestamp}"
+
+            if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+                continue
+            fi
+            lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+            if (( lineEpoch < declarationEpoch )); then
+                continue
+            fi
+
             if [[ "${currentLine}" == *"requestedPMV=${candidateVersion},"* || "${currentLine}" == *"requestedPMV=${candidateVersion})"* ]]; then
                 segmentActive="YES"
             else
@@ -1825,6 +2035,24 @@ function candidateHasNoMatchScanFailure() {
         fi
 
         if [[ "${segmentActive}" != "YES" ]]; then
+            continue
+        fi
+
+        if [[ "${currentLine}" != *"MADownloadNoMatchFound"* && "${currentLine}" != *"pallasNoPMVMatchFound=true"* && "${currentLine}" != *"No available updates found. Please try again later."* ]]; then
+            continue
+        fi
+
+        if ! extractDDMLogTimestamp "${currentLine}"; then
+            continue
+        fi
+        lineTimestamp="${parsedDDMLogTimestamp}"
+
+        if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+            continue
+        fi
+        lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+        if (( lineEpoch < declarationEpoch )); then
             continue
         fi
 
@@ -1850,50 +2078,67 @@ function candidateHasNoMatchScanFailure() {
 function candidateHasConflictingEvidence() {
     local candidateSignature="${1}"
     local candidateVersion="${2}"
-    local firstDeclarationTimestamp="${3}"
-    local declarationTimestamp="${4}"
+    local firstDeclarationEpoch="${3}"
+    local declarationEpoch="${4}"
     local lineIndex=0
     local currentLine=""
     local lineTimestamp=""
-    local noUpdatesTimestamp=""
+    local lineEpoch=""
+    local parsedSignature=""
+    local noUpdatesEpoch=""
 
     ddmResolverConflictSummary=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
-        lineTimestamp="${currentLine[1,22]}"
 
-        if [[ ! "${lineTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
+        if [[ "${currentLine}" != *"EnforcedInstallDate:"* && "${currentLine}" != *"PrimaryDescriptor:"* && "${currentLine}" != *"No updates found for DDM to enforce"* ]]; then
             continue
         fi
 
-        if [[ "${lineTimestamp}" < "${firstDeclarationTimestamp}" ]]; then
+        if ! extractDDMLogTimestamp "${currentLine}"; then
+            continue
+        fi
+        lineTimestamp="${parsedDDMLogTimestamp}"
+
+        if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+            continue
+        fi
+        lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+        if (( lineEpoch < firstDeclarationEpoch )); then
             continue
         fi
 
         if [[ "${currentLine}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${currentLine}"; then
-            if [[ -n "${noUpdatesTimestamp}" ]]; then
-                if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" == "${candidateSignature}" ]]; then
-                    if [[ "${lineTimestamp}" > "${noUpdatesTimestamp}" || "${lineTimestamp}" == "${noUpdatesTimestamp}" ]]; then
+            parsedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+
+            if (( ${+ddmInvalidCandidateContexts[${parsedSignature}]} )); then
+                continue
+            fi
+
+            if [[ -n "${noUpdatesEpoch}" ]]; then
+                if [[ "${parsedSignature}" == "${candidateSignature}" ]]; then
+                    if (( lineEpoch >= noUpdatesEpoch )); then
                         ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
                         return 0
                     fi
                 fi
             fi
 
-            if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+            if (( lineEpoch < declarationEpoch )); then
                 continue
             fi
 
-            if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" != "${candidateSignature}" ]]; then
+            if [[ "${parsedSignature}" != "${candidateSignature}" ]]; then
                 ddmResolverConflictSummary="Conflicting declaration: ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType}"
                 return 0
             fi
         fi
 
-        if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+        if (( lineEpoch < declarationEpoch )); then
             if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
-                noUpdatesTimestamp="${lineTimestamp}"
+                noUpdatesEpoch="${lineEpoch}"
             fi
             continue
         fi
@@ -1906,7 +2151,7 @@ function candidateHasConflictingEvidence() {
         fi
 
         if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
-            noUpdatesTimestamp="${lineTimestamp}"
+            noUpdatesEpoch="${lineEpoch}"
         fi
     done
 
@@ -1918,17 +2163,20 @@ function resolveDDMEnforcementFromInstallLog() {
     local candidateKey=""
     local candidateSignature=""
     local latestTimestamp=""
-    local latestInvalidContext=""
     local index=0
     local latestIndex=0
     local candidateSummary=""
     local distinctCandidateCount=0
     local highestPriority=0
     local currentPriority=0
+    local candidateEpoch=""
+    local latestEpoch=0
 
     local -a candidateSourceTypes=()
     local -a candidateFirstTimestamps=()
+    local -a candidateFirstEpochs=()
     local -a candidateTimestamps=()
+    local -a candidateEpochs=()
     local -a candidateEnforcedDates=()
     local -a candidateVersions=()
     local -a candidateBuilds=()
@@ -1945,6 +2193,10 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmBuildVersionString=""
     ddmResolverFailureMarker=""
     ddmResolverConflictSummary=""
+    ddmResolverIgnoredInvalidSummary=""
+    ddmResolverIgnoredInvalidContext=""
+    ddmTimestampEpochCache=()
+    ddmInvalidCandidateContexts=()
 
     if ! tailRecentInstallLogWindow; then
         ddmResolverStatus="missing"
@@ -1954,7 +2206,23 @@ function resolveDDMEnforcementFromInstallLog() {
     fi
 
     for line in "${ddmRecentInstallLogWindow[@]}"; do
+        noteInvalidDDMDeclarationFromLine "${line}" >/dev/null
+    done
+
+    for line in "${ddmRecentInstallLogWindow[@]}"; do
         if ! parseDDMDeclarationFromLine "${line}"; then
+            continue
+        fi
+
+        if ! ddmLogTimestampToEpoch "${parsedDDMLogTimestamp}"; then
+            continue
+        fi
+        candidateEpoch="${parsedDDMLogTimestampEpoch}"
+
+        candidateSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+        if (( ${+ddmInvalidCandidateContexts[${candidateSignature}]} )); then
+            ddmResolverIgnoredInvalidSummary="${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString}"
+            ddmResolverIgnoredInvalidContext="${ddmInvalidCandidateContexts[${candidateSignature}]}"
             continue
         fi
 
@@ -1962,8 +2230,9 @@ function resolveDDMEnforcementFromInstallLog() {
 
         if (( ${+seenCandidateIndexes[${candidateKey}]} )); then
             index="${seenCandidateIndexes[${candidateKey}]}"
-            if [[ "${parsedDDMLogTimestamp}" > "${candidateTimestamps[$index]}" ]]; then
+            if (( candidateEpoch > candidateEpochs[$index] )); then
                 candidateTimestamps[$index]="${parsedDDMLogTimestamp}"
+                candidateEpochs[$index]="${candidateEpoch}"
                 candidateRawLines[$index]="${parsedDDMRawLine}"
             fi
             continue
@@ -1971,7 +2240,9 @@ function resolveDDMEnforcementFromInstallLog() {
 
         candidateSourceTypes+=( "${parsedDDMSourceType}" )
         candidateFirstTimestamps+=( "${parsedDDMLogTimestamp}" )
+        candidateFirstEpochs+=( "${candidateEpoch}" )
         candidateTimestamps+=( "${parsedDDMLogTimestamp}" )
+        candidateEpochs+=( "${candidateEpoch}" )
         candidateEnforcedDates+=( "${parsedDDMEnforcedInstallDate}" )
         candidateVersions+=( "${parsedDDMVersionString}" )
         candidateBuilds+=( "${parsedDDMBuildVersionString}" )
@@ -1982,19 +2253,29 @@ function resolveDDMEnforcementFromInstallLog() {
     if [[ ${#candidateSourceTypes[@]} -eq 0 ]]; then
         ddmResolverStatus="missing"
         ddmResolverSuppressionType="missing"
-        ddmResolverReason="No DDM declaration candidates found in install.log"
+        if [[ -n "${ddmResolverIgnoredInvalidSummary}" ]]; then
+            ddmResolverReason="Only invalid stale DDM declarations found in install.log"
+            notice "Ignoring invalid stale DDM declaration: ${ddmResolverIgnoredInvalidSummary}"
+            if [[ -n "${ddmResolverIgnoredInvalidContext}" ]] || latestDDMResolverContextLine; then
+                info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+            fi
+        else
+            ddmResolverReason="No DDM declaration candidates found in install.log"
+        fi
         return 1
     fi
 
     latestTimestamp="${candidateTimestamps[1]}"
+    latestEpoch="${candidateEpochs[1]}"
     for (( index = 2; index <= ${#candidateTimestamps[@]}; index++ )); do
-        if [[ "${candidateTimestamps[$index]}" > "${latestTimestamp}" ]]; then
+        if (( candidateEpochs[$index] > latestEpoch )); then
             latestTimestamp="${candidateTimestamps[$index]}"
+            latestEpoch="${candidateEpochs[$index]}"
         fi
     done
 
     for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
-        if [[ "${candidateTimestamps[$index]}" == "${latestTimestamp}" ]]; then
+        if (( candidateEpochs[$index] == latestEpoch )); then
             filteredIndexes+=( "${index}" )
         fi
     done
@@ -2009,7 +2290,7 @@ function resolveDDMEnforcementFromInstallLog() {
 
     filteredIndexes=( )
     for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
-        if [[ "${candidateTimestamps[$index]}" == "${latestTimestamp}" ]]; then
+        if (( candidateEpochs[$index] == latestEpoch )); then
             currentPriority="$(ddmSourcePriority "${candidateSourceTypes[$index]}")"
             if (( currentPriority == highestPriority )); then
                 filteredIndexes+=( "${index}" )
@@ -2029,15 +2310,8 @@ function resolveDDMEnforcementFromInstallLog() {
             warning "Conflicting candidate: ${candidateSummary}"
         done
 
-        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
-            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
-                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
-                break
-            fi
-        done
-
-        if [[ -n "${latestInvalidContext}" ]]; then
-            info "Resolver context: ${latestInvalidContext}"
+        if latestDDMResolverContextLine; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 
         return 1
@@ -2061,41 +2335,27 @@ function resolveDDMEnforcementFromInstallLog() {
         return 1
     fi
 
-    if candidateHasConflictingEvidence "${candidateSignature}" "${ddmVersionString}" "${candidateFirstTimestamps[$latestIndex]}" "${ddmDeclarationLogTimestamp}"; then
+    if candidateHasConflictingEvidence "${candidateSignature}" "${ddmVersionString}" "${candidateFirstEpochs[$latestIndex]}" "${candidateEpochs[$latestIndex]}"; then
         ddmResolverStatus="conflict"
         ddmResolverSuppressionType="conflict"
         ddmResolverReason="Conflicting DDM state detected in install.log"
         warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
 
-        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
-            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
-                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
-                break
-            fi
-        done
-
-        if [[ -n "${latestInvalidContext}" ]]; then
-            info "Resolver context: ${latestInvalidContext}"
+        if latestDDMResolverContextLine; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 
         return 1
     fi
 
-    if candidateHasNoMatchScanFailure "${ddmVersionString}" "${ddmDeclarationLogTimestamp}"; then
+    if candidateHasNoMatchScanFailure "${ddmVersionString}" "${candidateEpochs[$latestIndex]}"; then
         ddmResolverStatus="noMatch"
         ddmResolverSuppressionType="noMatch"
         ddmResolverReason="Chosen DDM declaration does not map to an available update"
         warning "${ddmResolverReason}: ${ddmVersionString} (${ddmResolverFailureMarker})"
 
-        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
-            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
-                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
-                break
-            fi
-        done
-
-        if [[ -n "${latestInvalidContext}" ]]; then
-            info "Resolver context: ${latestInvalidContext}"
+        if latestDDMResolverContextLine; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 
         return 1
@@ -2103,9 +2363,16 @@ function resolveDDMEnforcementFromInstallLog() {
 
     ddmResolverStatus="resolved"
     ddmResolverSuppressionType=""
+    if [[ -n "${ddmResolverIgnoredInvalidSummary}" ]]; then
+        notice "Ignored invalid stale DDM declaration: ${ddmResolverIgnoredInvalidSummary}"
+        if [[ -n "${ddmResolverIgnoredInvalidContext}" ]]; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+        fi
+    fi
     notice "Resolved DDM declaration source: ${ddmResolverSource}"
     notice "Resolved DDM declaration version: ${ddmVersionString}"
     notice "Resolved DDM declaration enforcement date: ${ddmEnforcedInstallDate}"
+    info "Resolved declaration context: ${ddmDeclarationRawLine}"
 
     return 0
 }
@@ -2122,9 +2389,18 @@ function resolvePaddedEnforcementDateForCandidate() {
     local nowEpoch=""
     local conflictDetected="NO"
     local conflictSummary=""
+    local declarationEpoch=""
+    local lineEpoch=""
+    local parsedSignature=""
 
     ddmResolvedPaddedEpoch=""
     ddmResolvedPaddedRawLine=""
+
+    if ! ddmLogTimestampToEpoch "${ddmDeclarationLogTimestamp}"; then
+        warning "Unable to normalize resolved declaration timestamp: ${ddmDeclarationLogTimestamp}"
+        return 1
+    fi
+    declarationEpoch="${parsedDDMLogTimestampEpoch}"
 
     while (( elapsedSeconds < maxWaitSeconds )); do
         tailRecentInstallLogWindow
@@ -2135,18 +2411,31 @@ function resolvePaddedEnforcementDateForCandidate() {
         conflictSummary=""
 
         for line in "${ddmRecentInstallLogWindow[@]}"; do
-            lineTimestamp=$(echo "${line}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
-
-            if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${line}" ]]; then
+            if [[ "${line}" != *"EnforcedInstallDate:"* && "${line}" != *"setPastDuePaddedEnforcementDate is set: "* ]]; then
                 continue
             fi
 
-            if [[ "${lineTimestamp}" < "${ddmDeclarationLogTimestamp}" ]]; then
+            if ! extractDDMLogTimestamp "${line}"; then
+                continue
+            fi
+            lineTimestamp="${parsedDDMLogTimestamp}"
+
+            if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+                continue
+            fi
+            lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+            if (( lineEpoch < declarationEpoch )); then
                 continue
             fi
 
             if [[ "${line}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${line}"; then
-                if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" != "${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}" ]]; then
+                parsedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+                if (( ${+ddmInvalidCandidateContexts[${parsedSignature}]} )); then
+                    continue
+                fi
+
+                if [[ "${parsedSignature}" != "${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}" ]]; then
                     conflictDetected="YES"
                     conflictSummary="${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType}"
                     break

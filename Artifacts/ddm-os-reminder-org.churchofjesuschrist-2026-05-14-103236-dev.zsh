@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0b1"
+scriptVersion="3.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -252,7 +252,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0b1"
+scriptVersion="3.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1116,12 +1116,16 @@ function resolveDateFormatDeadlineHumanReadable() {
     local exactValue=""
     local baseValue=""
     local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
+    local resolvedDateFormatSource="built-in default"
 
     requestedLanguageCode="$(requestedDialogLanguageCode)"
     baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
     resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
 
     deadlineFormatLanguageCode="${resolvedDialogLanguage:-en}"
+    if [[ "${preferenceExplicitlySet["dateFormatDeadlineHumanReadable"]}" == "true" ]]; then
+        resolvedDateFormatSource="global preference"
+    fi
 
     if [[ -n "${requestedLanguageCode}" ]]; then
         exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
@@ -1132,6 +1136,7 @@ function resolveDateFormatDeadlineHumanReadable() {
             if [[ -n "${exactValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${exactValue}"
                 deadlineFormatLanguageCode="${requestedLanguageCode}"
+                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
             fi
         fi
     fi
@@ -1145,6 +1150,7 @@ function resolveDateFormatDeadlineHumanReadable() {
             if [[ -n "${baseValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${baseValue}"
                 deadlineFormatLanguageCode="${baseLanguageCode}"
+                resolvedDateFormatSource="base language preference (${baseLanguageCode})"
             fi
         fi
     fi
@@ -1154,6 +1160,7 @@ function resolveDateFormatDeadlineHumanReadable() {
     [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
 
     relativeDeadlineTimeFormatHumanReadable="$(deriveRelativeDeadlineTimeFormat "${dateFormatDeadlineHumanReadable}")"
+    notice "Resolved deadline date format using ${resolvedDateFormatSource}: requested language '${requestedLanguageCode:-auto}', dialog language '${resolvedDialogLanguage:-en}', format language '${deadlineFormatLanguageCode}', absolute format '${dateFormatDeadlineHumanReadable}', relative time format '${relativeDeadlineTimeFormatHumanReadable}'"
 }
 
 function validatePreferenceLoad() {
@@ -1609,8 +1616,11 @@ function applyLocalizedFieldValue() {
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
     local localizedVariable="${baseVariable}Localized${localizedSuffix}"
     local localizedValue="${(P)localizedVariable}"
+    local baseValue="${(P)baseVariable}"
 
-    if [[ "${preferenceExplicitlySet["${baseVariable}"]}" == "true" ]]; then
+    # Base values remain shared fallback text; matching localized overrides should
+    # still win when present. Preserve the special InfoButtonText=hide sentinel.
+    if [[ "${baseVariable}" == "infobuttontext" && "${preferenceExplicitlySet["${baseVariable}"]}" == "true" && "${baseValue}" == "hide" ]]; then
         return
     fi
 

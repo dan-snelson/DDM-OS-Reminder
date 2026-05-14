@@ -48,7 +48,7 @@ body:
     attributes:
       label: Script version
       description: Which version of DDM OS Reminder are you deploying?
-      placeholder: "e.g. 3.3.0b3"
+      placeholder: "e.g. 3.3.0b4"
     validations:
       required: true
 

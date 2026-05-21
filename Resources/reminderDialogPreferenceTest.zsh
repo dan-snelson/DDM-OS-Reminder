@@ -694,6 +694,10 @@ function deriveRelativeDeadlineTimeFormat() {
     derivedFormat=$(printf '%s' "${normalizedFormat}" | /usr/bin/perl -ne '
         if (/(%[-_0^#]*[kKlHIrRTX].*)/) {
             $value = $1;
+            $prefix = $`;
+            if ($prefix =~ /(%[-_0^#]*[pP][[:space:],;:|\/.-]*)$/) {
+                $value = $1 . $value;
+            }
             $value =~ s/^[[:space:],;:|\/.-]+//;
             print "+$value";
             exit;

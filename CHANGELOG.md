@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 3.3.0b4 (14-May-2026)
+### Version 3.3.0b5 (21-May-2026)
 - Added localization-surface filtering to `assemble.zsh` and `Resources/createPlist.zsh`, with support for full output, `--minimal` output (base keys plus English localized keys), and `--languages <csv>` subset generation for leaner `.plist` and `.mobileconfig` artifacts. (Addresses Issue #100)
 - Extended `assemble.zsh --interactive` with localization artifact selection prompts, and pruned imported localized keys that fall outside the selected artifact mode so prior-plist upgrades stay explicit and predictable.
 - Shortened skipped-localization import logs to a concise count plus sample keys, and tightened `--minimal` filtering so it keeps exact `_Localized_en` keys without carrying English region variants such as `en_GB`.
@@ -10,6 +10,9 @@
 - Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` fallback support for exact locale and base language variants, and aligned preview/runtime relative deadline time formatting with the same resolved locale-aware date/time policy. (Thanks for the suggestion, @coalliera!)
 - Restored localized dialog-text override precedence when both shared base keys and matching `*Localized_<code>` values are present, while preserving the `InfoButtonText=hide` sentinel in preview and runtime paths. (Thanks for the heads-up, @coalliera!)
 - Hardened `install.log` resolver handling for stale invalid declarations by ignoring failed `SoftwareUpdateSubscriber` declaration attempts, accepting full timezone-offset timestamps (including `+05:30` forms), and preserving real active-conflict suppression only for surviving valid DDM evidence. (Addresses Issue #99)
+- Replaced legacy lowercase placeholder modifier handling with explicit `{titleMessageUpdateOrUpgradeLower}` placeholders across runtime defaults, preview defaults, sample localization strings, and placeholder documentation.
+- Preserved recent German localization casing improvements by keeping noun-form `macOS-Update` / `macOS-Upgrade` strings title-cased where grammar requires it.
+- Added a natural Japanese sample deadline format override (`DateFormatDeadlineHumanReadableLocalized_ja`) so Japanese previews render native-looking dates and times instead of inheriting the English-shaped global format.
 
 ### Version 3.2.0 (01-May-2026)
 - Expanded locale-aware runtime rendering in `reminderDialog.zsh` and `Resources/reminderDialogPreferenceTest.zsh` so relative deadlines, date/time strings, uptime duration text, and free-disk availability reflect the resolved dialog language instead of remaining partly English.
@@ -101,7 +104,7 @@
 - Refactored "Quiet Period" logic based on user-interaction via Return Code (rather than dialog display)
 
 ### Version 2.1.0 (13-Dec-2025)
-- Added ability to use `titleMessageUpdateOrUpgrade:l` ([Pull Request #26](https://github.com/dan-snelson/DDM-OS-Reminder/pull/26); thanks, @maxsundellacne!)
+- Added lowercase update-or-upgrade placeholder support ([Pull Request #26](https://github.com/dan-snelson/DDM-OS-Reminder/pull/26); thanks, @maxsundellacne!)
 - Added logic to hide `button2` based on `DaysBeforeDeadlineHidingButton2` ([Pull Request #27](https://github.com/dan-snelson/DDM-OS-Reminder/pull/27); thanks, @maxsundellacne!)
 - Refactored `resetConfiguration` function to avoid errors when attempting to `chmod` non-existent files
 - Added warning for excessive uptime (configurable via `DaysOfExcessiveUptimeWarning` variable; [Issue #28](https://github.com/dan-snelson/DDM-OS-Reminder/issues/28))

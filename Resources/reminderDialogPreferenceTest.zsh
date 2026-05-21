@@ -70,7 +70,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.3.0b4"
+scriptVersion="3.3.0b5"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -142,7 +142,7 @@ declare -A preferenceConfiguration=(
     ["button2text"]="string|Remind Me Later"
     ["infobuttontext"]="string|Update macOS on Mac"
     ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
-    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
+    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}."
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
     ["pendingDownloadMessage"]="string|<br><br>Your Mac will begin downloading the update shortly."
@@ -160,9 +160,9 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelDaysRemaining"]="string|Day(s) Remaining"
     ["infoboxLabelLastRestart"]="string|Last Restart"
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
-    ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline."
-    ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline."
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -578,16 +578,33 @@ function loadPreferenceOverrides() {
 function localeForDialogLanguageCode() {
     local languageCode=""
     local baseLanguageCode=""
+    local preferredUtf8Locale=""
     local discoveredLocale=""
 
     languageCode="$(sanitizeLanguageCode "${1}")"
     baseLanguageCode="$(baseLanguageCodeForCode "${languageCode}")"
 
+    preferredUtf8Locale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
+        BEGIN { IGNORECASE = 1 }
+        {
+            localeLower = tolower($0)
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?\\.utf-?8$")) {
+                print $0
+                exit
+            }
+        }
+    ')
+
+    if [[ -n "${preferredUtf8Locale}" ]]; then
+        echo "${preferredUtf8Locale}"
+        return
+    fi
+
     discoveredLocale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
         BEGIN { IGNORECASE = 1 }
         {
             localeLower = tolower($0)
-            if (localeLower ~ ("^" code "(_[^[:space:]]+)?(\\.utf-?8)?$")) {
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?$")) {
                 print $0
                 exit
             }
@@ -644,7 +661,14 @@ function formatDateWithDialogLocale() {
 function trimSurroundingWhitespace() {
     local value="${1}"
 
-    value=$(printf '%s' "${value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    while [[ -n "${value}" && "${value[1]}" == [[:space:]] ]]; do
+        value="${value[2,-1]}"
+    done
+
+    while [[ -n "${value}" && "${value[-1]}" == [[:space:]] ]]; do
+        value="${value[1,-2]}"
+    done
+
     echo "${value}"
 }
 
@@ -1057,6 +1081,7 @@ function applyLocalizedDialogText() {
 }
 
 function applyLocalizedUpdateVocabulary() {
+    # Set canonical vocabulary here; explicit lowercase placeholders derive later.
     if [[ "${updateOrUpgradeMode:l}" == "upgrade" ]]; then
         titleMessageUpdateOrUpgrade="${upgradeWord}"
         softwareUpdateButtonText="${softwareUpdateButtonTextUpgrade}"
@@ -1334,7 +1359,7 @@ function computeDeadlineEnforcementMessage() {
 
     baseDeadlineEnforcementMessage="${(P)deadlineTemplateVariable}"
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{deadlineDisplay\}/${deadlineDisplay}}
-    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
+    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
 
     dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
@@ -1384,6 +1409,7 @@ function buildPlaceholderMap() {
         [infoboxDaysRemainingDisplay]="${infoboxDaysRemainingDisplay}"
         [infoboxLastRestartDisplay]="${infoboxLastRestartDisplay}"
         [titleMessageUpdateOrUpgrade]="${titleMessageUpdateOrUpgrade}"
+        [titleMessageUpdateOrUpgradeLower]="${titleMessageUpdateOrUpgrade:l}"
         [uptimeHumanReadable]="${uptimeHumanReadable}"
         [excessiveUptimeWarningMessage]="${excessiveUptimeWarningMessage}"
         [updateReadyMessage]="${updateReadyMessage}"
@@ -1419,12 +1445,15 @@ function replacePlaceholders() {
     local maxPasses=5
     local pass=0
 
+    # Localization strings should use explicit placeholder names instead of modifiers.
+    # Use {titleMessageUpdateOrUpgrade} for the default/title-case form and
+    # {titleMessageUpdateOrUpgradeLower} when sentence grammar needs lowercase.
+    # Keep multiple passes so placeholders embedded in other localized strings still resolve.
     while (( pass < maxPasses )); do
         previousValue="${value}"
 
         for placeholder replaceValue in "${(@kv)PLACEHOLDER_MAP}"; do
             value=${value//\{${placeholder}\}/${replaceValue}}
-            value=${value//\{${placeholder}:l\}/${replaceValue:l}}
         done
 
         (( pass++ ))

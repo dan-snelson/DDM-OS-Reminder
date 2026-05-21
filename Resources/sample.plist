@@ -47,14 +47,14 @@
     <false/>
     <key>DateFormatDeadlineHumanReadable</key>
     <string>+%a, %d-%b-%Y, %-l:%M %p</string>
-     <key>DateFormatDeadlineHumanReadableLocalized_fr</key>
+    <key>DateFormatDeadlineHumanReadableLocalized_fr</key>
     <string>+%a %d/%m/%Y %H:%M</string>
-     <key>DateFormatDeadlineHumanReadableLocalized_fr_CA</key>
-     <string>+%a %Y-%m-%d %H:%M</string>
-     <key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
-     <string>+%a, %d/%m/%Y %H:%M</string>
-     <key>DateFormatDeadlineHumanReadableLocalized_ja</key>
-     <string>+%Y年%-m月%-d日 (%a) %p %-I:%M</string>
+    <key>DateFormatDeadlineHumanReadableLocalized_fr_CA</key>
+    <string>+%a %Y-%m-%d %H:%M</string>
+    <key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
+    <string>+%a, %d/%m/%Y %H:%M</string>
+    <key>DateFormatDeadlineHumanReadableLocalized_ja</key>
+    <string>+%Y年%-m月%-d日 (%a) %p %-I:%M</string>
 
     <!-- Support block -->
     <key>SupportTeamName</key>

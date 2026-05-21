@@ -1028,10 +1028,12 @@ function buildPlaceholderMap() {
 function replacePlaceholders() {
     local targetVariable="${1}"
     local value="${(P)targetVariable}"
+    local lowercaseUpdateOrUpgrade="${titleMessageUpdateOrUpgrade:l}"
 
     # Localization strings should use explicit placeholder names instead of modifiers.
     # Use {titleMessageUpdateOrUpgrade} for the default/title-case form and
     # {titleMessageUpdateOrUpgradeLower} when sentence grammar needs lowercase.
+    # Keep legacy {titleMessageUpdateOrUpgrade:l} forms working for older configs.
     # Keep multiple passes so placeholders embedded in other localized strings still resolve.
     local maxPasses=5
     local pass=0
@@ -1039,6 +1041,8 @@ function replacePlaceholders() {
 
     while (( pass < maxPasses )); do
         previousValue="${value}"
+        value=${value//\$\{titleMessageUpdateOrUpgrade:l\}/${lowercaseUpdateOrUpgrade}}
+        value=${value//\{titleMessageUpdateOrUpgrade:l\}/${lowercaseUpdateOrUpgrade}}
 
         for placeholder replaceValue in "${(@kv)PLACEHOLDER_MAP}"; do
             value=${value//\{${placeholder}\}/${replaceValue}}

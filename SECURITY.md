@@ -9,7 +9,7 @@ DDM OS Reminder is a macOS-only project commonly deployed through MDM, runs with
 The latest stable release and the current prerelease line are actively supported for security updates.
 
 - Current stable: **v3.3.0**
-~~- Current prerelease line: **v3.3.0**~~
+- ~~Current prerelease line: **v3.3.0**~~
 - Older releases receive no security patches.
 
 If you are running an older release, upgrade before requesting security support.

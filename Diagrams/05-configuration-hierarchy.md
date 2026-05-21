@@ -218,7 +218,7 @@ ELSE:
     <key>LanguageOverride</key>
     <string>de</string>
     <key>MessageLocalized_de</key>
-    <string>**Eine erforderliche macOS-Aktualisierung ist jetzt verfugbar**</string>
+    <string>**Ein erforderliches macOS-Update ist jetzt verfügbar**</string>
 </dict>
 ```
 

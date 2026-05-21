@@ -742,7 +742,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+, expanded in 3.3.0b4)**:
+**Locale Behavior (3.0.0+, expanded in 3.3.0b5)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
 - When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
 - Optional region-aware overrides use `DateFormatDeadlineHumanReadableLocalized_<code>` and resolve as exact locale (for example `fr_CA`) → base language (for example `fr`) → global `DateFormatDeadlineHumanReadable` → built-in script default
@@ -759,6 +759,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <string>+%a %Y-%m-%d %H:%M</string>
 <key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
 <string>+%a, %d/%m/%Y %H:%M</string>
+<key>DateFormatDeadlineHumanReadableLocalized_ja</key>
+<string>+%Y年%-m月%-d日 (%a) %p %-I:%M</string>
 ```
 
 ---
@@ -1250,7 +1252,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 **Key Placeholders Used**:
 - `{loggedInUserFirstname}` = User's first name
 - `{ddmVersionString}` = Required macOS version
-- `{titleMessageUpdateOrUpgrade:l}` = "update" or "upgrade" (lowercase)
+- `{titleMessageUpdateOrUpgradeLower}` = "update" or "upgrade" (lowercase)
 - `{updateReadyMessage}` = Staged update status message
 - `{button1text}` = Button 1 label
 - `{button2text}` = Button 2 label
@@ -1265,7 +1267,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 
 **Script Default** (condensed):
 ```bash
-["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}**..."
+["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}**..."
 ```
 
 **Configuration Profile** (escaped HTML):
@@ -1539,7 +1541,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Supports Placeholders**: Yes
 **Key Placeholders**:
 - `{diskSpaceHumanReadable}` = Free space with percentage
-- `{titleMessageUpdateOrUpgrade:l}` = "update" or "upgrade"
+- `{titleMessageUpdateOrUpgradeLower}` = "update" or "upgrade"
 
 **Inserted Into**: `{diskSpaceWarningMessage}` in `message`
 
@@ -1547,7 +1549,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Script Default**:
 ```bash
-["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
+["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}."
 ```
 
 **Configuration Profile**:
@@ -1615,7 +1617,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 
 **Description**: Sentence appended to `{deadlineEnforcementMessage}` inside `Message`. The `Absolute` variant is used when the deadline renders as a full date string; the `Relative` variant is used when it renders as Today or Tomorrow.
 
-**Key Placeholders**: `{deadlineDisplay}`, `{titleMessageUpdateOrUpgrade:l}`, `{titleMessageUpdateOrUpgrade}`
+**Key Placeholders**: `{deadlineDisplay}`, `{titleMessageUpdateOrUpgradeLower}`, `{titleMessageUpdateOrUpgrade}`
 
 ---
 
@@ -1653,7 +1655,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{ddmVersionStringDeadlineHumanReadable}` | DDM | Formatted deadline (alt) | Sat, 01-Aug-2026, 8:00 AM |
 | `{ddmVersionStringDaysRemaining}` | DDM | Days to deadline | 14 |
 | `{titleMessageUpdateOrUpgrade}` | Logic | Update or Upgrade | Update |
-| `{titleMessageUpdateOrUpgrade:l}` | Logic | Lowercase variant | update |
+| `{titleMessageUpdateOrUpgradeLower}` | Logic | Lowercase variant | update |
 | `{softwareUpdateButtonText}` | Logic | Expected button label | Update Now |
 | `{uptimeHumanReadable}` | System | Time since restart | 5 days |
 | `{diskSpaceHumanReadable}` | System | Free space | 128.5 GB (45.2% available) |
@@ -1671,7 +1673,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 3.3.0b4 |
+| `{scriptVersion}` | System | Script version | 3.3.0b5 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1689,18 +1691,15 @@ These placeholders are resolved at render time by swiftDialog itself. See the fu
 
 **3.2.0 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
 
-### Placeholder Modifiers
+### Explicit Placeholder Variants
 
-#### Lowercase Modifier: `:l`
-Converts placeholder value to lowercase.
+Use the default placeholder when title-case or noun-style wording is needed, and use the explicit lowercase variant when sentence grammar needs it.
 
 **Example**:
 ```
 {titleMessageUpdateOrUpgrade} → "Update"
-{titleMessageUpdateOrUpgrade:l} → "update"
+{titleMessageUpdateOrUpgradeLower} → "update"
 ```
-
-**Usage**: For grammatically correct sentences
 
 ### Multi-Pass Resolution
 
@@ -2181,11 +2180,12 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 3.3.0b4 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
+| 3.3.0b5 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
+| 3.3.0b5 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
 | 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
-**Last Updated**: 14-May-2026
-**DDM OS Reminder Version**: 3.3.0b4
+**Last Updated**: 21-May-2026
+**DDM OS Reminder Version**: 3.3.0b5

@@ -1,5 +1,4 @@
 # AGENTS.md
-
 **Single source of truth for coding agents** (Claude Code, Cursor, Copilot, Aider, etc.) working in this repo.  
 Takes precedence over `README.md`, `CONTRIBUTING.md`, `Resources/projectPlan.md`, and similar instruction files when workflow rules conflict.  
 Claude Code users: symlink with `ln -s AGENTS.md CLAUDE.md` or reference via `@AGENTS.md` from a minimal `CLAUDE.md`.

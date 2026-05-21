@@ -502,7 +502,7 @@
     <key>DeadlineEnforcementMessageAbsoluteLocalized_en</key>
     <string>However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.</string>
     <key>DeadlineEnforcementMessageAbsoluteLocalized_de</key>
-    <string>Andernfalls **wird dein Mac am {deadlineDisplay} automatisch neu gestartet, um das erforderliche macOS-{titleMessageUpdateOrUpgrade:l} zu installieren**.</string>
+    <string>Andernfalls **wird dein Mac am {deadlineDisplay} automatisch neu gestartet, um das erforderliche macOS-{titleMessageUpdateOrUpgrade} zu installieren**.</string>
     <key>DeadlineEnforcementMessageAbsoluteLocalized_fr</key>
     <string>Sinon, votre Mac **redémarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** le **{deadlineDisplay}**.</string>
     <key>DeadlineEnforcementMessageAbsoluteLocalized_es</key>
@@ -520,7 +520,7 @@
     <key>DeadlineEnforcementMessageRelativeLocalized_en</key>
     <string>However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline.</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_de</key>
-    <string>Andernfalls **wird dein Mac {deadlineDisplay} automatisch neu gestartet, um das erforderliche macOS-{titleMessageUpdateOrUpgrade:l} zu installieren**.</string>
+    <string>Andernfalls **wird dein Mac {deadlineDisplay} automatisch neu gestartet, um das erforderliche macOS-{titleMessageUpdateOrUpgrade} zu installieren**.</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_fr</key>
     <string>Sinon, votre Mac **redémarrera automatiquement et appliquera la {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}**.</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_es</key>

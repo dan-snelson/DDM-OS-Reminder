@@ -1,4 +1,4 @@
-# DDM OS Reminder (3.3.0b5) - Documentation Diagrams
+# DDM OS Reminder (3.3.0) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -492,7 +492,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.8 | 21-May-2026 | Refreshed configuration-reference coverage for explicit lowercase placeholder variants, the natural Japanese deadline-format override example, and current German `macOS-Update` sample wording |
-| 1.0.7 | 14-May-2026 | Documented `3.3.0b5` region-aware deadline date-format fallback keys, exact/base locale resolution behavior, and aligned relative-deadline time rendering guidance |
+| 1.0.7 | 14-May-2026 | Documented `3.3.0` region-aware deadline date-format fallback keys, exact/base locale resolution behavior, and aligned relative-deadline time rendering guidance |
 | 1.0.6 | 06-Apr-2026 | Refreshed diagram documentation for the `3.2.0` release, including final-version metadata, current localization behavior, `VersionString`-based compliance fallback when `BuildVersionString` is unavailable, and bundled EA fixture-hook guidance |
 | 1.0.5 | 28-Mar-2026 | Updated overview, deployment workflow, and configuration reference markdown for `3.0.0` prior-plist upgrade-assist, lane-suffixed artifact names, and `2.2.0+` documented compatibility |
 | 1.0.4 | 25-Mar-2026 | Updated runtime and deployment diagrams for the hardened DDM resolver, corrected `dorm.zsh` client-script paths, refreshed EA documentation, and converted 00-overview source to Mermaid |
@@ -511,4 +511,4 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 ---
 
 **Last Updated**: 21-May-2026
-**DDM OS Reminder Version**: 3.3.0b5
+**DDM OS Reminder Version**: 3.3.0

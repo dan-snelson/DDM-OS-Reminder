@@ -7,7 +7,7 @@
 # filter generated `.plist` / `.mobileconfig` files without changing the
 # surrounding XML structure.
 
-scriptVersion="3.3.0b5"
+scriptVersion="3.3.0"
 
 # Shared localization-filter state used by assemble/createPlist generation paths.
 typeset -ga localizationFilterSelectedCodes=()

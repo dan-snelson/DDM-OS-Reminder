@@ -70,7 +70,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.2.0"
+scriptVersion="3.3.0"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -82,6 +82,8 @@ declare -A preferenceExplicitlySet=()
 foundManagedPreferences="false"
 foundLocalPreferences="false"
 dialogLanguage="en"
+deadlineFormatLanguageCode="en"
+relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
 dialogSupportsMarkdownColor="NO"
 hideSecondaryButton="NO"
 blurscreen="--noblurscreen"
@@ -140,7 +142,7 @@ declare -A preferenceConfiguration=(
     ["button2text"]="string|Remind Me Later"
     ["infobuttontext"]="string|Update macOS on Mac"
     ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
-    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
+    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}."
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
     ["pendingDownloadMessage"]="string|<br><br>Your Mac will begin downloading the update shortly."
@@ -158,9 +160,9 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelDaysRemaining"]="string|Day(s) Remaining"
     ["infoboxLabelLastRestart"]="string|Last Restart"
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
-    ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline."
-    ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline."
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -392,11 +394,70 @@ function setStringPreferenceValue() {
 }
 
 function languageSuffixForCode() {
-    local code="${1:l}"
+    local code=""
+    local firstSegment=""
+    local segmentIndex=0
+    local -a codeSegments=()
 
-    [[ -z "${code}" || "${code}" == "en" ]] && echo "En" && return
+    code="$(sanitizeLanguageCode "${1}")"
+    [[ -z "${code}" ]] && echo "" && return
 
-    echo "${(C)code}"
+    IFS='_' read -r -A codeSegments <<< "${code}"
+    firstSegment="${codeSegments[1]:l}"
+    code="${(C)firstSegment}"
+
+    if (( ${#codeSegments[@]} > 1 )); then
+        for (( segmentIndex=2; segmentIndex<=${#codeSegments[@]}; segmentIndex++ )); do
+            code="${code}_${codeSegments[segmentIndex]:u}"
+        done
+    fi
+
+    echo "${code}"
+}
+
+function sanitizeLanguageCode() {
+    local languageCode="${1:l}"
+
+    languageCode="${languageCode#\"}"
+    languageCode="${languageCode%\"}"
+    languageCode="${languageCode#\'}"
+    languageCode="${languageCode%\'}"
+    languageCode="${languageCode//-/_}"
+    languageCode="${languageCode// /}"
+
+    while [[ "${languageCode}" == *"__"* ]]; do
+        languageCode="${languageCode//__/_}"
+    done
+
+    while [[ "${languageCode}" == _* ]]; do
+        languageCode="${languageCode#_}"
+    done
+
+    while [[ "${languageCode}" == *_ ]]; do
+        languageCode="${languageCode%_}"
+    done
+
+    echo "${languageCode}"
+}
+
+function baseLanguageCodeForCode() {
+    local languageCode=""
+
+    languageCode="$(sanitizeLanguageCode "${1}")"
+    echo "${languageCode%%_*}"
+}
+
+function requestedDialogLanguageCode() {
+    local requestedLanguageCode=""
+
+    if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
+        requestedLanguageCode="${languageOverride}"
+    else
+        requestedLanguageCode="$(detectLoggedInUserLanguageCode)"
+    fi
+
+    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageCode}")"
+    echo "${requestedLanguageCode}"
 }
 
 function loadDynamicLocalizedPreferenceOverridesFromPlist() {
@@ -502,7 +563,7 @@ function loadPreferenceOverrides() {
         loadDynamicLocalizedPreferenceOverridesFromPlist "${managedPreferencesPlist}.plist"
     fi
 
-    [[ -n "${dateFormatDeadlineHumanReadable}" && "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+    resolveDateFormatDeadlineHumanReadable
 
     preFlight "Preferences loaded"
     return 0
@@ -515,14 +576,35 @@ function loadPreferenceOverrides() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function localeForDialogLanguageCode() {
-    local languageCode="${1:l}"
+    local languageCode=""
+    local baseLanguageCode=""
+    local preferredUtf8Locale=""
     local discoveredLocale=""
+
+    languageCode="$(sanitizeLanguageCode "${1}")"
+    baseLanguageCode="$(baseLanguageCodeForCode "${languageCode}")"
+
+    preferredUtf8Locale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
+        BEGIN { IGNORECASE = 1 }
+        {
+            localeLower = tolower($0)
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?\\.utf-?8$")) {
+                print $0
+                exit
+            }
+        }
+    ')
+
+    if [[ -n "${preferredUtf8Locale}" ]]; then
+        echo "${preferredUtf8Locale}"
+        return
+    fi
 
     discoveredLocale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
         BEGIN { IGNORECASE = 1 }
         {
             localeLower = tolower($0)
-            if (localeLower ~ ("^" code "(_[^[:space:]]+)?(\\.utf-?8)?$")) {
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?$")) {
                 print $0
                 exit
             }
@@ -534,7 +616,7 @@ function localeForDialogLanguageCode() {
         return
     fi
 
-    case "${languageCode}" in
+    case "${baseLanguageCode}" in
         de) echo "de_DE.UTF-8" ;;
         en) echo "en_US.UTF-8" ;;
         es) echo "es_ES.UTF-8" ;;
@@ -547,14 +629,15 @@ function localeForDialogLanguageCode() {
     esac
 }
 
-function formatDateWithDialogLocale() {
-    local inputFormat="${1}"
-    local inputValue="${2}"
-    local outputFormat="${3}"
+function formatDateWithLanguageCode() {
+    local languageCode="${1}"
+    local inputFormat="${2}"
+    local inputValue="${3}"
+    local outputFormat="${4}"
     local localeForDate=""
     local formattedDate=""
 
-    localeForDate="$(localeForDialogLanguageCode "${dialogLanguage}")"
+    localeForDate="$(localeForDialogLanguageCode "${languageCode}")"
 
     if [[ -n "${localeForDate}" ]]; then
         formattedDate=$(LC_TIME="${localeForDate}" date -jf "${inputFormat}" "${inputValue}" "${outputFormat}" 2>/dev/null)
@@ -567,10 +650,25 @@ function formatDateWithDialogLocale() {
     echo "${formattedDate}"
 }
 
+function formatDateWithDialogLocale() {
+    local inputFormat="${1}"
+    local inputValue="${2}"
+    local outputFormat="${3}"
+
+    formatDateWithLanguageCode "${dialogLanguage}" "${inputFormat}" "${inputValue}" "${outputFormat}"
+}
+
 function trimSurroundingWhitespace() {
     local value="${1}"
 
-    value=$(printf '%s' "${value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    while [[ -n "${value}" && "${value[1]}" == [[:space:]] ]]; do
+        value="${value[2,-1]}"
+    done
+
+    while [[ -n "${value}" && "${value[-1]}" == [[:space:]] ]]; do
+        value="${value[1,-2]}"
+    done
+
     echo "${value}"
 }
 
@@ -579,13 +677,41 @@ function formatDeadlineFromEpoch() {
     local requestedFormat="${2}"
     local formattedDeadline=""
 
-    formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "${requestedFormat}")
+    formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${sourceEpoch}" "${requestedFormat}")
     if [[ -z "${formattedDeadline}" ]]; then
-        formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
+        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
     formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
+}
+
+function deriveRelativeDeadlineTimeFormat() {
+    local deadlineFormat="${1}"
+    local normalizedFormat="${deadlineFormat#+}"
+    local derivedFormat=""
+
+    derivedFormat=$(printf '%s' "${normalizedFormat}" | /usr/bin/perl -ne '
+        if (/(%[-_0^#]*[kKlHIrRTX].*)/) {
+            $value = $1;
+            $prefix = $`;
+            if ($prefix =~ /(%[-_0^#]*[pP][[:space:],;:|\/.-]*)$/) {
+                $value = $1 . $value;
+            }
+            $value =~ s/^[[:space:],;:|\/.-]+//;
+            print "+$value";
+            exit;
+        }
+    ')
+
+    if [[ -z "${derivedFormat}" ]]; then
+        case "${deadlineFormat}" in
+            *%H*|*%k*|*%R*|*%T*) derivedFormat="+%H:%M" ;;
+            *)                   derivedFormat="+%-l:%M %p" ;;
+        esac
+    fi
+
+    echo "${derivedFormat}"
 }
 
 function formatTimeHumanReadableFromEpoch() {
@@ -596,7 +722,7 @@ function formatTimeHumanReadableFromEpoch() {
         return 1
     fi
 
-    timeHumanReadable=$(formatDateWithDialogLocale "%s" "${targetEpoch}" "+%-l:%M %p")
+    timeHumanReadable=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${targetEpoch}" "${relativeDeadlineTimeFormatHumanReadable}")
     [[ -z "${timeHumanReadable}" ]] && return 1
 
     timeHumanReadable=${timeHumanReadable// AM/ a.m.}
@@ -646,13 +772,10 @@ function detectLoggedInUserLanguageCode() {
 }
 
 function normalizeDialogLanguageCode() {
-    local languageCode="${1:l}"
+    local languageCode=""
     local sentinelKey=""
 
-    languageCode="${languageCode#\"}"
-    languageCode="${languageCode%\"}"
-    languageCode="${languageCode#\'}"
-    languageCode="${languageCode%\'}"
+    languageCode="$(sanitizeLanguageCode "${1}")"
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
@@ -670,6 +793,62 @@ function normalizeDialogLanguageCode() {
     fi
 
     echo "en"
+}
+
+function resolveDateFormatDeadlineHumanReadable() {
+    local requestedLanguageCode=""
+    local baseLanguageCode=""
+    local resolvedDialogLanguage=""
+    local exactVariableName=""
+    local baseVariableName=""
+    local exactValue=""
+    local baseValue=""
+    local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
+    local resolvedDateFormatSource="built-in default"
+
+    requestedLanguageCode="$(requestedDialogLanguageCode)"
+    baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
+    resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
+
+    deadlineFormatLanguageCode="${resolvedDialogLanguage:-en}"
+    if [[ "${preferenceExplicitlySet["dateFormatDeadlineHumanReadable"]}" == "true" ]]; then
+        resolvedDateFormatSource="global preference"
+    fi
+
+    if [[ -n "${requestedLanguageCode}" ]]; then
+        exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
+        exactValue="${(P)exactVariableName}"
+
+        if [[ "${preferenceExplicitlySet["${exactVariableName}"]}" == "true" || -n "${exactValue}" ]]; then
+            exactValue="$(trimSurroundingWhitespace "${exactValue}")"
+            if [[ -n "${exactValue}" ]]; then
+                dateFormatDeadlineHumanReadable="${exactValue}"
+                deadlineFormatLanguageCode="${requestedLanguageCode}"
+                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
+            fi
+        fi
+    fi
+
+    if [[ "${deadlineFormatLanguageCode}" == "${resolvedDialogLanguage:-en}" && -n "${baseLanguageCode}" && "${baseLanguageCode}" != "${requestedLanguageCode}" ]]; then
+        baseVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${baseLanguageCode}")"
+        baseValue="${(P)baseVariableName}"
+
+        if [[ "${preferenceExplicitlySet["${baseVariableName}"]}" == "true" || -n "${baseValue}" ]]; then
+            baseValue="$(trimSurroundingWhitespace "${baseValue}")"
+            if [[ -n "${baseValue}" ]]; then
+                dateFormatDeadlineHumanReadable="${baseValue}"
+                deadlineFormatLanguageCode="${baseLanguageCode}"
+                resolvedDateFormatSource="base language preference (${baseLanguageCode})"
+            fi
+        fi
+    fi
+
+    dateFormatDeadlineHumanReadable="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadable}")"
+    [[ -z "${dateFormatDeadlineHumanReadable}" ]] && dateFormatDeadlineHumanReadable="${defaultFormat}"
+    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+
+    relativeDeadlineTimeFormatHumanReadable="$(deriveRelativeDeadlineTimeFormat "${dateFormatDeadlineHumanReadable}")"
+    notice "Resolved deadline date format using ${resolvedDateFormatSource}: requested language '${requestedLanguageCode:-auto}', dialog language '${resolvedDialogLanguage:-en}', format language '${deadlineFormatLanguageCode}', absolute format '${dateFormatDeadlineHumanReadable}', relative time format '${relativeDeadlineTimeFormatHumanReadable}'"
 }
 
 function localizedWeekdayName() {
@@ -855,17 +1034,21 @@ function applyLocalizedFieldValue() {
     local localizedSuffix=""
     local localizedVariable=""
     local localizedValue=""
+    local baseValue=""
 
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
     localizedVariable="${baseVariable}Localized${localizedSuffix}"
     localizedValue="${(P)localizedVariable}"
+    baseValue="${(P)baseVariable}"
 
-    if [[ "${preferenceExplicitlySet[${localizedVariable}]}" == "true" ]]; then
-        printf -v "${baseVariable}" '%s' "${localizedValue}"
+    # Base values remain shared fallback text; matching localized overrides should
+    # still win when present. Preserve the special InfoButtonText=hide sentinel.
+    if [[ "${baseVariable}" == "infobuttontext" && "${preferenceExplicitlySet["${baseVariable}"]}" == "true" && "${baseValue}" == "hide" ]]; then
         return
     fi
 
-    if [[ "${preferenceExplicitlySet[${baseVariable}]}" == "true" ]]; then
+    if [[ "${preferenceExplicitlySet["${localizedVariable}"]}" == "true" ]]; then
+        printf -v "${baseVariable}" '%s' "${localizedValue}"
         return
     fi
 
@@ -902,6 +1085,7 @@ function applyLocalizedDialogText() {
 }
 
 function applyLocalizedUpdateVocabulary() {
+    # Set canonical vocabulary here; explicit lowercase placeholders derive later.
     if [[ "${updateOrUpgradeMode:l}" == "upgrade" ]]; then
         titleMessageUpdateOrUpgrade="${upgradeWord}"
         softwareUpdateButtonText="${softwareUpdateButtonTextUpgrade}"
@@ -1179,7 +1363,7 @@ function computeDeadlineEnforcementMessage() {
 
     baseDeadlineEnforcementMessage="${(P)deadlineTemplateVariable}"
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{deadlineDisplay\}/${deadlineDisplay}}
-    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
+    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
 
     dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
@@ -1229,6 +1413,7 @@ function buildPlaceholderMap() {
         [infoboxDaysRemainingDisplay]="${infoboxDaysRemainingDisplay}"
         [infoboxLastRestartDisplay]="${infoboxLastRestartDisplay}"
         [titleMessageUpdateOrUpgrade]="${titleMessageUpdateOrUpgrade}"
+        [titleMessageUpdateOrUpgradeLower]="${titleMessageUpdateOrUpgrade:l}"
         [uptimeHumanReadable]="${uptimeHumanReadable}"
         [excessiveUptimeWarningMessage]="${excessiveUptimeWarningMessage}"
         [updateReadyMessage]="${updateReadyMessage}"
@@ -1260,16 +1445,23 @@ function buildPlaceholderMap() {
 function replacePlaceholders() {
     local targetVariable="${1}"
     local value="${(P)targetVariable}"
+    local lowercaseUpdateOrUpgrade="${titleMessageUpdateOrUpgrade:l}"
     local previousValue=""
     local maxPasses=5
     local pass=0
 
+    # Localization strings should use explicit placeholder names instead of modifiers.
+    # Use {titleMessageUpdateOrUpgrade} for the default/title-case form and
+    # {titleMessageUpdateOrUpgradeLower} when sentence grammar needs lowercase.
+    # Keep legacy {titleMessageUpdateOrUpgrade:l} forms working for older configs.
+    # Keep multiple passes so placeholders embedded in other localized strings still resolve.
     while (( pass < maxPasses )); do
         previousValue="${value}"
+        value=${value//\$\{titleMessageUpdateOrUpgrade:l\}/${lowercaseUpdateOrUpgrade}}
+        value=${value//\{titleMessageUpdateOrUpgrade:l\}/${lowercaseUpdateOrUpgrade}}
 
         for placeholder replaceValue in "${(@kv)PLACEHOLDER_MAP}"; do
             value=${value//\{${placeholder}\}/${replaceValue}}
-            value=${value//\{${placeholder}:l\}/${replaceValue:l}}
         done
 
         (( pass++ ))

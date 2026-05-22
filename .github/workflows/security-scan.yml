@@ -1,4 +1,14 @@
-# Protects DDM OS Reminder from common vulnerabilities with Semgrep, Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full repository, including reminderDialog.zsh, launchDaemonManagement.zsh, assemble.zsh, Resources/, Artifacts/, and other tracked content, then uploads findings to GitHub code scanning. Gitleaks scans the full git history for potential secrets. Tracked zsh files are validated with zsh -n, including main scripts, zsh helpers in Resources/, and tracked assembled zsh artifacts in Artifacts/. Tracked shell-script files with bash/dash/ksh/sh shebangs are checked with ShellCheck when present. ShellCheck treats SC1090/SC1091 as informational due to common dynamic sourcing patterns in shell projects.
+# Protects DDM OS Reminder (3.3.0) from common vulnerabilities with Semgrep,
+# Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full
+# repository, including reminderDialog.zsh, launchDaemonManagement.zsh,
+# assemble.zsh, Resources/, Artifacts/, and other tracked content, then
+# uploads findings to GitHub code scanning. Gitleaks scans the full git
+# history for potential secrets. Tracked zsh files are validated with zsh -n,
+# including main scripts, zsh helpers in Resources/, and tracked assembled
+# zsh artifacts in Artifacts/. Tracked shell-script files with bash/dash/ksh/
+# sh shebangs are checked with ShellCheck when present. ShellCheck treats
+# SC1090/SC1091 as informational due to common dynamic sourcing patterns in
+# shell projects.
 
 name: Security Scan
 

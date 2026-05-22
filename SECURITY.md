@@ -8,8 +8,8 @@ DDM OS Reminder is a macOS-only project commonly deployed through MDM, runs with
 
 The latest stable release and the current prerelease line are actively supported for security updates.
 
-- Current stable: **v3.2.0**
-- Current prerelease line: **v3.2.0b\***
+- Current stable: **v3.3.0**
+- ~~Current prerelease line: **v3.3.0**~~
 - Older releases receive no security patches.
 
 If you are running an older release, upgrade before requesting security support.
@@ -64,4 +64,4 @@ For non-vulnerability questions or general usage concerns, use the public projec
 
 Community-supplied, best-effort support is available on the [Mac Admins Slack](https://www.macadmins.org) (free, registration required) [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel, or you can open an issue on [GitHub](https://github.com/dan-snelson/DDM-OS-Reminder/issues).
 
-Last updated: April 2026
+Last updated: May 2026

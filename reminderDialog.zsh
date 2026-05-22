@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.2.0"
+scriptVersion="3.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -41,8 +41,12 @@ ddmResolvedPaddedEpoch=""
 ddmResolvedPaddedRawLine=""
 ddmResolverFailureMarker=""
 ddmResolverConflictSummary=""
-ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}$'
+ddmResolverIgnoredInvalidSummary=""
+ddmResolverIgnoredInvalidContext=""
+ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}(:[0-9]{2})?$'
 typeset -ga ddmRecentInstallLogWindow=()
+typeset -gA ddmTimestampEpochCache=()
+typeset -gA ddmInvalidCandidateContexts=()
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -83,6 +87,8 @@ pastDeadlineRestartEffective="Off"
 pastDeadlineRestartMinimumUptimeMinutes=75
 pastDeadlineRestartSuppressedForUptime="NO"
 dialogLanguage="en"
+deadlineFormatLanguageCode="en"
+relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
 declare -A preferenceExplicitlySet=()
 
 
@@ -222,7 +228,7 @@ declare -A preferenceConfiguration=(
     ["button2text"]="string|Remind Me Later"
     ["infobuttontext"]="string|Update macOS on Mac"
     ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
-    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgrade:l}."
+    ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}."
     
     # Update Staging Messages
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
@@ -244,15 +250,15 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelDaysRemaining"]="string|Day(s) Remaining"
     ["infoboxLabelLastRestart"]="string|Last Restart"
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
-    ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline."
-    ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgrade:l}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgrade:l}d before the deadline."
+    ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["pastDeadlinePromptTitle"]="string|Restart Your Mac"
-    ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgrade:l} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgrade:l}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgradeLower}.<br><br>(This reminder will persist until your Mac has been restarted.)"
     ["pastDeadlineForceTitle"]="string|Your Mac is restarting"
-    ["pastDeadlineForceMessage"]="string|**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgrade:l} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    ["pastDeadlineForceMessage"]="string|**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgradeLower} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
     
     # Complex UI Text
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgrade:l} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgrade:l} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgrade:l} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgrade:l} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -374,17 +380,83 @@ function isValidDDMVersionString() {
 # Deadline Display Formatting
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function localeForDialogLanguageCode() {
+function sanitizeLanguageCode() {
     local languageCode="${1:l}"
+
+    languageCode="${languageCode#\"}"
+    languageCode="${languageCode%\"}"
+    languageCode="${languageCode#\'}"
+    languageCode="${languageCode%\'}"
+    languageCode="${languageCode//-/_}"
+    languageCode="${languageCode// /}"
+
+    while [[ "${languageCode}" == *"__"* ]]; do
+        languageCode="${languageCode//__/_}"
+    done
+
+    while [[ "${languageCode}" == _* ]]; do
+        languageCode="${languageCode#_}"
+    done
+
+    while [[ "${languageCode}" == *_ ]]; do
+        languageCode="${languageCode%_}"
+    done
+
+    echo "${languageCode}"
+}
+
+function baseLanguageCodeForCode() {
+    local languageCode=""
+
+    languageCode="$(sanitizeLanguageCode "${1}")"
+    echo "${languageCode%%_*}"
+}
+
+function requestedDialogLanguageCode() {
+    local requestedLanguageCode=""
+
+    if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
+        requestedLanguageCode="${languageOverride}"
+    else
+        requestedLanguageCode="$(detectLoggedInUserLanguageCode)"
+    fi
+
+    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageCode}")"
+    echo "${requestedLanguageCode}"
+}
+
+function localeForDialogLanguageCode() {
+    local languageCode=""
+    local baseLanguageCode=""
+    local preferredUtf8Locale=""
     local discoveredLocale=""
 
-    # Prefer an installed locale that matches the requested language code so
-    # new plist-only translations can localize weekdays and %a/%b dates too.
+    languageCode="$(sanitizeLanguageCode "${1}")"
+    baseLanguageCode="$(baseLanguageCodeForCode "${languageCode}")"
+
+    # Prefer an installed UTF-8 locale that matches the requested language code so
+    # localized weekdays and %a/%b dates do not fall back to legacy encodings.
+    preferredUtf8Locale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
+        BEGIN { IGNORECASE = 1 }
+        {
+            localeLower = tolower($0)
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?\\.utf-?8$")) {
+                print $0
+                exit
+            }
+        }
+    ')
+
+    if [[ -n "${preferredUtf8Locale}" ]]; then
+        echo "${preferredUtf8Locale}"
+        return
+    fi
+
     discoveredLocale=$(locale -a 2>/dev/null | awk -v code="${languageCode}" '
         BEGIN { IGNORECASE = 1 }
         {
             localeLower = tolower($0)
-            if (localeLower ~ ("^" code "(_[^[:space:]]+)?(\\.utf-?8)?$")) {
+            if (localeLower ~ ("^" code "(_[^[:space:]]+)?$")) {
                 print $0
                 exit
             }
@@ -396,7 +468,7 @@ function localeForDialogLanguageCode() {
         return
     fi
 
-    case "${languageCode}" in
+    case "${baseLanguageCode}" in
         de) echo "de_DE.UTF-8" ;;
         en) echo "en_US.UTF-8" ;;
         es) echo "es_ES.UTF-8" ;;
@@ -409,14 +481,15 @@ function localeForDialogLanguageCode() {
     esac
 }
 
-function formatDateWithDialogLocale() {
-    local inputFormat="${1}"
-    local inputValue="${2}"
-    local outputFormat="${3}"
+function formatDateWithLanguageCode() {
+    local languageCode="${1}"
+    local inputFormat="${2}"
+    local inputValue="${3}"
+    local outputFormat="${4}"
     local localeForDate=""
     local formattedDate=""
 
-    localeForDate="$(localeForDialogLanguageCode "${dialogLanguage}")"
+    localeForDate="$(localeForDialogLanguageCode "${languageCode}")"
 
     if [[ -n "${localeForDate}" ]]; then
         formattedDate=$(LC_TIME="${localeForDate}" date -jf "${inputFormat}" "${inputValue}" "${outputFormat}" 2>/dev/null)
@@ -429,10 +502,25 @@ function formatDateWithDialogLocale() {
     echo "${formattedDate}"
 }
 
+function formatDateWithDialogLocale() {
+    local inputFormat="${1}"
+    local inputValue="${2}"
+    local outputFormat="${3}"
+
+    formatDateWithLanguageCode "${dialogLanguage}" "${inputFormat}" "${inputValue}" "${outputFormat}"
+}
+
 function trimSurroundingWhitespace() {
     local value="${1}"
 
-    value=$(printf '%s' "${value}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    while [[ -n "${value}" && "${value[1]}" == [[:space:]] ]]; do
+        value="${value[2,-1]}"
+    done
+
+    while [[ -n "${value}" && "${value[-1]}" == [[:space:]] ]]; do
+        value="${value[1,-2]}"
+    done
+
     echo "${value}"
 }
 
@@ -441,9 +529,9 @@ function formatDeadlineFromISO8601() {
     local requestedFormat="${2}"
     local formattedDeadline=""
 
-    formattedDeadline=$(formatDateWithDialogLocale "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
+    formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
     if [[ -z "${formattedDeadline}" ]]; then
-        formattedDeadline=$(formatDateWithDialogLocale "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
+        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
     formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
@@ -455,13 +543,41 @@ function formatDeadlineFromEpoch() {
     local requestedFormat="${2}"
     local formattedDeadline=""
 
-    formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "${requestedFormat}")
+    formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${sourceEpoch}" "${requestedFormat}")
     if [[ -z "${formattedDeadline}" ]]; then
-        formattedDeadline=$(formatDateWithDialogLocale "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
+        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
     fi
 
     formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
+}
+
+function deriveRelativeDeadlineTimeFormat() {
+    local deadlineFormat="${1}"
+    local normalizedFormat="${deadlineFormat#+}"
+    local derivedFormat=""
+
+    derivedFormat=$(printf '%s' "${normalizedFormat}" | /usr/bin/perl -ne '
+        if (/(%[-_0^#]*[kKlHIrRTX].*)/) {
+            $value = $1;
+            $prefix = $`;
+            if ($prefix =~ /(%[-_0^#]*[pP][[:space:],;:|\/.-]*)$/) {
+                $value = $1 . $value;
+            }
+            $value =~ s/^[[:space:],;:|\/.-]+//;
+            print "+$value";
+            exit;
+        }
+    ')
+
+    if [[ -z "${derivedFormat}" ]]; then
+        case "${deadlineFormat}" in
+            *%H*|*%k*|*%R*|*%T*) derivedFormat="+%H:%M" ;;
+            *)                   derivedFormat="+%-l:%M %p" ;;
+        esac
+    fi
+
+    echo "${derivedFormat}"
 }
 
 function formatTimeHumanReadableFromEpoch() {
@@ -472,7 +588,7 @@ function formatTimeHumanReadableFromEpoch() {
         return 1
     fi
 
-    timeHumanReadable=$( formatDateWithDialogLocale "%s" "${targetEpoch}" "+%-l:%M %p" )
+    timeHumanReadable=$( formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%s" "${targetEpoch}" "${relativeDeadlineTimeFormatHumanReadable}" )
     if [[ -z "${timeHumanReadable}" ]]; then
         return 1
     fi
@@ -785,11 +901,66 @@ function loadPreferenceOverrides() {
         loadDynamicLocalizedPreferenceOverridesFromPlist "${managedPreferencesPlist}.plist"
     fi
 
-    # Special handling for date format
-    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+    resolveDateFormatDeadlineHumanReadable
 
     preFlight "Preferences loaded"
 
+}
+
+function resolveDateFormatDeadlineHumanReadable() {
+    local requestedLanguageCode=""
+    local baseLanguageCode=""
+    local resolvedDialogLanguage=""
+    local exactVariableName=""
+    local baseVariableName=""
+    local exactValue=""
+    local baseValue=""
+    local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
+    local resolvedDateFormatSource="built-in default"
+
+    requestedLanguageCode="$(requestedDialogLanguageCode)"
+    baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
+    resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
+
+    deadlineFormatLanguageCode="${resolvedDialogLanguage:-en}"
+    if [[ "${preferenceExplicitlySet["dateFormatDeadlineHumanReadable"]}" == "true" ]]; then
+        resolvedDateFormatSource="global preference"
+    fi
+
+    if [[ -n "${requestedLanguageCode}" ]]; then
+        exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
+        exactValue="${(P)exactVariableName}"
+
+        if [[ "${preferenceExplicitlySet["${exactVariableName}"]}" == "true" || -n "${exactValue}" ]]; then
+            exactValue="$(trimSurroundingWhitespace "${exactValue}")"
+            if [[ -n "${exactValue}" ]]; then
+                dateFormatDeadlineHumanReadable="${exactValue}"
+                deadlineFormatLanguageCode="${requestedLanguageCode}"
+                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
+            fi
+        fi
+    fi
+
+    if [[ "${deadlineFormatLanguageCode}" == "${resolvedDialogLanguage:-en}" && -n "${baseLanguageCode}" && "${baseLanguageCode}" != "${requestedLanguageCode}" ]]; then
+        baseVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${baseLanguageCode}")"
+        baseValue="${(P)baseVariableName}"
+
+        if [[ "${preferenceExplicitlySet["${baseVariableName}"]}" == "true" || -n "${baseValue}" ]]; then
+            baseValue="$(trimSurroundingWhitespace "${baseValue}")"
+            if [[ -n "${baseValue}" ]]; then
+                dateFormatDeadlineHumanReadable="${baseValue}"
+                deadlineFormatLanguageCode="${baseLanguageCode}"
+                resolvedDateFormatSource="base language preference (${baseLanguageCode})"
+            fi
+        fi
+    fi
+
+    dateFormatDeadlineHumanReadable="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadable}")"
+    [[ -z "${dateFormatDeadlineHumanReadable}" ]] && dateFormatDeadlineHumanReadable="${defaultFormat}"
+    [[ "${dateFormatDeadlineHumanReadable}" != +* ]] && dateFormatDeadlineHumanReadable="+${dateFormatDeadlineHumanReadable}"
+
+    relativeDeadlineTimeFormatHumanReadable="$(deriveRelativeDeadlineTimeFormat "${dateFormatDeadlineHumanReadable}")"
+    notice "Resolved deadline date format using ${resolvedDateFormatSource}: requested language '${requestedLanguageCode:-auto}', dialog language '${resolvedDialogLanguage:-en}', format language '${deadlineFormatLanguageCode}', absolute format '${dateFormatDeadlineHumanReadable}', relative time format '${relativeDeadlineTimeFormatHumanReadable}'"
 }
 
 function validatePreferenceLoad() {
@@ -829,6 +1000,7 @@ function buildPlaceholderMap() {
         [infoboxDaysRemainingDisplay]="${infoboxDaysRemainingDisplay}"
         [infoboxLastRestartDisplay]="${infoboxLastRestartDisplay}"
         [titleMessageUpdateOrUpgrade]="${titleMessageUpdateOrUpgrade}"
+        [titleMessageUpdateOrUpgradeLower]="${titleMessageUpdateOrUpgrade:l}"
         [uptimeHumanReadable]="${uptimeHumanReadable}"
         [excessiveUptimeWarningMessage]="${excessiveUptimeWarningMessage}"
         [updateReadyMessage]="${updateReadyMessage}"
@@ -860,18 +1032,24 @@ function buildPlaceholderMap() {
 function replacePlaceholders() {
     local targetVariable="${1}"
     local value="${(P)targetVariable}"
+    local lowercaseUpdateOrUpgrade="${titleMessageUpdateOrUpgrade:l}"
 
-    # Resolve nested placeholders: run multiple passes until stable
+    # Localization strings should use explicit placeholder names instead of modifiers.
+    # Use {titleMessageUpdateOrUpgrade} for the default/title-case form and
+    # {titleMessageUpdateOrUpgradeLower} when sentence grammar needs lowercase.
+    # Keep legacy {titleMessageUpdateOrUpgrade:l} forms working for older configs.
+    # Keep multiple passes so placeholders embedded in other localized strings still resolve.
     local maxPasses=5
     local pass=0
     local previousValue
 
     while (( pass < maxPasses )); do
         previousValue="${value}"
+        value=${value//\$\{titleMessageUpdateOrUpgrade:l\}/${lowercaseUpdateOrUpgrade}}
+        value=${value//\{titleMessageUpdateOrUpgrade:l\}/${lowercaseUpdateOrUpgrade}}
 
         for placeholder replaceValue in "${(@kv)PLACEHOLDER_MAP}"; do
             value=${value//\{${placeholder}\}/${replaceValue}}
-            value=${value//\{${placeholder}:l\}/${replaceValue:l}}
         done
 
         ((pass++))
@@ -985,13 +1163,10 @@ function applyHideRules() {
 }
 
 function normalizeDialogLanguageCode() {
-    local languageCode="${1:l}"
+    local languageCode=""
     local sentinelKey=""
 
-    languageCode="${languageCode#\"}"
-    languageCode="${languageCode%\"}"
-    languageCode="${languageCode#\'}"
-    languageCode="${languageCode%\'}"
+    languageCode="$(sanitizeLanguageCode "${1}")"
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
@@ -1031,11 +1206,25 @@ function detectLoggedInUserLanguageCode() {
 }
 
 function languageSuffixForCode() {
-    local code="${1:l}"
+    local code=""
+    local firstSegment=""
+    local segmentIndex=0
+    local -a codeSegments=()
 
-    [[ -z "${code}" || "${code}" == "en" ]] && echo "En" && return
+    code="$(sanitizeLanguageCode "${1}")"
+    [[ -z "${code}" ]] && echo "" && return
 
-    echo "${(C)code}"
+    IFS='_' read -r -A codeSegments <<< "${code}"
+    firstSegment="${codeSegments[1]:l}"
+    code="${(C)firstSegment}"
+
+    if (( ${#codeSegments[@]} > 1 )); then
+        for (( segmentIndex=2; segmentIndex<=${#codeSegments[@]}; segmentIndex++ )); do
+            code="${code}_${codeSegments[segmentIndex]:u}"
+        done
+    fi
+
+    echo "${code}"
 }
 
 function localizedWeekdayName() {
@@ -1234,13 +1423,16 @@ function applyLocalizedFieldValue() {
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
     local localizedVariable="${baseVariable}Localized${localizedSuffix}"
     local localizedValue="${(P)localizedVariable}"
+    local baseValue="${(P)baseVariable}"
 
-    if [[ "${preferenceExplicitlySet[${localizedVariable}]}" == "true" ]]; then
-        printf -v "${baseVariable}" '%s' "${localizedValue}"
+    # Base values remain shared fallback text; matching localized overrides should
+    # still win when present. Preserve the special InfoButtonText=hide sentinel.
+    if [[ "${baseVariable}" == "infobuttontext" && "${preferenceExplicitlySet["${baseVariable}"]}" == "true" && "${baseValue}" == "hide" ]]; then
         return
     fi
 
-    if [[ "${preferenceExplicitlySet[${baseVariable}]}" == "true" ]]; then
+    if [[ "${preferenceExplicitlySet["${localizedVariable}"]}" == "true" ]]; then
+        printf -v "${baseVariable}" '%s' "${localizedValue}"
         return
     fi
 
@@ -1275,6 +1467,7 @@ function applyLocalizedUpdateVocabulary() {
     local mode="${updateOrUpgradeMode:l}"
     [[ "${mode}" != "upgrade" ]] && mode="update"
 
+    # Set canonical vocabulary here; explicit lowercase placeholders derive later.
     if [[ "${mode}" == "upgrade" ]]; then
         titleMessageUpdateOrUpgrade="${upgradeWord}"
         softwareUpdateButtonText="${softwareUpdateButtonTextUpgrade}"
@@ -1551,6 +1744,144 @@ function tailRecentInstallLogWindow() {
     return 0
 }
 
+function extractDDMLogTimestamp() {
+    local logLine="${1}"
+    local dateToken="${logLine%% *}"
+    local remainder="${logLine#* }"
+    local timeToken=""
+
+    parsedDDMLogTimestamp=""
+
+    if [[ "${remainder}" == "${logLine}" ]]; then
+        return 1
+    fi
+
+    timeToken="${remainder%% *}"
+    parsedDDMLogTimestamp="${dateToken} ${timeToken}"
+
+    if [[ ! "${parsedDDMLogTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
+        parsedDDMLogTimestamp=""
+        return 1
+    fi
+
+    return 0
+}
+
+function ddmDaysFromCivil() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local monthAdjustment=9
+    local era=0
+    local yearOfEra=0
+    local dayOfYear=0
+    local dayOfEra=0
+
+    if (( month <= 2 )); then
+        (( year-- ))
+    fi
+
+    if (( month > 2 )); then
+        monthAdjustment=-3
+    fi
+
+    if (( year >= 0 )); then
+        (( era = year / 400 ))
+    else
+        (( era = (year - 399) / 400 ))
+    fi
+
+    (( yearOfEra = year - (era * 400) ))
+    (( dayOfYear = ((153 * (month + monthAdjustment)) + 2) / 5 + day - 1 ))
+    (( dayOfEra = (yearOfEra * 365) + (yearOfEra / 4) - (yearOfEra / 100) + dayOfYear ))
+
+    ddmDaysFromCivilResult=$(( (era * 146097) + dayOfEra - 719468 ))
+    return 0
+}
+
+function ddmLogTimestampToEpoch() {
+    local rawTimestamp="${1}"
+    local dateToken="${rawTimestamp%% *}"
+    local timeAndOffset="${rawTimestamp#* }"
+    local timeToken="${timeAndOffset[1,8]}"
+    local offsetToken="${timeAndOffset[9,-1]}"
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local offsetSign=""
+    local offsetHours=0
+    local offsetMinutes=0
+    local totalOffsetMinutes=0
+    local days=0
+    local parsedEpoch=""
+
+    parsedDDMLogTimestampEpoch=""
+
+    if [[ -n "${ddmTimestampEpochCache[${rawTimestamp}]:-}" ]]; then
+        parsedDDMLogTimestampEpoch="${ddmTimestampEpochCache[${rawTimestamp}]}"
+        return 0
+    fi
+
+    case "${offsetToken}" in
+        [+-][0-9][0-9])
+            offsetSign="${offsetToken[1,1]}"
+            offsetHours=$(( 10#${offsetToken[2,3]} ))
+            offsetMinutes=0
+            ;;
+        [+-][0-9][0-9]:[0-9][0-9])
+            offsetSign="${offsetToken[1,1]}"
+            offsetHours=$(( 10#${offsetToken[2,3]} ))
+            offsetMinutes=$(( 10#${offsetToken[5,6]} ))
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    year=$(( 10#${dateToken[1,4]} ))
+    month=$(( 10#${dateToken[6,7]} ))
+    day=$(( 10#${dateToken[9,10]} ))
+    hour=$(( 10#${timeToken[1,2]} ))
+    minute=$(( 10#${timeToken[4,5]} ))
+    second=$(( 10#${timeToken[7,8]} ))
+
+    if ! ddmDaysFromCivil "${year}" "${month}" "${day}"; then
+        return 1
+    fi
+    days="${ddmDaysFromCivilResult}"
+
+    totalOffsetMinutes=$(( (offsetHours * 60) + offsetMinutes ))
+    if [[ "${offsetSign}" == "-" ]]; then
+        totalOffsetMinutes=$(( -totalOffsetMinutes ))
+    fi
+
+    parsedEpoch=$(( (days * 86400) + (hour * 3600) + (minute * 60) + second - (totalOffsetMinutes * 60) ))
+    ddmTimestampEpochCache[${rawTimestamp}]="${parsedEpoch}"
+    parsedDDMLogTimestampEpoch="${parsedEpoch}"
+    return 0
+}
+
+function parseDDMDeclarationFieldsFromText() {
+    local declarationText="${1}"
+
+    if [[ "${declarationText}" != *"|EnforcedInstallDate:"* || "${declarationText}" != *"|VersionString:"* || "${declarationText}" != *"|BuildVersionString:"* ]]; then
+        return 1
+    fi
+
+    parsedDDMEnforcedInstallDate="${${declarationText##*|EnforcedInstallDate:}%%|*}"
+    parsedDDMVersionString="${${declarationText##*|VersionString:}%%|*}"
+    parsedDDMBuildVersionString="${${declarationText##*|BuildVersionString:}%%|*}"
+
+    if [[ -z "${parsedDDMEnforcedInstallDate}" || -z "${parsedDDMVersionString}" || -z "${parsedDDMBuildVersionString}" ]]; then
+        return 1
+    fi
+
+    return 0
+}
+
 function parseDDMDeclarationFromLine() {
     local logLine="${1}"
 
@@ -1567,22 +1898,17 @@ function parseDDMDeclarationFromLine() {
         parsedDDMSourceType="defaultApplicableDeclaration"
     elif [[ "${logLine}" == *"Found DDM enforced install ("* ]]; then
         parsedDDMSourceType="foundDdmEnforcedInstall"
-    elif [[ "${logLine}" == *"EnforcedInstallDate:"* ]]; then
+    elif [[ "${logLine}" == *"EnforcedInstallDate:"* && "${logLine}" == *"softwareupdated["* ]]; then
         parsedDDMSourceType="genericEnforcedInstallDate"
     else
         return 1
     fi
 
-    parsedDDMLogTimestamp="${logLine[1,22]}"
-    parsedDDMEnforcedInstallDate="${${logLine##*|EnforcedInstallDate:}%%|*}"
-    parsedDDMVersionString="${${logLine##*|VersionString:}%%|*}"
-    parsedDDMBuildVersionString="${${logLine##*|BuildVersionString:}%%|*}"
-
-    if [[ ! "${parsedDDMLogTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
+    if ! extractDDMLogTimestamp "${logLine}"; then
         return 1
     fi
 
-    if [[ -z "${parsedDDMEnforcedInstallDate}" || -z "${parsedDDMVersionString}" || -z "${parsedDDMBuildVersionString}" ]]; then
+    if ! parseDDMDeclarationFieldsFromText "${logLine}"; then
         return 1
     fi
 
@@ -1640,29 +1966,79 @@ function parseDDMDescriptorVersionFromLine() {
     return 0
 }
 
+function noteInvalidDDMDeclarationFromLine() {
+    local logLine="${1}"
+    local candidateSignature=""
+
+    if [[ "${logLine}" != *"Failed to add declaration:"* || "${logLine}" != *"Invalid declaration:"* ]]; then
+        return 1
+    fi
+
+    if ! extractDDMLogTimestamp "${logLine}"; then
+        return 1
+    fi
+
+    if ! parseDDMDeclarationFieldsFromText "${logLine}"; then
+        return 1
+    fi
+
+    candidateSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+    ddmInvalidCandidateContexts[${candidateSignature}]="${logLine}"
+
+    return 0
+}
+
+function latestDDMResolverContextLine() {
+    local lineIndex=0
+
+    ddmResolverIgnoredInvalidContext=""
+
+    for (( lineIndex = ${#ddmRecentInstallLogWindow[@]}; lineIndex >= 1; lineIndex-- )); do
+        if [[ "${ddmRecentInstallLogWindow[$lineIndex]}" == *"Failed to add declaration:"* && "${ddmRecentInstallLogWindow[$lineIndex]}" == *"Invalid declaration:"* ]]; then
+            ddmResolverIgnoredInvalidContext="${ddmRecentInstallLogWindow[$lineIndex]}"
+            return 0
+        fi
+    done
+
+    for (( lineIndex = ${#ddmRecentInstallLogWindow[@]}; lineIndex >= 1; lineIndex-- )); do
+        if [[ "${ddmRecentInstallLogWindow[$lineIndex]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
+            ddmResolverIgnoredInvalidContext="${ddmRecentInstallLogWindow[$lineIndex]}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 function candidateHasNoMatchScanFailure() {
     local candidateVersion="${1}"
-    local declarationTimestamp="${2}"
+    local declarationEpoch="${2}"
     local lineIndex=0
     local currentLine=""
     local lineTimestamp=""
+    local lineEpoch=""
     local segmentActive="NO"
 
     ddmResolverFailureMarker=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
-        lineTimestamp="${currentLine[1,22]}"
-
-        if [[ ! "${lineTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
-            continue
-        fi
-
-        if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
-            continue
-        fi
 
         if [[ "${currentLine}" == *"requestedPMV="* ]]; then
+            if ! extractDDMLogTimestamp "${currentLine}"; then
+                continue
+            fi
+            lineTimestamp="${parsedDDMLogTimestamp}"
+
+            if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+                continue
+            fi
+            lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+            if (( lineEpoch < declarationEpoch )); then
+                continue
+            fi
+
             if [[ "${currentLine}" == *"requestedPMV=${candidateVersion},"* || "${currentLine}" == *"requestedPMV=${candidateVersion})"* ]]; then
                 segmentActive="YES"
             else
@@ -1672,6 +2048,24 @@ function candidateHasNoMatchScanFailure() {
         fi
 
         if [[ "${segmentActive}" != "YES" ]]; then
+            continue
+        fi
+
+        if [[ "${currentLine}" != *"MADownloadNoMatchFound"* && "${currentLine}" != *"pallasNoPMVMatchFound=true"* && "${currentLine}" != *"No available updates found. Please try again later."* ]]; then
+            continue
+        fi
+
+        if ! extractDDMLogTimestamp "${currentLine}"; then
+            continue
+        fi
+        lineTimestamp="${parsedDDMLogTimestamp}"
+
+        if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+            continue
+        fi
+        lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+        if (( lineEpoch < declarationEpoch )); then
             continue
         fi
 
@@ -1697,50 +2091,67 @@ function candidateHasNoMatchScanFailure() {
 function candidateHasConflictingEvidence() {
     local candidateSignature="${1}"
     local candidateVersion="${2}"
-    local firstDeclarationTimestamp="${3}"
-    local declarationTimestamp="${4}"
+    local firstDeclarationEpoch="${3}"
+    local declarationEpoch="${4}"
     local lineIndex=0
     local currentLine=""
     local lineTimestamp=""
-    local noUpdatesTimestamp=""
+    local lineEpoch=""
+    local parsedSignature=""
+    local noUpdatesEpoch=""
 
     ddmResolverConflictSummary=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
-        lineTimestamp="${currentLine[1,22]}"
 
-        if [[ ! "${lineTimestamp}" =~ ${ddmLogTimestampRegex} ]]; then
+        if [[ "${currentLine}" != *"EnforcedInstallDate:"* && "${currentLine}" != *"PrimaryDescriptor:"* && "${currentLine}" != *"No updates found for DDM to enforce"* ]]; then
             continue
         fi
 
-        if [[ "${lineTimestamp}" < "${firstDeclarationTimestamp}" ]]; then
+        if ! extractDDMLogTimestamp "${currentLine}"; then
+            continue
+        fi
+        lineTimestamp="${parsedDDMLogTimestamp}"
+
+        if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+            continue
+        fi
+        lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+        if (( lineEpoch < firstDeclarationEpoch )); then
             continue
         fi
 
         if [[ "${currentLine}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${currentLine}"; then
-            if [[ -n "${noUpdatesTimestamp}" ]]; then
-                if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" == "${candidateSignature}" ]]; then
-                    if [[ "${lineTimestamp}" > "${noUpdatesTimestamp}" || "${lineTimestamp}" == "${noUpdatesTimestamp}" ]]; then
+            parsedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+
+            if (( ${+ddmInvalidCandidateContexts[${parsedSignature}]} )); then
+                continue
+            fi
+
+            if [[ -n "${noUpdatesEpoch}" ]]; then
+                if [[ "${parsedSignature}" == "${candidateSignature}" ]]; then
+                    if (( lineEpoch >= noUpdatesEpoch )); then
                         ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
                         return 0
                     fi
                 fi
             fi
 
-            if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+            if (( lineEpoch < declarationEpoch )); then
                 continue
             fi
 
-            if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" != "${candidateSignature}" ]]; then
+            if [[ "${parsedSignature}" != "${candidateSignature}" ]]; then
                 ddmResolverConflictSummary="Conflicting declaration: ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType}"
                 return 0
             fi
         fi
 
-        if [[ "${lineTimestamp}" < "${declarationTimestamp}" ]]; then
+        if (( lineEpoch < declarationEpoch )); then
             if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
-                noUpdatesTimestamp="${lineTimestamp}"
+                noUpdatesEpoch="${lineEpoch}"
             fi
             continue
         fi
@@ -1753,7 +2164,7 @@ function candidateHasConflictingEvidence() {
         fi
 
         if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
-            noUpdatesTimestamp="${lineTimestamp}"
+            noUpdatesEpoch="${lineEpoch}"
         fi
     done
 
@@ -1765,17 +2176,20 @@ function resolveDDMEnforcementFromInstallLog() {
     local candidateKey=""
     local candidateSignature=""
     local latestTimestamp=""
-    local latestInvalidContext=""
     local index=0
     local latestIndex=0
     local candidateSummary=""
     local distinctCandidateCount=0
     local highestPriority=0
     local currentPriority=0
+    local candidateEpoch=""
+    local latestEpoch=0
 
     local -a candidateSourceTypes=()
     local -a candidateFirstTimestamps=()
+    local -a candidateFirstEpochs=()
     local -a candidateTimestamps=()
+    local -a candidateEpochs=()
     local -a candidateEnforcedDates=()
     local -a candidateVersions=()
     local -a candidateBuilds=()
@@ -1792,6 +2206,10 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmBuildVersionString=""
     ddmResolverFailureMarker=""
     ddmResolverConflictSummary=""
+    ddmResolverIgnoredInvalidSummary=""
+    ddmResolverIgnoredInvalidContext=""
+    ddmTimestampEpochCache=()
+    ddmInvalidCandidateContexts=()
 
     if ! tailRecentInstallLogWindow; then
         ddmResolverStatus="missing"
@@ -1801,7 +2219,23 @@ function resolveDDMEnforcementFromInstallLog() {
     fi
 
     for line in "${ddmRecentInstallLogWindow[@]}"; do
+        noteInvalidDDMDeclarationFromLine "${line}" >/dev/null
+    done
+
+    for line in "${ddmRecentInstallLogWindow[@]}"; do
         if ! parseDDMDeclarationFromLine "${line}"; then
+            continue
+        fi
+
+        if ! ddmLogTimestampToEpoch "${parsedDDMLogTimestamp}"; then
+            continue
+        fi
+        candidateEpoch="${parsedDDMLogTimestampEpoch}"
+
+        candidateSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+        if (( ${+ddmInvalidCandidateContexts[${candidateSignature}]} )); then
+            ddmResolverIgnoredInvalidSummary="${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString}"
+            ddmResolverIgnoredInvalidContext="${ddmInvalidCandidateContexts[${candidateSignature}]}"
             continue
         fi
 
@@ -1809,8 +2243,9 @@ function resolveDDMEnforcementFromInstallLog() {
 
         if (( ${+seenCandidateIndexes[${candidateKey}]} )); then
             index="${seenCandidateIndexes[${candidateKey}]}"
-            if [[ "${parsedDDMLogTimestamp}" > "${candidateTimestamps[$index]}" ]]; then
+            if (( candidateEpoch > candidateEpochs[$index] )); then
                 candidateTimestamps[$index]="${parsedDDMLogTimestamp}"
+                candidateEpochs[$index]="${candidateEpoch}"
                 candidateRawLines[$index]="${parsedDDMRawLine}"
             fi
             continue
@@ -1818,7 +2253,9 @@ function resolveDDMEnforcementFromInstallLog() {
 
         candidateSourceTypes+=( "${parsedDDMSourceType}" )
         candidateFirstTimestamps+=( "${parsedDDMLogTimestamp}" )
+        candidateFirstEpochs+=( "${candidateEpoch}" )
         candidateTimestamps+=( "${parsedDDMLogTimestamp}" )
+        candidateEpochs+=( "${candidateEpoch}" )
         candidateEnforcedDates+=( "${parsedDDMEnforcedInstallDate}" )
         candidateVersions+=( "${parsedDDMVersionString}" )
         candidateBuilds+=( "${parsedDDMBuildVersionString}" )
@@ -1829,19 +2266,29 @@ function resolveDDMEnforcementFromInstallLog() {
     if [[ ${#candidateSourceTypes[@]} -eq 0 ]]; then
         ddmResolverStatus="missing"
         ddmResolverSuppressionType="missing"
-        ddmResolverReason="No DDM declaration candidates found in install.log"
+        if [[ -n "${ddmResolverIgnoredInvalidSummary}" ]]; then
+            ddmResolverReason="Only invalid stale DDM declarations found in install.log"
+            notice "Ignoring invalid stale DDM declaration: ${ddmResolverIgnoredInvalidSummary}"
+            if [[ -n "${ddmResolverIgnoredInvalidContext}" ]] || latestDDMResolverContextLine; then
+                info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+            fi
+        else
+            ddmResolverReason="No DDM declaration candidates found in install.log"
+        fi
         return 1
     fi
 
     latestTimestamp="${candidateTimestamps[1]}"
+    latestEpoch="${candidateEpochs[1]}"
     for (( index = 2; index <= ${#candidateTimestamps[@]}; index++ )); do
-        if [[ "${candidateTimestamps[$index]}" > "${latestTimestamp}" ]]; then
+        if (( candidateEpochs[$index] > latestEpoch )); then
             latestTimestamp="${candidateTimestamps[$index]}"
+            latestEpoch="${candidateEpochs[$index]}"
         fi
     done
 
     for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
-        if [[ "${candidateTimestamps[$index]}" == "${latestTimestamp}" ]]; then
+        if (( candidateEpochs[$index] == latestEpoch )); then
             filteredIndexes+=( "${index}" )
         fi
     done
@@ -1856,7 +2303,7 @@ function resolveDDMEnforcementFromInstallLog() {
 
     filteredIndexes=( )
     for (( index = 1; index <= ${#candidateSourceTypes[@]}; index++ )); do
-        if [[ "${candidateTimestamps[$index]}" == "${latestTimestamp}" ]]; then
+        if (( candidateEpochs[$index] == latestEpoch )); then
             currentPriority="$(ddmSourcePriority "${candidateSourceTypes[$index]}")"
             if (( currentPriority == highestPriority )); then
                 filteredIndexes+=( "${index}" )
@@ -1876,15 +2323,8 @@ function resolveDDMEnforcementFromInstallLog() {
             warning "Conflicting candidate: ${candidateSummary}"
         done
 
-        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
-            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
-                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
-                break
-            fi
-        done
-
-        if [[ -n "${latestInvalidContext}" ]]; then
-            info "Resolver context: ${latestInvalidContext}"
+        if latestDDMResolverContextLine; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 
         return 1
@@ -1908,41 +2348,27 @@ function resolveDDMEnforcementFromInstallLog() {
         return 1
     fi
 
-    if candidateHasConflictingEvidence "${candidateSignature}" "${ddmVersionString}" "${candidateFirstTimestamps[$latestIndex]}" "${ddmDeclarationLogTimestamp}"; then
+    if candidateHasConflictingEvidence "${candidateSignature}" "${ddmVersionString}" "${candidateFirstEpochs[$latestIndex]}" "${candidateEpochs[$latestIndex]}"; then
         ddmResolverStatus="conflict"
         ddmResolverSuppressionType="conflict"
         ddmResolverReason="Conflicting DDM state detected in install.log"
         warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
 
-        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
-            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
-                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
-                break
-            fi
-        done
-
-        if [[ -n "${latestInvalidContext}" ]]; then
-            info "Resolver context: ${latestInvalidContext}"
+        if latestDDMResolverContextLine; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 
         return 1
     fi
 
-    if candidateHasNoMatchScanFailure "${ddmVersionString}" "${ddmDeclarationLogTimestamp}"; then
+    if candidateHasNoMatchScanFailure "${ddmVersionString}" "${candidateEpochs[$latestIndex]}"; then
         ddmResolverStatus="noMatch"
         ddmResolverSuppressionType="noMatch"
         ddmResolverReason="Chosen DDM declaration does not map to an available update"
         warning "${ddmResolverReason}: ${ddmVersionString} (${ddmResolverFailureMarker})"
 
-        for (( index = ${#ddmRecentInstallLogWindow[@]}; index >= 1; index-- )); do
-            if [[ "${ddmRecentInstallLogWindow[$index]}" =~ Removed\ [0-9]+\ invalid\ declarations ]]; then
-                latestInvalidContext="${ddmRecentInstallLogWindow[$index]}"
-                break
-            fi
-        done
-
-        if [[ -n "${latestInvalidContext}" ]]; then
-            info "Resolver context: ${latestInvalidContext}"
+        if latestDDMResolverContextLine; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 
         return 1
@@ -1950,9 +2376,16 @@ function resolveDDMEnforcementFromInstallLog() {
 
     ddmResolverStatus="resolved"
     ddmResolverSuppressionType=""
+    if [[ -n "${ddmResolverIgnoredInvalidSummary}" ]]; then
+        notice "Ignored invalid stale DDM declaration: ${ddmResolverIgnoredInvalidSummary}"
+        if [[ -n "${ddmResolverIgnoredInvalidContext}" ]]; then
+            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+        fi
+    fi
     notice "Resolved DDM declaration source: ${ddmResolverSource}"
     notice "Resolved DDM declaration version: ${ddmVersionString}"
     notice "Resolved DDM declaration enforcement date: ${ddmEnforcedInstallDate}"
+    info "Resolved declaration context: ${ddmDeclarationRawLine}"
 
     return 0
 }
@@ -1969,9 +2402,18 @@ function resolvePaddedEnforcementDateForCandidate() {
     local nowEpoch=""
     local conflictDetected="NO"
     local conflictSummary=""
+    local declarationEpoch=""
+    local lineEpoch=""
+    local parsedSignature=""
 
     ddmResolvedPaddedEpoch=""
     ddmResolvedPaddedRawLine=""
+
+    if ! ddmLogTimestampToEpoch "${ddmDeclarationLogTimestamp}"; then
+        warning "Unable to normalize resolved declaration timestamp: ${ddmDeclarationLogTimestamp}"
+        return 1
+    fi
+    declarationEpoch="${parsedDDMLogTimestampEpoch}"
 
     while (( elapsedSeconds < maxWaitSeconds )); do
         tailRecentInstallLogWindow
@@ -1982,18 +2424,31 @@ function resolvePaddedEnforcementDateForCandidate() {
         conflictSummary=""
 
         for line in "${ddmRecentInstallLogWindow[@]}"; do
-            lineTimestamp=$(echo "${line}" | sed -E 's/^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}).*/\1/')
-
-            if [[ -z "${lineTimestamp}" || "${lineTimestamp}" == "${line}" ]]; then
+            if [[ "${line}" != *"EnforcedInstallDate:"* && "${line}" != *"setPastDuePaddedEnforcementDate is set: "* ]]; then
                 continue
             fi
 
-            if [[ "${lineTimestamp}" < "${ddmDeclarationLogTimestamp}" ]]; then
+            if ! extractDDMLogTimestamp "${line}"; then
+                continue
+            fi
+            lineTimestamp="${parsedDDMLogTimestamp}"
+
+            if ! ddmLogTimestampToEpoch "${lineTimestamp}"; then
+                continue
+            fi
+            lineEpoch="${parsedDDMLogTimestampEpoch}"
+
+            if (( lineEpoch < declarationEpoch )); then
                 continue
             fi
 
             if [[ "${line}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${line}"; then
-                if [[ "${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}" != "${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}" ]]; then
+                parsedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+                if (( ${+ddmInvalidCandidateContexts[${parsedSignature}]} )); then
+                    continue
+                fi
+
+                if [[ "${parsedSignature}" != "${ddmEnforcedInstallDate}|${ddmVersionString}|${ddmBuildVersionString}" ]]; then
                     conflictDetected="YES"
                     conflictSummary="${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType}"
                     break
@@ -2442,10 +2897,10 @@ function computeDeadlineEnforcementMessage() {
 
     baseDeadlineEnforcementMessage="${(P)deadlineTemplateVariable}"
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{deadlineDisplay\}/${deadlineDisplay}}
-    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\$\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\$\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
-    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade:l\}/${titleMessageUpdateOrUpgrade:l}}
+    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\$\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
+    baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
 
     dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
 

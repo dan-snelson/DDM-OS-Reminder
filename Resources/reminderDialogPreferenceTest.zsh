@@ -40,6 +40,12 @@ rdnnUsage="zsh ${scriptRelativePath} --rdnn <your.reverse.domain.name.notation>"
 
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
+        --help|-h)
+            echo "Usage:"
+            echo "  ${defaultUsage}"
+            echo "  ${rdnnUsage}"
+            exit 0
+            ;;
         --rdnn)
             if [[ -z "${2:-}" ]]; then
                 echo "Usage:"
@@ -70,7 +76,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.3.0"
+scriptVersion="4.0.0b2"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -105,6 +111,10 @@ rerunCommand="${defaultUsage}"
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
+deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
+dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
+dailyReminderTimesResolvedCSV=""
+typeset -ga dailyReminderTimesResolved=()
 
 if [[ -n "${cliReverseDomainNameNotation}" ]]; then
     rerunCommand="zsh ${scriptRelativePath} --rdnn ${reverseDomainNameNotation}"
@@ -123,6 +133,7 @@ declare -A preferenceConfiguration=(
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
+    ["dailyReminderTimes"]="string|08:00,12:00,16:00"
     ["supportTeamName"]="string|IT Support"
     ["supportTeamPhone"]="string|+1 (801) 555-1212"
     ["hideSupportTeamPhone"]="boolean|NO"
@@ -175,6 +186,7 @@ declare -A plistKeyMap=(
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
+    ["dailyReminderTimes"]="DailyReminderTimes"
     ["supportTeamName"]="SupportTeamName"
     ["supportTeamPhone"]="SupportTeamPhone"
     ["hideSupportTeamPhone"]="HideSupportTeamPhone"
@@ -670,6 +682,79 @@ function trimSurroundingWhitespace() {
     done
 
     echo "${value}"
+}
+
+function readRuntimeStateValue() {
+    local stateKey="${1}"
+
+    [[ -f "${dorStatePlistPath}" ]] || return 0
+
+    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null || true
+}
+
+function validateReminderTimeEntry() {
+    local timeEntry="$(trimSurroundingWhitespace "${1}")"
+
+    if [[ "${timeEntry}" =~ ^([01][0-9]|2[0-3]):([0-5][0-9])$ ]]; then
+        echo "${timeEntry}"
+        return 0
+    fi
+
+    return 1
+}
+
+function normalizeDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        normalizedEntry="$(validateReminderTimeEntry "${rawEntry}")"
+        if [[ -n "${normalizedEntry}" ]]; then
+            validEntries+=("${normalizedEntry}")
+        elif [[ -n "$(trimSurroundingWhitespace "${rawEntry}")" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid DailyReminderTimes entry '${rawEntry}'. Expected HH:MM in 24-hour time."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
+    echo "${dailyReminderTimesResolvedCSV}"
+}
+
+function resolveDailyReminderTimes() {
+    local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
+    local normalizedDailyReminderTimes=""
+
+    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+        warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
+        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+    }
+
+    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
 }
 
 function formatDeadlineFromEpoch() {
@@ -1587,9 +1672,13 @@ function updateRequiredVariables() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function printResolvedPreferenceSummary() {
+    local runtimeNextScheduledReminder=""
+    local runtimeDaemonLastTriggered=""
+
     preFlight "Preference domain: ${preferenceDomain}"
     preFlight "Managed preferences: ${managedPreferencesPlist}.plist (${foundManagedPreferences})"
     preFlight "Local preferences: ${localPreferencesPlist}.plist (${foundLocalPreferences})"
+    preFlight "Daily reminder times: ${dailyReminderTimesResolvedCSV}"
     preFlight "Resolved language: ${dialogLanguage}"
     preFlight "Detected appearance: ${requestedAppearanceMode}"
     preFlight "Title: ${title}"
@@ -1601,6 +1690,14 @@ function printResolvedPreferenceSummary() {
     preFlight "Help image: ${helpimage}"
     preFlight "Infobox: ${infobox}"
     preFlight "Message: ${message}"
+
+    if [[ -f "${dorStatePlistPath}" ]]; then
+        runtimeNextScheduledReminder="$(readRuntimeStateValue "NextScheduledReminder")"
+        runtimeDaemonLastTriggered="$(readRuntimeStateValue "DaemonLastTriggered")"
+        preFlight "Runtime state plist: ${dorStatePlistPath}"
+        preFlight "Runtime NextScheduledReminder: ${runtimeNextScheduledReminder:-<unset>}"
+        preFlight "Runtime DaemonLastTriggered: ${runtimeDaemonLastTriggered:-<unset>}"
+    fi
 }
 
 function printDialogArguments() {
@@ -1722,6 +1819,7 @@ fi
 resolveEffectiveUserContext
 resolveDialogLanguage
 initializeLocalizedRuntimeFields
+resolveDailyReminderTimes
 prepareDemoRuntimeState
 
 # -------------------------------------------------------------------------

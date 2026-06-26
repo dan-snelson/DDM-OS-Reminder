@@ -69,12 +69,12 @@ gantt
 - ❌ No blurscreen
 - ℹ️ Informational tone
 - 📅 Shows days remaining
-- 🔄 Triggered by LaunchDaemon at load and scheduled times (default 8:00/16:00)
+- 🔄 Triggered when heartbeat scheduling resolves a due reminder (default baseline `08:00,12:00,16:00` via `DailyReminderTimes`)
 - 🤝 Respects meeting detection
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
-2. Click "Remind Me Later" → Dismissed until next schedule
+2. Click "Remind Me Later" → Dismissed until next baseline or quiet-period schedule
 3. Close dialog → Same as "Remind Me Later"
 
 **Configuration**:
@@ -109,7 +109,7 @@ gantt
 - ⚠️ Warning tone intensifies
 - 🔴 Visual urgency increased
 - 📅 Emphasizes days remaining
-- 🔄 Triggered by LaunchDaemon at load and scheduled times (default 8:00/16:00)
+- 🔄 Triggered when heartbeat scheduling resolves a due reminder (default baseline `08:00,12:00,16:00` via `DailyReminderTimes`)
 - 🤝 Respects meeting detection
 
 **Visual Effect**:
@@ -119,7 +119,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
-2. Click "Remind Me Later" → Dismissed but returns next schedule
+2. Click "Remind Me Later" → Dismissed but returns at the next baseline or quiet-period schedule
 3. Cannot easily ignore due to blurscreen
 
 **Configuration**:
@@ -156,14 +156,14 @@ gantt
 - ✅ Blurscreen remains active
 - 🚨 Urgent/critical messaging
 - ⏰ Shows specific deadline date/time
-- 🔄 Triggered by LaunchDaemon at load and scheduled times (default 8:00/16:00)
+- 🔄 Triggered when heartbeat scheduling resolves a due reminder (default baseline `08:00,12:00,16:00` via `DailyReminderTimes`)
 - ⚠️ Meeting deferral is ignored when less than 24 hours remain
 
 **Key Change**: User can no longer postpone
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings (ONLY option)
-2. Close dialog → Returns next schedule (cannot avoid)
+2. Close dialog → Returns at the next baseline or quiet-period schedule (cannot avoid)
 
 **Rationale**:
 - Deadline is imminent; postponement no longer appropriate
@@ -226,13 +226,13 @@ gantt
 
 | Window / Condition | Primary UX | Button 2 | Meeting Deferral | Trigger Behavior |
 |--------------------|------------|----------|------------------|------------------|
-| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (periodic 28-day reminder still possible) | N/A when no dialog | N/A when no dialog | LaunchDaemon at load + schedule |
-| `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | LaunchDaemon at load + schedule |
-| `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | LaunchDaemon at load + schedule |
-| `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | LaunchDaemon at load + schedule |
-| `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | LaunchDaemon at load + schedule |
-| Past deadline + restart mode `Off` or not eligible | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | LaunchDaemon at load + schedule |
-| Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog | Hidden | ❌ No (deadline window) | LaunchDaemon at load + schedule |
+| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (periodic 28-day reminder still possible) | N/A when no dialog | N/A when no dialog | Heartbeat daemon + `dor-starter` due check |
+| `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
+| `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
+| `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
+| `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | Heartbeat daemon + `dor-starter` due check |
+| Past deadline + restart mode `Off` or not eligible | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
+| Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog | Hidden | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
 | Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer 60`) | Hidden | ❌ No (explicit bypass) | Re-displays every ~5 seconds until restart |
 | Apple enforcement event | Apple-controlled restart/update | N/A | N/A | macOS/DDM enforcement |
 

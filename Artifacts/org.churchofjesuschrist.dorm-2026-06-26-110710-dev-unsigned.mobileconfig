@@ -52,6 +52,8 @@
                                 	<string>Assembled Herinner me later</string>
                                 	<key>Button2TextLocalized_pt</key>
                                 	<string>Assembled Lembrar-me mais tarde</string>
+                                	<key>DailyReminderTimes</key>
+                                	<string>08:00,12:00,16:00</string>
                                 	<key>DateFormatDeadlineHumanReadable</key>
                                 	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
                                 	<key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
@@ -648,26 +650,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>EC249E30-11BC-4295-9BEC-A889191839CC</string>
+            <string>4CE5447F-586D-4C36-B401-D5DCCE0F00AA</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>EC249E30-11BC-4295-9BEC-A889191839CC</string>
+            <string>4CE5447F-586D-4C36-B401-D5DCCE0F00AA</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (3.3.0) to org.churchofjesuschrist standards. Created: 2026-05-21-160855</string>
+    <string>Configures DDM OS Reminder (4.0.0b2) to org.churchofjesuschrist standards. Created: 2026-06-26-110710</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>8E7829D0-6144-4B32-BBCF-B7EF4D3A9FF7</string>
+    <string>070EA5F8-6586-4684-B45B-E05FFF1151C7</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -677,7 +679,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>8E7829D0-6144-4B32-BBCF-B7EF4D3A9FF7</string>
+    <string>070EA5F8-6586-4684-B45B-E05FFF1151C7</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

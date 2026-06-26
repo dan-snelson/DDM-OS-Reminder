@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0"
+scriptVersion="4.0.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -70,6 +70,24 @@ organizationScriptName="dorm"
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
+deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
+dorScriptPath="${deploymentScriptDirectory}/dor.zsh"
+dorStarterPath="${deploymentScriptDirectory}/dor-starter.zsh"
+dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
+dorPidFilePath="${deploymentScriptDirectory}/dor.pid"
+dorLaunchDaemonLabel="${reverseDomainNameNotation}.dor"
+dorLaunchDaemonPath="/Library/LaunchDaemons/${dorLaunchDaemonLabel}.plist"
+launchSource="${DOR_LAUNCH_SOURCE:-manual}"
+isDemoModeRequested="NO"
+[[ "${1:-}" == "demo" ]] && isDemoModeRequested="YES"
+schedulerEnabledForCurrentRun="NO"
+[[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
+nextReminderScheduleMode="baseline"
+nextReminderScheduleEpoch=""
+nextReminderScheduleReason="Baseline reminder schedule"
+dailyReminderTimesResolvedCSV=""
+ownsDorPidFile="NO"
+typeset -ga dailyReminderTimesResolved=()
 
 # Disable button2 (instead of hiding it when approaching deadline)
 # Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
@@ -195,6 +213,7 @@ declare -A preferenceConfiguration=(
     ["daysPastDeadlineRestartWorkflow"]="numeric|2"
     ["pastDeadlineRestartBehavior"]="string|Off"
     ["meetingDelay"]="numeric|75"
+    ["dailyReminderTimes"]="string|08:00,12:00,16:00"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
     
@@ -274,6 +293,7 @@ declare -A plistKeyMap=(
     ["daysPastDeadlineRestartWorkflow"]="DaysPastDeadlineRestartWorkflow"
     ["pastDeadlineRestartBehavior"]="PastDeadlineRestartBehavior"
     ["meetingDelay"]="MeetingDelay"
+    ["dailyReminderTimes"]="DailyReminderTimes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
@@ -523,6 +543,327 @@ function trimSurroundingWhitespace() {
 
     echo "${value}"
 }
+
+function shouldManageDaemonScheduling() {
+    [[ "${schedulerEnabledForCurrentRun}" == "YES" ]]
+}
+
+function removeDorPidFile() {
+    if [[ "${ownsDorPidFile}" == "YES" && -f "${dorPidFilePath}" ]]; then
+        rm -f "${dorPidFilePath}" 2>/dev/null || true
+    fi
+    ownsDorPidFile="NO"
+}
+
+function initializeDorPidFile() {
+    if [[ "${isDemoModeRequested}" == "YES" ]]; then
+        return 0
+    fi
+
+    mkdir -p "${deploymentScriptDirectory}"
+    chown root:wheel "${deploymentScriptDirectory}" 2>/dev/null || true
+    chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
+
+    if [[ -f "${dorPidFilePath}" ]]; then
+        if pgrep -F "${dorPidFilePath}" >/dev/null 2>&1; then
+            fatal "Another ${humanReadableScriptName} process is already running."
+        fi
+
+        warning "Removing stale PID file '${dorPidFilePath}'."
+        rm -f "${dorPidFilePath}" 2>/dev/null || true
+    fi
+
+    printf '%s\n' "$$" > "${dorPidFilePath}"
+    chown root:wheel "${dorPidFilePath}" 2>/dev/null || true
+    chmod 644 "${dorPidFilePath}" 2>/dev/null || true
+    ownsDorPidFile="YES"
+}
+
+function ensureReminderStatePlist() {
+    mkdir -p "${deploymentScriptDirectory}"
+    chown root:wheel "${deploymentScriptDirectory}" 2>/dev/null || true
+    chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
+
+    if [[ ! -f "${dorStatePlistPath}" ]]; then
+        cat > "${dorStatePlistPath}" <<'ENDOFPLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+ENDOFPLIST
+        chown root:wheel "${dorStatePlistPath}" 2>/dev/null || true
+        chmod 644 "${dorStatePlistPath}" 2>/dev/null || true
+    fi
+}
+
+function writeReminderStateKey() {
+    local stateKey="${1}"
+    local stateValue="${2}"
+
+    ensureReminderStatePlist
+
+    if /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        /usr/libexec/PlistBuddy -c "Set :${stateKey} ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1
+    else
+        /usr/libexec/PlistBuddy -c "Add :${stateKey} string ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1
+    fi
+}
+
+function deleteReminderStateKey() {
+    local stateKey="${1}"
+
+    if [[ -f "${dorStatePlistPath}" ]]; then
+        /usr/libexec/PlistBuddy -c "Delete :${stateKey}" "${dorStatePlistPath}" >/dev/null 2>&1 || true
+    fi
+}
+
+function scheduleTimestampFromEpoch() {
+    local targetEpoch="${1}"
+    local scheduleTimestamp=""
+
+    scheduleTimestamp=$(date -r "${targetEpoch}" "+%Y-%m-%d:%H:%M:%S" 2>/dev/null)
+    echo "${scheduleTimestamp}"
+}
+
+function epochFromScheduleTimestamp() {
+    local scheduleTimestamp="${1}"
+    local scheduleEpoch=""
+
+    scheduleEpoch=$(date -j -f "%Y-%m-%d:%H:%M:%S" "${scheduleTimestamp}" "+%s" 2>/dev/null)
+    echo "${scheduleEpoch}"
+}
+
+function validateReminderTimeEntry() {
+    local timeEntry="$(trimSurroundingWhitespace "${1}")"
+
+    if [[ "${timeEntry}" =~ ^([01][0-9]|2[0-3]):([0-5][0-9])$ ]]; then
+        echo "${timeEntry}"
+        return 0
+    fi
+
+    return 1
+}
+
+function normalizeDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        normalizedEntry="$(validateReminderTimeEntry "${rawEntry}")"
+        if [[ -n "${normalizedEntry}" ]]; then
+            validEntries+=("${normalizedEntry}")
+        elif [[ -n "$(trimSurroundingWhitespace "${rawEntry}")" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid DailyReminderTimes entry '${rawEntry}'. Expected HH:MM in 24-hour time."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
+    echo "${dailyReminderTimesResolvedCSV}"
+}
+
+function resolveNextBaselineReminderEpoch() {
+    local nowEpoch="${1:-$(date +%s)}"
+    local scheduleDate=""
+    local scheduleTime=""
+    local scheduleTimestamp=""
+    local scheduleEpoch=""
+    local dayOffset=0
+
+    if [[ -z "${dailyReminderTimesResolvedCSV}" ]]; then
+        parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1 || return 1
+    fi
+
+    while (( dayOffset <= 1 )); do
+        scheduleDate=$(date -r $(( nowEpoch + (dayOffset * 86400) )) "+%Y-%m-%d")
+
+        for scheduleTime in "${dailyReminderTimesResolved[@]}"; do
+            scheduleTimestamp="${scheduleDate}:${scheduleTime}:00"
+            scheduleEpoch="$(epochFromScheduleTimestamp "${scheduleTimestamp}")"
+            if [[ -n "${scheduleEpoch}" ]] && (( scheduleEpoch > nowEpoch )); then
+                echo "${scheduleEpoch}"
+                return 0
+            fi
+        done
+
+        ((dayOffset++))
+    done
+
+    return 1
+}
+
+function ensureLaunchDaemonHeartbeat() {
+    if [[ -f "${dorLaunchDaemonPath}" ]]; then
+        launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || launchctl bootstrap system "${dorLaunchDaemonPath}" >/dev/null 2>&1 || true
+    fi
+}
+
+function scheduleNextReminderAtEpoch() {
+    local targetEpoch="${1}"
+    local scheduleReason="${2:-Scheduled next reminder}"
+    local scheduleTimestamp=""
+    local nowEpoch="$(date +%s)"
+
+    shouldManageDaemonScheduling || return 0
+
+    if [[ -z "${targetEpoch}" ]]; then
+        warning "scheduleNextReminderAtEpoch called without a target epoch; falling back to baseline scheduling."
+        scheduleNextBaselineReminder "${scheduleReason}"
+        return 0
+    fi
+
+    if (( targetEpoch <= nowEpoch )); then
+        queueImmediateReminderCheck "${scheduleReason}"
+        return 0
+    fi
+
+    scheduleTimestamp="$(scheduleTimestampFromEpoch "${targetEpoch}")"
+    if [[ -z "${scheduleTimestamp}" ]]; then
+        warning "Unable to format scheduled reminder epoch '${targetEpoch}'; falling back to baseline scheduling."
+        scheduleNextBaselineReminder "${scheduleReason}"
+        return 0
+    fi
+
+    writeReminderStateKey "NextScheduledReminder" "${scheduleTimestamp}"
+    notice "Scheduled next daemon reminder for ${scheduleTimestamp} (${scheduleReason})."
+    ensureLaunchDaemonHeartbeat
+}
+
+function scheduleNextReminderInMinutes() {
+    local minutesUntilReminder="${1}"
+    local scheduleReason="${2:-Scheduled next reminder in minutes}"
+    local targetEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    if [[ ! "${minutesUntilReminder}" =~ ^[0-9]+$ ]]; then
+        warning "Invalid scheduleNextReminderInMinutes value '${minutesUntilReminder}'; falling back to baseline scheduling."
+        scheduleNextBaselineReminder "${scheduleReason}"
+        return 0
+    fi
+
+    targetEpoch=$(( $(date +%s) + (minutesUntilReminder * 60) ))
+    scheduleNextReminderAtEpoch "${targetEpoch}" "${scheduleReason}"
+}
+
+function scheduleNextBaselineReminder() {
+    local scheduleReason="${1:-Baseline reminder schedule}"
+    local targetEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    targetEpoch="$(resolveNextBaselineReminderEpoch "$(date +%s)")"
+    if [[ -z "${targetEpoch}" ]]; then
+        warning "Unable to resolve next baseline reminder time from DailyReminderTimes; leaving existing scheduler state unchanged."
+        return 1
+    fi
+
+    scheduleNextReminderAtEpoch "${targetEpoch}" "${scheduleReason}"
+}
+
+function disableDaemonDrivenRuns() {
+    local scheduleReason="${1:-Daemon-driven reminders disabled}"
+
+    shouldManageDaemonScheduling || return 0
+
+    writeReminderStateKey "NextScheduledReminder" "FALSE"
+    notice "${scheduleReason}."
+    ensureLaunchDaemonHeartbeat
+}
+
+function queueImmediateReminderCheck() {
+    local scheduleReason="${1:-Queued immediate reminder check}"
+
+    shouldManageDaemonScheduling || return 0
+
+    deleteReminderStateKey "NextScheduledReminder"
+    notice "${scheduleReason}."
+    ensureLaunchDaemonHeartbeat
+    launchctl kickstart -k "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || true
+}
+
+function setNextReminderScheduleBaseline() {
+    nextReminderScheduleMode="baseline"
+    nextReminderScheduleEpoch=""
+    nextReminderScheduleReason="${1:-Baseline reminder schedule}"
+}
+
+function setNextReminderScheduleExactEpoch() {
+    nextReminderScheduleMode="exact"
+    nextReminderScheduleEpoch="${1}"
+    nextReminderScheduleReason="${2:-Scheduled exact reminder time}"
+}
+
+function setNextReminderScheduleImmediate() {
+    nextReminderScheduleMode="immediate"
+    nextReminderScheduleEpoch=""
+    nextReminderScheduleReason="${1:-Queued immediate reminder check}"
+}
+
+function setNextReminderScheduleDisabled() {
+    nextReminderScheduleMode="disabled"
+    nextReminderScheduleEpoch=""
+    nextReminderScheduleReason="${1:-Daemon-driven reminders disabled}"
+}
+
+function setNextReminderScheduleInSeconds() {
+    local secondsUntilReminder="${1}"
+    local scheduleReason="${2:-Scheduled reminder after quiet period}"
+    local targetEpoch=""
+
+    if [[ ! "${secondsUntilReminder}" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    targetEpoch=$(( $(date +%s) + secondsUntilReminder ))
+    setNextReminderScheduleExactEpoch "${targetEpoch}" "${scheduleReason}"
+}
+
+function applyScheduledExitAction() {
+    shouldManageDaemonScheduling || return 0
+
+    case "${nextReminderScheduleMode}" in
+        disabled)
+            disableDaemonDrivenRuns "${nextReminderScheduleReason}"
+            ;;
+        immediate)
+            queueImmediateReminderCheck "${nextReminderScheduleReason}"
+            ;;
+        exact)
+            scheduleNextReminderAtEpoch "${nextReminderScheduleEpoch}" "${nextReminderScheduleReason}"
+            ;;
+        baseline|*)
+            scheduleNextBaselineReminder "${nextReminderScheduleReason}"
+            ;;
+    esac
+}
+
+trap removeDorPidFile EXIT
 
 function formatDeadlineFromISO8601() {
     local sourceTimestamp="${1}"
@@ -966,6 +1307,8 @@ function resolveDateFormatDeadlineHumanReadable() {
 function validatePreferenceLoad() {
     # Verify critical preferences loaded correctly
     local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
+    local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
+    local normalizedDailyReminderTimes=""
     for var in "${criticalVars[@]}"; do
         if [[ -z "${(P)var}" ]]; then
             warning "Critical preference '${var}' is empty; using default"
@@ -983,6 +1326,15 @@ function validatePreferenceLoad() {
             warning "Invalid pastDeadlineRestartBehavior value '${originalPastDeadlineRestartBehavior}'; defaulting to '${pastDeadlineRestartBehavior}'. Valid values: Off, Prompt, Force."
             ;;
     esac
+
+    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+        warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
+        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+    }
+
+    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
+    notice "Resolved DailyReminderTimes: ${dailyReminderTimesResolvedCSV}"
 }
 
 function buildPlaceholderMap() {
@@ -3082,6 +3434,16 @@ function displayReminderDialog() {
     returncode=$?
     info "Return Code: ${returncode}"
 
+    # Quiet-period exact reschedules are only for dismissal paths. Launching
+    # Software Update should fall back to the normal baseline schedule.
+    if [[ -n "${quietPeriodSeconds:-}" ]] && ! isPastDeadlineForceMode; then
+        case ${returncode} in
+            2|4|10)
+                setNextReminderScheduleInSeconds "${quietPeriodSeconds}" "Scheduled quiet-period redisplay after return code ${returncode}"
+                ;;
+        esac
+    fi
+
     if isPastDeadlineForceMode; then
         while true; do
             case ${returncode} in
@@ -3223,6 +3585,7 @@ function displayReminderDialogForMode() {
 
 function quitScript() {
 
+    applyScheduledExitAction
     quitOut "Exiting …"
 
     # Remove downloaded icons (only those created in /var/tmp, not original paths)
@@ -3234,8 +3597,9 @@ function quitScript() {
 
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
+    removeDorPidFile
 
-    quitOut "A cloud of eiderdown draws around me …"
+    quitOut "Ticking away the moments that make up a dull day …"
 
     exit "${1}"
 
@@ -3293,6 +3657,8 @@ preFlight "Initiating …"
 if [[ $(id -u) -ne 0 ]]; then
     fatal "This script must be run as root; exiting."
 fi
+
+initializeDorPidFile
 
 
 
@@ -3564,6 +3930,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     delta=$(( nowEpoch - lastEpoch ))
                     if (( delta < quietPeriodSeconds )); then
                         minutesAgo=$(( delta / 60 ))
+                        setNextReminderScheduleExactEpoch "$(( lastEpoch + quietPeriodSeconds ))" "Quiet period remains active from recent reminder interaction"
                         quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
                         quitScript "0"
                     fi
@@ -3598,35 +3965,39 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Random pause depending on launch context (hourly vs login)
     # -------------------------------------------------------------------------
 
-    currentHour=$(( $(date +%H) ))
-    currentMinute=$(( $(date +%M) ))
-
-    if (( currentHour == 8 || currentHour == 16 )) && (( currentMinute == 0 )); then
-        notice "Daily Trigger Pause: Random 0 to 20 minutes"
-        sleepSeconds=$(( RANDOM % 1200 ))
+    if [[ "${launchSource}" == "starter" ]]; then
+        notice "Starter launch detected; skipping randomized pause to honor exact scheduled reminder time."
     else
-        notice "Login Trigger Pause: Random 30 to 90 seconds"
-        sleepSeconds=$(( 30 + RANDOM % 61 ))
-    fi
+        currentHour=$(( $(date +%H) ))
+        currentMinute=$(( $(date +%M) ))
 
-    if (( sleepSeconds >= 60 )); then
-        (( pauseMinutes = sleepSeconds / 60 ))
-        (( pauseSeconds = sleepSeconds % 60 ))
-        if (( pauseSeconds == 0 )); then
-            humanReadablePause="${pauseMinutes} minute(s)"
+        if (( currentHour == 8 || currentHour == 16 )) && (( currentMinute == 0 )); then
+            notice "Daily Trigger Pause: Random 0 to 20 minutes"
+            sleepSeconds=$(( RANDOM % 1200 ))
         else
-            humanReadablePause="${pauseMinutes} minute(s), ${pauseSeconds} second(s)"
+            notice "Login Trigger Pause: Random 30 to 90 seconds"
+            sleepSeconds=$(( 30 + RANDOM % 61 ))
         fi
-    else
-        humanReadablePause="${sleepSeconds} second(s)"
-    fi
 
-    # Skip sleep pause for beta / RC builds
-    if [[ "${scriptVersion}" =~ [a-zA-Z] ]]; then
-        notice "Beta / RC build detected (${scriptVersion}); skipping pause"
-    else
-        info "Pausing for ${humanReadablePause} …"
-        sleep "${sleepSeconds}"
+        if (( sleepSeconds >= 60 )); then
+            (( pauseMinutes = sleepSeconds / 60 ))
+            (( pauseSeconds = sleepSeconds % 60 ))
+            if (( pauseSeconds == 0 )); then
+                humanReadablePause="${pauseMinutes} minute(s)"
+            else
+                humanReadablePause="${pauseMinutes} minute(s), ${pauseSeconds} second(s)"
+            fi
+        else
+            humanReadablePause="${sleepSeconds} second(s)"
+        fi
+
+        # Skip sleep pause for beta / RC builds
+        if [[ "${scriptVersion}" =~ [a-zA-Z] ]]; then
+            notice "Beta / RC build detected (${scriptVersion}); skipping pause"
+        else
+            info "Pausing for ${humanReadablePause} …"
+            sleep "${sleepSeconds}"
+        fi
     fi
 
 

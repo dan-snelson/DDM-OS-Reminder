@@ -129,7 +129,7 @@ Out of scope:
 ## Repository Rules
 - Repo does not use `VERSION.txt`. Release-state truth comes from script `scriptVersion` values plus `README.md` and `CHANGELOG.md`.
 - `assemble.zsh` is enforcement point for RDNN alignment and deployable artifact generation.
-- Default RDNN placeholder is `org.churchofjesuschrist`. Preserve suffix meanings: `dor` = LaunchDaemon label, `dorm` = deployed reminder script.
+- Default RDNN placeholder is `org.churchofjesuschrist`. Preserve suffix meanings: `dor` = LaunchDaemon/runtime asset prefix, `dorm` = preference domain/runtime reminder logic surface.
 - Treat `Artifacts/` as generated but potentially tracked output. Do not rebuild or replace artifacts unless task specifically calls for it.
 - Localization additions should usually start in `Resources/sample.plist`; runtime and config generators are designed to carry those keys forward.
 - Submit PR-targeted guidance against `development` branch unless task or maintainer instruction says otherwise.
@@ -150,7 +150,10 @@ These rules override ad-hoc prompting. Match established shipped-script style un
 8. Preserve preference reads through `PlistBuddy` and existing key-mapping logic.
 9. Preserve deployed naming and path conventions tied to RDNN:
    - `/Library/LaunchDaemons/{RDNN}.dor.plist`
-   - `/Library/Management/{RDNN}/dorm.zsh`
+   - `/Library/Management/{RDNN}/dor.zsh`
+   - `/Library/Management/{RDNN}/dor-starter.zsh`
+   - `/Library/Management/{RDNN}/dor-state.plist`
+   - `/Library/Management/{RDNN}/dor.pid`
    - `/Library/Managed Preferences/{RDNN}.dorm.plist`
    - `/var/log/{RDNN}.log`
 

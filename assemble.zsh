@@ -24,6 +24,10 @@
 #     Artifacts/ddm-os-reminder-<reverseDomainNameNotation>-<timestamp>[-dev|-test|-prod].zsh
 #     Artifacts/<reverseDomainNameNotation>.<organizationScriptName>-<timestamp>[-dev|-test|-prod].plist
 #     Artifacts/<reverseDomainNameNotation>.<organizationScriptName>-<timestamp>[-dev|-test|-prod]-unsigned.mobileconfig
+#     Runtime deployment also creates:
+#       /Library/Management/<reverseDomainNameNotation>/dor-starter.zsh
+#       /Library/Management/<reverseDomainNameNotation>/dor-state.plist
+#       /Library/Management/<reverseDomainNameNotation>/dor.pid
 #
 # http://snelson.us/ddm
 #
@@ -37,7 +41,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.3.0"
+scriptVersion="4.0.0b2"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1643,6 +1647,7 @@ echo "📦 Deployment Artifacts:"
 echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
+echo "  Deployed Runtime Assets: /Library/Management/<RDNN>/dor-starter.zsh, dor-state.plist, dor.pid"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1694,6 +1699,7 @@ case "${deploymentMode}" in
     echo
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
+    echo "    - DailyReminderTimes baseline schedule"
     echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"

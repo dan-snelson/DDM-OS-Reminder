@@ -40,6 +40,8 @@
 	<string>Assembled Herinner me later</string>
 	<key>Button2TextLocalized_pt</key>
 	<string>Assembled Lembrar-me mais tarde</string>
+	<key>DailyReminderTimes</key>
+	<string>08:00,12:00,16:00</string>
 	<key>DateFormatDeadlineHumanReadable</key>
 	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
 	<key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>

@@ -43,23 +43,30 @@ graph TB
         SCRIPT -->|Executes on client| INST[Installation Process]
         PROFILE -->|Deploys preferences| MGDPREF
 
-        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dorm.zsh"]
+        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dor.zsh"]
+        INST -->|Creates| STARTER["/Library/Management/<br>(RDNN)/dor-starter.zsh"]
         INST -->|Creates| CLILD["/Library/LaunchDaemons/<br>(RDNN).dor.plist"]
         INST -->|Installs if needed| SD["swiftDialog.app"]
+        STATE["/Library/Management/<br>(RDNN)/dor-state.plist"]
 
         MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).dorm.plist"]
         LOCALPREF["/Library/Preferences/<br>(RDNN).dorm.plist<br>(optional local overrides)"]
 
         style INST fill:#fff4e6
         style CLISCRIPT fill:#e1f5ff
+        style STARTER fill:#e1f5ff
         style CLILD fill:#e1f5ff
+        style STATE fill:#e1f5ff
         style SD fill:#e1f5ff
         style MGDPREF fill:#f3e5f5
         style LOCALPREF fill:#f3e5f5
     end
 
     subgraph Runtime["▶️ Runtime Execution"]
-        CLILD -->|RunAtLoad + schedule<br/>8am & 4pm daily| CLISCRIPT
+        CLILD -->|RunAtLoad + StartInterval 60s| STARTER
+        STATE -->|Read NextScheduledReminder| STARTER
+        STARTER -->|Launch only when due| CLISCRIPT
+        CLISCRIPT -->|Write NextScheduledReminder<br/>DaemonLastTriggered| STATE
 
         CLISCRIPT -->|1. Loads preferences| PREFLOAD["Preference Loader<br/>Managed → Local → Defaults"]
         MGDPREF --> PREFLOAD
@@ -158,7 +165,7 @@ graph TB
 - Managed Preferences deployed via Configuration Profile
 
 ### Runtime Execution
-1. **LaunchDaemon triggers** at load and on scheduled times (default: 8am, 4pm)
+1. **LaunchDaemon heartbeat triggers** at load and every 60 seconds; `dor-starter.zsh` launches `dor.zsh` only when `dor-state.plist` says a reminder is due
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
 4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration
@@ -185,7 +192,7 @@ Development → Assembly → MDM → Client Installation → Runtime Execution �
 
 1. **Single deployment**: One assembled script contains all logic
 2. **Flexible configuration**: Preferences managed separately from code
-3. **Automated scheduling**: LaunchDaemon ensures regular reminders
+3. **Automated scheduling**: Heartbeat LaunchDaemon plus `dor-starter.zsh` honor `DailyReminderTimes` and exact-time runtime state
 4. **User-friendly**: swiftDialog provides polished UI
 5. **DDM-aware**: Reads Apple's enforcement data, no MDM API required
 6. **Context-aware**: Handles meetings, DND return codes, and deadline-proximity exceptions

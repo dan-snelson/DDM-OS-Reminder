@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (3.3.0)
+# DDM OS Reminder (4.0.0b2)
 
 > Another Mac Admin **quality-of-life** update focused on **leaner** multi-language artifacts, **smarter** interactive assembly, **region-aware** formatting and **hardened** DDM handling
 
@@ -23,7 +23,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 - **Customizable**: Easily customize the reminder dialog’s title, message, icons (including light/dark overlay icons) and button text to fit your organization’s requirements by distributing a Configuration Profile via any MDM solution.
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
-- **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
+- **Set-it-and-forget-it**: Once configured and installed, a heartbeat `LaunchDaemon` plus lightweight `dor-starter.zsh` honors your configured `DailyReminderTimes` baseline schedule and displays your customized reminder dialog only when a reminder is actually due.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
@@ -33,6 +33,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Full Multi-language Experience**: Beginning with version `3.1.0`, English dialog defaults are provided in-script, with `.plist` support for: German, French, Spanish, Italian, Dutch, Portuguese, and Japanese. Additional languages through localized `*Localized_<code>` preference keys, with locale-aware dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that match the resolved language.
 - **Granular Control for Displaying IT Support Information**: New `HideSupport*` preferences allow Mac Admins to easily choose which IT Support fields are displayed to their end-users.
 - **Use [`Resources/reminderDialogPreferenceTest.zsh`](Resources/reminderDialogPreferenceTest.zsh)** when you want to easily validate dialog copy, localization, branding, support contact details, button visibility, and infobox rendering from deployed preferences without waiting for an actual DDM deadline.
+- **Admin-controlled baseline reminder times**: Set `DailyReminderTimes` in your deployed `.plist` / `.mobileconfig` to define local baseline reminder slots such as `08:00,12:00,16:00`.
 - :new: **Lean Artifact Options**: `assemble.zsh` and `Resources/createPlist.zsh` can keep the full localization surface, generate a minimal artifact (`--minimal` = base keys + exact `_Localized_en` keys only), or retain only selected language families with `--languages <csv>`. In `assemble.zsh --interactive`, same choice appears as `Full`, `Minimal`, or `Selected languages`.
 
 ---
@@ -53,7 +54,7 @@ When prior-plist import and localization filtering are used together, `assemble.
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.3.0)
+🧩 Assemble DDM OS Reminder (4.0.0b2)
 ===============================================================
 
 📍 Full Paths:
@@ -215,7 +216,7 @@ Starting with `3.1.0`, `reminderDialog.zsh` only ships English built-in fallback
 
 Artifact generation keeps the full localization surface by default. Use `zsh assemble.zsh --minimal` for base keys plus exact `_Localized_en` keys only, or `zsh assemble.zsh --languages en,fr` when deployment artifacts need English plus additional language families such as `fr` and `fr_CA`. `Resources/sample.plist` now also demonstrates natural Japanese deadline-date formatting and preserves title-cased German `macOS-Update` / `macOS-Upgrade` nouns where grammar requires them.
 
-For placeholder authoring, use `{titleMessageUpdateOrUpgrade}` for title/default/title-case wording and `{titleMessageUpdateOrUpgradeLower}` when sentence grammar needs lowercase wording. Legacy lowercase placeholder modifier handling is no longer documented path for `3.3.0`.
+For placeholder authoring, use `{titleMessageUpdateOrUpgrade}` for title/default/title-case wording and `{titleMessageUpdateOrUpgradeLower}` when sentence grammar needs lowercase wording. Legacy lowercase placeholder modifier handling is no longer documented path for `4.0.0b2`.
 
 ```zsh
 # German screenshots

@@ -41,7 +41,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.3.0)
+🧩 Assemble DDM OS Reminder (4.0.0b2)
 ===============================================================
 
 Full Paths:
@@ -315,6 +315,8 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
    - `/Library/Managed Preferences/<rdnn>.dorm.plist`
    - `/Library/Preferences/<rdnn>.dorm.plist`
 - If both exist, the script follows the same precedence as the main reminder workflow: managed preferences first, then local preferences, then built-in defaults
+- Runtime scheduler state, when present, is stored separately at `/Library/Management/<rdnn>/dor-state.plist`
+- Baseline reminder slots are driven by `DailyReminderTimes` in the deployed preference plist/profile (for example, `08:00,12:00,16:00`)
 
 **5.2.** Run against deployed preferences
 

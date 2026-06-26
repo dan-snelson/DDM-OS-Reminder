@@ -36,6 +36,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysPastDeadlineRestartWorkflow | DaysPastDeadlineRestartWorkflow | Integer | 2 | Timing |
 | pastDeadlineRestartBehavior | PastDeadlineRestartBehavior | String (`Off` \| `Prompt` \| `Force`) | Off | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
+| dailyReminderTimes | DailyReminderTimes | String (`HH:MM` CSV) | `08:00,12:00,16:00` | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
@@ -209,6 +210,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 **Note**: The **Variable** column shows internal script variable names; configure values using the **Plist Key** column in your profile/plist.
 
 The sample profile in `Resources/sample.plist` uses shorter timing values (for example, 14/3/1 days) intentionally for demo-friendly behavior and does not reflect script defaults. Managed or local preferences override the script defaults in production.
+
+Runtime-only scheduler keys such as `NextScheduledReminder` and `DaemonLastTriggered` are intentionally excluded from this table because they live in `/Library/Management/<rdnn>/dor-state.plist`, not in the managed/local preference payload.
 
 ---
 
@@ -490,6 +493,58 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Related Logic**: See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+
+---
+
+#### dailyReminderTimes
+**Plist Key**: `DailyReminderTimes`
+**Type**: String
+**Default**: `08:00,12:00,16:00`
+**Valid Format**: `HH:MM,HH:MM,HH:MM` (24-hour local time CSV)
+
+**Description**: Admin-controlled baseline reminder slots used by the heartbeat `LaunchDaemon` and `dor-starter.zsh` to decide when a normal reminder is due.
+
+**Behavior**:
+- Values are interpreted in the Mac's local time zone
+- Entries are normalized, sorted, and de-duplicated by runtime
+- Invalid entries are ignored with warning logging; fully invalid values fall back to script default
+- Baseline scheduling uses this list when reminder flow returns to normal cadence, including after `Open Software Update`
+
+**Examples**:
+- `08:00,12:00,16:00` = morning, midday, afternoon reminders
+- `09:00,13:00,17:00` = standard business-hours cadence
+- `08:30,11:30,14:30,16:30` = denser same-day follow-up
+
+**Scheduler Boundary**:
+- Deploy and manage `DailyReminderTimes` through managed preferences or local preferences
+- Do **not** deploy runtime scheduler state through preference payloads
+- Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
+- Runtime-only keys currently include `NextScheduledReminder` and `DaemonLastTriggered`
+- Direct/manual/demo runs do not mutate this daemon scheduler state
+
+**Script Default**:
+```bash
+["dailyReminderTimes"]="string|08:00,12:00,16:00"
+```
+
+**Configuration Profile**:
+```xml
+<key>DailyReminderTimes</key>
+<string>08:00,12:00,16:00</string>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    DailyReminderTimes -string "08:00,12:00,16:00"
+```
+
+**Related Runtime State**:
+```text
+/Library/Management/<rdnn>/dor-state.plist
+  - NextScheduledReminder
+  - DaemonLastTriggered
+```
 
 ---
 
@@ -2173,6 +2228,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.0.0b2 | 26-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
 | 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
@@ -2187,5 +2243,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 ---
 
-**Last Updated**: 21-May-2026
+**Last Updated**: 26-Jun-2026
 **DDM OS Reminder Version**: 4.0.0b2

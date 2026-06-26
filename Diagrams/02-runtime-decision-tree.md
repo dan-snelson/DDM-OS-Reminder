@@ -1,10 +1,10 @@
 # Runtime Decision Tree
 
-This flowchart shows the complete decision logic executed each time the LaunchDaemon triggers the DDM OS Reminder script.
+This flowchart shows the complete decision logic executed each time the heartbeat LaunchDaemon and `dor-starter.zsh` decide a DDM OS Reminder run is due.
 
 ```mermaid
 flowchart TD
-    Start([LaunchDaemon Triggers<br/>RunAtLoad or 8am/4pm]) --> CheckRoot{Running<br/>as Root?}
+    Start([dor-starter Launches Main Script<br/>RunAtLoad or due heartbeat check]) --> CheckRoot{Running<br/>as Root?}
 
     CheckRoot -->|No| Fatal1[FATAL ERROR<br/>Must run as root]
     CheckRoot -->|Yes| CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
@@ -290,12 +290,13 @@ Fatal errors include no logged-in user after 120 seconds and running without roo
 
 ## Timing
 
-**Default Schedule**: RunAtLoad plus 8:00 AM and 4:00 PM daily
+**Heartbeat Schedule**: RunAtLoad plus `StartInterval=60` seconds
+
+**Default Baseline Reminder Slots**: `08:00,12:00,16:00` local time via `DailyReminderTimes`
 
 This ensures:
-- Morning reminder catches users starting their day
-- Afternoon reminder catches users before end of day
-- Not intrusive during lunch (typically 12-1 PM)
-- Configurable via LaunchDaemon CalendarInterval
+- launchd overhead stays minimal while exact reminder timing remains script-controlled
+- baseline reminder slots are admin-controlled in the deployed `.plist` / `.mobileconfig`
+- quiet-period redisplay can use exact timestamps without another LaunchDaemon redesign
 
-**Re-execution**: Script exits after each run; LaunchDaemon handles re-scheduling automatically.
+**Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically.

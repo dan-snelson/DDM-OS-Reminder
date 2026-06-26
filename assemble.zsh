@@ -24,6 +24,10 @@
 #     Artifacts/ddm-os-reminder-<reverseDomainNameNotation>-<timestamp>[-dev|-test|-prod].zsh
 #     Artifacts/<reverseDomainNameNotation>.<organizationScriptName>-<timestamp>[-dev|-test|-prod].plist
 #     Artifacts/<reverseDomainNameNotation>.<organizationScriptName>-<timestamp>[-dev|-test|-prod]-unsigned.mobileconfig
+#     Runtime deployment also creates:
+#       /Library/Management/<reverseDomainNameNotation>/dor-starter.zsh
+#       /Library/Management/<reverseDomainNameNotation>/dor-state.plist
+#       /Library/Management/<reverseDomainNameNotation>/dor.pid
 #
 # http://snelson.us/ddm
 #
@@ -37,7 +41,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="3.3.0"
+scriptVersion="4.0.0b2"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1616,19 +1620,39 @@ outputScript="${newOutputScript}"
 
 
 ####################################################################################################
-# Update scriptLog Based on RDNN (only change requested)
+# Update scriptLog Based on RDNN
 ####################################################################################################
 
 echo
 echo "🔁 Updating scriptLog path based on RDNN …"
 
-# Replace only the Client-side Log definition
-escapedScriptLogPath="$(escapeSedReplacement "${resolvedScriptLogPath}")"
-sed -i.bak \
-  -e "s|^scriptLog=\"[^\"]*\"|scriptLog=\"${escapedScriptLogPath}\"|" \
-  "${outputScript}"
+# Update outer deployment script plus embedded reminder script, but leave the
+# dor-starter template placeholder untouched for runtime substitution.
+scriptLogUpdateTmp="${outputScript}.scriptlog.tmp"
+awk -v replacement="scriptLog=\"${resolvedScriptLogPath}\"" '
+  /^function createDorStarterScript\(\)/ {
+    reachedDorStarterFunction = 1
+  }
 
-rm -f "${outputScript}.bak" 2>/dev/null || true
+  !reachedDorStarterFunction && /^scriptLog="[^"]*"$/ {
+    print replacement
+    next
+  }
+
+  {
+    print
+  }
+' "${outputScript}" > "${scriptLogUpdateTmp}" || {
+  echo "❌ Failed to update scriptLog path in assembled script."
+  rm -f "${scriptLogUpdateTmp}" 2>/dev/null || true
+  exit 1
+}
+
+mv "${scriptLogUpdateTmp}" "${outputScript}" || {
+  echo "❌ Failed to replace assembled script after scriptLog update."
+  rm -f "${scriptLogUpdateTmp}" 2>/dev/null || true
+  exit 1
+}
 
 
 
@@ -1643,6 +1667,7 @@ echo "📦 Deployment Artifacts:"
 echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
+echo "  Deployed Runtime Assets: /Library/Management/<RDNN>/dor-starter.zsh, dor-state.plist, dor.pid"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1694,6 +1719,7 @@ case "${deploymentMode}" in
     echo
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
+    echo "    - DailyReminderTimes baseline schedule"
     echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"

@@ -4,7 +4,7 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 3.3.0 -->
+    <!-- Version: 4.0.0b2 -->
     <!-- Generated on: 2026-05-14-103055 -->
 
     <!-- Logging -->
@@ -30,6 +30,12 @@
     <integer>10</integer>
     <key>MeetingDelay</key>
     <integer>75</integer>
+    <!-- Daily reminder times are local to the Mac and control baseline reminder
+         slots used by the heartbeat daemon starter.
+         Format: HH:MM,HH:MM,HH:MM (24-hour local time)
+         Example: 08:00,12:00,16:00 -->
+    <key>DailyReminderTimes</key>
+    <string>08:00,12:00,16:00</string>
     <!-- Space-delimited list of meeting/presentation apps whose Display Sleep
          Assertions should be tolerated (reminder defers via MeetingDelay).
          To find the names please run `pmset -g assertions | grep -E "NoDisplaySleepAssertion|PreventUserIdleDisplaySleep"`
@@ -37,6 +43,11 @@
          Example: MSTeams zoom.us Webex -->
     <key>AcceptableAssertionApplicationNames</key>
     <string>MSTeams zoom.us Webex</string>
+
+    <!-- Runtime-only daemon state lives outside this managed preference surface:
+         /Library/Management/<rdnn>/dor-state.plist
+         Keys: NextScheduledReminder, DaemonLastTriggered
+         Do not deploy or manage these runtime keys via Configuration Profile or local plist. -->
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>

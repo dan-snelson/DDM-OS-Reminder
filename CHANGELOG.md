@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 4.0.0b2 (26-Jun-2026)
+- Reworked daemon orchestration so `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds instead of launching the main reminder script directly.
+- Added runtime scheduler assets `/Library/Management/<rdnn>/dor-starter.zsh`, `dor-state.plist`, and `dor.pid`, with `NextScheduledReminder` / `DaemonLastTriggered` state managed through `PlistBuddy`.
+- Added `DailyReminderTimes` preference (`HH:MM` CSV, local time) so baseline reminder slots are admin-controlled through deployed `.plist` / `.mobileconfig` content, with default `08:00,12:00,16:00`.
+- Updated runtime scheduling to honor exact quiet-period redisplay times, while keeping direct/manual/demo runs from mutating daemon scheduler state.
+- Updated `Resources/sample.plist`, `Resources/reminderDialogPreferenceTest.zsh`, `README.md`, `Resources/README.md`, and `AGENTS.md` to document the heartbeat starter architecture and new `dor-` runtime asset names.
+
 ### Version 3.3.0 (21-May-2026)
 - Added localization-surface filtering to `assemble.zsh` and `Resources/createPlist.zsh`, with support for full output, `--minimal` output (base keys plus English localized keys), and `--languages <csv>` subset generation for leaner `.plist` and `.mobileconfig` artifacts. (Addresses Issue #100)
 - Extended `assemble.zsh --interactive` with localization artifact selection prompts, and pruned imported localized keys that fall outside the selected artifact mode so prior-plist upgrades stay explicit and predictable.

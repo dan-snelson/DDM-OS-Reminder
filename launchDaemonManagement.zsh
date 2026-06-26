@@ -479,7 +479,7 @@ ENDOFLAUNCHDAEMON
 
     logComment "Loading '${launchDaemonLabel}' …"
     launchctl bootstrap system "${launchDaemonPath}"
-    launchctl start "${launchDaemonLabel}"
+    launchctl kickstart -k "system/${launchDaemonLabel}"
 
 }
 

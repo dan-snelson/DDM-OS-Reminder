@@ -4192,7 +4192,7 @@ cat <<'ENDOFSTARTER'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 scriptVersion="__SCRIPT_VERSION__"
-scriptLog="/var/log/org.churchofjesuschrist.log"
+scriptLog="__SCRIPT_LOG__"
 mainScriptPath="__MAIN_SCRIPT_PATH__"
 statePlistPath="__STATE_PLIST_PATH__"
 pidFilePath="__PID_FILE_PATH__"
@@ -4373,7 +4373,7 @@ ENDOFLAUNCHDAEMON
 
     logComment "Loading '${launchDaemonLabel}' …"
     launchctl bootstrap system "${launchDaemonPath}"
-    launchctl start "${launchDaemonLabel}"
+    launchctl kickstart -k "system/${launchDaemonLabel}"
 
 }
 

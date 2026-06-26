@@ -442,7 +442,7 @@ Note: Demo mode is removed during `assemble.zsh`, so use the source script for d
 
 **Option 3: Force Run** (Respects all logic)
 ```bash
-sudo launchctl start org.churchofjesuschrist.dor
+sudo launchctl kickstart -kp system/org.churchofjesuschrist.dor
 ```
 
 #### 4.6 Troubleshooting Tests

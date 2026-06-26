@@ -1620,19 +1620,39 @@ outputScript="${newOutputScript}"
 
 
 ####################################################################################################
-# Update scriptLog Based on RDNN (only change requested)
+# Update scriptLog Based on RDNN
 ####################################################################################################
 
 echo
 echo "🔁 Updating scriptLog path based on RDNN …"
 
-# Replace only the Client-side Log definition
-escapedScriptLogPath="$(escapeSedReplacement "${resolvedScriptLogPath}")"
-sed -i.bak \
-  -e "s|^scriptLog=\"[^\"]*\"|scriptLog=\"${escapedScriptLogPath}\"|" \
-  "${outputScript}"
+# Update outer deployment script plus embedded reminder script, but leave the
+# dor-starter template placeholder untouched for runtime substitution.
+scriptLogUpdateTmp="${outputScript}.scriptlog.tmp"
+awk -v replacement="scriptLog=\"${resolvedScriptLogPath}\"" '
+  /^function createDorStarterScript\(\)/ {
+    reachedDorStarterFunction = 1
+  }
 
-rm -f "${outputScript}.bak" 2>/dev/null || true
+  !reachedDorStarterFunction && /^scriptLog="[^"]*"$/ {
+    print replacement
+    next
+  }
+
+  {
+    print
+  }
+' "${outputScript}" > "${scriptLogUpdateTmp}" || {
+  echo "❌ Failed to update scriptLog path in assembled script."
+  rm -f "${scriptLogUpdateTmp}" 2>/dev/null || true
+  exit 1
+}
+
+mv "${scriptLogUpdateTmp}" "${outputScript}" || {
+  echo "❌ Failed to replace assembled script after scriptLog update."
+  rm -f "${scriptLogUpdateTmp}" 2>/dev/null || true
+  exit 1
+}
 
 
 

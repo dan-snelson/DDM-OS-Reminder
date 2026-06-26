@@ -797,7 +797,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+, expanded in 4.0.0b2)**:
+**Locale Behavior (3.0.0+, expanded in 4.0.0b3)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
 - When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
 - Optional region-aware overrides use `DateFormatDeadlineHumanReadableLocalized_<code>` and resolve as exact locale (for example `fr_CA`) → base language (for example `fr`) → global `DateFormatDeadlineHumanReadable` → built-in script default
@@ -1352,7 +1352,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `{installedmacOSVersion}` = Current macOS version
 - `{ddmVersionString}` = Required macOS version
 - `{infoboxDeadlineDisplay}` = Formatted deadline display (red when past deadline on supported swiftDialog versions)
-- `{infoboxDaysRemainingDisplay}` = Days until deadline display (red when `<= 0` on supported swiftDialog versions)
+- `{infoboxDaysRemainingDisplay}` = Signed days-until-deadline display based on raw DDM deadline timing (red when `<= 0` on supported swiftDialog versions)
 - `{infoboxLastRestartDisplay}` = Time since last restart display (red when uptime meets/exceeds threshold on supported swiftDialog versions)
 - `{diskSpaceHumanReadable}` = Free disk space
 
@@ -1708,7 +1708,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{ddmEnforcedInstallDateHumanReadable}` | DDM | Formatted deadline | Sat, 01-Aug-2026, 8:00 AM |
 | `{ddmEnforcedInstallDateRelativeHumanReadable}` | DDM | Relative deadline (Today/Tomorrow), else formatted deadline | Tomorrow, 6:00 p.m. |
 | `{ddmVersionStringDeadlineHumanReadable}` | DDM | Formatted deadline (alt) | Sat, 01-Aug-2026, 8:00 AM |
-| `{ddmVersionStringDaysRemaining}` | DDM | Days to deadline | 14 |
+| `{ddmVersionStringDaysRemaining}` | DDM | Days to effective enforcement deadline used by runtime reminder logic | 14 |
 | `{titleMessageUpdateOrUpgrade}` | Logic | Update or Upgrade | Update |
 | `{titleMessageUpdateOrUpgradeLower}` | Logic | Lowercase variant | update |
 | `{softwareUpdateButtonText}` | Logic | Expected button label | Update Now |
@@ -1728,7 +1728,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.0.0b2 |
+| `{scriptVersion}` | System | Script version | 4.0.0b3 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2228,7 +2228,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 4.0.0b2 | 26-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
+| 4.0.0b3 | 26-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
 | 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
@@ -2236,12 +2236,12 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 4.0.0b2 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
-| 4.0.0b2 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
+| 4.0.0b3 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
+| 4.0.0b3 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
 | 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
 **Last Updated**: 26-Jun-2026
-**DDM OS Reminder Version**: 4.0.0b2
+**DDM OS Reminder Version**: 4.0.0b3

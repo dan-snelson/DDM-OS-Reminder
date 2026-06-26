@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b2"
+scriptVersion="4.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -272,7 +272,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b2"
+scriptVersion="4.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1223,6 +1223,33 @@ function formatRelativeDeadlineHumanReadable() {
 
     relativeDeadlineHumanReadable="$(trimSurroundingWhitespace "${relativeDeadlineHumanReadable}")"
     echo "${relativeDeadlineHumanReadable}"
+}
+
+function computeSignedDaysRemainingDisplay() {
+    local targetEpoch="${1}"
+    local referenceEpoch="${2:-$(date +%s)}"
+    local secondsUntilDeadline=0
+    local overdueSeconds=0
+    local daysRemaining=0
+
+    if [[ -z "${targetEpoch}" || ! "${targetEpoch}" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    if [[ -z "${referenceEpoch}" || ! "${referenceEpoch}" =~ ^[0-9]+$ ]]; then
+        referenceEpoch=$(date +%s)
+    fi
+
+    secondsUntilDeadline=$(( targetEpoch - referenceEpoch ))
+
+    if (( secondsUntilDeadline >= 0 )); then
+        daysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 ))
+    else
+        overdueSeconds=$(( -secondsUntilDeadline ))
+        daysRemaining=$(( -1 - (overdueSeconds / 86400) ))
+    fi
+
+    echo "${daysRemaining}"
 }
 
 
@@ -3222,6 +3249,8 @@ installedOSvsDDMenforcedOS() {
     blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
     hideButton2ThresholdSeconds=$(( daysBeforeDeadlineHidingButton2 * 86400 ))
     ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
+    ddmVersionStringDaysRemainingDisplay="$(computeSignedDaysRemainingDisplay "${deadlineEpoch}" "${nowEpoch}")"
+    [[ -z "${ddmVersionStringDaysRemainingDisplay}" ]] && ddmVersionStringDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     if (( secondsUntilDeadline <= blurThresholdSeconds )); then
         blurscreen="--blurscreen"
     else
@@ -3521,7 +3550,7 @@ function computeDeadlineEnforcementMessage() {
 
 function computeInfoboxHighlights() {
     infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
-    infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
+    infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemainingDisplay:-${ddmVersionStringDaysRemaining}}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
     local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
 
@@ -3535,7 +3564,7 @@ function computeInfoboxHighlights() {
         infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
     fi
 
-    if [[ "${ddmVersionStringDaysRemaining}" =~ ^-?[0-9]+$ ]] && (( ddmVersionStringDaysRemaining <= 0 )); then
+    if [[ "${infoboxDaysRemainingDisplay}" =~ ^-?[0-9]+$ ]] && (( infoboxDaysRemainingDisplay <= 0 )); then
         infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
     fi
 

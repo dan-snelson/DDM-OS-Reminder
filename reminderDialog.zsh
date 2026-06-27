@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b13"
+scriptVersion="4.0.0b14"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1046,6 +1046,78 @@ function completePreDeadlineThresholdReminderDelivery() {
     fi
 }
 
+function shouldAutoRefreshOpenDialogAtPreDeadlineThreshold() {
+    shouldManageDaemonScheduling || return 1
+    isPastDeadlineForceMode && return 1
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+
+    return 0
+}
+
+function monitorOpenDialogForPreDeadlineThreshold() {
+    local dialogPid="${1}"
+    local refreshMarkerPath="${2}"
+    local thresholdResult=""
+    local watchedThresholdEpoch=""
+    local watchedThresholdMinutes=""
+    local nowEpoch=""
+    local sleepSeconds=5
+
+    shouldAutoRefreshOpenDialogAtPreDeadlineThreshold || return 0
+    [[ -n "${dialogPid}" && -n "${refreshMarkerPath}" ]] || return 0
+
+    while kill -0 "${dialogPid}" >/dev/null 2>&1; do
+        nowEpoch="$(date +%s)"
+
+        if [[ -n "${watchedThresholdEpoch}" && "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= watchedThresholdEpoch )); then
+            notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
+            printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
+            kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
+            sleep 2
+            if kill -0 "${dialogPid}" >/dev/null 2>&1; then
+                warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
+                kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+            fi
+            return 0
+        fi
+
+        thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+        if [[ -n "${thresholdResult}" ]]; then
+            watchedThresholdEpoch="${thresholdResult%%|*}"
+            watchedThresholdMinutes="${thresholdResult##*|}"
+            if [[ "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]]; then
+                sleepSeconds=$(( watchedThresholdEpoch - nowEpoch ))
+                if (( sleepSeconds > 30 )); then
+                    sleepSeconds=30
+                elif (( sleepSeconds < 1 )); then
+                    sleepSeconds=1
+                fi
+            else
+                sleepSeconds=5
+            fi
+        else
+            watchedThresholdEpoch=""
+            watchedThresholdMinutes=""
+            sleepSeconds=5
+        fi
+
+        sleep "${sleepSeconds}"
+    done
+}
+
+function handlePreDeadlineThresholdDialogAutoRefresh() {
+    local triggeredThresholdMinutes="${1}"
+
+    if isPreDeadlineThresholdReminderMode; then
+        completePreDeadlineThresholdReminderDelivery
+    elif resolveDuePreDeadlineThresholdReminder; then
+        setNextReminderScheduleImmediate "Scheduled after open reminder dialog crossed ${preDeadlineThresholdMinutes}-minute pre-deadline threshold"
+    else
+        warning "Dialog auto-refresh requested for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold, but no threshold is currently due; falling back to pending threshold or baseline schedule."
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after threshold dialog auto-refresh fallback"
+    fi
+}
+
 function ensureLaunchDaemonHeartbeat() {
     if [[ -f "${dorLaunchDaemonPath}" ]]; then
         launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || launchctl bootstrap system "${dorLaunchDaemonPath}" >/dev/null 2>&1 || true
@@ -1133,6 +1205,7 @@ function queueImmediateReminderCheck() {
     deleteReminderStateKey "NextScheduledReminder"
     notice "${scheduleReason}."
     ensureLaunchDaemonHeartbeat
+    removeDorPidFile
     launchctl kickstart -k "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || true
 }
 
@@ -3806,6 +3879,12 @@ function executeRestartAction() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function displayReminderDialog() {
+    local dialogAutoRefreshMarkerPath=""
+    local dialogAutoRefreshMarkerValue=""
+    local dialogAutoRefreshMonitorPid=""
+    local dialogAutoRefreshThresholdMinutes=""
+    local dialogAutoRefreshTriggered="NO"
+    local dialogPid=""
 
     additionalDialogOptions=("$@")
 
@@ -3833,9 +3912,41 @@ function displayReminderDialog() {
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
 
-    ${dialogBinary} "${dialogArgs[@]}"
+    dialogAutoRefreshMarkerPath="$(mktemp "/var/tmp/${organizationScriptName}-threshold-refresh.XXXXXX" 2>/dev/null || true)"
+    if [[ -z "${dialogAutoRefreshMarkerPath}" ]]; then
+        dialogAutoRefreshMarkerPath="/var/tmp/${organizationScriptName}-threshold-refresh.$$"
+        rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+    fi
 
+    ${dialogBinary} "${dialogArgs[@]}" &
+    dialogPid=$!
+
+    if shouldAutoRefreshOpenDialogAtPreDeadlineThreshold; then
+        monitorOpenDialogForPreDeadlineThreshold "${dialogPid}" "${dialogAutoRefreshMarkerPath}" &
+        dialogAutoRefreshMonitorPid=$!
+    fi
+
+    wait "${dialogPid}"
     returncode=$?
+
+    if [[ -n "${dialogAutoRefreshMonitorPid}" ]]; then
+        kill "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
+        wait "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -s "${dialogAutoRefreshMarkerPath}" ]]; then
+        dialogAutoRefreshTriggered="YES"
+        dialogAutoRefreshMarkerValue="$(cat "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true)"
+        dialogAutoRefreshThresholdMinutes="${dialogAutoRefreshMarkerValue%%|*}"
+    fi
+    rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+
+    if [[ "${dialogAutoRefreshTriggered}" == "YES" ]]; then
+        notice "swiftDialog was closed automatically because the ${dialogAutoRefreshThresholdMinutes:-next}-minute pre-deadline threshold became due."
+        handlePreDeadlineThresholdDialogAutoRefresh "${dialogAutoRefreshThresholdMinutes}"
+        quitScript "0"
+    fi
+
     info "Return Code: ${returncode}"
 
     # Quiet-period exact reschedules are only for dismissal paths. Launching
@@ -3989,11 +4100,7 @@ function displayReminderDialogForMode() {
 # Quit Script (thanks, @bartreadon!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function quitScript() {
-
-    applyScheduledExitAction
-    quitOut "Exiting …"
-
+function cleanupDialogRuntimeArtifacts() {
     # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
         if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
@@ -4004,6 +4111,19 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
     removeDorPidFile
+}
+
+function quitScript() {
+
+    quitOut "Exiting …"
+
+    if shouldManageDaemonScheduling && [[ "${nextReminderScheduleMode}" == "immediate" ]]; then
+        cleanupDialogRuntimeArtifacts
+        applyScheduledExitAction
+    else
+        applyScheduledExitAction
+        cleanupDialogRuntimeArtifacts
+    fi
 
     quitOut "Ticking away the moments that make up a dull day …"
 

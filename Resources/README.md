@@ -41,7 +41,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0b13)
+🧩 Assemble DDM OS Reminder (4.0.0b14)
 ===============================================================
 
 Full Paths:

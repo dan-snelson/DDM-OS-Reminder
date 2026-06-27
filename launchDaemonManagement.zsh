@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b3"
+scriptVersion="4.0.0b13"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -124,6 +124,99 @@ function removeDeployedRuntimeAssets() {
     done
 }
 
+function isDDMOSReminderLaunchDaemonPlist() {
+    local candidatePath="${1}"
+    local candidateLabel=""
+    local programArguments=""
+
+    [[ -f "${candidatePath}" ]] || return 1
+    [[ "${candidatePath}" == *.dor.plist ]] || return 1
+    [[ "${candidatePath}" == "${launchDaemonPath}" ]] && return 0
+
+    candidateLabel="$(/usr/libexec/PlistBuddy -c "Print :Label" "${candidatePath}" 2>/dev/null || true)"
+    programArguments="$(/usr/libexec/PlistBuddy -c "Print :ProgramArguments" "${candidatePath}" 2>/dev/null || true)"
+
+    [[ "${candidateLabel}" == *.dor ]] || return 1
+    [[ "${programArguments}" == *"/Library/Management/"* ]] || return 1
+    if [[ "${programArguments}" == *"/dor-starter.zsh"* || "${programArguments}" == *"/dor.zsh"* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+function discoverDDMOSReminderLaunchDaemonPaths() {
+    local candidatePath=""
+    local -A discoveredPaths=()
+
+    for candidatePath in "${launchDaemonPath}" /Library/LaunchDaemons/*.dor.plist(N); do
+        [[ -n "${discoveredPaths[${candidatePath}]:-}" ]] && continue
+
+        if [[ "${candidatePath}" == "${launchDaemonPath}" ]] || isDDMOSReminderLaunchDaemonPlist "${candidatePath}"; then
+            discoveredPaths[${candidatePath}]="YES"
+            echo "${candidatePath}"
+        fi
+    done
+}
+
+function launchDaemonLabelForPath() {
+    local daemonPath="${1}"
+    local daemonLabel=""
+
+    if [[ -f "${daemonPath}" ]]; then
+        daemonLabel="$(/usr/libexec/PlistBuddy -c "Print :Label" "${daemonPath}" 2>/dev/null || true)"
+    fi
+
+    if [[ -z "${daemonLabel}" && "${daemonPath}" == "${launchDaemonPath}" ]]; then
+        daemonLabel="${launchDaemonLabel}"
+    fi
+
+    if [[ -z "${daemonLabel}" ]]; then
+        daemonLabel="${daemonPath:t:r}"
+    fi
+
+    echo "${daemonLabel}"
+}
+
+function unloadAndRemoveLaunchDaemon() {
+    local daemonPath="${1}"
+    local daemonLabel=""
+
+    [[ -n "${daemonPath}" ]] || return 0
+
+    daemonLabel="$(launchDaemonLabelForPath "${daemonPath}")"
+    if [[ -n "${daemonLabel}" ]]; then
+        logComment "Unload LaunchDaemon label '${daemonLabel}' … "
+        launchctl bootout "system/${daemonLabel}" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -f "${daemonPath}" ]]; then
+        logComment "Unload LaunchDaemon plist '${daemonPath}' … "
+        launchctl bootout system "${daemonPath}" >/dev/null 2>&1 || true
+        logComment "Removing '${daemonPath}' … "
+        rm -f "${daemonPath}" 2>&1
+        logComment "Removed '${daemonPath}'"
+    else
+        logComment "LaunchDaemon plist not present: '${daemonPath}'"
+    fi
+}
+
+function resetLaunchDaemons() {
+    local resetAction="${1:-Reset}"
+    local daemonPath=""
+    local -a daemonPaths=()
+
+    info "${resetAction} LaunchDaemon … "
+    launchDaemonStatus
+
+    daemonPaths=("${(@f)$(discoverDDMOSReminderLaunchDaemonPaths)}")
+    for daemonPath in "${daemonPaths[@]}"; do
+        unloadAndRemoveLaunchDaemon "${daemonPath}"
+    done
+
+    launchDaemonStatus
+}
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -151,16 +244,7 @@ function resetConfiguration() {
             info "Reset All Configuration Files … "
 
             # Reset LaunchDaemon
-            info "Reset LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Reset"
 
             # Reset Script
             info "Reset Script … "
@@ -169,16 +253,7 @@ function resetConfiguration() {
 
         "LaunchDaemon" )
 
-            info "Reset LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Reset"
             ;;
 
         "Script" )
@@ -192,16 +267,7 @@ function resetConfiguration() {
             warning "*** UNINSTALLING ${humanReadableScriptName} ***"
 
             # Uninstall LaunchDaemon
-            info "Uninstall LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Uninstall"
 
             # Uninstall Script
             info "Uninstall Script … "

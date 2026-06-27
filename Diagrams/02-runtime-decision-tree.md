@@ -21,8 +21,11 @@ flowchart TD
     CompareVersions -->|Yes| ResolveDeadline[Resolve effective deadline<br/>declared date or safe padded date]
     ResolveDeadline --> EvalYukon[Evaluate post-deadline<br/>restart eligibility state]
 
-    EvalYukon --> GetInteraction[Read last interaction<br/>codes 0/2/3/4/10<br/>exclude restart-related]
-    GetInteraction --> CheckWindow{Inside display window?<br/>daysRemaining <=<br/>daysBeforeDeadlineDisplayReminder}
+    EvalYukon --> EvalThreshold[Evaluate pre-deadline<br/>minute thresholds]
+    EvalThreshold --> GetInteraction[Read last interaction<br/>codes 0/2/3/4/10<br/>exclude restart-related]
+    GetInteraction --> ThresholdDue{Due configured<br/>minute threshold?}
+    ThresholdDue -->|Yes| ForceMeetingBypass
+    ThresholdDue -->|No| CheckWindow{Inside display window?<br/>daysRemaining <=<br/>daysBeforeDeadlineDisplayReminder}
     CheckWindow -->|No| PeriodicGate{Periodic reminder due?<br/>No interaction OR<br/>>= 28 days since interaction}
     PeriodicGate -->|No| Exit4[Exit Silently<br/>Outside display window<br/>not periodic-due]
     PeriodicGate -->|Yes| ForceQuietBypass
@@ -37,10 +40,11 @@ flowchart TD
     ForceMeetingBypass -->|No| Deadline24{More than 24 hours<br/>to deadline?}
     Deadline24 -->|No| BuildDialog
     Deadline24 -->|Yes| MeetingLoop[Run display-sleep assertion loop<br/>allowlist-filtered; 5-min checks<br/>proceed when clear OR<br/>meetingDelay limit reached]
-    MeetingLoop --> BuildDialog[Build dialog content<br/>warnings + staged status + deadline text<br/>apply restart-mode overrides<br/>replace placeholders + hide rules]
+    MeetingLoop --> BuildDialog[Build dialog content<br/>warnings + staged status + deadline text<br/>apply restart / threshold overrides<br/>replace placeholders + hide rules]
 
     BuildDialog --> DialogMode{Dialog mode selected?}
     DialogMode -->|Update flow| CheckDeadline{Days Until<br/>Deadline?}
+    DialogMode -->|Pre-deadline threshold| ThresholdDialog[Final-minute reminder<br/>threshold-specific copy]
     DialogMode -->|Restart Prompt| PromptDialog[Restart-only dialog<br/>Button1 = Restart Now]
     DialogMode -->|Restart Force| ForceDialog[Restart-only forced dialog<br/>--timer 60]
 
@@ -51,6 +55,7 @@ flowchart TD
     Standard --> Display[Display swiftDialog]
     Blur --> Display
     Urgent --> Display
+    ThresholdDialog --> Display
     PromptDialog --> Display
     ForceDialog --> Display
 
@@ -258,6 +263,7 @@ Key preferences that affect decision tree:
 | `daysPastDeadlineRestartWorkflow` | 2 | Days-past-deadline threshold for Yukon mode |
 | `pastDeadlineRestartBehavior` | Off | Yukon Cornelius mode (`Off` / `Prompt` / `Force`) |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
+| `minutesBeforeDeadlineReminderSchedule` | `45,30,15,10,5` | Final-minute threshold reminders |
 | `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |
 | `minimumDiskFreePercentage` | 99 | Disk space warning |
 | `disableButton2InsteadOfHide` | YES | Button 2 behavior (disabled vs hidden) |
@@ -298,5 +304,6 @@ This ensures:
 - launchd overhead stays minimal while exact reminder timing remains script-controlled
 - baseline reminder slots are admin-controlled in the deployed `.plist` / `.mobileconfig`
 - quiet-period redisplay can use exact timestamps without another LaunchDaemon redesign
+- final-minute thresholds can schedule exact reminders through `NextScheduledReminder`
 
-**Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically.
+**Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically. Threshold delivery state also lives in `dor-state.plist` so each configured threshold displays once per resolved deadline/version.

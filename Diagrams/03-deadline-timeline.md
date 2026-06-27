@@ -175,6 +175,27 @@ gantt
 
 ---
 
+### Phase 4b: Final-Minute Threshold Reminders
+**Timeline**: Configured minute thresholds before effective enforcement (default: `45,30,15,10,5`)
+
+**Characteristics**:
+- Uses `MinutesBeforeDeadlineReminderSchedule`
+- Evaluates against the effective enforcement epoch, including a trusted padded enforcement date when available
+- Displays each configured threshold once per resolved deadline/version
+- Bypasses the 76-minute quiet period so an earlier threshold interaction does not suppress later 30/15/10/5-minute reminders
+- Uses the existing heartbeat + `dor-starter` + `NextScheduledReminder` exact scheduler path
+
+**Runtime State**:
+- `PreDeadlineThresholdSignature`
+- `PreDeadlineThresholdDelivered`
+- `PreDeadlineThresholdSkipped`
+
+**Configuration**:
+- `MinutesBeforeDeadlineReminderSchedule = 45,30,15,10,5`
+- Set `MinutesBeforeDeadlineReminderSchedule` to an empty string to disable this phase
+
+---
+
 ### Phase 5: Post-Deadline Workflow
 **Timeline**: After the deadline has passed and update is still required
 
@@ -231,6 +252,7 @@ gantt
 | `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | Heartbeat daemon + `dor-starter` due check |
+| Configured minute thresholds before deadline | Final-minute threshold reminder | ❌ Disabled/hidden (by deadline threshold) | ❌ No (deadline window) | Exact `NextScheduledReminder` from `dor-state.plist` |
 | Past deadline + restart mode `Off` or not eligible | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
 | Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog | Hidden | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
 | Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer 60`) | Hidden | ❌ No (explicit bypass) | Re-displays every ~5 seconds until restart |
@@ -251,6 +273,9 @@ Most thresholds are configurable via Configuration Profile or local preferences:
 
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>21</integer>
+
+<key>MinutesBeforeDeadlineReminderSchedule</key>
+<string>45,30,15,10,5</string>
 
 <key>PastDeadlineRestartBehavior</key>
 <string>Off</string>

@@ -41,7 +41,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.0.0b3"
+scriptVersion="4.0.0b13"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -170,6 +170,29 @@ echo
 [[ -d "${artifactsDir}" ]]  || { echo "⚠️ Artifacts directory missing — creating it."; mkdir -p "${artifactsDir}"; }
 
 source "${localizationHelper}"
+
+baseScriptVersion="$(
+  /usr/bin/sed -n 's/^scriptVersion="\([^"]*\)".*/\1/p' "${baseScript}" | /usr/bin/head -n 1
+)"
+messageScriptVersion="$(
+  /usr/bin/sed -n 's/^scriptVersion="\([^"]*\)".*/\1/p' "${messageScript}" | /usr/bin/head -n 1
+)"
+
+if [[ -z "${baseScriptVersion}" || -z "${messageScriptVersion}" ]]; then
+  echo "❌ Could not read scriptVersion from source scripts."
+  echo "    ${baseScript##*/}: ${baseScriptVersion:-<missing>}"
+  echo "    ${messageScript##*/}: ${messageScriptVersion:-<missing>}"
+  exit 1
+fi
+
+if [[ "${baseScriptVersion}" != "${scriptVersion}" || "${messageScriptVersion}" != "${scriptVersion}" ]]; then
+  echo "❌ Source scriptVersion mismatch."
+  echo "    ${0:t}: ${scriptVersion}"
+  echo "    ${baseScript##*/}: ${baseScriptVersion}"
+  echo "    ${messageScript##*/}: ${messageScriptVersion}"
+  echo "    Align these before assembling so the deployed dor.zsh payload matches the wrapper."
+  exit 1
+fi
 
 
 

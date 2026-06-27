@@ -129,9 +129,10 @@ Out of scope:
 - Post-deadline restart workflow gates on effective post-deadline epoch when safely resolved, not raw `EnforcedInstallDate` alone.
 - Quiet period starts after user interaction, not when dialog first appears.
 - Baseline reminder slots resolve from `DailyReminderTimes` in deployed preferences. Default sample values (`08:00,12:00,16:00`) are fallback defaults, not runtime hardcodes.
+- Pre-deadline minute thresholds resolve from `MinutesBeforeDeadlineReminderSchedule` (`30,15,10,5` by default). Per-threshold delivery state stays in `dor-state.plist`.
 - `dor-starter.zsh` is expected to exit quietly when `NextScheduledReminder` is `FALSE` or future-dated. Check `dor-state.plist` before treating a no-op heartbeat as failure.
 - Only starter-launched runs should mutate `dor-state.plist` or `dor.pid`; direct/manual/demo runs bypass daemon scheduler writes.
-- `Open Software Update` should return to the next baseline reminder slot, while dismissal-driven quiet periods may schedule exact timestamps.
+- `Open Software Update` should return to the next baseline reminder slot unless a configured pre-deadline minute threshold is earlier; dismissal-driven quiet periods may schedule exact timestamps.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until `zsh assemble.zsh` runs.
 
 ## Repository Rules

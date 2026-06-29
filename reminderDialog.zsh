@@ -1750,6 +1750,7 @@ function validatePreferenceLoad() {
     local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
     local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
+    local defaultAggressiveModePastDeadlineHours="${preferenceConfiguration[aggressiveModePastDeadlineHours]#*|}"
     local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
     local normalizedDailyReminderTimes=""
     local normalizedMinuteThresholdSchedule=""
@@ -1793,7 +1794,12 @@ function validatePreferenceLoad() {
         notice "MinutesBeforeDeadlineReminderSchedule is empty; pre-deadline threshold reminders disabled."
     fi
 
-    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 )); then
+    if [[ ! "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || (( aggressiveModePastDeadlineHours < 0 || aggressiveModePastDeadlineHours > 999 )); then
+        warning "AggressiveModePastDeadlineHours value '${aggressiveModePastDeadlineHours}' is invalid; defaulting to '${defaultAggressiveModePastDeadlineHours}'."
+        aggressiveModePastDeadlineHours="${defaultAggressiveModePastDeadlineHours}"
+    fi
+
+    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 || aggressiveModeFrequencyMinutes > 999 )); then
         warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
         aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
     fi
@@ -4022,11 +4028,12 @@ function displayReminderDialog() {
 
     info "Return Code: ${returncode}"
 
-    # Quiet-period and aggressive exact reschedules are only for dismissal paths.
-    # Launching Software Update should fall back to the normal baseline schedule.
+    # Aggressive mode keeps exact redisplay scheduling until compliance, including
+    # the Open Software Update path. Quiet-period exact reschedules remain limited
+    # to dismissal-style return codes in non-aggressive update flows.
     if isAggressiveModeActive && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
         case ${returncode} in
-            2|4|10)
+            0|2|4|10)
                 setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after return code ${returncode}"
                 ;;
         esac

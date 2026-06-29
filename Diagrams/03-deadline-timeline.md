@@ -220,8 +220,7 @@ gantt
 
 **Runtime Notes**:
 - If restart mode is eligible by days but uptime is below 75 minutes, restart mode is temporarily suppressed and update-focused flow continues
-- Aggressive dismissal/close/keyboard quit/timer schedules an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
-- `Open Software Update` keeps the normal baseline scheduling path unless a restart action path applies
+- Aggressive `Open Software Update` / dismissal / close / keyboard quit / timer interactions schedule an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
 - The support kill switch logs a notice and falls back to normal non-aggressive cadence
 - Force mode bypasses quiet-period suppression and meeting-delay checks
 
@@ -267,7 +266,7 @@ gantt
 | `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | Heartbeat daemon + `dor-starter` due check |
 | Configured minute thresholds before deadline | Final-minute threshold reminder | ❌ Disabled/hidden (by deadline threshold) | ❌ No (deadline window) | Exact `NextScheduledReminder` from `dor-state.plist` |
 | Past deadline before aggressive threshold or with kill switch | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
-| Past deadline + aggressive mode + restart mode `Off` or not restart-eligible | Aggressive update-focused reminder | ❌ Disabled/hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after dismissal |
+| Past deadline + aggressive mode + restart mode `Off` or not restart-eligible | Aggressive update-focused reminder | ❌ Disabled/hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after `Open Software Update` or dismissal |
 | Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog; aggressive cadence if active | Hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after dismissal when aggressive, otherwise heartbeat due check |
 | Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer 60`) | Hidden | ❌ No (explicit bypass) | Re-displays every ~5 seconds until restart |
 | Apple enforcement event | Apple-controlled restart/update | N/A | N/A | macOS/DDM enforcement |

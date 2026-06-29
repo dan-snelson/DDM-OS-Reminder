@@ -863,9 +863,18 @@ function resolveMinuteThresholdSchedule() {
 function resolveAggressiveModeFrequency() {
     local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
 
-    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 )); then
+    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 || aggressiveModeFrequencyMinutes > 999 )); then
         warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
         aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
+    fi
+}
+
+function resolveAggressiveModeThreshold() {
+    local defaultAggressiveModePastDeadlineHours="${preferenceConfiguration[aggressiveModePastDeadlineHours]#*|}"
+
+    if [[ ! "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || (( aggressiveModePastDeadlineHours < 0 || aggressiveModePastDeadlineHours > 999 )); then
+        warning "AggressiveModePastDeadlineHours value '${aggressiveModePastDeadlineHours}' is invalid; defaulting to '${defaultAggressiveModePastDeadlineHours}'."
+        aggressiveModePastDeadlineHours="${defaultAggressiveModePastDeadlineHours}"
     fi
 }
 
@@ -2013,6 +2022,7 @@ resolveDialogLanguage
 initializeLocalizedRuntimeFields
 resolveDailyReminderTimes
 resolveMinuteThresholdSchedule
+resolveAggressiveModeThreshold
 resolveAggressiveModeFrequency
 prepareDemoRuntimeState
 

@@ -132,7 +132,7 @@ If you enter `NO` for `Knowledge Base ('YES' to specify; 'NO' to hide)`, `assemb
 
 If you enter `Off` for `Past-deadline Restart Behavior`, `assemble.zsh` skips the `Days Past Deadline Before Restart Workflow` prompt and leaves `DaysPastDeadlineRestartWorkflow` unchanged from the sample/default value in generated artifacts.
 
-Aggressive mode is on by default for Macs past the effective DDM deadline and still below the required macOS version. Use `AggressiveModePastDeadlineHours` to control when that cadence starts and `AggressiveModeFrequencyMinutes` to control exact redisplay scheduling through `dor-state.plist`. Do not set the start threshold too low for production; use a high value such as `720` when you need to effectively suppress aggressive mode without changing restart policy semantics.
+Aggressive mode is on by default for Macs past the effective DDM deadline and still below the required macOS version. Use `AggressiveModePastDeadlineHours` to control when that cadence starts and `AggressiveModeFrequencyMinutes` to control exact redisplay scheduling through `dor-state.plist`, including after the user clicks **Open Software Update**. Do not set the start threshold too low for production; use a high value such as `720` when you need to effectively suppress aggressive mode without changing restart policy semantics.
 
 If you choose `Minimal` during `--interactive`, or pass `--minimal`, generated artifacts keep base keys plus exact `_Localized_en` keys only. If you choose `Selected languages`, or pass `--languages en,fr`, generated artifacts keep base keys, exact `_Localized_en` keys, and the requested language families (for example, `fr` also retains `fr_CA` keys when present).
 

@@ -41,7 +41,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.0.0b14"
+scriptVersion="4.0.0b17"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -110,7 +110,7 @@ function printUsage() {
   echo
   echo "Options:"
   echo "  --lane <dev|test|prod>       Select deployment mode"
-  echo "  --interactive                Prompt for optional prior .plist import, IT support, branding and restart policy values"
+  echo "  --interactive                Prompt for optional prior .plist import, IT support, branding, restart policy, and aggressive mode values"
   echo "  --minimal                    Keep base keys plus English localized keys only"
   echo "  --languages <csv>            Keep base keys, English localized keys, and selected language families"
   echo "  prior-plist                  Auto-enables interactive mode and infers RDNN plus deployment mode only when filename ends with -dev.plist, -test.plist or -prod.plist"
@@ -1057,7 +1057,7 @@ if [[ "${interactiveMode}" == true ]]; then
 
     showInteractiveConfigurationHeader
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🎛️  IT Support, Branding & Restart Policy (Interactive)"
+    echo "🎛️  IT Support, Branding, Restart & Aggressive Mode Policy (Interactive)"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
 
@@ -1081,6 +1081,8 @@ if [[ "${interactiveMode}" == true ]]; then
     defaultSwapOverlayAndLogo="NO"
     defaultPastDeadlineRestartBehavior="Off"
     defaultDaysPastDeadlineRestartWorkflow="2"
+    defaultAggressiveModePastDeadlineHours="2"
+    defaultAggressiveModeFrequencyMinutes="20"
 
     promptWithDefault "Support Team Name" "${defaultSupportTeamName}" "supportTeamName"
     promptWithDefault "Support Team Phone" "${defaultSupportTeamPhone}" "supportTeamPhone"
@@ -1185,6 +1187,22 @@ if [[ "${interactiveMode}" == true ]]; then
         echo "⚠️  Invalid input for DaysPastDeadlineRestartWorkflow; enter an integer from 0 to 999."
       done
     fi
+
+    while true; do
+      promptWithDefault "Aggressive Mode Past Deadline Hours (0-999; use 720 to effectively suppress)" "${defaultAggressiveModePastDeadlineHours}" "aggressiveModePastDeadlineHours"
+      if [[ "${aggressiveModePastDeadlineHours}" == <-> ]] && (( aggressiveModePastDeadlineHours >= 0 && aggressiveModePastDeadlineHours <= 999 )); then
+        break
+      fi
+      echo "⚠️  Invalid input for AggressiveModePastDeadlineHours; enter an integer from 0 to 999."
+    done
+
+    while true; do
+      promptWithDefault "Aggressive Mode Frequency Minutes (1-999)" "${defaultAggressiveModeFrequencyMinutes}" "aggressiveModeFrequencyMinutes"
+      if [[ "${aggressiveModeFrequencyMinutes}" == <-> ]] && (( aggressiveModeFrequencyMinutes >= 1 && aggressiveModeFrequencyMinutes <= 999 )); then
+        break
+      fi
+      echo "⚠️  Invalid input for AggressiveModeFrequencyMinutes; enter an integer from 1 to 999."
+    done
   fi
 fi
 
@@ -1458,7 +1476,7 @@ if [[ -f "${plistSample}" ]]; then
         exit 1
       fi
     else
-      echo "    🔧 Applying IT support, branding and restart policy values …"
+      echo "    🔧 Applying IT support, branding, restart and aggressive mode values …"
       /usr/bin/plutil -replace SupportTeamName -string "${supportTeamName}" "${plistOutput}"
       /usr/bin/plutil -replace SupportTeamPhone -string "${supportTeamPhone}" "${plistOutput}"
       /usr/bin/plutil -replace HideSupportTeamPhone -bool "${hideSupportTeamPhone}" "${plistOutput}"
@@ -1476,6 +1494,8 @@ if [[ -f "${plistSample}" ]]; then
       /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
       /usr/bin/plutil -replace SwapOverlayAndLogo -bool "${swapOverlayAndLogo}" "${plistOutput}"
       /usr/bin/plutil -replace PastDeadlineRestartBehavior -string "${pastDeadlineRestartBehavior}" "${plistOutput}"
+      /usr/bin/plutil -replace AggressiveModePastDeadlineHours -integer "${aggressiveModePastDeadlineHours}" "${plistOutput}"
+      /usr/bin/plutil -replace AggressiveModeFrequencyMinutes -integer "${aggressiveModeFrequencyMinutes}" "${plistOutput}"
 
       if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
         /usr/bin/plutil -replace DaysPastDeadlineRestartWorkflow -integer "${daysPastDeadlineRestartWorkflow}" "${plistOutput}"
@@ -1726,8 +1746,9 @@ case "${deploymentMode}" in
         echo "    - Prior plist: ${priorPlistPath}"
         echo "    - ScriptLog resolved to '${resolvedScriptLogPath}'"
       else
-        echo "    - IT support, branding and restart policy values applied from prompts"
+        echo "    - IT support, branding, restart and aggressive mode values applied from prompts"
         echo "    - Past-deadline restart policy set to '${pastDeadlineRestartBehavior}'"
+        echo "    - Aggressive mode begins ${aggressiveModePastDeadlineHours} hour(s) past deadline and repeats every ${aggressiveModeFrequencyMinutes} minute(s)"
         if [[ "${pastDeadlineRestartBehavior}" != "Off" ]]; then
           echo "    - Restart workflow begins ${daysPastDeadlineRestartWorkflow} day(s) past deadline"
         fi
@@ -1743,6 +1764,7 @@ case "${deploymentMode}" in
     echo "  Recommended review items:"
     echo "    - Support team name, phone, email, website"
     echo "    - DailyReminderTimes baseline schedule"
+    echo "    - AggressiveModePastDeadlineHours and AggressiveModeFrequencyMinutes"
     echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"

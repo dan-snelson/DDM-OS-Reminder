@@ -41,7 +41,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0b14)
+🧩 Assemble DDM OS Reminder (4.0.0b17)
 ===============================================================
 
 Full Paths:
@@ -69,7 +69,7 @@ Using 'us.snelson' as the Reverse Domain Name Notation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-IT Support, Branding & Restart Policy (Interactive)
+IT Support, Branding, Restart & Aggressive Mode Policy (Interactive)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Support Team Name [IT Support] (or 'X' to exit):
@@ -85,6 +85,8 @@ Overlay Icon URL (Dark) [https://use2.ics.services.jamfcloud.com/icon/hash_d3a3b
 Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
 Past-deadline Restart Behavior (Off / [P]rompt / [F]orce) [Off] (or 'X' to exit): Prompt
 Days Past Deadline Before Restart Workflow (0-999) [2] (or 'X' to exit): 3
+Aggressive Mode Past Deadline Hours (0-999; use 720 to effectively suppress) [2] (or 'X' to exit): 2
+Aggressive Mode Frequency Minutes (1-999) [20] (or 'X' to exit): 20
 
 📦 Deployment Mode: prod
 
@@ -103,7 +105,7 @@ Days Past Deadline Before Restart Workflow (0-999) [2] (or 'X' to exit): 3
 
     🔧 Updating internal plist content …
     🔓 Production mode: removing placeholder text for clean deployment
-    🔧 Applying IT support, branding and restart policy values …
+    🔧 Applying IT support, branding, restart and aggressive mode values …
    → Artifacts/us.snelson.dorm-2026-02-06-092404-prod.plist
 
 🧩 Generating Configuration Profile (.mobileconfig) …
@@ -130,6 +132,8 @@ If you enter `NO` for `Knowledge Base ('YES' to specify; 'NO' to hide)`, `assemb
 
 If you enter `Off` for `Past-deadline Restart Behavior`, `assemble.zsh` skips the `Days Past Deadline Before Restart Workflow` prompt and leaves `DaysPastDeadlineRestartWorkflow` unchanged from the sample/default value in generated artifacts.
 
+Aggressive mode is on by default for Macs past the effective DDM deadline and still below the required macOS version. Use `AggressiveModePastDeadlineHours` to control when that cadence starts and `AggressiveModeFrequencyMinutes` to control exact redisplay scheduling through `dor-state.plist`. Do not set the start threshold too low for production; use a high value such as `720` when you need to effectively suppress aggressive mode without changing restart policy semantics.
+
 If you choose `Minimal` during `--interactive`, or pass `--minimal`, generated artifacts keep base keys plus exact `_Localized_en` keys only. If you choose `Selected languages`, or pass `--languages en,fr`, generated artifacts keep base keys, exact `_Localized_en` keys, and the requested language families (for example, `fr` also retains `fr_CA` keys when present).
 
 **1.2.** Deploy the appropriate artifacts
@@ -154,7 +158,7 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 
 > **Note:** The [Create `.plist`](#4-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
-> **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, and past-deadline restart copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`, and can now emit either the full localization surface, a minimal English-focused artifact (`--minimal`), or a selected language subset (`--languages <csv>`).
+> **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, past-deadline restart copy, and aggressive-mode copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`, and can now emit either the full localization surface, a minimal English-focused artifact (`--minimal`), or a selected language subset (`--languages <csv>`).
 
 ---
 
@@ -318,6 +322,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
 - Runtime scheduler state, when present, is stored separately at `/Library/Management/<rdnn>/dor-state.plist`
 - Baseline reminder slots are driven by `DailyReminderTimes` in the deployed preference plist/profile (for example, `08:00,12:00,16:00`)
 - Final-minute threshold reminders are driven by `MinutesBeforeDeadlineReminderSchedule` (default `45,30,15,10,5`)
+- Past-deadline aggressive redisplay is driven by `AggressiveModePastDeadlineHours` and `AggressiveModeFrequencyMinutes`; support can suppress it temporarily by creating `/Library/Management/<rdnn>/dor-aggressive-kill`
 
 **5.2.** Run against deployed preferences
 
@@ -337,6 +342,12 @@ Preview the final-minute threshold copy:
 
 ```zsh
 zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson --pre-deadline-threshold 30
+```
+
+Preview the update-focused aggressive-mode copy:
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson --aggressive
 ```
 
 The script prints a resolved preference summary, shows the exact `swiftDialog` arguments it will use, then opens preview dialog.
@@ -370,4 +381,29 @@ The preview does **not** simulate:
 
 Use `--pre-deadline-threshold <minutes>` to preview final-minute threshold title/message localization only; it does not mutate runtime scheduler state.
 
+Use `--aggressive` to preview aggressive title/message localization and placeholders. It does not simulate restart `Prompt` / `Force` behavior or write exact redisplay state.
+
 Use this script for appearance and preference validation. Use `zsh reminderDialog.zsh demo` when you need a broader reminder-dialog smoke test.
+
+---
+
+### 6. Using `monitorRemoteSession.zsh`
+
+Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
+
+Examples:
+
+```zsh
+zsh Resources/monitorRemoteSession.zsh
+zsh Resources/monitorRemoteSession.zsh --rdnn us.snelson
+zsh Resources/monitorRemoteSession.zsh --rdnn us.snelson --watch 5
+```
+
+The helper is intended for runtime monitoring, not deployment. It reads the current state from:
+
+- `/Library/LaunchDaemons/<rdnn>.dor.plist`
+- `/Library/Management/<rdnn>/dor-starter.zsh`
+- `/Library/Management/<rdnn>/dor-state.plist`
+- `/Library/Management/<rdnn>/dor.pid`
+- `/Library/Management/<rdnn>/dor-aggressive-kill`
+- `/var/log/<rdnn>.log`

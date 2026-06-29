@@ -38,6 +38,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | dailyReminderTimes | DailyReminderTimes | String (`HH:MM` CSV) | `08:00,12:00,16:00` | Timing |
 | minutesBeforeDeadlineReminderSchedule | MinutesBeforeDeadlineReminderSchedule | String (minute CSV) | `45,30,15,10,5` | Timing |
+| aggressiveModePastDeadlineHours | AggressiveModePastDeadlineHours | Integer | 2 | Timing |
+| aggressiveModeFrequencyMinutes | AggressiveModeFrequencyMinutes | Integer | 20 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
@@ -467,6 +469,74 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
+#### aggressiveModePastDeadlineHours
+**Plist Key**: `AggressiveModePastDeadlineHours`
+**Type**: Integer
+**Default**: 2
+**Valid Range**: 0-999
+
+**Description**: Number of whole hours past the effective DDM enforcement deadline required before aggressive mode becomes eligible while the Mac still needs the enforced update/upgrade.
+
+**Behavior**:
+- `2` = aggressive mode starts after two hours past the effective deadline (default)
+- `0` = eligible as soon as the effective deadline is past
+- High values such as `720` effectively suppress aggressive mode without changing post-deadline restart policy
+- Do not set this too low in production unless the organization intentionally wants near-immediate post-deadline escalation
+- `/Library/Management/<rdnn>/dor-aggressive-kill` suppresses aggressive mode for support assistance and returns to normal non-aggressive cadence
+
+**Script Default**:
+```bash
+["aggressiveModePastDeadlineHours"]="numeric|2"
+```
+
+**Configuration Profile**:
+```xml
+<key>AggressiveModePastDeadlineHours</key>
+<integer>2</integer>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    AggressiveModePastDeadlineHours -int 2
+```
+
+---
+
+#### aggressiveModeFrequencyMinutes
+**Plist Key**: `AggressiveModeFrequencyMinutes`
+**Type**: Integer
+**Default**: 20
+**Valid Range**: 1-999
+
+**Description**: Exact redisplay interval, in minutes, used after an aggressive-mode dismissal, close, keyboard quit, or timer return code.
+
+**Behavior**:
+- Starter-launched runs write `NextScheduledReminder` to `/Library/Management/<rdnn>/dor-state.plist`
+- Exact next reminder is `now + AggressiveModeFrequencyMinutes * 60`
+- Direct, manual, and demo runs do not mutate daemon scheduler state
+- Invalid values and `0` fall back to `20` with warning logging
+- `Open Software Update` keeps the existing baseline scheduling path unless a restart action path applies
+
+**Script Default**:
+```bash
+["aggressiveModeFrequencyMinutes"]="numeric|20"
+```
+
+**Configuration Profile**:
+```xml
+<key>AggressiveModeFrequencyMinutes</key>
+<integer>20</integer>
+```
+
+**Local Preference**:
+```bash
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    AggressiveModeFrequencyMinutes -int 20
+```
+
+---
+
 #### meetingDelay
 **Plist Key**: `MeetingDelay`
 **Type**: Integer
@@ -526,6 +596,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Do **not** deploy runtime scheduler state through preference payloads
 - Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
 - Runtime-only keys currently include `NextScheduledReminder` and `DaemonLastTriggered`
+- The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`
 - Direct/manual/demo runs do not mutate this daemon scheduler state
 
 **Script Default**:
@@ -849,7 +920,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+, expanded in 4.0.0b14)**:
+**Locale Behavior (3.0.0+, expanded in 4.0.0b17)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
 - When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
 - Optional region-aware overrides use `DateFormatDeadlineHumanReadableLocalized_<code>` and resolve as exact locale (for example `fr_CA`) → base language (for example `fr`) → global `DateFormatDeadlineHumanReadable` → built-in script default
@@ -1228,6 +1299,8 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `PastDeadlinePromptMessageLocalized_{lang}`
 - `PastDeadlineForceTitleLocalized_{lang}`
 - `PastDeadlineForceMessageLocalized_{lang}`
+- `AggressiveModeTitleLocalized_{lang}`
+- `AggressiveModeMessageLocalized_{lang}`
 
 ---
 
@@ -1757,6 +1830,19 @@ Preference families that supply localized runtime copy previously hard-coded in 
 
 ---
 
+#### aggressiveModeTitle / aggressiveModeMessage
+**Plist Keys**: `AggressiveModeTitle` / `AggressiveModeMessage`
+**Type**: String
+**Defaults**: `macOS {titleMessageUpdateOrUpgrade} Required Now` / [full aggressive update-focused body]
+
+**Description**: Title and message body used when aggressive mode is active and `PastDeadlineRestartBehavior` is `Off` or restart workflow is not eligible. If `PastDeadlineRestartBehavior` is `Prompt` and restart workflow is eligible, restart-focused copy remains in use while aggressive mode controls the redisplay cadence. If `PastDeadlineRestartBehavior` is `Force`, force-restart copy and forced loop behavior take precedence.
+
+**Key Placeholders**: `{aggressiveModeHoursPastDeadline}`, `{aggressiveModeFrequencyMinutes}`, `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}`, `{titleMessageUpdateOrUpgradeLower}`, `{softwareUpdateButtonText}`, plus the standard support, disk, staging, and deadline placeholders.
+
+**Localized Families**: `AggressiveModeTitleLocalized_<code>` / `AggressiveModeMessageLocalized_<code>`
+
+---
+
 ## Placeholder Reference
 
 ### Script Placeholder List (Resolved by `reminderDialog.zsh`)
@@ -1773,6 +1859,8 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{ddmVersionStringDeadlineHumanReadable}` | DDM | Effective deadline display used in user-facing copy | Today, 3:31 p.m. |
 | `{ddmVersionStringDaysRemaining}` | DDM | Days to effective enforcement deadline used by runtime reminder logic | 14 |
 | `{minutesBeforeDeadline}` | DDM | Active pre-deadline threshold in minutes | 30 |
+| `{aggressiveModeHoursPastDeadline}` | DDM | Whole hours past effective enforcement deadline when aggressive mode is evaluated | 3 |
+| `{aggressiveModeFrequencyMinutes}` | Preferences | Aggressive redisplay interval in minutes | 20 |
 | `{preDeadlineThresholdEmphasisOpen}` | DDM | Opens red markdown emphasis for threshold copy when swiftDialog supports markdown color, else empty | :red[ |
 | `{preDeadlineThresholdEmphasisClose}` | DDM | Closes red markdown emphasis for threshold copy when swiftDialog supports markdown color, else empty | ] |
 | `{titleMessageUpdateOrUpgrade}` | Logic | Update or Upgrade | Update |
@@ -1794,7 +1882,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.0.0b14 |
+| `{scriptVersion}` | System | Script version | 4.0.0b17 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -1849,12 +1937,17 @@ message = "Contact {supportTeamInfo}"
 <integer>14</integer>
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>7</integer>
+<key>AggressiveModePastDeadlineHours</key>
+<integer>720</integer>
+<key>AggressiveModeFrequencyMinutes</key>
+<integer>20</integer>
 ```
 
 **Timeline**:
 - Day -30: First reminder
 - Day -14: Blurscreen activates
 - Day -7: Button 2 disabled
+- Post-deadline aggressive mode effectively suppressed by high hour threshold
 
 ---
 
@@ -1869,12 +1962,17 @@ message = "Contact {supportTeamInfo}"
 <integer>60</integer>
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>30</integer>
+<key>AggressiveModePastDeadlineHours</key>
+<integer>1</integer>
+<key>AggressiveModeFrequencyMinutes</key>
+<integer>10</integer>
 ```
 
 **Timeline**:
 - Day -90: First reminder (3 months early)
 - Day -60: Blurscreen activates (2 months)
 - Day -30: Button 2 disabled (1 month)
+- Hour +1: Aggressive post-deadline cadence begins if update is still required
 
 ---
 
@@ -1889,12 +1987,17 @@ message = "Contact {supportTeamInfo}"
 <integer>45</integer>
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>21</integer>
+<key>AggressiveModePastDeadlineHours</key>
+<integer>2</integer>
+<key>AggressiveModeFrequencyMinutes</key>
+<integer>20</integer>
 ```
 
 **Timeline**:
 - Day -60: First reminder (2 months)
 - Day -45: Blurscreen activates (1.5 months)
 - Day -21: Button 2 disabled (3 weeks)
+- Hour +2: Aggressive post-deadline cadence begins if update is still required
 
 ---
 
@@ -2294,9 +2397,10 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 4.0.0b14 | 27-Jun-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
-| 4.0.0b14 | 27-Jun-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
-| 4.0.0b14 | 27-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
+| 4.0.0b17 | 29-Jun-2026 | Added aggressive-mode timing keys, title/message localized families, kill-switch guidance, and `{aggressiveModeHoursPastDeadline}` / `{aggressiveModeFrequencyMinutes}` placeholders |
+| 4.0.0b17 | 29-Jun-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
+| 4.0.0b17 | 29-Jun-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
+| 4.0.0b17 | 29-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
 | 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
@@ -2304,12 +2408,12 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 4.0.0b14 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
-| 4.0.0b14 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
+| 4.0.0b17 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
+| 4.0.0b17 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
 | 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
-**Last Updated**: 27-Jun-2026
-**DDM OS Reminder Version**: 4.0.0b14
+**Last Updated**: 29-Jun-2026
+**DDM OS Reminder Version**: 4.0.0b17

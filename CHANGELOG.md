@@ -2,12 +2,13 @@
 
 ## Changelog
 
-### Version 4.0.0b14 (27-Jun-2026)
+### Version 4.0.0b17 (29-Jun-2026)
 - Reworked daemon orchestration so `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds instead of launching the main reminder script directly.
 - Added runtime scheduler assets `/Library/Management/<rdnn>/dor-starter.zsh`, `dor-state.plist`, and `dor.pid`, with `NextScheduledReminder` / `DaemonLastTriggered` state managed through `PlistBuddy`.
 - Added `DailyReminderTimes` preference (`HH:MM` CSV, local time) so baseline reminder slots are admin-controlled through deployed `.plist` / `.mobileconfig` content, with default `08:00,12:00,16:00`.
 - Added `MinutesBeforeDeadlineReminderSchedule` preference (`45,30,15,10,5` by default) for discrete final-minute reminders before the effective DDM enforcement deadline, with per-threshold delivery state stored in `dor-state.plist`.
 - Added pre-deadline threshold dialog copy keys, localized sample strings, preview support, and quiet-period bypass logic so configured 45/30/15/10/5-minute reminders are not suppressed by earlier interactions.
+- Added default-on past-deadline aggressive mode with `AggressiveModePastDeadlineHours`, `AggressiveModeFrequencyMinutes`, update-focused aggressive title/message localization, demo/preview support, exact redisplay scheduling through `dor-state.plist`, and support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill`.
 - Added color-safe pre-deadline threshold emphasis placeholders so final-minute warning and action sentences render red on swiftDialog builds with markdown color support.
 - Added automatic refresh for open daemon-managed reminder dialogs when a configured final-minute threshold becomes due, closing the stale swiftDialog process and immediately queuing the latest due threshold reminder.
 - Fixed post-dialog pre-deadline scheduling so if a threshold dialog remains open while later thresholds pass, the latest due threshold is queued immediately instead of falling back to the baseline schedule.

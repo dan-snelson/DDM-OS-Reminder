@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b14"
+scriptVersion="4.0.0b17"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -75,6 +75,7 @@ dorScriptPath="${deploymentScriptDirectory}/dor.zsh"
 dorStarterPath="${deploymentScriptDirectory}/dor-starter.zsh"
 dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
 dorPidFilePath="${deploymentScriptDirectory}/dor.pid"
+aggressiveModeKillSwitchPath="${deploymentScriptDirectory}/dor-aggressive-kill"
 dorLaunchDaemonLabel="${reverseDomainNameNotation}.dor"
 dorLaunchDaemonPath="/Library/LaunchDaemons/${dorLaunchDaemonLabel}.plist"
 launchSource="${DOR_LAUNCH_SOURCE:-manual}"
@@ -111,6 +112,9 @@ pastDeadlineRedisplayDelaySeconds=5
 pastDeadlineRestartEffective="Off"
 pastDeadlineRestartMinimumUptimeMinutes=75
 pastDeadlineRestartSuppressedForUptime="NO"
+aggressiveModeActive="NO"
+aggressiveModeKillSwitchDetected="NO"
+aggressiveModeHoursPastDeadline="0"
 dialogLanguage="en"
 deadlineFormatLanguageCode="en"
 relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
@@ -222,6 +226,8 @@ declare -A preferenceConfiguration=(
     ["meetingDelay"]="numeric|75"
     ["dailyReminderTimes"]="string|08:00,12:00,16:00"
     ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
+    ["aggressiveModePastDeadlineHours"]="numeric|2"
+    ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
     
@@ -280,11 +286,13 @@ declare -A preferenceConfiguration=(
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
-    ["preDeadlineThresholdMessage"]="string|{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["pastDeadlinePromptTitle"]="string|Restart Your Mac"
     ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgradeLower}.<br><br>(This reminder will persist until your Mac has been restarted.)"
     ["pastDeadlineForceTitle"]="string|Your Mac is restarting"
     ["pastDeadlineForceMessage"]="string|**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgradeLower} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    ["aggressiveModeTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Required Now"
+    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     
     # Complex UI Text
     ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
@@ -305,6 +313,8 @@ declare -A plistKeyMap=(
     ["meetingDelay"]="MeetingDelay"
     ["dailyReminderTimes"]="DailyReminderTimes"
     ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
+    ["aggressiveModePastDeadlineHours"]="AggressiveModePastDeadlineHours"
+    ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
@@ -356,6 +366,8 @@ declare -A plistKeyMap=(
     ["pastDeadlinePromptMessage"]="PastDeadlinePromptMessage"
     ["pastDeadlineForceTitle"]="PastDeadlineForceTitle"
     ["pastDeadlineForceMessage"]="PastDeadlineForceMessage"
+    ["aggressiveModeTitle"]="AggressiveModeTitle"
+    ["aggressiveModeMessage"]="AggressiveModeMessage"
     ["message"]="Message"
     ["infobox"]="InfoBox"
     ["helpmessage"]="HelpMessage"
@@ -1738,6 +1750,7 @@ function validatePreferenceLoad() {
     local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
     local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
+    local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
     local normalizedDailyReminderTimes=""
     local normalizedMinuteThresholdSchedule=""
     for var in "${criticalVars[@]}"; do
@@ -1778,6 +1791,11 @@ function validatePreferenceLoad() {
         notice "Resolved MinutesBeforeDeadlineReminderSchedule: ${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
     else
         notice "MinutesBeforeDeadlineReminderSchedule is empty; pre-deadline threshold reminders disabled."
+    fi
+
+    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 )); then
+        warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
+        aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
     fi
 }
 
@@ -1833,6 +1851,8 @@ function buildPlaceholderMap() {
         [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
         [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
         [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
+        [aggressiveModeHoursPastDeadline]="${aggressiveModeHoursPastDeadline}"
+        [aggressiveModeFrequencyMinutes]="${aggressiveModeFrequencyMinutes}"
     )
 }
 
@@ -2269,7 +2289,8 @@ function applyLocalizedDialogText() {
                         "deadlineEnforcementMessageAbsolute" "deadlineEnforcementMessageRelative"
                         "preDeadlineThresholdTitle" "preDeadlineThresholdMessage"
                         "pastDeadlinePromptTitle" "pastDeadlinePromptMessage"
-                        "pastDeadlineForceTitle" "pastDeadlineForceMessage")
+                        "pastDeadlineForceTitle" "pastDeadlineForceMessage"
+                        "aggressiveModeTitle" "aggressiveModeMessage")
 
     resolveDialogLanguage
 
@@ -2314,6 +2335,7 @@ function updateRequiredVariables() {
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
     applyPastDeadlineDialogOverrides
+    applyAggressiveModeDialogOverrides
     applyPreDeadlineThresholdDialogOverrides
 
     applySupportFieldVisibility
@@ -3800,8 +3822,45 @@ function evaluatePastDeadlineState() {
     fi
 }
 
+function evaluateAggressiveModeState() {
+    local nowEpochValue=$(date +%s)
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local isPastEffectiveDeadline="NO"
+
+    aggressiveModeActive="NO"
+    aggressiveModeKillSwitchDetected="NO"
+    aggressiveModeHoursPastDeadline="0"
+
+    if [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] && (( deadlineReferenceEpoch <= nowEpochValue )); then
+        isPastEffectiveDeadline="YES"
+        aggressiveModeHoursPastDeadline=$(( (nowEpochValue - deadlineReferenceEpoch) / 3600 ))
+    fi
+
+    if [[ "${versionComparisonResult}" != "Update Required" || "${isPastEffectiveDeadline}" != "YES" ]]; then
+        return
+    fi
+
+    if (( aggressiveModeHoursPastDeadline < aggressiveModePastDeadlineHours )); then
+        notice "Aggressive mode not yet active (${aggressiveModeHoursPastDeadline} hour(s) past effective deadline; threshold ${aggressiveModePastDeadlineHours} hour(s))."
+        return
+    fi
+
+    if [[ -e "${aggressiveModeKillSwitchPath}" ]]; then
+        aggressiveModeKillSwitchDetected="YES"
+        notice "Aggressive mode kill switch detected; falling back to non-aggressive reminder cadence for support assistance."
+        return
+    fi
+
+    aggressiveModeActive="YES"
+    notice "Aggressive mode active (${aggressiveModeHoursPastDeadline} hour(s) past effective deadline; threshold ${aggressiveModePastDeadlineHours} hour(s); frequency ${aggressiveModeFrequencyMinutes} minute(s))."
+}
+
 function isPastDeadlineForceMode() {
     [[ "${pastDeadlineRestartEffective}" == "Force" ]]
+}
+
+function isAggressiveModeActive() {
+    [[ "${aggressiveModeActive}" == "YES" ]]
 }
 
 function applyPastDeadlineDialogOverrides() {
@@ -3833,6 +3892,20 @@ function applyPastDeadlineDialogOverrides() {
     diskSpaceWarningMessage=""
     updateReadyMessage=""
     deadlineEnforcementMessage=""
+}
+
+function applyAggressiveModeDialogOverrides() {
+    isAggressiveModeActive || return 0
+    isPastDeadlineForceMode && return 0
+
+    blurscreen="--blurscreen"
+
+    if [[ "${pastDeadlineRestartEffective}" != "Off" ]]; then
+        return 0
+    fi
+
+    title="${aggressiveModeTitle}"
+    message="${aggressiveModeMessage}"
 }
 
 function applyPreDeadlineThresholdDialogOverrides() {
@@ -3949,9 +4022,15 @@ function displayReminderDialog() {
 
     info "Return Code: ${returncode}"
 
-    # Quiet-period exact reschedules are only for dismissal paths. Launching
-    # Software Update should fall back to the normal baseline schedule.
-    if [[ -n "${quietPeriodSeconds:-}" ]] && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
+    # Quiet-period and aggressive exact reschedules are only for dismissal paths.
+    # Launching Software Update should fall back to the normal baseline schedule.
+    if isAggressiveModeActive && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
+        case ${returncode} in
+            2|4|10)
+                setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after return code ${returncode}"
+                ;;
+        esac
+    elif [[ -n "${quietPeriodSeconds:-}" ]] && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
         case ${returncode} in
             2|4|10)
                 setNextReminderScheduleForQuietOrThreshold "$(( $(date +%s) + quietPeriodSeconds ))" "Scheduled quiet-period redisplay after return code ${returncode}"
@@ -4252,9 +4331,18 @@ if [[ "${1}" == "demo" ]]; then
     notice "Demo mode enabled"
 
     demoPastDeadlineRestartModeRaw="${2:-Off}"
+    demoAggressiveModeRequested="NO"
+
+    if [[ "${2:l}" == "aggressive" ]]; then
+        demoPastDeadlineRestartModeRaw="Off"
+        demoAggressiveModeRequested="YES"
+    elif [[ "${3:l}" == "aggressive" ]]; then
+        demoAggressiveModeRequested="YES"
+    fi
+
     demoPastDeadlineRestartMode=$(normalizePastDeadlineRestartBehaviorValue "${demoPastDeadlineRestartModeRaw}")
-    if [[ -n "${2}" && "${demoPastDeadlineRestartMode}" == "Off" && "${demoPastDeadlineRestartModeRaw:l}" != "off" ]]; then
-        warning "Unrecognized demo mode '${demoPastDeadlineRestartModeRaw}'; using 'Off'. Valid demo modes: Off, Prompt, Force."
+    if [[ -n "${2}" && "${demoPastDeadlineRestartMode}" == "Off" && "${demoPastDeadlineRestartModeRaw:l}" != "off" && "${2:l}" != "aggressive" ]]; then
+        warning "Unrecognized demo mode '${demoPastDeadlineRestartModeRaw}'; using 'Off'. Valid demo modes: Off, Prompt, Force, aggressive."
     fi
     pastDeadlineRestartBehavior="${demoPastDeadlineRestartMode}"
 
@@ -4265,12 +4353,20 @@ if [[ "${1}" == "demo" ]]; then
 
     # Days from today to simulate deadline (can be + or -)
     demoDeadlineOffsetDays=3   # positive → future deadline; negative → past due
-    if [[ "${demoPastDeadlineRestartMode}" != "Off" ]]; then
+    if [[ "${demoPastDeadlineRestartMode}" != "Off" || "${demoAggressiveModeRequested}" == "YES" ]]; then
         demoDeadlineOffsetDays=-1
+    fi
+
+    if [[ "${demoPastDeadlineRestartMode}" != "Off" ]]; then
         daysPastDeadlineRestartWorkflow=0
         upTimeMin=$(( 2 * 1440 ))
         uptimeHumanReadable="2 days (Demo simulated)"
         notice "Demo Past Deadline mode set to '${demoPastDeadlineRestartMode}' with simulated past deadline."
+    fi
+
+    if [[ "${demoAggressiveModeRequested}" == "YES" ]]; then
+        aggressiveModePastDeadlineHours=0
+        notice "Demo Aggressive mode requested with simulated past deadline."
     fi
 
     if (( demoDeadlineOffsetDays < 0 )); then       # Normalize the offset so “-3” becomes "-3d" and “7” becomes "+7d"
@@ -4321,6 +4417,7 @@ if [[ "${1}" == "demo" ]]; then
     # Other variables normally generated in installedOSvsDDMenforcedOS
     versionComparisonResult="Update Required"
     evaluatePastDeadlineState
+    evaluateAggressiveModeState
 
     # Simulate the update as already being fully staged in demo mode
     updateStagingStatus="Fully staged"
@@ -4364,6 +4461,7 @@ fi
 
 installedOSvsDDMenforcedOS
 evaluatePastDeadlineState
+evaluateAggressiveModeState
 resolveDuePreDeadlineThresholdReminder || true
 
 
@@ -4452,6 +4550,8 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     if isPastDeadlineForceMode; then
         notice "Past Deadline Force mode active; bypassing quiet-period suppression."
+    elif isAggressiveModeActive; then
+        notice "Aggressive mode active; bypassing quiet-period suppression."
     elif isPreDeadlineThresholdReminderMode; then
         notice "Pre-deadline threshold reminder active; bypassing quiet-period suppression."
     else

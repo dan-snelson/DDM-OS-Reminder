@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="4.0.0b14"
+scriptVersion="4.0.0b17"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
@@ -309,6 +309,8 @@ daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadline
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
 daysPastDeadlineRestartWorkflow=$(extract_from_preference_map daysPastDeadlineRestartWorkflow)
 pastDeadlineRestartBehavior=$(extract_from_preference_map pastDeadlineRestartBehavior)
+aggressiveModePastDeadlineHours=$(extract_from_preference_map aggressiveModePastDeadlineHours)
+aggressiveModeFrequencyMinutes=$(extract_from_preference_map aggressiveModeFrequencyMinutes)
 meetingDelay=$(extract_from_preference_map meetingDelay)
 acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
@@ -658,6 +660,24 @@ defaultPastDeadlineForceMessageLocalizedIt=$(extract_from_preference_map pastDea
 defaultPastDeadlineForceMessageLocalizedPt=$(extract_from_preference_map pastDeadlineForceMessageLocalizedPt)
 defaultPastDeadlineForceMessageLocalizedJa=$(extract_from_preference_map pastDeadlineForceMessageLocalizedJa)
 defaultPastDeadlineForceMessageLocalizedNl=$(extract_from_preference_map pastDeadlineForceMessageLocalizedNl)
+defaultAggressiveModeTitle=$(extract_from_preference_map aggressiveModeTitle)
+defaultAggressiveModeTitleLocalizedEn=$(extract_from_preference_map aggressiveModeTitleLocalizedEn)
+defaultAggressiveModeTitleLocalizedDe=$(extract_from_preference_map aggressiveModeTitleLocalizedDe)
+defaultAggressiveModeTitleLocalizedFr=$(extract_from_preference_map aggressiveModeTitleLocalizedFr)
+defaultAggressiveModeTitleLocalizedEs=$(extract_from_preference_map aggressiveModeTitleLocalizedEs)
+defaultAggressiveModeTitleLocalizedIt=$(extract_from_preference_map aggressiveModeTitleLocalizedIt)
+defaultAggressiveModeTitleLocalizedPt=$(extract_from_preference_map aggressiveModeTitleLocalizedPt)
+defaultAggressiveModeTitleLocalizedJa=$(extract_from_preference_map aggressiveModeTitleLocalizedJa)
+defaultAggressiveModeTitleLocalizedNl=$(extract_from_preference_map aggressiveModeTitleLocalizedNl)
+defaultAggressiveModeMessage=$(extract_from_preference_map aggressiveModeMessage)
+defaultAggressiveModeMessageLocalizedEn=$(extract_from_preference_map aggressiveModeMessageLocalizedEn)
+defaultAggressiveModeMessageLocalizedDe=$(extract_from_preference_map aggressiveModeMessageLocalizedDe)
+defaultAggressiveModeMessageLocalizedFr=$(extract_from_preference_map aggressiveModeMessageLocalizedFr)
+defaultAggressiveModeMessageLocalizedEs=$(extract_from_preference_map aggressiveModeMessageLocalizedEs)
+defaultAggressiveModeMessageLocalizedIt=$(extract_from_preference_map aggressiveModeMessageLocalizedIt)
+defaultAggressiveModeMessageLocalizedPt=$(extract_from_preference_map aggressiveModeMessageLocalizedPt)
+defaultAggressiveModeMessageLocalizedJa=$(extract_from_preference_map aggressiveModeMessageLocalizedJa)
+defaultAggressiveModeMessageLocalizedNl=$(extract_from_preference_map aggressiveModeMessageLocalizedNl)
 
 # Resolve Info button-related defaults to concrete values,
 # mirroring runtime behavior in reminderDialog.zsh
@@ -962,6 +982,24 @@ pastDeadlineForceMessageLocalizedIt_xml=$(process "$defaultPastDeadlineForceMess
 pastDeadlineForceMessageLocalizedPt_xml=$(process "$defaultPastDeadlineForceMessageLocalizedPt")
 pastDeadlineForceMessageLocalizedJa_xml=$(process "$defaultPastDeadlineForceMessageLocalizedJa")
 pastDeadlineForceMessageLocalizedNl_xml=$(process "$defaultPastDeadlineForceMessageLocalizedNl")
+aggressiveModeTitle_xml=$(process "$defaultAggressiveModeTitle")
+aggressiveModeTitleLocalizedEn_xml=$(process "$defaultAggressiveModeTitleLocalizedEn")
+aggressiveModeTitleLocalizedDe_xml=$(process "$defaultAggressiveModeTitleLocalizedDe")
+aggressiveModeTitleLocalizedFr_xml=$(process "$defaultAggressiveModeTitleLocalizedFr")
+aggressiveModeTitleLocalizedEs_xml=$(process "$defaultAggressiveModeTitleLocalizedEs")
+aggressiveModeTitleLocalizedIt_xml=$(process "$defaultAggressiveModeTitleLocalizedIt")
+aggressiveModeTitleLocalizedPt_xml=$(process "$defaultAggressiveModeTitleLocalizedPt")
+aggressiveModeTitleLocalizedJa_xml=$(process "$defaultAggressiveModeTitleLocalizedJa")
+aggressiveModeTitleLocalizedNl_xml=$(process "$defaultAggressiveModeTitleLocalizedNl")
+aggressiveModeMessage_xml=$(process "$defaultAggressiveModeMessage")
+aggressiveModeMessageLocalizedEn_xml=$(process "$defaultAggressiveModeMessageLocalizedEn")
+aggressiveModeMessageLocalizedDe_xml=$(process "$defaultAggressiveModeMessageLocalizedDe")
+aggressiveModeMessageLocalizedFr_xml=$(process "$defaultAggressiveModeMessageLocalizedFr")
+aggressiveModeMessageLocalizedEs_xml=$(process "$defaultAggressiveModeMessageLocalizedEs")
+aggressiveModeMessageLocalizedIt_xml=$(process "$defaultAggressiveModeMessageLocalizedIt")
+aggressiveModeMessageLocalizedPt_xml=$(process "$defaultAggressiveModeMessageLocalizedPt")
+aggressiveModeMessageLocalizedJa_xml=$(process "$defaultAggressiveModeMessageLocalizedJa")
+aggressiveModeMessageLocalizedNl_xml=$(process "$defaultAggressiveModeMessageLocalizedNl")
 
 infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
@@ -1004,6 +1042,10 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlineRestartBehavior_xml}</string>
     <key>DaysPastDeadlineRestartWorkflow</key>
     <integer>${daysPastDeadlineRestartWorkflow}</integer>
+    <key>AggressiveModePastDeadlineHours</key>
+    <integer>${aggressiveModePastDeadlineHours}</integer>
+    <key>AggressiveModeFrequencyMinutes</key>
+    <integer>${aggressiveModeFrequencyMinutes}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
     <key>AcceptableAssertionApplicationNames</key>
@@ -1576,6 +1618,42 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlineForceMessageLocalizedJa_xml}</string>
     <key>PastDeadlineForceMessageLocalized_nl</key>
     <string>${pastDeadlineForceMessageLocalizedNl_xml}</string>
+    <key>AggressiveModeTitle</key>
+    <string>${aggressiveModeTitle_xml}</string>
+    <key>AggressiveModeTitleLocalized_en</key>
+    <string>${aggressiveModeTitleLocalizedEn_xml}</string>
+    <key>AggressiveModeTitleLocalized_de</key>
+    <string>${aggressiveModeTitleLocalizedDe_xml}</string>
+    <key>AggressiveModeTitleLocalized_fr</key>
+    <string>${aggressiveModeTitleLocalizedFr_xml}</string>
+    <key>AggressiveModeTitleLocalized_es</key>
+    <string>${aggressiveModeTitleLocalizedEs_xml}</string>
+    <key>AggressiveModeTitleLocalized_it</key>
+    <string>${aggressiveModeTitleLocalizedIt_xml}</string>
+    <key>AggressiveModeTitleLocalized_pt</key>
+    <string>${aggressiveModeTitleLocalizedPt_xml}</string>
+    <key>AggressiveModeTitleLocalized_ja</key>
+    <string>${aggressiveModeTitleLocalizedJa_xml}</string>
+    <key>AggressiveModeTitleLocalized_nl</key>
+    <string>${aggressiveModeTitleLocalizedNl_xml}</string>
+    <key>AggressiveModeMessage</key>
+    <string>${aggressiveModeMessage_xml}</string>
+    <key>AggressiveModeMessageLocalized_en</key>
+    <string>${aggressiveModeMessageLocalizedEn_xml}</string>
+    <key>AggressiveModeMessageLocalized_de</key>
+    <string>${aggressiveModeMessageLocalizedDe_xml}</string>
+    <key>AggressiveModeMessageLocalized_fr</key>
+    <string>${aggressiveModeMessageLocalizedFr_xml}</string>
+    <key>AggressiveModeMessageLocalized_es</key>
+    <string>${aggressiveModeMessageLocalizedEs_xml}</string>
+    <key>AggressiveModeMessageLocalized_it</key>
+    <string>${aggressiveModeMessageLocalizedIt_xml}</string>
+    <key>AggressiveModeMessageLocalized_pt</key>
+    <string>${aggressiveModeMessageLocalizedPt_xml}</string>
+    <key>AggressiveModeMessageLocalized_ja</key>
+    <string>${aggressiveModeMessageLocalizedJa_xml}</string>
+    <key>AggressiveModeMessageLocalized_nl</key>
+    <string>${aggressiveModeMessageLocalizedNl_xml}</string>
     <key>Message</key>
     <string>${message_xml}</string>
     <key>MessageLocalized_en</key>
@@ -1680,6 +1758,10 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlineRestartBehavior_xml}</string>
                                 <key>DaysPastDeadlineRestartWorkflow</key>
                                 <integer>${daysPastDeadlineRestartWorkflow}</integer>
+                                <key>AggressiveModePastDeadlineHours</key>
+                                <integer>${aggressiveModePastDeadlineHours}</integer>
+                                <key>AggressiveModeFrequencyMinutes</key>
+                                <integer>${aggressiveModeFrequencyMinutes}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
                                 <key>AcceptableAssertionApplicationNames</key>
@@ -2244,6 +2326,42 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlineForceMessageLocalizedJa_xml}</string>
                                 <key>PastDeadlineForceMessageLocalized_nl</key>
                                 <string>${pastDeadlineForceMessageLocalizedNl_xml}</string>
+                                <key>AggressiveModeTitle</key>
+                                <string>${aggressiveModeTitle_xml}</string>
+                                <key>AggressiveModeTitleLocalized_en</key>
+                                <string>${aggressiveModeTitleLocalizedEn_xml}</string>
+                                <key>AggressiveModeTitleLocalized_de</key>
+                                <string>${aggressiveModeTitleLocalizedDe_xml}</string>
+                                <key>AggressiveModeTitleLocalized_fr</key>
+                                <string>${aggressiveModeTitleLocalizedFr_xml}</string>
+                                <key>AggressiveModeTitleLocalized_es</key>
+                                <string>${aggressiveModeTitleLocalizedEs_xml}</string>
+                                <key>AggressiveModeTitleLocalized_it</key>
+                                <string>${aggressiveModeTitleLocalizedIt_xml}</string>
+                                <key>AggressiveModeTitleLocalized_pt</key>
+                                <string>${aggressiveModeTitleLocalizedPt_xml}</string>
+                                <key>AggressiveModeTitleLocalized_ja</key>
+                                <string>${aggressiveModeTitleLocalizedJa_xml}</string>
+                                <key>AggressiveModeTitleLocalized_nl</key>
+                                <string>${aggressiveModeTitleLocalizedNl_xml}</string>
+                                <key>AggressiveModeMessage</key>
+                                <string>${aggressiveModeMessage_xml}</string>
+                                <key>AggressiveModeMessageLocalized_en</key>
+                                <string>${aggressiveModeMessageLocalizedEn_xml}</string>
+                                <key>AggressiveModeMessageLocalized_de</key>
+                                <string>${aggressiveModeMessageLocalizedDe_xml}</string>
+                                <key>AggressiveModeMessageLocalized_fr</key>
+                                <string>${aggressiveModeMessageLocalizedFr_xml}</string>
+                                <key>AggressiveModeMessageLocalized_es</key>
+                                <string>${aggressiveModeMessageLocalizedEs_xml}</string>
+                                <key>AggressiveModeMessageLocalized_it</key>
+                                <string>${aggressiveModeMessageLocalizedIt_xml}</string>
+                                <key>AggressiveModeMessageLocalized_pt</key>
+                                <string>${aggressiveModeMessageLocalizedPt_xml}</string>
+                                <key>AggressiveModeMessageLocalized_ja</key>
+                                <string>${aggressiveModeMessageLocalizedJa_xml}</string>
+                                <key>AggressiveModeMessageLocalized_nl</key>
+                                <string>${aggressiveModeMessageLocalizedNl_xml}</string>
                                 <key>Message</key>
                                 <string>${message_xml}</string>
                                 <key>MessageLocalized_en</key>

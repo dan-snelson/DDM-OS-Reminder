@@ -14,6 +14,7 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 - `assemble.zsh` embeds `reminderDialog.zsh` into `launchDaemonManagement.zsh` via heredoc. Reminder logic changes are not deployment-ready until re-assembled.
 - Runtime reads `/var/log/install.log`, resolves trustworthy DDM enforcement state, then uses swiftDialog to present user-facing reminder messaging.
 - Baseline reminder slots are admin-controlled through `DailyReminderTimes` in deployed preferences. Mutable scheduler state does not belong in managed/local preference payloads.
+- Past-deadline aggressive mode is default-on through `AggressiveModePastDeadlineHours` / `AggressiveModeFrequencyMinutes`; support suppression is runtime-only via `/Library/Management/<rdnn>/dor-aggressive-kill`.
 - Project does not perform OS updates, target non-macOS platforms, or act as general-purpose update/remediation framework.
 
 ## Key Commands
@@ -109,7 +110,7 @@ Out of scope:
 1. Preserve trustworthy DDM deadline and target-version resolution from `/var/log/install.log` and related declaration state.
 2. Preserve RDNN consistency end-to-end. Silent RDNN mismatch is highest-risk configuration bug.
 3. Keep preference behavior stable: `Managed Preferences -> Local Preferences -> Defaults`.
-4. Keep reminder semantics stable: quiet period begins after user interaction, not dialog display; past-due enforcement state may wait up to 5 minutes for refreshed DDM state before acting; `Open Software Update` returns to baseline scheduling while dismissal/quiet suppression can use exact-time reschedules.
+4. Keep reminder semantics stable: quiet period begins after user interaction, not dialog display; past-due enforcement state may wait up to 5 minutes for refreshed DDM state before acting; aggressive mode starts after `AggressiveModePastDeadlineHours` unless the support kill switch exists; `Open Software Update` returns to baseline scheduling while dismissal/quiet/aggressive suppression can use exact-time reschedules.
 5. Keep user-facing reminder behavior clear, actionable, and observable through structured logging.
 6. Keep assembled deployment workflow predictable across heartbeat daemon, starter/state assets, script, plist, mobileconfig, and self-extracting helper paths.
 
@@ -130,9 +131,10 @@ Out of scope:
 - Quiet period starts after user interaction, not when dialog first appears.
 - Baseline reminder slots resolve from `DailyReminderTimes` in deployed preferences. Default sample values (`08:00,12:00,16:00`) are fallback defaults, not runtime hardcodes.
 - Pre-deadline minute thresholds resolve from `MinutesBeforeDeadlineReminderSchedule` (`45,30,15,10,5` by default). Per-threshold delivery state stays in `dor-state.plist`.
+- Past-deadline aggressive cadence resolves from `AggressiveModePastDeadlineHours` (`2` by default) and `AggressiveModeFrequencyMinutes` (`20` by default). Mac Admins can effectively suppress it with a high hour value such as `720`; support can temporarily suppress it with `/Library/Management/<rdnn>/dor-aggressive-kill`.
 - `dor-starter.zsh` is expected to exit quietly when `NextScheduledReminder` is `FALSE` or future-dated. Check `dor-state.plist` before treating a no-op heartbeat as failure.
 - Only starter-launched runs should mutate `dor-state.plist` or `dor.pid`; direct/manual/demo runs bypass daemon scheduler writes.
-- `Open Software Update` should return to the next baseline reminder slot unless a configured pre-deadline minute threshold is earlier; dismissal-driven quiet periods may schedule exact timestamps.
+- `Open Software Update` should return to the next baseline reminder slot unless a configured pre-deadline minute threshold is earlier; dismissal-driven quiet periods and aggressive-mode redisplay may schedule exact timestamps.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until `zsh assemble.zsh` runs.
 
 ## Repository Rules

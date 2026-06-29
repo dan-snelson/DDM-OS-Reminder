@@ -1,6 +1,6 @@
 # Deadline Timeline Visualization
 
-This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including the optional post-deadline restart workflow.
+This timeline shows how DDM OS Reminder's behavior evolves as the update deadline approaches and after it passes, including default-on aggressive mode and the optional post-deadline restart workflow.
 
 ```mermaid
 gantt
@@ -14,6 +14,7 @@ gantt
     Blurscreen Dialog           :crit, blur, 2026-06-17, 24d
     Urgent Dialog               :urgent, 2026-07-11, 21d
     Post-Deadline Update Flow   :postupdate, 2026-08-01, 2d
+    Aggressive Update Cadence   :crit, postagg, 2026-08-01, 4d
     Restart Prompt Flow         :postprompt, 2026-08-03, 2d
     Forced Restart Flow         :crit, postforce, 2026-08-03, 2d
     Apple Forces Update         :milestone, force, 2026-08-05, 1d
@@ -23,10 +24,11 @@ gantt
     Blurscreen Activates        :milestone, m2, 2026-06-17, 0d
     Button Disabled/Hidden      :milestone, m3, 2026-07-11, 0d
     DDM Deadline                :milestone, m4, 2026-08-01, 0d
+    Aggressive Eligible         :milestone, m4a, 2026-08-01, 0d
     Restart Eligible (Default)  :milestone, m5, 2026-08-03, 0d
 ```
 
-**Note**: Dates above are illustrative only. Post-deadline behavior depends on `PastDeadlineRestartBehavior`, `DaysPastDeadlineRestartWorkflow`, and uptime eligibility.
+**Note**: Dates above are illustrative only. Post-deadline behavior depends on `AggressiveModePastDeadlineHours`, `AggressiveModeFrequencyMinutes`, `PastDeadlineRestartBehavior`, `DaysPastDeadlineRestartWorkflow`, and uptime eligibility.
 
 ## Timeline Phases
 
@@ -199,6 +201,12 @@ gantt
 ### Phase 5: Post-Deadline Workflow
 **Timeline**: After the deadline has passed and update is still required
 
+**Eligibility Gate for Aggressive Mode**:
+- The Mac still requires the enforced update/upgrade
+- The effective DDM enforcement deadline has passed
+- Hours past the effective deadline are `>= AggressiveModePastDeadlineHours` (default: `2`)
+- `/Library/Management/<rdnn>/dor-aggressive-kill` does not exist
+
 **Eligibility Gate for Restart Workflow**:
 - `PastDeadlineRestartBehavior` is not `Off`
 - The Mac still requires the enforced update/upgrade
@@ -206,15 +214,19 @@ gantt
 - Current uptime is at least 75 minutes (fixed runtime gate)
 
 **Mode Behavior**:
-- `Off` (default): Continue normal update-focused reminder flow
-- `Prompt`: Switch to restart-only dialog (`Restart Now`), but user can still dismiss and be reminded again later
+- `Off` (default): Use aggressive update-focused title/message after the aggressive gate passes; otherwise continue normal update-focused reminder flow
+- `Prompt`: Switch to restart-only dialog (`Restart Now`) when restart workflow is eligible; if aggressive mode is also active, dismissal uses the aggressive redisplay cadence
 - `Force`: Switch to restart-only dialog with 60-second timer; non-restart dismissal re-displays after ~5 seconds until restart occurs
 
 **Runtime Notes**:
 - If restart mode is eligible by days but uptime is below 75 minutes, restart mode is temporarily suppressed and update-focused flow continues
+- Aggressive `Open Software Update` / dismissal / close / keyboard quit / timer interactions schedule an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
+- The support kill switch logs a notice and falls back to normal non-aggressive cadence
 - Force mode bypasses quiet-period suppression and meeting-delay checks
 
 **Configuration**:
+- `AggressiveModePastDeadlineHours = 0-999` (default `2`; use a high value such as `720` to effectively suppress)
+- `AggressiveModeFrequencyMinutes = 1-999` (default `20`)
 - `PastDeadlineRestartBehavior = Off|Prompt|Force`
 - `DaysPastDeadlineRestartWorkflow = 0-999` (default `2`)
 
@@ -253,8 +265,9 @@ gantt
 | `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | Heartbeat daemon + `dor-starter` due check |
 | Configured minute thresholds before deadline | Final-minute threshold reminder | ❌ Disabled/hidden (by deadline threshold) | ❌ No (deadline window) | Exact `NextScheduledReminder` from `dor-state.plist` |
-| Past deadline + restart mode `Off` or not eligible | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
-| Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog | Hidden | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
+| Past deadline before aggressive threshold or with kill switch | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
+| Past deadline + aggressive mode + restart mode `Off` or not restart-eligible | Aggressive update-focused reminder | ❌ Disabled/hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after `Open Software Update` or dismissal |
+| Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog; aggressive cadence if active | Hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after dismissal when aggressive, otherwise heartbeat due check |
 | Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer 60`) | Hidden | ❌ No (explicit bypass) | Re-displays every ~5 seconds until restart |
 | Apple enforcement event | Apple-controlled restart/update | N/A | N/A | macOS/DDM enforcement |
 
@@ -277,6 +290,12 @@ Most thresholds are configurable via Configuration Profile or local preferences:
 <key>MinutesBeforeDeadlineReminderSchedule</key>
 <string>45,30,15,10,5</string>
 
+<key>AggressiveModePastDeadlineHours</key>
+<integer>2</integer>
+
+<key>AggressiveModeFrequencyMinutes</key>
+<integer>20</integer>
+
 <key>PastDeadlineRestartBehavior</key>
 <string>Off</string>
 
@@ -297,6 +316,12 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     DaysBeforeDeadlineHidingButton2 -int 21
 
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    AggressiveModePastDeadlineHours -int 2
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    AggressiveModeFrequencyMinutes -int 20
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     PastDeadlineRestartBehavior -string "Off"
 
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
@@ -310,6 +335,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 DaysBeforeDeadlineDisplayReminder = 30
 DaysBeforeDeadlineBlurscreen = 14
 DaysBeforeDeadlineHidingButton2 = 7
+AggressiveModePastDeadlineHours = 720
+AggressiveModeFrequencyMinutes = 20
 PastDeadlineRestartBehavior = Off
 DaysPastDeadlineRestartWorkflow = 2
 ```
@@ -322,6 +349,8 @@ DaysPastDeadlineRestartWorkflow = 2
 DaysBeforeDeadlineDisplayReminder = 90
 DaysBeforeDeadlineBlurscreen = 60
 DaysBeforeDeadlineHidingButton2 = 30
+AggressiveModePastDeadlineHours = 1
+AggressiveModeFrequencyMinutes = 10
 PastDeadlineRestartBehavior = Prompt
 DaysPastDeadlineRestartWorkflow = 1
 ```
@@ -334,6 +363,8 @@ DaysPastDeadlineRestartWorkflow = 1
 DaysBeforeDeadlineDisplayReminder = 60
 DaysBeforeDeadlineBlurscreen = 45
 DaysBeforeDeadlineHidingButton2 = 21
+AggressiveModePastDeadlineHours = 2
+AggressiveModeFrequencyMinutes = 20
 PastDeadlineRestartBehavior = Off
 DaysPastDeadlineRestartWorkflow = 2
 ```
@@ -378,6 +409,7 @@ Between dialog displays (same day):
 - Default: 76 minutes
 - Currently hard-coded in runtime logic (not profile-driven)
 - Bypassed in post-deadline `Force` mode
+- Bypassed while aggressive mode is active; aggressive cadence is controlled by `AggressiveModeFrequencyMinutes`
 
 ### Meeting Deferral
 Display-sleep assertion checks (`meetingDelay`) are availability controls, not absolute blockers:
@@ -390,7 +422,7 @@ Display-sleep assertion checks (`meetingDelay`) are availability controls, not a
 ## FAQ
 
 **Q: Can users bypass the reminders?**
-A: During early phases (>21 days by default), users can postpone. In urgent phase (<=21 days by default), Button 2 is disabled/hidden. In post-deadline `Force` mode, dismissal loops until restart. Apple DDM enforcement still ultimately controls the final forced update/restart event.
+A: During early phases (>21 days by default), users can postpone. In urgent phase (<=21 days by default), Button 2 is disabled/hidden. After the aggressive gate passes, dismissal schedules the next aggressive reminder. In post-deadline `Force` mode, dismissal loops until restart. Apple DDM enforcement still ultimately controls the final forced update/restart event.
 
 **Q: What if user is on vacation during deadline?**
 A: Mac updates at Apple's DDM enforcement event (which can be after the original deadline when macOS applies its padded enforcement date). User returns to an updated Mac. This is why early reminders remain important.
@@ -403,6 +435,9 @@ A: User can postpone during early/medium phases. Within 24 hours of deadline, me
 
 **Q: When does the post-deadline restart workflow start?**
 A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least 75 minutes.
+
+**Q: How can support temporarily suppress aggressive mode?**
+A: Create `/Library/Management/<rdnn>/dor-aggressive-kill` on the Mac. Remove that file when support work is complete so aggressive mode can resume if the Mac is still past deadline and below the required macOS version.
 
 **Q: How does this interact with Apple's own notifications?**
 A: DDM OS Reminder supplements (not replaces) Apple's notifications. Apple's notification appears but is subtle. This provides prominent, configurable reminders with better visibility.

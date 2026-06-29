@@ -35,6 +35,7 @@
 
 cliReverseDomainNameNotation=""
 cliPreDeadlineThresholdMinutes=""
+cliAggressiveModePreview="NO"
 scriptRelativePath="Resources/reminderDialogPreferenceTest.zsh"
 defaultUsage="zsh ${scriptRelativePath}"
 rdnnUsage="zsh ${scriptRelativePath} --rdnn <your.reverse.domain.name.notation>"
@@ -46,6 +47,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "  ${defaultUsage}"
             echo "  ${rdnnUsage}"
             echo "  ${rdnnUsage} --pre-deadline-threshold 30"
+            echo "  ${rdnnUsage} --aggressive"
             exit 0
             ;;
         --rdnn)
@@ -71,15 +73,25 @@ while [[ "$#" -gt 0 ]]; do
             cliPreDeadlineThresholdMinutes="${2}"
             shift 2
             ;;
+        --aggressive)
+            cliAggressiveModePreview="YES"
+            shift
+            ;;
         *)
             echo "Usage:"
             echo "  ${defaultUsage}"
             echo "  ${rdnnUsage}"
             echo "  ${rdnnUsage} --pre-deadline-threshold 30"
+            echo "  ${rdnnUsage} --aggressive"
             exit 64
             ;;
     esac
 done
+
+if [[ -n "${cliPreDeadlineThresholdMinutes}" && "${cliAggressiveModePreview}" == "YES" ]]; then
+    echo "--pre-deadline-threshold and --aggressive are mutually exclusive preview modes."
+    exit 64
+fi
 
 
 
@@ -91,7 +103,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="4.0.0b14"
+scriptVersion="4.0.0b17"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -132,6 +144,8 @@ dailyReminderTimesResolvedCSV=""
 minutesBeforeDeadlineReminderScheduleResolvedCSV=""
 preDeadlineThresholdReminderMode="NO"
 preDeadlineThresholdMinutes="${cliPreDeadlineThresholdMinutes}"
+aggressiveModeActive="NO"
+aggressiveModeHoursPastDeadline="0"
 typeset -ga dailyReminderTimesResolved=()
 typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
@@ -154,6 +168,8 @@ declare -A preferenceConfiguration=(
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
     ["dailyReminderTimes"]="string|08:00,12:00,16:00"
     ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
+    ["aggressiveModePastDeadlineHours"]="numeric|2"
+    ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["supportTeamName"]="string|IT Support"
     ["supportTeamPhone"]="string|+1 (801) 555-1212"
     ["hideSupportTeamPhone"]="boolean|NO"
@@ -194,7 +210,9 @@ declare -A preferenceConfiguration=(
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
-    ["preDeadlineThresholdMessage"]="string|{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["aggressiveModeTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Required Now"
+    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
@@ -210,6 +228,8 @@ declare -A plistKeyMap=(
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["dailyReminderTimes"]="DailyReminderTimes"
     ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
+    ["aggressiveModePastDeadlineHours"]="AggressiveModePastDeadlineHours"
+    ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["supportTeamName"]="SupportTeamName"
     ["supportTeamPhone"]="SupportTeamPhone"
     ["hideSupportTeamPhone"]="HideSupportTeamPhone"
@@ -251,6 +271,8 @@ declare -A plistKeyMap=(
     ["deadlineEnforcementMessageRelative"]="DeadlineEnforcementMessageRelative"
     ["preDeadlineThresholdTitle"]="PreDeadlineThresholdTitle"
     ["preDeadlineThresholdMessage"]="PreDeadlineThresholdMessage"
+    ["aggressiveModeTitle"]="AggressiveModeTitle"
+    ["aggressiveModeMessage"]="AggressiveModeMessage"
     ["message"]="Message"
     ["infobox"]="InfoBox"
     ["helpmessage"]="HelpMessage"
@@ -838,6 +860,24 @@ function resolveMinuteThresholdSchedule() {
     parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
 }
 
+function resolveAggressiveModeFrequency() {
+    local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
+
+    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 || aggressiveModeFrequencyMinutes > 999 )); then
+        warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
+        aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
+    fi
+}
+
+function resolveAggressiveModeThreshold() {
+    local defaultAggressiveModePastDeadlineHours="${preferenceConfiguration[aggressiveModePastDeadlineHours]#*|}"
+
+    if [[ ! "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || (( aggressiveModePastDeadlineHours < 0 || aggressiveModePastDeadlineHours > 999 )); then
+        warning "AggressiveModePastDeadlineHours value '${aggressiveModePastDeadlineHours}' is invalid; defaulting to '${defaultAggressiveModePastDeadlineHours}'."
+        aggressiveModePastDeadlineHours="${defaultAggressiveModePastDeadlineHours}"
+    fi
+}
+
 function resolveDailyReminderTimes() {
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
     local normalizedDailyReminderTimes=""
@@ -1257,6 +1297,7 @@ function applyLocalizedDialogText() {
         "infoboxLabelDaysRemaining" "infoboxLabelLastRestart" "infoboxLabelFreeDiskSpace"
         "deadlineEnforcementMessageAbsolute" "deadlineEnforcementMessageRelative"
         "preDeadlineThresholdTitle" "preDeadlineThresholdMessage"
+        "aggressiveModeTitle" "aggressiveModeMessage"
     )
 
     for localizedField in "${localizedFields[@]}"; do
@@ -1386,7 +1427,11 @@ function prepareDemoRuntimeState() {
     [[ -z "${installedPatchVersion}" || ! "${installedPatchVersion}" =~ ^[0-9]+$ ]] && installedPatchVersion="0"
 
     ddmVersionString="${installedMajorVersion}.${installedMinorVersion}.$(( installedPatchVersion + 1 ))"
-    if [[ -n "${preDeadlineThresholdMinutes}" ]]; then
+    if [[ "${cliAggressiveModePreview}" == "YES" ]]; then
+        aggressiveModeActive="YES"
+        aggressiveModeHoursPastDeadline="${aggressiveModePastDeadlineHours}"
+        deadlineEpoch=$(( $(date +%s) - (aggressiveModeHoursPastDeadline * 3600) ))
+    elif [[ -n "${preDeadlineThresholdMinutes}" ]]; then
         preDeadlineThresholdReminderMode="YES"
         deadlineEpoch=$(( $(date +%s) + (preDeadlineThresholdMinutes * 60) ))
     else
@@ -1395,12 +1440,15 @@ function prepareDemoRuntimeState() {
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDaysRemaining="7"
     [[ "${preDeadlineThresholdReminderMode}" == "YES" ]] && ddmVersionStringDaysRemaining="0"
+    [[ "${aggressiveModeActive}" == "YES" ]] && ddmVersionStringDaysRemaining="-1"
     ddmEnforcedInstallDateHumanReadable="$(formatDeadlineFromEpoch "${deadlineEpoch}" "${dateFormatDeadlineHumanReadable}")"
     ddmEnforcedInstallDateRelativeHumanReadable="$(formatRelativeDeadlineHumanReadable "${deadlineEpoch}" "${ddmEnforcedInstallDateHumanReadable}")"
     ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
     versionComparisonResult="Update Required"
     hideSecondaryButton="NO"
+    [[ "${aggressiveModeActive}" == "YES" ]] && hideSecondaryButton="DISABLED"
     blurscreen="--noblurscreen"
+    [[ "${aggressiveModeActive}" == "YES" ]] && blurscreen="--blurscreen"
     updateOrUpgradeMode="update"
     updateStagingStatus="Fully staged"
 
@@ -1636,6 +1684,8 @@ function buildPlaceholderMap() {
         [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
         [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
         [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
+        [aggressiveModeHoursPastDeadline]="${aggressiveModeHoursPastDeadline}"
+        [aggressiveModeFrequencyMinutes]="${aggressiveModeFrequencyMinutes}"
     )
 }
 
@@ -1763,6 +1813,18 @@ function applyPreDeadlineThresholdDialogOverrides() {
     message="${preDeadlineThresholdMessage}"
 }
 
+function isAggressiveModeActive() {
+    [[ "${aggressiveModeActive}" == "YES" ]]
+}
+
+function applyAggressiveModeDialogOverrides() {
+    isAggressiveModeActive || return 0
+
+    title="${aggressiveModeTitle}"
+    message="${aggressiveModeMessage}"
+    blurscreen="--blurscreen"
+}
+
 function updateRequiredVariables() {
     dialogBinary="/usr/local/bin/dialog"
     [[ ! -x "${dialogBinary}" ]] && fatal "swiftDialog not found at '${dialogBinary}'."
@@ -1776,6 +1838,7 @@ function updateRequiredVariables() {
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
+    applyAggressiveModeDialogOverrides
     applyPreDeadlineThresholdDialogOverrides
 
     applySupportFieldVisibility
@@ -1813,6 +1876,9 @@ function printResolvedPreferenceSummary() {
     preFlight "Pre-deadline minute thresholds: ${minutesBeforeDeadlineReminderScheduleResolvedCSV:-<disabled>}"
     if [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]; then
         preFlight "Pre-deadline threshold preview: ${preDeadlineThresholdMinutes} minute(s)"
+    fi
+    if [[ "${aggressiveModeActive}" == "YES" ]]; then
+        preFlight "Aggressive mode preview: ${aggressiveModeHoursPastDeadline} hour(s) past deadline; frequency ${aggressiveModeFrequencyMinutes} minute(s)"
     fi
     preFlight "Resolved language: ${dialogLanguage}"
     preFlight "Detected appearance: ${requestedAppearanceMode}"
@@ -1956,6 +2022,8 @@ resolveDialogLanguage
 initializeLocalizedRuntimeFields
 resolveDailyReminderTimes
 resolveMinuteThresholdSchedule
+resolveAggressiveModeThreshold
+resolveAggressiveModeFrequency
 prepareDemoRuntimeState
 
 # -------------------------------------------------------------------------

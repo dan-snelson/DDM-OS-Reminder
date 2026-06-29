@@ -34,6 +34,7 @@
 ####################################################################################################
 
 cliReverseDomainNameNotation=""
+cliPreDeadlineThresholdMinutes=""
 scriptRelativePath="Resources/reminderDialogPreferenceTest.zsh"
 defaultUsage="zsh ${scriptRelativePath}"
 rdnnUsage="zsh ${scriptRelativePath} --rdnn <your.reverse.domain.name.notation>"
@@ -44,6 +45,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "Usage:"
             echo "  ${defaultUsage}"
             echo "  ${rdnnUsage}"
+            echo "  ${rdnnUsage} --pre-deadline-threshold 30"
             exit 0
             ;;
         --rdnn)
@@ -57,10 +59,23 @@ while [[ "$#" -gt 0 ]]; do
             cliReverseDomainNameNotation="${2}"
             shift 2
             ;;
+        --pre-deadline-threshold)
+            if [[ -z "${2:-}" || ! "${2}" =~ ^[0-9]+$ || "${2}" -lt 1 || "${2}" -gt 999 ]]; then
+                echo "Usage:"
+                echo "  ${defaultUsage}"
+                echo "  ${rdnnUsage}"
+                echo "  ${rdnnUsage} --pre-deadline-threshold 30"
+                exit 64
+            fi
+
+            cliPreDeadlineThresholdMinutes="${2}"
+            shift 2
+            ;;
         *)
             echo "Usage:"
             echo "  ${defaultUsage}"
             echo "  ${rdnnUsage}"
+            echo "  ${rdnnUsage} --pre-deadline-threshold 30"
             exit 64
             ;;
     esac
@@ -76,7 +91,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="4.0.0b3"
+scriptVersion="4.0.0b14"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -114,7 +129,11 @@ localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
 deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
 dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
 dailyReminderTimesResolvedCSV=""
+minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+preDeadlineThresholdReminderMode="NO"
+preDeadlineThresholdMinutes="${cliPreDeadlineThresholdMinutes}"
 typeset -ga dailyReminderTimesResolved=()
+typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
 if [[ -n "${cliReverseDomainNameNotation}" ]]; then
     rerunCommand="zsh ${scriptRelativePath} --rdnn ${reverseDomainNameNotation}"
@@ -134,6 +153,7 @@ declare -A preferenceConfiguration=(
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
     ["dailyReminderTimes"]="string|08:00,12:00,16:00"
+    ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
     ["supportTeamName"]="string|IT Support"
     ["supportTeamPhone"]="string|+1 (801) 555-1212"
     ["hideSupportTeamPhone"]="boolean|NO"
@@ -173,6 +193,8 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
+    ["preDeadlineThresholdMessage"]="string|{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
@@ -187,6 +209,7 @@ declare -A plistKeyMap=(
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
     ["dailyReminderTimes"]="DailyReminderTimes"
+    ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
     ["supportTeamName"]="SupportTeamName"
     ["supportTeamPhone"]="SupportTeamPhone"
     ["hideSupportTeamPhone"]="HideSupportTeamPhone"
@@ -226,6 +249,8 @@ declare -A plistKeyMap=(
     ["infoboxLabelFreeDiskSpace"]="InfoboxLabelFreeDiskSpace"
     ["deadlineEnforcementMessageAbsolute"]="DeadlineEnforcementMessageAbsolute"
     ["deadlineEnforcementMessageRelative"]="DeadlineEnforcementMessageRelative"
+    ["preDeadlineThresholdTitle"]="PreDeadlineThresholdTitle"
+    ["preDeadlineThresholdMessage"]="PreDeadlineThresholdMessage"
     ["message"]="Message"
     ["infobox"]="InfoBox"
     ["helpmessage"]="HelpMessage"
@@ -744,6 +769,75 @@ function parseDailyReminderTimes() {
     echo "${dailyReminderTimesResolvedCSV}"
 }
 
+function normalizeMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local trimmedEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    rawValue="$(trimSurroundingWhitespace "${rawValue}")"
+    if [[ -z "${rawValue}" ]]; then
+        echo ""
+        return 0
+    fi
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        trimmedEntry="$(trimSurroundingWhitespace "${rawEntry}")"
+        if [[ "${trimmedEntry}" =~ ^[0-9]+$ ]]; then
+            normalizedEntry=$(( 10#${trimmedEntry} ))
+            if (( normalizedEntry >= 1 && normalizedEntry <= 999 )); then
+                validEntries+=("${normalizedEntry}")
+            elif [[ "${warnOnInvalid}" == "YES" ]]; then
+                warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+            fi
+        elif [[ -n "${trimmedEntry}" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolved=()
+    if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
+        IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+    fi
+    echo "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+}
+
+function resolveMinuteThresholdSchedule() {
+    local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
+    local normalizedMinuteThresholdSchedule=""
+
+    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+        warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
+        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+    }
+
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
+}
+
 function resolveDailyReminderTimes() {
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
     local normalizedDailyReminderTimes=""
@@ -1162,6 +1256,7 @@ function applyLocalizedDialogText() {
         "infoboxLabelCurrent" "infoboxLabelRequired" "infoboxLabelDeadline"
         "infoboxLabelDaysRemaining" "infoboxLabelLastRestart" "infoboxLabelFreeDiskSpace"
         "deadlineEnforcementMessageAbsolute" "deadlineEnforcementMessageRelative"
+        "preDeadlineThresholdTitle" "preDeadlineThresholdMessage"
     )
 
     for localizedField in "${localizedFields[@]}"; do
@@ -1291,12 +1386,18 @@ function prepareDemoRuntimeState() {
     [[ -z "${installedPatchVersion}" || ! "${installedPatchVersion}" =~ ^[0-9]+$ ]] && installedPatchVersion="0"
 
     ddmVersionString="${installedMajorVersion}.${installedMinorVersion}.$(( installedPatchVersion + 1 ))"
-    deadlineEpoch=$(date -v+7d +%s)
+    if [[ -n "${preDeadlineThresholdMinutes}" ]]; then
+        preDeadlineThresholdReminderMode="YES"
+        deadlineEpoch=$(( $(date +%s) + (preDeadlineThresholdMinutes * 60) ))
+    else
+        deadlineEpoch=$(date -v+7d +%s)
+    fi
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDaysRemaining="7"
+    [[ "${preDeadlineThresholdReminderMode}" == "YES" ]] && ddmVersionStringDaysRemaining="0"
     ddmEnforcedInstallDateHumanReadable="$(formatDeadlineFromEpoch "${deadlineEpoch}" "${dateFormatDeadlineHumanReadable}")"
     ddmEnforcedInstallDateRelativeHumanReadable="$(formatRelativeDeadlineHumanReadable "${deadlineEpoch}" "${ddmEnforcedInstallDateHumanReadable}")"
-    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
+    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
     versionComparisonResult="Update Required"
     hideSecondaryButton="NO"
     blurscreen="--noblurscreen"
@@ -1463,7 +1564,7 @@ function computeDeadlineEnforcementMessage() {
 }
 
 function computeInfoboxHighlights() {
-    infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
+    infoboxDeadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable:-${ddmVersionStringDeadlineHumanReadable}}}"
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
 
@@ -1479,6 +1580,14 @@ function computeInfoboxHighlights() {
 }
 
 function buildPlaceholderMap() {
+    local preDeadlineThresholdEmphasisOpen=""
+    local preDeadlineThresholdEmphasisClose=""
+
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
+        preDeadlineThresholdEmphasisOpen=":red["
+        preDeadlineThresholdEmphasisClose="]"
+    fi
+
     declare -gA PLACEHOLDER_MAP=(
         [weekday]="$(localizedWeekdayName "${dialogLanguage}")"
         [userfirstname]="${loggedInUserFirstname}"
@@ -1524,6 +1633,9 @@ function buildPlaceholderMap() {
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
+        [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
+        [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
+        [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
     )
 }
 
@@ -1552,6 +1664,13 @@ function replacePlaceholders() {
         (( pass++ ))
         [[ "${value}" == "${previousValue}" ]] && break
     done
+
+    value="${value//a.m../a.m.}"
+    value="${value//p.m../p.m.}"
+    value="${value//A.M../A.M.}"
+    value="${value//P.M../P.M.}"
+    value="${value//AM../AM.}"
+    value="${value//PM../PM.}"
 
     printf -v "${targetVariable}" '%s' "${value}"
 }
@@ -1633,6 +1752,17 @@ function applyHideRules() {
     esac
 }
 
+function isPreDeadlineThresholdReminderMode() {
+    [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]
+}
+
+function applyPreDeadlineThresholdDialogOverrides() {
+    isPreDeadlineThresholdReminderMode || return 0
+
+    title="${preDeadlineThresholdTitle}"
+    message="${preDeadlineThresholdMessage}"
+}
+
 function updateRequiredVariables() {
     dialogBinary="/usr/local/bin/dialog"
     [[ ! -x "${dialogBinary}" ]] && fatal "swiftDialog not found at '${dialogBinary}'."
@@ -1646,6 +1776,7 @@ function updateRequiredVariables() {
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
+    applyPreDeadlineThresholdDialogOverrides
 
     applySupportFieldVisibility
 
@@ -1679,6 +1810,10 @@ function printResolvedPreferenceSummary() {
     preFlight "Managed preferences: ${managedPreferencesPlist}.plist (${foundManagedPreferences})"
     preFlight "Local preferences: ${localPreferencesPlist}.plist (${foundLocalPreferences})"
     preFlight "Daily reminder times: ${dailyReminderTimesResolvedCSV}"
+    preFlight "Pre-deadline minute thresholds: ${minutesBeforeDeadlineReminderScheduleResolvedCSV:-<disabled>}"
+    if [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]; then
+        preFlight "Pre-deadline threshold preview: ${preDeadlineThresholdMinutes} minute(s)"
+    fi
     preFlight "Resolved language: ${dialogLanguage}"
     preFlight "Detected appearance: ${requestedAppearanceMode}"
     preFlight "Title: ${title}"
@@ -1820,6 +1955,7 @@ resolveEffectiveUserContext
 resolveDialogLanguage
 initializeLocalizedRuntimeFields
 resolveDailyReminderTimes
+resolveMinuteThresholdSchedule
 prepareDemoRuntimeState
 
 # -------------------------------------------------------------------------

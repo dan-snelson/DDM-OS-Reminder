@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b3"
+scriptVersion="4.0.0b14"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -86,8 +86,15 @@ nextReminderScheduleMode="baseline"
 nextReminderScheduleEpoch=""
 nextReminderScheduleReason="Baseline reminder schedule"
 dailyReminderTimesResolvedCSV=""
+minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+preDeadlineThresholdReminderMode="NO"
+preDeadlineThresholdMinutes=""
+preDeadlineThresholdSignature=""
+preDeadlineThresholdDeliveredCSV=""
+preDeadlineThresholdSkippedCSV=""
 ownsDorPidFile="NO"
 typeset -ga dailyReminderTimesResolved=()
+typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
 # Disable button2 (instead of hiding it when approaching deadline)
 # Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
@@ -214,6 +221,7 @@ declare -A preferenceConfiguration=(
     ["pastDeadlineRestartBehavior"]="string|Off"
     ["meetingDelay"]="numeric|75"
     ["dailyReminderTimes"]="string|08:00,12:00,16:00"
+    ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
     
@@ -271,6 +279,8 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
+    ["preDeadlineThresholdMessage"]="string|{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["pastDeadlinePromptTitle"]="string|Restart Your Mac"
     ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgradeLower}.<br><br>(This reminder will persist until your Mac has been restarted.)"
     ["pastDeadlineForceTitle"]="string|Your Mac is restarting"
@@ -294,6 +304,7 @@ declare -A plistKeyMap=(
     ["pastDeadlineRestartBehavior"]="PastDeadlineRestartBehavior"
     ["meetingDelay"]="MeetingDelay"
     ["dailyReminderTimes"]="DailyReminderTimes"
+    ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
@@ -339,6 +350,8 @@ declare -A plistKeyMap=(
     ["infoboxLabelFreeDiskSpace"]="InfoboxLabelFreeDiskSpace"
     ["deadlineEnforcementMessageAbsolute"]="DeadlineEnforcementMessageAbsolute"
     ["deadlineEnforcementMessageRelative"]="DeadlineEnforcementMessageRelative"
+    ["preDeadlineThresholdTitle"]="PreDeadlineThresholdTitle"
+    ["preDeadlineThresholdMessage"]="PreDeadlineThresholdMessage"
     ["pastDeadlinePromptTitle"]="PastDeadlinePromptTitle"
     ["pastDeadlinePromptMessage"]="PastDeadlinePromptMessage"
     ["pastDeadlineForceTitle"]="PastDeadlineForceTitle"
@@ -611,6 +624,14 @@ function writeReminderStateKey() {
     fi
 }
 
+function readReminderStateKey() {
+    local stateKey="${1}"
+
+    [[ -f "${dorStatePlistPath}" ]] || return 0
+
+    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null || true
+}
+
 function deleteReminderStateKey() {
     local stateKey="${1}"
 
@@ -687,6 +708,101 @@ function parseDailyReminderTimes() {
     echo "${dailyReminderTimesResolvedCSV}"
 }
 
+function normalizeMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local trimmedEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    rawValue="$(trimSurroundingWhitespace "${rawValue}")"
+    if [[ -z "${rawValue}" ]]; then
+        echo ""
+        return 0
+    fi
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        trimmedEntry="$(trimSurroundingWhitespace "${rawEntry}")"
+        if [[ "${trimmedEntry}" =~ ^[0-9]+$ ]]; then
+            normalizedEntry=$(( 10#${trimmedEntry} ))
+            if (( normalizedEntry >= 1 && normalizedEntry <= 999 )); then
+                validEntries+=("${normalizedEntry}")
+            elif [[ "${warnOnInvalid}" == "YES" ]]; then
+                warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+            fi
+        elif [[ -n "${trimmedEntry}" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolved=()
+    if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
+        IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+    fi
+    echo "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+}
+
+function csvContainsValue() {
+    local csvValue="${1}"
+    local searchValue="${2}"
+    local csvEntry=""
+    local -a csvEntries=()
+
+    [[ -n "${csvValue}" ]] || return 1
+
+    IFS=',' read -r -A csvEntries <<< "${csvValue}"
+    for csvEntry in "${csvEntries[@]}"; do
+        [[ "${csvEntry}" == "${searchValue}" ]] && return 0
+    done
+
+    return 1
+}
+
+function appendValueToNumericCSV() {
+    local csvValue="${1}"
+    local valueToAdd="${2}"
+    local csvEntry=""
+    local normalizedCSV=""
+    local -a csvEntries=()
+    local -a mergedEntries=()
+
+    [[ -n "${valueToAdd}" ]] || return 1
+
+    if [[ -n "${csvValue}" ]]; then
+        IFS=',' read -r -A csvEntries <<< "${csvValue}"
+        for csvEntry in "${csvEntries[@]}"; do
+            [[ -n "${csvEntry}" ]] && mergedEntries+=("${csvEntry}")
+        done
+    fi
+
+    mergedEntries+=("${valueToAdd}")
+    mergedEntries=($(printf "%s\n" "${mergedEntries[@]}" | LC_ALL=C sort -nr -u))
+    normalizedCSV="${(j:,:)mergedEntries}"
+    echo "${normalizedCSV}"
+}
+
 function resolveNextBaselineReminderEpoch() {
     local nowEpoch="${1:-$(date +%s)}"
     local scheduleDate=""
@@ -715,6 +831,291 @@ function resolveNextBaselineReminderEpoch() {
     done
 
     return 1
+}
+
+function preDeadlineThresholdStateSignature() {
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+
+    [[ -n "${deadlineReferenceEpoch}" ]] || return 1
+
+    echo "${ddmVersionString}|${ddmBuildVersionString}|${deadlineReferenceEpoch}"
+}
+
+function ensurePreDeadlineThresholdStateForSignature() {
+    local currentSignature="${1}"
+    local storedSignature=""
+
+    preDeadlineThresholdDeliveredCSV=""
+    preDeadlineThresholdSkippedCSV=""
+
+    [[ -n "${currentSignature}" ]] || return 1
+
+    storedSignature="$(readReminderStateKey "PreDeadlineThresholdSignature")"
+    if [[ "${storedSignature}" != "${currentSignature}" ]]; then
+        notice "Pre-deadline threshold state reset for deadline/version signature '${currentSignature}'."
+        if shouldManageDaemonScheduling; then
+            writeReminderStateKey "PreDeadlineThresholdSignature" "${currentSignature}"
+            deleteReminderStateKey "PreDeadlineThresholdDelivered"
+            deleteReminderStateKey "PreDeadlineThresholdSkipped"
+        fi
+        return 0
+    fi
+
+    preDeadlineThresholdDeliveredCSV="$(readReminderStateKey "PreDeadlineThresholdDelivered")"
+    preDeadlineThresholdSkippedCSV="$(readReminderStateKey "PreDeadlineThresholdSkipped")"
+}
+
+function markPreDeadlineThresholdStateValue() {
+    local stateKey="${1}"
+    local currentCSV="${2}"
+    local thresholdMinutes="${3}"
+    local updatedCSV=""
+
+    [[ -n "${thresholdMinutes}" ]] || return 1
+    csvContainsValue "${currentCSV}" "${thresholdMinutes}" && return 0
+
+    updatedCSV="$(appendValueToNumericCSV "${currentCSV}" "${thresholdMinutes}")" || return 1
+    writeReminderStateKey "${stateKey}" "${updatedCSV}"
+}
+
+function markPreDeadlineThresholdDelivered() {
+    local thresholdMinutes="${1}"
+
+    shouldManageDaemonScheduling || return 0
+
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}" >/dev/null 2>&1 || return 0
+    markPreDeadlineThresholdStateValue "PreDeadlineThresholdDelivered" "${preDeadlineThresholdDeliveredCSV}" "${thresholdMinutes}"
+    preDeadlineThresholdDeliveredCSV="$(readReminderStateKey "PreDeadlineThresholdDelivered")"
+    notice "Marked ${thresholdMinutes}-minute pre-deadline threshold delivered for current deadline/version."
+}
+
+function markPreDeadlineThresholdSkipped() {
+    local thresholdMinutes="${1}"
+
+    shouldManageDaemonScheduling || return 0
+
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}" >/dev/null 2>&1 || return 0
+    markPreDeadlineThresholdStateValue "PreDeadlineThresholdSkipped" "${preDeadlineThresholdSkippedCSV}" "${thresholdMinutes}"
+    preDeadlineThresholdSkippedCSV="$(readReminderStateKey "PreDeadlineThresholdSkipped")"
+    notice "Marked stale ${thresholdMinutes}-minute pre-deadline threshold skipped for current deadline/version."
+}
+
+function isPreDeadlineThresholdAlreadyHandled() {
+    local thresholdMinutes="${1}"
+
+    csvContainsValue "${preDeadlineThresholdDeliveredCSV}" "${thresholdMinutes}" && return 0
+    csvContainsValue "${preDeadlineThresholdSkippedCSV}" "${thresholdMinutes}" && return 0
+
+    return 1
+}
+
+function resolveNextPendingPreDeadlineThresholdEpoch() {
+    local nowEpoch="${1:-$(date +%s)}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local thresholdMinutes=""
+    local thresholdEpoch=""
+
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    (( deadlineReferenceEpoch > nowEpoch )) || return 1
+
+    preDeadlineThresholdSignature="$(preDeadlineThresholdStateSignature)" || return 1
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}"
+
+    for thresholdMinutes in "${minutesBeforeDeadlineReminderScheduleResolved[@]}"; do
+        isPreDeadlineThresholdAlreadyHandled "${thresholdMinutes}" && continue
+        thresholdEpoch=$(( deadlineReferenceEpoch - (thresholdMinutes * 60) ))
+        if (( thresholdEpoch > nowEpoch )); then
+            echo "${thresholdEpoch}|${thresholdMinutes}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+function setNextReminderScheduleForPendingThresholdOrBaseline() {
+    local scheduleReason="${1:-Pre-deadline threshold or baseline schedule}"
+    local nowEpoch="$(date +%s)"
+    local thresholdResult=""
+    local thresholdEpoch=""
+    local thresholdMinutes=""
+    local baselineEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdResult}" ]]; then
+        thresholdEpoch="${thresholdResult%%|*}"
+        thresholdMinutes="${thresholdResult##*|}"
+    fi
+
+    baselineEpoch="$(resolveNextBaselineReminderEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( thresholdEpoch < baselineEpoch )); }; then
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "${scheduleReason}: ${thresholdMinutes}-minute pre-deadline threshold"
+    else
+        setNextReminderScheduleBaseline "${scheduleReason}: baseline"
+    fi
+}
+
+function setNextReminderScheduleForQuietOrThreshold() {
+    local quietTargetEpoch="${1}"
+    local scheduleReason="${2:-Quiet period remains active from recent reminder interaction}"
+    local nowEpoch="$(date +%s)"
+    local thresholdResult=""
+    local thresholdEpoch=""
+    local thresholdMinutes=""
+
+    shouldManageDaemonScheduling || return 0
+
+    thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdResult}" ]]; then
+        thresholdEpoch="${thresholdResult%%|*}"
+        thresholdMinutes="${thresholdResult##*|}"
+    fi
+
+    if [[ -n "${thresholdEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( thresholdEpoch < quietTargetEpoch )); then
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Quiet-period bypass for ${thresholdMinutes}-minute pre-deadline threshold"
+    else
+        setNextReminderScheduleExactEpoch "${quietTargetEpoch}" "${scheduleReason}"
+    fi
+}
+
+function resolveDuePreDeadlineThresholdReminder() {
+    local nowEpoch="$(date +%s)"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local thresholdMinutes=""
+    local thresholdEpoch=""
+    local dueThreshold=""
+    local staleThreshold=""
+    local -a crossedThresholds=()
+    local -a staleThresholds=()
+
+    preDeadlineThresholdReminderMode="NO"
+    preDeadlineThresholdMinutes=""
+
+    [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
+    [[ "${pastDeadlineRestartEffective}" == "Off" ]] || return 1
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    (( deadlineReferenceEpoch > nowEpoch )) || return 1
+
+    preDeadlineThresholdSignature="$(preDeadlineThresholdStateSignature)" || return 1
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}"
+
+    for thresholdMinutes in "${minutesBeforeDeadlineReminderScheduleResolved[@]}"; do
+        isPreDeadlineThresholdAlreadyHandled "${thresholdMinutes}" && continue
+        thresholdEpoch=$(( deadlineReferenceEpoch - (thresholdMinutes * 60) ))
+        if (( nowEpoch >= thresholdEpoch )); then
+            crossedThresholds+=("${thresholdMinutes}")
+        fi
+    done
+
+    (( ${#crossedThresholds[@]} > 0 )) || return 1
+
+    dueThreshold="${crossedThresholds[-1]}"
+    for staleThreshold in "${crossedThresholds[@]}"; do
+        [[ "${staleThreshold}" == "${dueThreshold}" ]] && continue
+        staleThresholds+=("${staleThreshold}")
+    done
+
+    for staleThreshold in "${staleThresholds[@]}"; do
+        markPreDeadlineThresholdSkipped "${staleThreshold}"
+    done
+
+    preDeadlineThresholdReminderMode="YES"
+    preDeadlineThresholdMinutes="${dueThreshold}"
+    notice "Pre-deadline threshold reminder due: ${preDeadlineThresholdMinutes} minute(s) before enforcement deadline."
+    return 0
+}
+
+function isPreDeadlineThresholdReminderMode() {
+    [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]
+}
+
+function completePreDeadlineThresholdReminderDelivery() {
+    local deliveredThresholdMinutes="${preDeadlineThresholdMinutes}"
+
+    isPreDeadlineThresholdReminderMode || return 0
+
+    markPreDeadlineThresholdDelivered "${deliveredThresholdMinutes}"
+    if resolveDuePreDeadlineThresholdReminder; then
+        setNextReminderScheduleImmediate "Scheduled after pre-deadline threshold dialog remained open: ${preDeadlineThresholdMinutes}-minute pre-deadline threshold already due"
+    else
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after ${deliveredThresholdMinutes}-minute pre-deadline threshold reminder"
+    fi
+}
+
+function shouldAutoRefreshOpenDialogAtPreDeadlineThreshold() {
+    shouldManageDaemonScheduling || return 1
+    isPastDeadlineForceMode && return 1
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+
+    return 0
+}
+
+function monitorOpenDialogForPreDeadlineThreshold() {
+    local dialogPid="${1}"
+    local refreshMarkerPath="${2}"
+    local thresholdResult=""
+    local watchedThresholdEpoch=""
+    local watchedThresholdMinutes=""
+    local nowEpoch=""
+    local sleepSeconds=5
+
+    shouldAutoRefreshOpenDialogAtPreDeadlineThreshold || return 0
+    [[ -n "${dialogPid}" && -n "${refreshMarkerPath}" ]] || return 0
+
+    while kill -0 "${dialogPid}" >/dev/null 2>&1; do
+        nowEpoch="$(date +%s)"
+
+        if [[ -n "${watchedThresholdEpoch}" && "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= watchedThresholdEpoch )); then
+            notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
+            printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
+            kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
+            sleep 2
+            if kill -0 "${dialogPid}" >/dev/null 2>&1; then
+                warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
+                kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+            fi
+            return 0
+        fi
+
+        thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+        if [[ -n "${thresholdResult}" ]]; then
+            watchedThresholdEpoch="${thresholdResult%%|*}"
+            watchedThresholdMinutes="${thresholdResult##*|}"
+            if [[ "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]]; then
+                sleepSeconds=$(( watchedThresholdEpoch - nowEpoch ))
+                if (( sleepSeconds > 30 )); then
+                    sleepSeconds=30
+                elif (( sleepSeconds < 1 )); then
+                    sleepSeconds=1
+                fi
+            else
+                sleepSeconds=5
+            fi
+        else
+            watchedThresholdEpoch=""
+            watchedThresholdMinutes=""
+            sleepSeconds=5
+        fi
+
+        sleep "${sleepSeconds}"
+    done
+}
+
+function handlePreDeadlineThresholdDialogAutoRefresh() {
+    local triggeredThresholdMinutes="${1}"
+
+    if isPreDeadlineThresholdReminderMode; then
+        completePreDeadlineThresholdReminderDelivery
+    elif resolveDuePreDeadlineThresholdReminder; then
+        setNextReminderScheduleImmediate "Scheduled after open reminder dialog crossed ${preDeadlineThresholdMinutes}-minute pre-deadline threshold"
+    else
+        warning "Dialog auto-refresh requested for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold, but no threshold is currently due; falling back to pending threshold or baseline schedule."
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after threshold dialog auto-refresh fallback"
+    fi
 }
 
 function ensureLaunchDaemonHeartbeat() {
@@ -804,6 +1205,7 @@ function queueImmediateReminderCheck() {
     deleteReminderStateKey "NextScheduledReminder"
     notice "${scheduleReason}."
     ensureLaunchDaemonHeartbeat
+    removeDorPidFile
     launchctl kickstart -k "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || true
 }
 
@@ -1335,7 +1737,9 @@ function validatePreferenceLoad() {
     # Verify critical preferences loaded correctly
     local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
+    local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
     local normalizedDailyReminderTimes=""
+    local normalizedMinuteThresholdSchedule=""
     for var in "${criticalVars[@]}"; do
         if [[ -z "${(P)var}" ]]; then
             warning "Critical preference '${var}' is empty; using default"
@@ -1362,9 +1766,30 @@ function validatePreferenceLoad() {
     dailyReminderTimes="${normalizedDailyReminderTimes}"
     parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
     notice "Resolved DailyReminderTimes: ${dailyReminderTimesResolvedCSV}"
+
+    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+        warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
+        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+    }
+
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
+    if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
+        notice "Resolved MinutesBeforeDeadlineReminderSchedule: ${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+    else
+        notice "MinutesBeforeDeadlineReminderSchedule is empty; pre-deadline threshold reminders disabled."
+    fi
 }
 
 function buildPlaceholderMap() {
+    local preDeadlineThresholdEmphasisOpen=""
+    local preDeadlineThresholdEmphasisClose=""
+
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
+        preDeadlineThresholdEmphasisOpen=":red["
+        preDeadlineThresholdEmphasisClose="]"
+    fi
+
     declare -gA PLACEHOLDER_MAP=(
         [weekday]="$(localizedWeekdayName "${dialogLanguage}")"
         [userfirstname]="${loggedInUserFirstname}"
@@ -1405,6 +1830,9 @@ function buildPlaceholderMap() {
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
+        [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
+        [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
+        [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
     )
 }
 
@@ -1436,6 +1864,13 @@ function replacePlaceholders() {
         # Stop if nothing changed in this pass
         [[ "${value}" == "${previousValue}" ]] && break
     done
+
+    value="${value//a.m../a.m.}"
+    value="${value//p.m../p.m.}"
+    value="${value//A.M../A.M.}"
+    value="${value//P.M../P.M.}"
+    value="${value//AM../AM.}"
+    value="${value//PM../PM.}"
 
     printf -v "${targetVariable}" '%s' "${value}"
 }
@@ -1832,6 +2267,7 @@ function applyLocalizedDialogText() {
                         "infoboxLabelCurrent" "infoboxLabelRequired" "infoboxLabelDeadline"
                         "infoboxLabelDaysRemaining" "infoboxLabelLastRestart" "infoboxLabelFreeDiskSpace"
                         "deadlineEnforcementMessageAbsolute" "deadlineEnforcementMessageRelative"
+                        "preDeadlineThresholdTitle" "preDeadlineThresholdMessage"
                         "pastDeadlinePromptTitle" "pastDeadlinePromptMessage"
                         "pastDeadlineForceTitle" "pastDeadlineForceMessage")
 
@@ -1878,6 +2314,7 @@ function updateRequiredVariables() {
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
     applyPastDeadlineDialogOverrides
+    applyPreDeadlineThresholdDialogOverrides
 
     applySupportFieldVisibility
 
@@ -2987,6 +3424,8 @@ installedOSvsDDMenforcedOS() {
         notice "Relative deadline rendering applied: ${ddmEnforcedInstallDateRelativeHumanReadable}"
     fi
 
+    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
+
     # Blurscreen logic and secondary button hiding (based on precise timestamp comparison)
     nowEpoch=$(date +%s)
     effectiveDeadlineEpoch="${ddmEnforcedInstallDateEpoch}"
@@ -2997,7 +3436,7 @@ installedOSvsDDMenforcedOS() {
     blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
     hideButton2ThresholdSeconds=$(( daysBeforeDeadlineHidingButton2 * 86400 ))
     ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
-    ddmVersionStringDaysRemainingDisplay="$(computeSignedDaysRemainingDisplay "${deadlineEpoch}" "${nowEpoch}")"
+    ddmVersionStringDaysRemainingDisplay="$(computeSignedDaysRemainingDisplay "${effectiveDeadlineEpoch}" "${nowEpoch}")"
     [[ -z "${ddmVersionStringDaysRemainingDisplay}" ]] && ddmVersionStringDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     if (( secondsUntilDeadline <= blurThresholdSeconds )); then
         blurscreen="--blurscreen"
@@ -3297,7 +3736,7 @@ function computeDeadlineEnforcementMessage() {
 }
 
 function computeInfoboxHighlights() {
-    infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
+    infoboxDeadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable:-${ddmVersionStringDeadlineHumanReadable}}}"
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemainingDisplay:-${ddmVersionStringDaysRemaining}}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
     local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
@@ -3396,6 +3835,15 @@ function applyPastDeadlineDialogOverrides() {
     deadlineEnforcementMessage=""
 }
 
+function applyPreDeadlineThresholdDialogOverrides() {
+    isPreDeadlineThresholdReminderMode || return 0
+    [[ "${pastDeadlineRestartEffective}" == "Off" ]] || return 0
+
+    title="${preDeadlineThresholdTitle}"
+    message="${preDeadlineThresholdMessage}"
+    notice "Applying ${preDeadlineThresholdMinutes}-minute pre-deadline threshold dialog copy."
+}
+
 function executeRestartAction() {
     local restartMode="${1:-Restart Confirm}"
     local restartCommand=""
@@ -3431,6 +3879,12 @@ function executeRestartAction() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function displayReminderDialog() {
+    local dialogAutoRefreshMarkerPath=""
+    local dialogAutoRefreshMarkerValue=""
+    local dialogAutoRefreshMonitorPid=""
+    local dialogAutoRefreshThresholdMinutes=""
+    local dialogAutoRefreshTriggered="NO"
+    local dialogPid=""
 
     additionalDialogOptions=("$@")
 
@@ -3458,20 +3912,54 @@ function displayReminderDialog() {
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
 
-    ${dialogBinary} "${dialogArgs[@]}"
+    dialogAutoRefreshMarkerPath="$(mktemp "/var/tmp/${organizationScriptName}-threshold-refresh.XXXXXX" 2>/dev/null || true)"
+    if [[ -z "${dialogAutoRefreshMarkerPath}" ]]; then
+        dialogAutoRefreshMarkerPath="/var/tmp/${organizationScriptName}-threshold-refresh.$$"
+        rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+    fi
 
+    ${dialogBinary} "${dialogArgs[@]}" &
+    dialogPid=$!
+
+    if shouldAutoRefreshOpenDialogAtPreDeadlineThreshold; then
+        monitorOpenDialogForPreDeadlineThreshold "${dialogPid}" "${dialogAutoRefreshMarkerPath}" &
+        dialogAutoRefreshMonitorPid=$!
+    fi
+
+    wait "${dialogPid}"
     returncode=$?
+
+    if [[ -n "${dialogAutoRefreshMonitorPid}" ]]; then
+        kill "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
+        wait "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -s "${dialogAutoRefreshMarkerPath}" ]]; then
+        dialogAutoRefreshTriggered="YES"
+        dialogAutoRefreshMarkerValue="$(cat "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true)"
+        dialogAutoRefreshThresholdMinutes="${dialogAutoRefreshMarkerValue%%|*}"
+    fi
+    rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+
+    if [[ "${dialogAutoRefreshTriggered}" == "YES" ]]; then
+        notice "swiftDialog was closed automatically because the ${dialogAutoRefreshThresholdMinutes:-next}-minute pre-deadline threshold became due."
+        handlePreDeadlineThresholdDialogAutoRefresh "${dialogAutoRefreshThresholdMinutes}"
+        quitScript "0"
+    fi
+
     info "Return Code: ${returncode}"
 
     # Quiet-period exact reschedules are only for dismissal paths. Launching
     # Software Update should fall back to the normal baseline schedule.
-    if [[ -n "${quietPeriodSeconds:-}" ]] && ! isPastDeadlineForceMode; then
+    if [[ -n "${quietPeriodSeconds:-}" ]] && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
         case ${returncode} in
             2|4|10)
-                setNextReminderScheduleInSeconds "${quietPeriodSeconds}" "Scheduled quiet-period redisplay after return code ${returncode}"
+                setNextReminderScheduleForQuietOrThreshold "$(( $(date +%s) + quietPeriodSeconds ))" "Scheduled quiet-period redisplay after return code ${returncode}"
                 ;;
         esac
     fi
+
+    completePreDeadlineThresholdReminderDelivery
 
     if isPastDeadlineForceMode; then
         while true; do
@@ -3612,11 +4100,7 @@ function displayReminderDialogForMode() {
 # Quit Script (thanks, @bartreadon!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function quitScript() {
-
-    applyScheduledExitAction
-    quitOut "Exiting …"
-
+function cleanupDialogRuntimeArtifacts() {
     # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
         if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
@@ -3627,6 +4111,19 @@ function quitScript() {
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
     removeDorPidFile
+}
+
+function quitScript() {
+
+    quitOut "Exiting …"
+
+    if shouldManageDaemonScheduling && [[ "${nextReminderScheduleMode}" == "immediate" ]]; then
+        cleanupDialogRuntimeArtifacts
+        applyScheduledExitAction
+    else
+        applyScheduledExitAction
+        cleanupDialogRuntimeArtifacts
+    fi
 
     quitOut "Ticking away the moments that make up a dull day …"
 
@@ -3867,6 +4364,7 @@ fi
 
 installedOSvsDDMenforcedOS
 evaluatePastDeadlineState
+resolveDuePreDeadlineThresholdReminder || true
 
 
 
@@ -3911,7 +4409,9 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         fi
     fi
 
-    if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
+    if isPreDeadlineThresholdReminderMode; then
+        notice "Pre-deadline threshold reminder active; bypassing day-window and periodic reminder suppression."
+    elif (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
         # Outside the deadline window; check if we should display initial/periodic reminder
         
         if [[ -z "${lastInteraction}" ]]; then
@@ -3931,6 +4431,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     else
                         # Last interaction was within 28 days; skip
                         daysAgo=$(( delta / 86400 ))
+                        setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminder not due"
                         quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and last reminder was ${daysAgo} day(s) ago; exiting quietly."
                         quitScript "0"
                     fi
@@ -3951,6 +4452,8 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     if isPastDeadlineForceMode; then
         notice "Past Deadline Force mode active; bypassing quiet-period suppression."
+    elif isPreDeadlineThresholdReminderMode; then
+        notice "Pre-deadline threshold reminder active; bypassing quiet-period suppression."
     else
         if [[ -n "${lastInteraction}" ]]; then
             # Validate the extracted timestamp matches expected format
@@ -3961,7 +4464,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     delta=$(( nowEpoch - lastEpoch ))
                     if (( delta < quietPeriodSeconds )); then
                         minutesAgo=$(( delta / 60 ))
-                        setNextReminderScheduleExactEpoch "$(( lastEpoch + quietPeriodSeconds ))" "Quiet period remains active from recent reminder interaction"
+                        setNextReminderScheduleForQuietOrThreshold "$(( lastEpoch + quietPeriodSeconds ))" "Quiet period remains active from recent reminder interaction"
                         quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
                         quitScript "0"
                     fi
@@ -4036,6 +4539,10 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # -------------------------------------------------------------------------
     # Continue with normal processing
     # -------------------------------------------------------------------------
+
+    if ! isPastDeadlineForceMode; then
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after reminder display"
+    fi
 
     updateRequiredVariables
     displayReminderDialogForMode

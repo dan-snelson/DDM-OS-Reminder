@@ -41,7 +41,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0b3)
+🧩 Assemble DDM OS Reminder (4.0.0b14)
 ===============================================================
 
 Full Paths:
@@ -317,6 +317,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
 - If both exist, the script follows the same precedence as the main reminder workflow: managed preferences first, then local preferences, then built-in defaults
 - Runtime scheduler state, when present, is stored separately at `/Library/Management/<rdnn>/dor-state.plist`
 - Baseline reminder slots are driven by `DailyReminderTimes` in the deployed preference plist/profile (for example, `08:00,12:00,16:00`)
+- Final-minute threshold reminders are driven by `MinutesBeforeDeadlineReminderSchedule` (default `45,30,15,10,5`)
 
 **5.2.** Run against deployed preferences
 
@@ -330,6 +331,12 @@ Target a different tenant or test domain:
 
 ```zsh
 zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson
+```
+
+Preview the final-minute threshold copy:
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson --pre-deadline-threshold 30
 ```
 
 The script prints a resolved preference summary, shows the exact `swiftDialog` arguments it will use, then opens preview dialog.
@@ -360,5 +367,7 @@ The preview does **not** simulate:
 - Meeting-delay logic
 - Past-deadline restart workflows
 - Real deadline resolution from current DDM state
+
+Use `--pre-deadline-threshold <minutes>` to preview final-minute threshold title/message localization only; it does not mutate runtime scheduler state.
 
 Use this script for appearance and preference validation. Use `zsh reminderDialog.zsh demo` when you need a broader reminder-dialog smoke test.

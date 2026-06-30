@@ -138,6 +138,8 @@
 	<string>Anders wordt uw Mac **automatisch opnieuw opgestart en wordt de {titleMessageUpdateOrUpgradeLower} uitgevoerd** **{deadlineDisplay}**.</string>
 	<key>DeadlineEnforcementMessageRelativeLocalized_pt</key>
 	<string>Caso contrario, o seu Mac **reiniciará automaticamente e aplicará a {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}**.</string>
+	<key>DisableButton2InsteadOfHide</key>
+	<true/>
 	<key>DiskSpaceWarningMessage</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}.</string>
 	<key>DiskSpaceWarningMessageLocalized_de</key>
@@ -366,6 +368,8 @@
 	<string>https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d</string>
 	<key>OrganizationOverlayIconURLdark</key>
 	<string>https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39</string>
+	<key>OutsideDisplayWindowPeriodicReminderDays</key>
+	<integer>28</integer>
 	<key>PartiallyStagedUpdateMessage</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
 	<key>PartiallyStagedUpdateMessageLocalized_de</key>
@@ -402,6 +406,10 @@
 	<string>**Uw Mac wordt opnieuw opgestart wanneer de timer hieronder afloopt.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac heeft de deadline van **{ddmVersionStringDeadlineHumanReadable}** overschreden om macOS {ddmVersionString} te installeren en moet opnieuw worden opgestart om het {titleMessageUpdateOrUpgradeLower}-proces te helpen voltooien, of u kunt op **{button1text}** klikken.&lt;br&gt;&lt;br&gt;(Deze herinnering blijft zichtbaar totdat uw Mac opnieuw is opgestart.)</string>
 	<key>PastDeadlineForceMessageLocalized_pt</key>
 	<string>**O seu Mac será reiniciado quando o temporizador abaixo terminar.**&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;O seu Mac ultrapassou o prazo de **{ddmVersionStringDeadlineHumanReadable}** para instalar o macOS {ddmVersionString} e precisa de ser reiniciado para ajudar a concluir a {titleMessageUpdateOrUpgradeLower}, ou pode clicar em **{button1text}**.&lt;br&gt;&lt;br&gt;(Este lembrete permanecerá visível até o seu Mac ser reiniciado.)</string>
+	<key>PastDeadlineForceRedisplayDelaySeconds</key>
+	<integer>5</integer>
+	<key>PastDeadlineForceTimerSeconds</key>
+	<integer>60</integer>
 	<key>PastDeadlineForceTitle</key>
 	<string>Your Mac is restarting</string>
 	<key>PastDeadlineForceTitleLocalized_de</key>
@@ -458,6 +466,8 @@
 	<string>Reinicie o seu Mac</string>
 	<key>PastDeadlineRestartBehavior</key>
 	<string>Off</string>
+	<key>PastDeadlineRestartMinimumUptimeMinutes</key>
+	<integer>75</integer>
 	<key>PendingDownloadMessage</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Your Mac will begin downloading the update shortly.</string>
 	<key>PendingDownloadMessageLocalized_de</key>
@@ -512,6 +522,8 @@
 	<string>Assembled macOS {titleMessageUpdateOrUpgrade}-deadline nadert</string>
 	<key>PreDeadlineThresholdTitleLocalized_pt</key>
 	<string>Assembled Prazo da {titleMessageUpdateOrUpgrade} do macOS iminente</string>
+	<key>QuietPeriodMinutes</key>
+	<integer>76</integer>
 	<key>RelativeDeadlineToday</key>
 	<string>Today</string>
 	<key>RelativeDeadlineTodayLocalized_de</key>

@@ -103,7 +103,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="4.0.0b17"
+scriptVersion="4.0.0b18"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -161,7 +161,13 @@ fi
 
 declare -A preferenceConfiguration=(
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
+    ["quietPeriodMinutes"]="numeric|76"
+    ["outsideDisplayWindowPeriodicReminderDays"]="numeric|28"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="numeric|75"
+    ["pastDeadlineForceTimerSeconds"]="numeric|60"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="numeric|5"
     ["minimumDiskFreePercentage"]="numeric|99"
+    ["disableButton2InsteadOfHide"]="boolean|YES"
     ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
@@ -221,7 +227,13 @@ declare -A preferenceConfiguration=(
 
 declare -A plistKeyMap=(
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
+    ["quietPeriodMinutes"]="QuietPeriodMinutes"
+    ["outsideDisplayWindowPeriodicReminderDays"]="OutsideDisplayWindowPeriodicReminderDays"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="PastDeadlineRestartMinimumUptimeMinutes"
+    ["pastDeadlineForceTimerSeconds"]="PastDeadlineForceTimerSeconds"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="PastDeadlineForceRedisplayDelaySeconds"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
@@ -1446,7 +1458,16 @@ function prepareDemoRuntimeState() {
     ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
     versionComparisonResult="Update Required"
     hideSecondaryButton="NO"
-    [[ "${aggressiveModeActive}" == "YES" ]] && hideSecondaryButton="DISABLED"
+    if [[ "${aggressiveModeActive}" == "YES" ]]; then
+        case "${disableButton2InsteadOfHide}" in
+            "YES")
+                hideSecondaryButton="DISABLED"
+                ;;
+            *)
+                hideSecondaryButton="YES"
+                ;;
+        esac
+    fi
     blurscreen="--noblurscreen"
     [[ "${aggressiveModeActive}" == "YES" ]] && blurscreen="--blurscreen"
     updateOrUpgradeMode="update"

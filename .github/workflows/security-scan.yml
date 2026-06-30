@@ -1,4 +1,4 @@
-# Protects DDM OS Reminder (4.0.0b17) from common vulnerabilities with Semgrep,
+# Protects DDM OS Reminder (4.0.0b18) from common vulnerabilities with Semgrep,
 # Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full
 # repository, including reminderDialog.zsh, launchDaemonManagement.zsh,
 # assemble.zsh, Resources/, Artifacts/, and other tracked content, then

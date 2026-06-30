@@ -76,7 +76,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
-2. Click "Remind Me Later" → Dismissed and re-displayed at the exact `quietPeriodSeconds` redisplay time, unless an earlier pre-deadline threshold reminder is due
+2. Click "Remind Me Later" → Dismissed and re-displayed after `QuietPeriodMinutes`, unless an earlier pre-deadline threshold reminder is due
 3. Close dialog → Same as "Remind Me Later"
 
 **Configuration**:
@@ -121,7 +121,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
-2. Click "Remind Me Later" → Dismissed and re-displayed at the exact `quietPeriodSeconds` redisplay time, unless an earlier pre-deadline threshold reminder is due
+2. Click "Remind Me Later" → Dismissed and re-displayed after `QuietPeriodMinutes`, unless an earlier pre-deadline threshold reminder is due
 3. Cannot easily ignore due to blurscreen
 
 **Configuration**:
@@ -165,7 +165,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings (ONLY option)
-2. Close dialog → Returns at the exact `quietPeriodSeconds` redisplay time, unless an earlier pre-deadline threshold reminder is due (cannot avoid)
+2. Close dialog → Returns after `QuietPeriodMinutes`, unless an earlier pre-deadline threshold reminder is due (cannot avoid)
 
 **Rationale**:
 - Deadline is imminent; postponement no longer appropriate
@@ -173,7 +173,7 @@ gantt
 
 **Configuration**:
 - `daysBeforeDeadlineHidingButton2 = 21`
-- `disableButton2InsteadOfHide = YES` (controls disabled vs hidden)
+- `DisableButton2InsteadOfHide = YES` (controls disabled vs hidden)
 
 ---
 
@@ -184,7 +184,7 @@ gantt
 - Uses `MinutesBeforeDeadlineReminderSchedule`
 - Evaluates against the effective enforcement epoch, including a trusted padded enforcement date when available
 - Displays each configured threshold once per resolved deadline/version
-- Bypasses the 76-minute quiet period so an earlier threshold interaction does not suppress later 30/15/10/5-minute reminders
+- Bypasses `QuietPeriodMinutes` so an earlier threshold interaction does not suppress later 30/15/10/5-minute reminders
 - Uses the existing heartbeat + `dor-starter` + `NextScheduledReminder` exact scheduler path
 
 **Runtime State**:
@@ -211,15 +211,15 @@ gantt
 - `PastDeadlineRestartBehavior` is not `Off`
 - The Mac still requires the enforced update/upgrade
 - Days past deadline are `>= DaysPastDeadlineRestartWorkflow` (default: `2`)
-- Current uptime is at least 75 minutes (fixed runtime gate)
+- Current uptime is at least `PastDeadlineRestartMinimumUptimeMinutes`
 
 **Mode Behavior**:
 - `Off` (default): Use aggressive update-focused title/message after the aggressive gate passes; otherwise continue normal update-focused reminder flow
 - `Prompt`: Switch to restart-only dialog (`Restart Now`) when restart workflow is eligible; if aggressive mode is also active, dismissal uses the aggressive redisplay cadence
-- `Force`: Switch to restart-only dialog with 60-second timer; non-restart dismissal re-displays after ~5 seconds until restart occurs
+- `Force`: Switch to restart-only dialog with `PastDeadlineForceTimerSeconds`; non-restart dismissal re-displays after `PastDeadlineForceRedisplayDelaySeconds` until restart occurs
 
 **Runtime Notes**:
-- If restart mode is eligible by days but uptime is below 75 minutes, restart mode is temporarily suppressed and update-focused flow continues
+- If restart mode is eligible by days but uptime is below `PastDeadlineRestartMinimumUptimeMinutes`, restart mode is temporarily suppressed and update-focused flow continues
 - Aggressive `Open Software Update` / dismissal / close / keyboard quit / timer interactions schedule an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
 - A reboot does not clear a future `NextScheduledReminder`; the `RunAtLoad` heartbeat still exits quietly until that stored due time arrives
 - The support kill switch logs a notice and falls back to normal non-aggressive cadence
@@ -260,7 +260,7 @@ gantt
 
 | Window / Condition | Primary UX | Button 2 | Meeting Deferral | Trigger Behavior |
 |--------------------|------------|----------|------------------|------------------|
-| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (periodic 28-day reminder still possible) | N/A when no dialog | N/A when no dialog | Heartbeat daemon + `dor-starter` due check |
+| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (periodic reminder still possible via `OutsideDisplayWindowPeriodicReminderDays`) | N/A when no dialog | N/A when no dialog | Heartbeat daemon + `dor-starter` due check |
 | `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
@@ -269,7 +269,7 @@ gantt
 | Past deadline before aggressive threshold or with kill switch | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
 | Past deadline + aggressive mode + restart mode `Off` or not restart-eligible | Aggressive update-focused reminder | ❌ Disabled/hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after `Open Software Update` or dismissal |
 | Past deadline + restart mode `Prompt` + eligible | Restart-only prompt dialog; aggressive cadence if active | Hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after dismissal when aggressive, otherwise heartbeat due check |
-| Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer 60`) | Hidden | ❌ No (explicit bypass) | Re-displays every ~5 seconds until restart |
+| Past deadline + restart mode `Force` + eligible | Restart-only forced loop (`--timer PastDeadlineForceTimerSeconds`) | Hidden | ❌ No (explicit bypass) | Re-displays after `PastDeadlineForceRedisplayDelaySeconds` until restart |
 | Apple enforcement event | Apple-controlled restart/update | N/A | N/A | macOS/DDM enforcement |
 
 ## Customizing the Timeline
@@ -288,6 +288,15 @@ Most thresholds are configurable via Configuration Profile or local preferences:
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>21</integer>
 
+<key>QuietPeriodMinutes</key>
+<integer>76</integer>
+
+<key>OutsideDisplayWindowPeriodicReminderDays</key>
+<integer>28</integer>
+
+<key>DisableButton2InsteadOfHide</key>
+<true/>
+
 <key>MinutesBeforeDeadlineReminderSchedule</key>
 <string>45,30,15,10,5</string>
 
@@ -302,6 +311,15 @@ Most thresholds are configurable via Configuration Profile or local preferences:
 
 <key>DaysPastDeadlineRestartWorkflow</key>
 <integer>2</integer>
+
+<key>PastDeadlineRestartMinimumUptimeMinutes</key>
+<integer>75</integer>
+
+<key>PastDeadlineForceTimerSeconds</key>
+<integer>60</integer>
+
+<key>PastDeadlineForceRedisplayDelaySeconds</key>
+<integer>5</integer>
 ```
 
 ### Via Local Preferences Plist
@@ -317,6 +335,15 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     DaysBeforeDeadlineHidingButton2 -int 21
 
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    QuietPeriodMinutes -int 76
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    OutsideDisplayWindowPeriodicReminderDays -int 28
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    DisableButton2InsteadOfHide -bool true
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     AggressiveModePastDeadlineHours -int 2
 
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
@@ -327,6 +354,15 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     DaysPastDeadlineRestartWorkflow -int 2
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineRestartMinimumUptimeMinutes -int 75
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineForceTimerSeconds -int 60
+
+sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
+    PastDeadlineForceRedisplayDelaySeconds -int 5
 ```
 
 ### Common Configurations
@@ -407,8 +443,7 @@ If free disk space below threshold:
 Between dialog displays (same day):
 - Prevents excessive nagging
 - Enforces minimum time between reminders
-- Default: 76 minutes
-- Currently hard-coded in runtime logic (not profile-driven)
+- Default: `QuietPeriodMinutes = 76`
 - Bypassed in post-deadline `Force` mode
 - Bypassed while aggressive mode is active; aggressive cadence is controlled by `AggressiveModeFrequencyMinutes`
 
@@ -435,7 +470,7 @@ A: Not recommended, but theoretically possible by setting very low threshold. Bl
 A: User can postpone during early/medium phases. Within 24 hours of deadline, meeting deferral is ignored. If post-deadline restart `Force` mode is enabled and eligible, postponement is not available.
 
 **Q: When does the post-deadline restart workflow start?**
-A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least 75 minutes.
+A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least `PastDeadlineRestartMinimumUptimeMinutes`.
 
 **Q: How can support temporarily suppress aggressive mode?**
 A: Create `/Library/Management/<rdnn>/dor-aggressive-kill` on the Mac. Remove that file when support work is complete so aggressive mode can resume if the Mac is still past deadline and below the required macOS version.

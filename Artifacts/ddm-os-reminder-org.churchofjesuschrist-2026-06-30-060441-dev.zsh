@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b17"
+scriptVersion="4.0.0b18"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -338,7 +338,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b17"
+scriptVersion="4.0.0b18"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -415,20 +415,13 @@ ownsDorPidFile="NO"
 typeset -ga dailyReminderTimesResolved=()
 typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
-# Disable button2 (instead of hiding it when approaching deadline)
-# Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
-disableButton2InsteadOfHide="YES"
-
 # NOTE: All configurable preferences (days to deadline, blurscreen threshold, disk
 # space, meeting delay, format strings, icons, etc.) are now defined in the
 # preferenceConfiguration map below and loaded via loadPreferenceOverrides()
 # to support managed and local plist overrides.
 
 # Past Deadline runtime state
-pastDeadlineForceTimerSeconds=60
-pastDeadlineRedisplayDelaySeconds=5
 pastDeadlineRestartEffective="Off"
-pastDeadlineRestartMinimumUptimeMinutes=75
 pastDeadlineRestartSuppressedForUptime="NO"
 aggressiveModeActive="NO"
 aggressiveModeKillSwitchDetected="NO"
@@ -539,8 +532,13 @@ declare -A preferenceConfiguration=(
     ["daysBeforeDeadlineBlurscreen"]="numeric|45"
     ["daysBeforeDeadlineHidingButton2"]="numeric|21"
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
+    ["quietPeriodMinutes"]="numeric|76"
+    ["outsideDisplayWindowPeriodicReminderDays"]="numeric|28"
     ["daysPastDeadlineRestartWorkflow"]="numeric|2"
     ["pastDeadlineRestartBehavior"]="string|Off"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="numeric|75"
+    ["pastDeadlineForceTimerSeconds"]="numeric|60"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="numeric|5"
     ["meetingDelay"]="numeric|75"
     ["dailyReminderTimes"]="string|08:00,12:00,16:00"
     ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
@@ -548,6 +546,7 @@ declare -A preferenceConfiguration=(
     ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
+    ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
     ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
@@ -626,8 +625,13 @@ declare -A plistKeyMap=(
     ["daysBeforeDeadlineBlurscreen"]="DaysBeforeDeadlineBlurscreen"
     ["daysBeforeDeadlineHidingButton2"]="DaysBeforeDeadlineHidingButton2"
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
+    ["quietPeriodMinutes"]="QuietPeriodMinutes"
+    ["outsideDisplayWindowPeriodicReminderDays"]="OutsideDisplayWindowPeriodicReminderDays"
     ["daysPastDeadlineRestartWorkflow"]="DaysPastDeadlineRestartWorkflow"
     ["pastDeadlineRestartBehavior"]="PastDeadlineRestartBehavior"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="PastDeadlineRestartMinimumUptimeMinutes"
+    ["pastDeadlineForceTimerSeconds"]="PastDeadlineForceTimerSeconds"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="PastDeadlineForceRedisplayDelaySeconds"
     ["meetingDelay"]="MeetingDelay"
     ["dailyReminderTimes"]="DailyReminderTimes"
     ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
@@ -635,6 +639,7 @@ declare -A plistKeyMap=(
     ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
@@ -2070,6 +2075,8 @@ function validatePreferenceLoad() {
     local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
     local defaultAggressiveModePastDeadlineHours="${preferenceConfiguration[aggressiveModePastDeadlineHours]#*|}"
     local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
+    local defaultPastDeadlineForceTimerSeconds="${preferenceConfiguration[pastDeadlineForceTimerSeconds]#*|}"
+    local defaultPastDeadlineForceRedisplayDelaySeconds="${preferenceConfiguration[pastDeadlineForceRedisplayDelaySeconds]#*|}"
     local normalizedDailyReminderTimes=""
     local normalizedMinuteThresholdSchedule=""
     for var in "${criticalVars[@]}"; do
@@ -2120,6 +2127,16 @@ function validatePreferenceLoad() {
     if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 || aggressiveModeFrequencyMinutes > 999 )); then
         warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
         aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
+    fi
+
+    if [[ ! "${pastDeadlineForceTimerSeconds}" =~ ^[0-9]+$ ]] || (( pastDeadlineForceTimerSeconds < 1 || pastDeadlineForceTimerSeconds > 999 )); then
+        warning "PastDeadlineForceTimerSeconds value '${pastDeadlineForceTimerSeconds}' is invalid; defaulting to '${defaultPastDeadlineForceTimerSeconds}'."
+        pastDeadlineForceTimerSeconds="${defaultPastDeadlineForceTimerSeconds}"
+    fi
+
+    if [[ ! "${pastDeadlineForceRedisplayDelaySeconds}" =~ ^[0-9]+$ ]] || (( pastDeadlineForceRedisplayDelaySeconds < 1 || pastDeadlineForceRedisplayDelaySeconds > 999 )); then
+        warning "PastDeadlineForceRedisplayDelaySeconds value '${pastDeadlineForceRedisplayDelaySeconds}' is invalid; defaulting to '${defaultPastDeadlineForceRedisplayDelaySeconds}'."
+        pastDeadlineForceRedisplayDelaySeconds="${defaultPastDeadlineForceRedisplayDelaySeconds}"
     fi
 }
 
@@ -4355,7 +4372,7 @@ function displayReminderDialog() {
                 setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after return code ${returncode}"
                 ;;
         esac
-    elif [[ -n "${quietPeriodSeconds:-}" ]] && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
+    elif (( ${quietPeriodSeconds:-0} > 0 )) && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
         case ${returncode} in
             2|4|10)
                 setNextReminderScheduleForQuietOrThreshold "$(( $(date +%s) + quietPeriodSeconds ))" "Scheduled quiet-period redisplay after return code ${returncode}"
@@ -4385,7 +4402,7 @@ function displayReminderDialog() {
                     ;;
             esac
 
-            sleep "${pastDeadlineRedisplayDelaySeconds}"
+            sleep "${pastDeadlineForceRedisplayDelaySeconds}"
             ${dialogBinary} "${dialogArgs[@]}"
             returncode=$?
             info "Return Code: ${returncode}"
@@ -4668,8 +4685,8 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Deadline window and periodic reminder logic (thanks for the suggestion, @kristian!)
     # -------------------------------------------------------------------------
 
-    quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
-    periodicReminderDays=28     # 28 days
+    quietPeriodSeconds=$(( quietPeriodMinutes * 60 ))
+    periodicReminderDays="${outsideDisplayWindowPeriodicReminderDays}"
     periodicReminderSeconds=$(( periodicReminderDays * 86400 ))
 
     # Look for the most recent user interaction by Return Code
@@ -4707,6 +4724,10 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         if [[ -z "${lastInteraction}" ]]; then
             # No interaction history; display the initial reminder dialog
             notice "No reminder interaction history found; displaying initial reminder dialog"
+        elif (( periodicReminderDays <= 0 )); then
+            setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminders disabled"
+            quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and outside-display-window periodic reminders are disabled; exiting quietly."
+            quitScript "0"
         else
             # Validate the extracted timestamp matches expected format
             if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
@@ -4746,6 +4767,8 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         notice "Aggressive mode active; bypassing quiet-period suppression."
     elif isPreDeadlineThresholdReminderMode; then
         notice "Pre-deadline threshold reminder active; bypassing quiet-period suppression."
+    elif (( quietPeriodSeconds <= 0 )); then
+        notice "QuietPeriodMinutes is 0; quiet-period suppression disabled."
     else
         if [[ -n "${lastInteraction}" ]]; then
             # Validate the extracted timestamp matches expected format

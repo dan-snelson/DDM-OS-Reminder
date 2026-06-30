@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="4.0.0b17"
+scriptVersion="4.0.0b18"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
@@ -307,14 +307,20 @@ daysBeforeDeadlineDisplayReminder=$(extract_from_preference_map daysBeforeDeadli
 daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlurscreen)
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
+quietPeriodMinutes=$(extract_from_preference_map quietPeriodMinutes)
+outsideDisplayWindowPeriodicReminderDays=$(extract_from_preference_map outsideDisplayWindowPeriodicReminderDays)
 daysPastDeadlineRestartWorkflow=$(extract_from_preference_map daysPastDeadlineRestartWorkflow)
 pastDeadlineRestartBehavior=$(extract_from_preference_map pastDeadlineRestartBehavior)
+pastDeadlineRestartMinimumUptimeMinutes=$(extract_from_preference_map pastDeadlineRestartMinimumUptimeMinutes)
+pastDeadlineForceTimerSeconds=$(extract_from_preference_map pastDeadlineForceTimerSeconds)
+pastDeadlineForceRedisplayDelaySeconds=$(extract_from_preference_map pastDeadlineForceRedisplayDelaySeconds)
 aggressiveModePastDeadlineHours=$(extract_from_preference_map aggressiveModePastDeadlineHours)
 aggressiveModeFrequencyMinutes=$(extract_from_preference_map aggressiveModeFrequencyMinutes)
 meetingDelay=$(extract_from_preference_map meetingDelay)
 acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
 swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
+disableButton2InsteadOfHide_raw=$(extract_from_preference_map disableButton2InsteadOfHide)
 hideStagedInfo_raw=$(extract_from_preference_map hideStagedInfo)
 hideSupportTeamPhone_raw=$(extract_from_preference_map hideSupportTeamPhone)
 hideSupportTeamEmail_raw=$(extract_from_preference_map hideSupportTeamEmail)
@@ -327,6 +333,11 @@ languageOverride=$(extract_from_preference_map languageOverride)
 case "${swapOverlayAndLogo_raw:u}" in
     YES|TRUE|1) swapOverlayAndLogo_xml="<true/>" ;;
     *)          swapOverlayAndLogo_xml="<false/>" ;;
+esac
+
+case "${disableButton2InsteadOfHide_raw:u}" in
+    YES|TRUE|1) disableButton2InsteadOfHide_xml="<true/>" ;;
+    *)          disableButton2InsteadOfHide_xml="<false/>" ;;
 esac
 
 case "${hideStagedInfo_raw:u}" in
@@ -1036,12 +1047,22 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysBeforeDeadlineHidingButton2}</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>${daysOfExcessiveUptimeWarning}</integer>
+    <key>QuietPeriodMinutes</key>
+    <integer>${quietPeriodMinutes}</integer>
+    <key>OutsideDisplayWindowPeriodicReminderDays</key>
+    <integer>${outsideDisplayWindowPeriodicReminderDays}</integer>
     <!-- Past-deadline restart behavior:
          Off | Prompt | Force -->
     <key>PastDeadlineRestartBehavior</key>
     <string>${pastDeadlineRestartBehavior_xml}</string>
     <key>DaysPastDeadlineRestartWorkflow</key>
     <integer>${daysPastDeadlineRestartWorkflow}</integer>
+    <key>PastDeadlineRestartMinimumUptimeMinutes</key>
+    <integer>${pastDeadlineRestartMinimumUptimeMinutes}</integer>
+    <key>PastDeadlineForceTimerSeconds</key>
+    <integer>${pastDeadlineForceTimerSeconds}</integer>
+    <key>PastDeadlineForceRedisplayDelaySeconds</key>
+    <integer>${pastDeadlineForceRedisplayDelaySeconds}</integer>
     <key>AggressiveModePastDeadlineHours</key>
     <integer>${aggressiveModePastDeadlineHours}</integer>
     <key>AggressiveModeFrequencyMinutes</key>
@@ -1052,6 +1073,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${acceptableAssertionApplicationNames_xml}</string>
     <key>MinimumDiskFreePercentage</key>
     <integer>${minimumDiskFreePercentage}</integer>
+    <key>DisableButton2InsteadOfHide</key>
+    ${disableButton2InsteadOfHide_xml}
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>
@@ -1754,10 +1777,20 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysBeforeDeadlineHidingButton2}</integer>
                                 <key>DaysOfExcessiveUptimeWarning</key>
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
+                                <key>QuietPeriodMinutes</key>
+                                <integer>${quietPeriodMinutes}</integer>
+                                <key>OutsideDisplayWindowPeriodicReminderDays</key>
+                                <integer>${outsideDisplayWindowPeriodicReminderDays}</integer>
                                 <key>PastDeadlineRestartBehavior</key>
                                 <string>${pastDeadlineRestartBehavior_xml}</string>
                                 <key>DaysPastDeadlineRestartWorkflow</key>
                                 <integer>${daysPastDeadlineRestartWorkflow}</integer>
+                                <key>PastDeadlineRestartMinimumUptimeMinutes</key>
+                                <integer>${pastDeadlineRestartMinimumUptimeMinutes}</integer>
+                                <key>PastDeadlineForceTimerSeconds</key>
+                                <integer>${pastDeadlineForceTimerSeconds}</integer>
+                                <key>PastDeadlineForceRedisplayDelaySeconds</key>
+                                <integer>${pastDeadlineForceRedisplayDelaySeconds}</integer>
                                 <key>AggressiveModePastDeadlineHours</key>
                                 <integer>${aggressiveModePastDeadlineHours}</integer>
                                 <key>AggressiveModeFrequencyMinutes</key>
@@ -1768,6 +1801,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${acceptableAssertionApplicationNames_xml}</string>
                                 <key>MinimumDiskFreePercentage</key>
                                 <integer>${minimumDiskFreePercentage}</integer>
+                                <key>DisableButton2InsteadOfHide</key>
+                                ${disableButton2InsteadOfHide_xml}
                                 <key>OrganizationOverlayIconURL</key>
                                 <string>${overlayicon_xml}</string>
                                 <key>OrganizationOverlayIconURLdark</key>

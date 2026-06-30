@@ -33,8 +33,13 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | daysBeforeDeadlineBlurscreen | DaysBeforeDeadlineBlurscreen | Integer | 45 | Timing |
 | daysBeforeDeadlineHidingButton2 | DaysBeforeDeadlineHidingButton2 | Integer | 21 | Timing |
 | daysOfExcessiveUptimeWarning | DaysOfExcessiveUptimeWarning | Integer | 0 | Timing |
+| quietPeriodMinutes | QuietPeriodMinutes | Integer | 76 | Timing |
+| outsideDisplayWindowPeriodicReminderDays | OutsideDisplayWindowPeriodicReminderDays | Integer | 28 | Timing |
 | daysPastDeadlineRestartWorkflow | DaysPastDeadlineRestartWorkflow | Integer | 2 | Timing |
 | pastDeadlineRestartBehavior | PastDeadlineRestartBehavior | String (`Off` \| `Prompt` \| `Force`) | Off | Timing |
+| pastDeadlineRestartMinimumUptimeMinutes | PastDeadlineRestartMinimumUptimeMinutes | Integer | 75 | Timing |
+| pastDeadlineForceTimerSeconds | PastDeadlineForceTimerSeconds | Integer | 60 | Timing |
+| pastDeadlineForceRedisplayDelaySeconds | PastDeadlineForceRedisplayDelaySeconds | Integer | 5 | Timing |
 | meetingDelay | MeetingDelay | Integer | 75 | Timing |
 | dailyReminderTimes | DailyReminderTimes | String (`HH:MM` CSV) | `08:00,12:00,16:00` | Timing |
 | minutesBeforeDeadlineReminderSchedule | MinutesBeforeDeadlineReminderSchedule | String (minute CSV) | `45,30,15,10,5` | Timing |
@@ -42,6 +47,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | aggressiveModeFrequencyMinutes | AggressiveModeFrequencyMinutes | Integer | 20 | Timing |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
+| disableButton2InsteadOfHide | DisableButton2InsteadOfHide | Boolean | YES | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
 | swapOverlayAndLogo | SwapOverlayAndLogo | Boolean | NO | Branding |
@@ -353,7 +359,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Must Be Less Than**: `daysBeforeDeadlineBlurscreen`
 
-**Note**: Behavior controlled by hard-coded `disableButton2InsteadOfHide` variable:
+**Related Preference**: `DisableButton2InsteadOfHide` controls presentation:
 - `YES` = Button appears greyed out (disabled)
 - `NO` = Button hidden completely
 
@@ -367,6 +373,43 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <key>DaysBeforeDeadlineHidingButton2</key>
 <integer>21</integer>
 ```
+
+---
+
+#### quietPeriodMinutes
+**Plist Key**: `QuietPeriodMinutes`
+**Type**: Integer
+**Default**: 76
+**Valid Range**: 0-999
+
+**Description**: Minutes after a user interaction during which normal update-focused reminders are suppressed. Due pre-deadline threshold reminders, aggressive mode, and Force mode bypass this quiet period.
+
+**Special Value**: `0` disables quiet-period suppression.
+
+---
+
+#### outsideDisplayWindowPeriodicReminderDays
+**Plist Key**: `OutsideDisplayWindowPeriodicReminderDays`
+**Type**: Integer
+**Default**: 28
+**Valid Range**: 0-999
+
+**Description**: Days between repeat reminders while the deadline is still outside `DaysBeforeDeadlineDisplayReminder`, after an initial reminder interaction has already happened.
+
+**Special Value**: `0` disables repeat reminders outside the display window after first interaction.
+
+---
+
+#### disableButton2InsteadOfHide
+**Plist Key**: `DisableButton2InsteadOfHide`
+**Type**: Boolean
+**Default**: YES
+
+**Description**: Controls whether Button 2 is disabled or hidden once `DaysBeforeDeadlineHidingButton2` is reached.
+
+**Values**:
+- `YES`: show Button 2 greyed out
+- `NO`: hide Button 2 completely
 
 **Visual Example**: See [Deadline Timeline Phase 4](03-deadline-timeline.md#phase-4-urgentcritical-deadline-imminent)
 
@@ -442,13 +485,13 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Mode Behavior**:
 - `Off`: Keep normal update-focused reminder behavior
 - `Prompt`: Shift to restart-only dialog (button1 = Restart Now), but allow normal dismissal behavior
-- `Force`: Shift to restart-only dialog with `--timer 60`; timeout triggers restart, and non-restart dismissals are re-shown in the same run (after ~5 seconds) until restart
+- `Force`: Shift to restart-only dialog with a configurable timer; timeout triggers restart, and non-restart dismissals are re-shown in the same run until restart
 
 **Eligibility Requirements**:
 - The Mac still requires the enforced macOS update/upgrade
 - The DDM enforcement deadline has passed
 - Days past deadline are greater than or equal to `daysPastDeadlineRestartWorkflow`
-- Current uptime is at least 75 minutes
+- Current uptime is at least `PastDeadlineRestartMinimumUptimeMinutes`
 
 **Script Default**:
 ```bash
@@ -466,6 +509,36 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
     PastDeadlineRestartBehavior -string "Prompt"
 ```
+
+---
+
+#### pastDeadlineRestartMinimumUptimeMinutes
+**Plist Key**: `PastDeadlineRestartMinimumUptimeMinutes`
+**Type**: Integer
+**Default**: 75
+**Valid Range**: 0-999
+
+**Description**: Minimum current uptime required before `Prompt` or `Force` restart workflow can become active after the day threshold is met. `0` allows restart workflow eligibility immediately after reboot when other conditions pass.
+
+---
+
+#### pastDeadlineForceTimerSeconds
+**Plist Key**: `PastDeadlineForceTimerSeconds`
+**Type**: Integer
+**Default**: 60
+**Valid Range**: 1-999
+
+**Description**: Countdown seconds passed to swiftDialog `--timer` in `Force` restart mode. Invalid values and `0` fall back to `60`.
+
+---
+
+#### pastDeadlineForceRedisplayDelaySeconds
+**Plist Key**: `PastDeadlineForceRedisplayDelaySeconds`
+**Type**: Integer
+**Default**: 5
+**Valid Range**: 1-999
+
+**Description**: Pause before the Force-mode dialog is shown again after a non-restart dismissal or unexpected return code. Invalid values and `0` fall back to `5`.
 
 ---
 
@@ -516,7 +589,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Exact next reminder is `now + AggressiveModeFrequencyMinutes * 60`
 - Direct, manual, and demo runs do not mutate daemon scheduler state
 - Invalid values and `0` fall back to `20` with warning logging
-- `Open Software Update` keeps the existing baseline scheduling path unless a restart action path applies
+- `Open Software Update` keeps exact aggressive-mode redisplay scheduling until compliance or support suppression
 
 **Script Default**:
 ```bash
@@ -642,7 +715,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Invalid entries are ignored with warning logging; a fully invalid value falls back to the runtime source default
 - An explicitly empty managed/local value disables these threshold reminders
 - Thresholds evaluate against the effective enforcement epoch, including a trusted padded enforcement date when one is safely resolved
-- Due threshold reminders bypass the 76-minute quiet period; standard reminders still honor it
+- Due threshold reminders bypass `QuietPeriodMinutes`; standard reminders still honor it
 - Delivery state is stored in `/Library/Management/<rdnn>/dor-state.plist`
 
 **Script Default**:
@@ -921,7 +994,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Note**: Leading `+` is required and automatically added if missing
 
-**Locale Behavior (3.0.0+, expanded in 4.0.0b17)**:
+**Locale Behavior (3.0.0+, expanded in 4.0.0b18)**:
 - `%a` / `%A` / `%b` / `%B` follow the resolved dialog language for shipped locales (`de`, `fr`, `es`, `it`, `nl`, `pt`, `ja`, fallback `en`)
 - When you provide custom `*Localized_<code>` families beyond the shipped set, the script prefers a matching installed locale for date-token rendering when one is available
 - Optional region-aware overrides use `DateFormatDeadlineHumanReadableLocalized_<code>` and resolve as exact locale (for example `fr_CA`) → base language (for example `fr`) → global `DateFormatDeadlineHumanReadable` → built-in script default
@@ -1827,7 +1900,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 **Type**: String
 **Defaults**: `Your Mac is restarting` / [full force-restart body]
 
-**Description**: Title and message body used when `PastDeadlineRestartBehavior` is `Force`. A `--timer 60` countdown is added; the dialog re-displays until the Mac restarts.
+**Description**: Title and message body used when `PastDeadlineRestartBehavior` is `Force`. A `--timer` countdown is added from `PastDeadlineForceTimerSeconds`; the dialog re-displays until the Mac restarts, with `PastDeadlineForceRedisplayDelaySeconds` between attempts.
 
 ---
 
@@ -1883,7 +1956,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.0.0b17 |
+| `{scriptVersion}` | System | Script version | 4.0.0b18 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2398,11 +2471,12 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 4.0.0b17 | 30-Jun-2026 | Clarified `NextScheduledReminder` reboot behavior: future-dated runtime schedule survives reboot and `RunAtLoad` exits quietly until due |
-| 4.0.0b17 | 29-Jun-2026 | Added aggressive-mode timing keys, title/message localized families, kill-switch guidance, and `{aggressiveModeHoursPastDeadline}` / `{aggressiveModeFrequencyMinutes}` placeholders |
-| 4.0.0b17 | 29-Jun-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
-| 4.0.0b17 | 29-Jun-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
-| 4.0.0b17 | 29-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
+| 4.0.0b18 | 30-Jun-2026 | Added `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds` reference coverage |
+| 4.0.0b18 | 30-Jun-2026 | Clarified `NextScheduledReminder` reboot behavior: future-dated runtime schedule survives reboot and `RunAtLoad` exits quietly until due |
+| 4.0.0b18 | 30-Jun-2026 | Added aggressive-mode timing keys, title/message localized families, kill-switch guidance, and `{aggressiveModeHoursPastDeadline}` / `{aggressiveModeFrequencyMinutes}` placeholders |
+| 4.0.0b18 | 30-Jun-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
+| 4.0.0b18 | 30-Jun-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
+| 4.0.0b18 | 30-Jun-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
 | 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
@@ -2410,12 +2484,12 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 4.0.0b17 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
-| 4.0.0b17 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
+| 4.0.0b18 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
+| 4.0.0b18 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
 | 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 
 ---
 
 **Last Updated**: 30-Jun-2026
-**DDM OS Reminder Version**: 4.0.0b17
+**DDM OS Reminder Version**: 4.0.0b18

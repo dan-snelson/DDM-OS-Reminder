@@ -41,7 +41,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0b17)
+🧩 Assemble DDM OS Reminder (4.0.0b18)
 ===============================================================
 
 Full Paths:
@@ -322,6 +322,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
 - Runtime scheduler state, when present, is stored separately at `/Library/Management/<rdnn>/dor-state.plist`
 - Baseline reminder slots are driven by `DailyReminderTimes` in the deployed preference plist/profile (for example, `08:00,12:00,16:00`)
 - Final-minute threshold reminders are driven by `MinutesBeforeDeadlineReminderSchedule` (default `45,30,15,10,5`)
+- Quiet-period suppression, outside-window periodic reminders, secondary-button disable/hide behavior, and Force-mode restart timing are driven by `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds`
 - Past-deadline aggressive redisplay is driven by `AggressiveModePastDeadlineHours` and `AggressiveModeFrequencyMinutes`; support can suppress it temporarily by creating `/Library/Management/<rdnn>/dor-aggressive-kill`
 
 **5.2.** Run against deployed preferences

@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 4.0.0b17 -->
-    <!-- Generated on: 2026-06-27-055610 -->
+    <!-- Version: 4.0.0b18 -->
+    <!-- Generated on: 2026-06-30-055426 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -20,14 +20,31 @@
     <integer>1</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>7</integer>
+    <!-- QuietPeriodMinutes starts after user interaction. Set 0 to disable
+         quiet-period suppression. -->
+    <key>QuietPeriodMinutes</key>
+    <integer>76</integer>
+    <!-- Periodic reminders outside DaysBeforeDeadlineDisplayReminder after a
+         prior interaction. Set 0 to disable repeat reminders outside the
+         display window. -->
+    <key>OutsideDisplayWindowPeriodicReminderDays</key>
+    <integer>28</integer>
     <!-- Past-deadline restart behavior:
          Off | Prompt | Force -->
     <key>PastDeadlineRestartBehavior</key>
     <string>Off</string>
     <key>DaysPastDeadlineRestartWorkflow</key>
     <integer>2</integer>
+    <key>PastDeadlineRestartMinimumUptimeMinutes</key>
+    <integer>75</integer>
+    <key>PastDeadlineForceTimerSeconds</key>
+    <integer>60</integer>
+    <key>PastDeadlineForceRedisplayDelaySeconds</key>
+    <integer>5</integer>
     <key>MinimumDiskFreePercentage</key>
     <integer>10</integer>
+    <key>DisableButton2InsteadOfHide</key>
+    <true/>
     <key>MeetingDelay</key>
     <integer>75</integer>
     <!-- Daily reminder times are local to the Mac and control baseline reminder

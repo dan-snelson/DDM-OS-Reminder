@@ -203,6 +203,8 @@ flowchart TD
 
 ### 8. Quiet-Period Suppression
 - **Check**: Most recent interaction (`Return Code: 0|2|3|4|10`) is within 76 minutes
+- **`Remind Me Later` behavior**: Return code `2` schedules an exact redisplay at `now + quietPeriodSeconds`
+- **Threshold precedence**: If an earlier pre-deadline threshold reminder is due, it overrides the quiet-period redisplay time
 - **Special handling**: Restart-related interactions are excluded from quiet-period suppression
 - **Bypass**: `Force` mode skips quiet-period suppression
 
@@ -303,7 +305,7 @@ Fatal errors include no logged-in user after 120 seconds and running without roo
 This ensures:
 - launchd overhead stays minimal while exact reminder timing remains script-controlled
 - baseline reminder slots are admin-controlled in the deployed `.plist` / `.mobileconfig`
-- quiet-period redisplay can use exact timestamps without another LaunchDaemon redesign
+- `Remind Me Later` quiet-period redisplay can use exact timestamps without another LaunchDaemon redesign
 - final-minute thresholds can schedule exact reminders through `NextScheduledReminder`
 
 **Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically. Threshold delivery state also lives in `dor-state.plist` so each configured threshold displays once per resolved deadline/version.

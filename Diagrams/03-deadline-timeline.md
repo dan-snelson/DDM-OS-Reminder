@@ -76,7 +76,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
-2. Click "Remind Me Later" → Dismissed until next baseline or quiet-period schedule
+2. Click "Remind Me Later" → Dismissed and re-displayed at the exact `quietPeriodSeconds` redisplay time, unless an earlier pre-deadline threshold reminder is due
 3. Close dialog → Same as "Remind Me Later"
 
 **Configuration**:
@@ -121,7 +121,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings
-2. Click "Remind Me Later" → Dismissed but returns at the next baseline or quiet-period schedule
+2. Click "Remind Me Later" → Dismissed and re-displayed at the exact `quietPeriodSeconds` redisplay time, unless an earlier pre-deadline threshold reminder is due
 3. Cannot easily ignore due to blurscreen
 
 **Configuration**:
@@ -165,7 +165,7 @@ gantt
 
 **User Options**:
 1. Click "Open Software Update" → Opens System Settings (ONLY option)
-2. Close dialog → Returns at the next baseline or quiet-period schedule (cannot avoid)
+2. Close dialog → Returns at the exact `quietPeriodSeconds` redisplay time, unless an earlier pre-deadline threshold reminder is due (cannot avoid)
 
 **Rationale**:
 - Deadline is imminent; postponement no longer appropriate

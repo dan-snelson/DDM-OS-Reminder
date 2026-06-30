@@ -491,6 +491,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.10 | 30-Jun-2026 | Clarified `NextScheduledReminder` runtime behavior after reboot: future-dated scheduler state survives reboot and `RunAtLoad` exits quietly until due |
 | 1.0.9 | 29-Jun-2026 | Updated daemon/scheduling diagrams for the v4 heartbeat `dor-starter.zsh` flow, `dor.zsh` deployed path, runtime state assets, and `DailyReminderTimes`-driven baseline reminder slots |
 | 1.0.8 | 21-May-2026 | Refreshed configuration-reference coverage for explicit lowercase placeholder variants, the natural Japanese deadline-format override example, and current German `macOS-Update` sample wording |
 | 1.0.7 | 14-May-2026 | Documented region-aware deadline date-format fallback keys, exact/base locale resolution behavior, and aligned relative-deadline time rendering guidance |
@@ -511,5 +512,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 29-Jun-2026
+**Last Updated**: 30-Jun-2026
 **DDM OS Reminder Version**: 4.0.0b17

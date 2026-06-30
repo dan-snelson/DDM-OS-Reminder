@@ -307,3 +307,5 @@ This ensures:
 - final-minute thresholds can schedule exact reminders through `NextScheduledReminder`
 
 **Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically. Threshold delivery state also lives in `dor-state.plist` so each configured threshold displays once per resolved deadline/version.
+
+**Boot Behavior**: `RunAtLoad` does not override a future `NextScheduledReminder`. After a reboot, `dor-starter.zsh` re-checks `dor-state.plist` and exits quietly until the stored due time arrives.

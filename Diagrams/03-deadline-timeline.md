@@ -221,6 +221,7 @@ gantt
 **Runtime Notes**:
 - If restart mode is eligible by days but uptime is below 75 minutes, restart mode is temporarily suppressed and update-focused flow continues
 - Aggressive `Open Software Update` / dismissal / close / keyboard quit / timer interactions schedule an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
+- A reboot does not clear a future `NextScheduledReminder`; the `RunAtLoad` heartbeat still exits quietly until that stored due time arrives
 - The support kill switch logs a notice and falls back to normal non-aggressive cadence
 - Force mode bypasses quiet-period suppression and meeting-delay checks
 

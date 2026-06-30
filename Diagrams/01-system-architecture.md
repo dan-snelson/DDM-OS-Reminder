@@ -64,8 +64,8 @@ graph TB
 
     subgraph Runtime["▶️ Runtime Execution"]
         CLILD -->|RunAtLoad + StartInterval 60s| STARTER
-        STATE -->|Read NextScheduledReminder| STARTER
-        STARTER -->|Launch only when due| CLISCRIPT
+        STATE -->|Read NextScheduledReminder<br/>FALSE / future-dated = exit| STARTER
+        STARTER -->|Launch only when due<br/>or schedule is invalid| CLISCRIPT
         CLISCRIPT -->|Write NextScheduledReminder<br/>DaemonLastTriggered| STATE
 
         CLISCRIPT -->|1. Loads preferences| PREFLOAD["Preference Loader<br/>Managed → Local → Defaults"]
@@ -165,7 +165,7 @@ graph TB
 - Managed Preferences deployed via Configuration Profile
 
 ### Runtime Execution
-1. **LaunchDaemon heartbeat triggers** at load and every 60 seconds; `dor-starter.zsh` launches `dor.zsh` only when `dor-state.plist` says a reminder is due
+1. **LaunchDaemon heartbeat triggers** at load and every 60 seconds; `dor-starter.zsh` launches `dor.zsh` only when `dor-state.plist` says a reminder is due, and exits quietly at boot when `NextScheduledReminder` is still future-dated or `FALSE`
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
 4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration

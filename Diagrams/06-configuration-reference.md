@@ -585,6 +585,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Entries are normalized, sorted, and de-duplicated by runtime
 - Invalid entries are ignored with warning logging; fully invalid values fall back to script default
 - Baseline scheduling uses this list when reminder flow returns to normal cadence, including after `Open Software Update`
+- A reboot does not bypass a future `NextScheduledReminder`; `RunAtLoad` checks `dor-state.plist` and exits until the stored due time
 
 **Examples**:
 - `08:00,12:00,16:00` = morning, midday, afternoon reminders
@@ -2397,6 +2398,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.0.0b17 | 30-Jun-2026 | Clarified `NextScheduledReminder` reboot behavior: future-dated runtime schedule survives reboot and `RunAtLoad` exits quietly until due |
 | 4.0.0b17 | 29-Jun-2026 | Added aggressive-mode timing keys, title/message localized families, kill-switch guidance, and `{aggressiveModeHoursPastDeadline}` / `{aggressiveModeFrequencyMinutes}` placeholders |
 | 4.0.0b17 | 29-Jun-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
 | 4.0.0b17 | 29-Jun-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
@@ -2415,5 +2417,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 ---
 
-**Last Updated**: 29-Jun-2026
+**Last Updated**: 30-Jun-2026
 **DDM OS Reminder Version**: 4.0.0b17

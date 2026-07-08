@@ -41,7 +41,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.0.0b18"
+scriptVersion="4.0.0b19"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1672,13 +1672,20 @@ echo "🔁 Updating scriptLog path based on RDNN …"
 # Update outer deployment script plus embedded reminder script, but leave the
 # dor-starter template placeholder untouched for runtime substitution.
 scriptLogUpdateTmp="${outputScript}.scriptlog.tmp"
-awk -v replacement="scriptLog=\"${resolvedScriptLogPath}\"" '
+awk \
+  -v scriptLogReplacement="scriptLog=\"${resolvedScriptLogPath}\"" \
+  -v scriptLogPreferenceReplacement="    [\"scriptLog\"]=\"string|${resolvedScriptLogPath}\"" '
   /^function createDorStarterScript\(\)/ {
     reachedDorStarterFunction = 1
   }
 
   !reachedDorStarterFunction && /^scriptLog="[^"]*"$/ {
-    print replacement
+    print scriptLogReplacement
+    next
+  }
+
+  !reachedDorStarterFunction && /^[[:space:]]*\["scriptLog"\]="string\|[^"]*"$/ {
+    print scriptLogPreferenceReplacement
     next
   }
 

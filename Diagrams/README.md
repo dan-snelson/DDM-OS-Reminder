@@ -1,4 +1,4 @@
-# DDM OS Reminder (4.0.0b18) - Documentation Diagrams
+# DDM OS Reminder (4.0.0b19) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -491,9 +491,9 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.10 | 30-Jun-2026 | Clarified `NextScheduledReminder` runtime behavior after reboot: future-dated scheduler state survives reboot and `RunAtLoad` exits quietly until due |
-| 1.0.9 | 30-Jun-2026 | Updated daemon/scheduling diagrams for the v4 heartbeat `dor-starter.zsh` flow, `dor.zsh` deployed path, runtime state assets, and `DailyReminderTimes`-driven baseline reminder slots |
-| 1.0.8 | 21-May-2026 | Refreshed configuration-reference coverage for explicit lowercase placeholder variants, the natural Japanese deadline-format override example, and current German `macOS-Update` sample wording |
+| 1.0.10 | 08-Jul-2026 | Clarified `NextScheduledReminder` runtime behavior after reboot: future-dated scheduler state survives reboot and `RunAtLoad` exits quietly until due |
+| 1.0.9 | 08-Jul-2026 | Updated daemon/scheduling diagrams for the v4 heartbeat `dor-starter.zsh` flow, `dor.zsh` deployed path, runtime state assets, and `DailyReminderTimes`-driven baseline reminder slots |
+| 1.0.8 | 08-Jul-2026 | Refreshed configuration-reference coverage for explicit lowercase placeholder variants, the natural Japanese deadline-format override example, and current German `macOS-Update` sample wording |
 | 1.0.7 | 14-May-2026 | Documented region-aware deadline date-format fallback keys, exact/base locale resolution behavior, and aligned relative-deadline time rendering guidance |
 | 1.0.6 | 06-Apr-2026 | Refreshed diagram documentation for the `3.2.0` release, including final-version metadata, current localization behavior, `VersionString`-based compliance fallback when `BuildVersionString` is unavailable, and bundled EA fixture-hook guidance |
 | 1.0.5 | 28-Mar-2026 | Updated overview, deployment workflow, and configuration reference markdown for `3.0.0` prior-plist upgrade-assist, lane-suffixed artifact names, and `2.2.0+` documented compatibility |
@@ -512,5 +512,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 30-Jun-2026
-**DDM OS Reminder Version**: 4.0.0b18
+**Last Updated**: 08-Jul-2026
+**DDM OS Reminder Version**: 4.0.0b19

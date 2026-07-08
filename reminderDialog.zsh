@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0b18"
+scriptVersion="4.0.0b19"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -586,7 +586,7 @@ function removeDorPidFile() {
 }
 
 function initializeDorPidFile() {
-    if [[ "${isDemoModeRequested}" == "YES" ]]; then
+    if ! shouldManageDaemonScheduling; then
         return 0
     fi
 
@@ -1288,14 +1288,87 @@ function formatDeadlineFromISO8601() {
     local sourceTimestamp="${1}"
     local requestedFormat="${2}"
     local formattedDeadline=""
+    local sourceEpoch=""
 
-    formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
+    sourceEpoch="$(epochFromISO8601Timestamp "${sourceTimestamp}")"
+    if [[ -n "${sourceEpoch}" ]]; then
+        formattedDeadline=$(formatDeadlineFromEpoch "${sourceEpoch}" "${requestedFormat}")
+    fi
     if [[ -z "${formattedDeadline}" ]]; then
-        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
+        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
+    fi
+    if [[ -z "${formattedDeadline}" ]]; then
+        if [[ -n "${sourceEpoch}" ]]; then
+            formattedDeadline=$(formatDeadlineFromEpoch "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
+        else
+            formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
+        fi
     fi
 
     formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
+}
+
+function epochFromISO8601Timestamp() {
+    local sourceTimestamp="${1}"
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local offsetSign="+"
+    local offsetHours=0
+    local offsetMinutes=0
+    local totalOffsetMinutes=0
+    local days=0
+    local localTimestamp=""
+    local parsedEpoch=""
+
+    if [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$' ]]; then
+        year=$(( 10#${match[1]} ))
+        month=$(( 10#${match[2]} ))
+        day=$(( 10#${match[3]} ))
+        hour=$(( 10#${match[4]} ))
+        minute=$(( 10#${match[5]} ))
+        second=$(( 10#${match[6]} ))
+    elif [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})([+-])([0-9]{2}):?([0-9]{2})$' ]]; then
+        year=$(( 10#${match[1]} ))
+        month=$(( 10#${match[2]} ))
+        day=$(( 10#${match[3]} ))
+        hour=$(( 10#${match[4]} ))
+        minute=$(( 10#${match[5]} ))
+        second=$(( 10#${match[6]} ))
+        offsetSign="${match[7]}"
+        offsetHours=$(( 10#${match[8]} ))
+        offsetMinutes=$(( 10#${match[9]} ))
+    elif [[ "${sourceTimestamp}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$' ]]; then
+        parsedEpoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%s" 2>/dev/null)
+        echo "${parsedEpoch}"
+        return 0
+    else
+        return 1
+    fi
+
+    if (( month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59 || offsetHours > 23 || offsetMinutes > 59 )); then
+        return 1
+    fi
+
+    localTimestamp=$(printf "%04d-%02d-%02dT%02d:%02d:%02d" "${year}" "${month}" "${day}" "${hour}" "${minute}" "${second}")
+    date -j -f "%Y-%m-%dT%H:%M:%S" "${localTimestamp}" "+%s" >/dev/null 2>&1 || return 1
+
+    if ! ddmDaysFromCivil "${year}" "${month}" "${day}"; then
+        return 1
+    fi
+    days="${ddmDaysFromCivilResult}"
+
+    totalOffsetMinutes=$(( (offsetHours * 60) + offsetMinutes ))
+    if [[ "${offsetSign}" == "-" ]]; then
+        totalOffsetMinutes=$(( -totalOffsetMinutes ))
+    fi
+
+    parsedEpoch=$(( (days * 86400) + (hour * 3600) + (minute * 60) + second - (totalOffsetMinutes * 60) ))
+    echo "${parsedEpoch}"
 }
 
 function formatDeadlineFromEpoch() {
@@ -3388,12 +3461,6 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
-    if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
-        versionComparisonResult="Up-to-date"
-        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}${ddmResolverStatus:+ despite resolver state ${ddmResolverStatus}}."
-        return
-    fi
-
     case "${ddmResolverStatus}" in
         missing)
             versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
@@ -3406,6 +3473,12 @@ installedOSvsDDMenforcedOS() {
             return
             ;;
     esac
+
+    if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
+        versionComparisonResult="Up-to-date"
+        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+        return
+    fi
 
     ddmLogEntry="${ddmDeclarationRawLine}"
     if [[ -z "${ddmLogEntry}" ]]; then
@@ -3424,7 +3497,7 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
-    deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
+    deadlineEpoch=$(epochFromISO8601Timestamp "${ddmEnforcedInstallDate}")
     if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
         fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
     fi
@@ -4406,7 +4479,7 @@ if [[ "${1}" == "demo" ]]; then
     ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromISO8601 "${ddmVersionStringDeadline}" "${dateFormatDeadlineHumanReadable}" )
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// AM/ a.m.}
     ddmEnforcedInstallDateHumanReadable=${ddmEnforcedInstallDateHumanReadable// PM/ p.m.}
-    deadlineEpoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "${ddmVersionStringDeadline}" "+%s" 2>/dev/null)
+    deadlineEpoch=$(epochFromISO8601Timestamp "${ddmVersionStringDeadline}")
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     nowEpoch=$(date +%s)
     secondsUntilDeadline=$(( deadlineEpoch - nowEpoch ))

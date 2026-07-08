@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 4.0.0b18 (30-Jun-2026)
+### Version 4.0.0b19 (08-Jul-2026)
 - Reworked daemon orchestration so `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds instead of launching the main reminder script directly.
 - Added runtime scheduler assets `/Library/Management/<rdnn>/dor-starter.zsh`, `dor-state.plist`, and `dor.pid`, with `NextScheduledReminder` / `DaemonLastTriggered` state managed through `PlistBuddy`.
 - Added `DailyReminderTimes` preference (`HH:MM` CSV, local time) so baseline reminder slots are admin-controlled through deployed `.plist` / `.mobileconfig` content, with default `08:00,12:00,16:00`.

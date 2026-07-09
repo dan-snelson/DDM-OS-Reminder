@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="3.3.0"
+scriptVersion="4.0.0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
@@ -307,12 +307,22 @@ daysBeforeDeadlineDisplayReminder=$(extract_from_preference_map daysBeforeDeadli
 daysBeforeDeadlineBlurscreen=$(extract_from_preference_map daysBeforeDeadlineBlurscreen)
 daysBeforeDeadlineHidingButton2=$(extract_from_preference_map daysBeforeDeadlineHidingButton2)
 daysOfExcessiveUptimeWarning=$(extract_from_preference_map daysOfExcessiveUptimeWarning)
+quietPeriodMinutes=$(extract_from_preference_map quietPeriodMinutes)
+outsideDisplayWindowPeriodicReminderDays=$(extract_from_preference_map outsideDisplayWindowPeriodicReminderDays)
 daysPastDeadlineRestartWorkflow=$(extract_from_preference_map daysPastDeadlineRestartWorkflow)
 pastDeadlineRestartBehavior=$(extract_from_preference_map pastDeadlineRestartBehavior)
+pastDeadlineRestartMinimumUptimeMinutes=$(extract_from_preference_map pastDeadlineRestartMinimumUptimeMinutes)
+pastDeadlineForceTimerSeconds=$(extract_from_preference_map pastDeadlineForceTimerSeconds)
+pastDeadlineForceRedisplayDelaySeconds=$(extract_from_preference_map pastDeadlineForceRedisplayDelaySeconds)
+aggressiveModePastDeadlineHours=$(extract_from_preference_map aggressiveModePastDeadlineHours)
+aggressiveModeFrequencyMinutes=$(extract_from_preference_map aggressiveModeFrequencyMinutes)
 meetingDelay=$(extract_from_preference_map meetingDelay)
+dailyReminderTimes=$(extract_from_preference_map dailyReminderTimes)
+minutesBeforeDeadlineReminderSchedule=$(extract_from_preference_map minutesBeforeDeadlineReminderSchedule)
 acceptableAssertionApplicationNames=$(extract_from_preference_map acceptableAssertionApplicationNames)
 dateFormatDeadlineHumanReadable=$(extract_from_preference_map dateFormatDeadlineHumanReadable)
 swapOverlayAndLogo_raw=$(extract_from_preference_map swapOverlayAndLogo)
+disableButton2InsteadOfHide_raw=$(extract_from_preference_map disableButton2InsteadOfHide)
 hideStagedInfo_raw=$(extract_from_preference_map hideStagedInfo)
 hideSupportTeamPhone_raw=$(extract_from_preference_map hideSupportTeamPhone)
 hideSupportTeamEmail_raw=$(extract_from_preference_map hideSupportTeamEmail)
@@ -325,6 +335,11 @@ languageOverride=$(extract_from_preference_map languageOverride)
 case "${swapOverlayAndLogo_raw:u}" in
     YES|TRUE|1) swapOverlayAndLogo_xml="<true/>" ;;
     *)          swapOverlayAndLogo_xml="<false/>" ;;
+esac
+
+case "${disableButton2InsteadOfHide_raw:u}" in
+    YES|TRUE|1) disableButton2InsteadOfHide_xml="<true/>" ;;
+    *)          disableButton2InsteadOfHide_xml="<false/>" ;;
 esac
 
 case "${hideStagedInfo_raw:u}" in
@@ -622,6 +637,24 @@ defaultDeadlineEnforcementMessageRelativeLocalizedIt=$(extract_from_preference_m
 defaultDeadlineEnforcementMessageRelativeLocalizedPt=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedPt)
 defaultDeadlineEnforcementMessageRelativeLocalizedJa=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedJa)
 defaultDeadlineEnforcementMessageRelativeLocalizedNl=$(extract_from_preference_map deadlineEnforcementMessageRelativeLocalizedNl)
+defaultPreDeadlineThresholdTitle=$(extract_from_preference_map preDeadlineThresholdTitle)
+defaultPreDeadlineThresholdTitleLocalizedEn=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedEn)
+defaultPreDeadlineThresholdTitleLocalizedDe=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedDe)
+defaultPreDeadlineThresholdTitleLocalizedFr=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedFr)
+defaultPreDeadlineThresholdTitleLocalizedEs=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedEs)
+defaultPreDeadlineThresholdTitleLocalizedIt=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedIt)
+defaultPreDeadlineThresholdTitleLocalizedPt=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedPt)
+defaultPreDeadlineThresholdTitleLocalizedJa=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedJa)
+defaultPreDeadlineThresholdTitleLocalizedNl=$(extract_from_preference_map preDeadlineThresholdTitleLocalizedNl)
+defaultPreDeadlineThresholdMessage=$(extract_from_preference_map preDeadlineThresholdMessage)
+defaultPreDeadlineThresholdMessageLocalizedEn=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedEn)
+defaultPreDeadlineThresholdMessageLocalizedDe=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedDe)
+defaultPreDeadlineThresholdMessageLocalizedFr=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedFr)
+defaultPreDeadlineThresholdMessageLocalizedEs=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedEs)
+defaultPreDeadlineThresholdMessageLocalizedIt=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedIt)
+defaultPreDeadlineThresholdMessageLocalizedPt=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedPt)
+defaultPreDeadlineThresholdMessageLocalizedJa=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedJa)
+defaultPreDeadlineThresholdMessageLocalizedNl=$(extract_from_preference_map preDeadlineThresholdMessageLocalizedNl)
 defaultPastDeadlinePromptTitle=$(extract_from_preference_map pastDeadlinePromptTitle)
 defaultPastDeadlinePromptTitleLocalizedEn=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedEn)
 defaultPastDeadlinePromptTitleLocalizedDe=$(extract_from_preference_map pastDeadlinePromptTitleLocalizedDe)
@@ -658,6 +691,24 @@ defaultPastDeadlineForceMessageLocalizedIt=$(extract_from_preference_map pastDea
 defaultPastDeadlineForceMessageLocalizedPt=$(extract_from_preference_map pastDeadlineForceMessageLocalizedPt)
 defaultPastDeadlineForceMessageLocalizedJa=$(extract_from_preference_map pastDeadlineForceMessageLocalizedJa)
 defaultPastDeadlineForceMessageLocalizedNl=$(extract_from_preference_map pastDeadlineForceMessageLocalizedNl)
+defaultAggressiveModeTitle=$(extract_from_preference_map aggressiveModeTitle)
+defaultAggressiveModeTitleLocalizedEn=$(extract_from_preference_map aggressiveModeTitleLocalizedEn)
+defaultAggressiveModeTitleLocalizedDe=$(extract_from_preference_map aggressiveModeTitleLocalizedDe)
+defaultAggressiveModeTitleLocalizedFr=$(extract_from_preference_map aggressiveModeTitleLocalizedFr)
+defaultAggressiveModeTitleLocalizedEs=$(extract_from_preference_map aggressiveModeTitleLocalizedEs)
+defaultAggressiveModeTitleLocalizedIt=$(extract_from_preference_map aggressiveModeTitleLocalizedIt)
+defaultAggressiveModeTitleLocalizedPt=$(extract_from_preference_map aggressiveModeTitleLocalizedPt)
+defaultAggressiveModeTitleLocalizedJa=$(extract_from_preference_map aggressiveModeTitleLocalizedJa)
+defaultAggressiveModeTitleLocalizedNl=$(extract_from_preference_map aggressiveModeTitleLocalizedNl)
+defaultAggressiveModeMessage=$(extract_from_preference_map aggressiveModeMessage)
+defaultAggressiveModeMessageLocalizedEn=$(extract_from_preference_map aggressiveModeMessageLocalizedEn)
+defaultAggressiveModeMessageLocalizedDe=$(extract_from_preference_map aggressiveModeMessageLocalizedDe)
+defaultAggressiveModeMessageLocalizedFr=$(extract_from_preference_map aggressiveModeMessageLocalizedFr)
+defaultAggressiveModeMessageLocalizedEs=$(extract_from_preference_map aggressiveModeMessageLocalizedEs)
+defaultAggressiveModeMessageLocalizedIt=$(extract_from_preference_map aggressiveModeMessageLocalizedIt)
+defaultAggressiveModeMessageLocalizedPt=$(extract_from_preference_map aggressiveModeMessageLocalizedPt)
+defaultAggressiveModeMessageLocalizedJa=$(extract_from_preference_map aggressiveModeMessageLocalizedJa)
+defaultAggressiveModeMessageLocalizedNl=$(extract_from_preference_map aggressiveModeMessageLocalizedNl)
 
 # Resolve Info button-related defaults to concrete values,
 # mirroring runtime behavior in reminderDialog.zsh
@@ -926,6 +977,24 @@ deadlineEnforcementMessageRelativeLocalizedIt_xml=$(process "$defaultDeadlineEnf
 deadlineEnforcementMessageRelativeLocalizedPt_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedPt")
 deadlineEnforcementMessageRelativeLocalizedJa_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedJa")
 deadlineEnforcementMessageRelativeLocalizedNl_xml=$(process "$defaultDeadlineEnforcementMessageRelativeLocalizedNl")
+preDeadlineThresholdTitle_xml=$(process "$defaultPreDeadlineThresholdTitle")
+preDeadlineThresholdTitleLocalizedEn_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedEn")
+preDeadlineThresholdTitleLocalizedDe_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedDe")
+preDeadlineThresholdTitleLocalizedFr_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedFr")
+preDeadlineThresholdTitleLocalizedEs_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedEs")
+preDeadlineThresholdTitleLocalizedIt_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedIt")
+preDeadlineThresholdTitleLocalizedPt_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedPt")
+preDeadlineThresholdTitleLocalizedJa_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedJa")
+preDeadlineThresholdTitleLocalizedNl_xml=$(process "$defaultPreDeadlineThresholdTitleLocalizedNl")
+preDeadlineThresholdMessage_xml=$(process "$defaultPreDeadlineThresholdMessage")
+preDeadlineThresholdMessageLocalizedEn_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedEn")
+preDeadlineThresholdMessageLocalizedDe_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedDe")
+preDeadlineThresholdMessageLocalizedFr_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedFr")
+preDeadlineThresholdMessageLocalizedEs_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedEs")
+preDeadlineThresholdMessageLocalizedIt_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedIt")
+preDeadlineThresholdMessageLocalizedPt_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedPt")
+preDeadlineThresholdMessageLocalizedJa_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedJa")
+preDeadlineThresholdMessageLocalizedNl_xml=$(process "$defaultPreDeadlineThresholdMessageLocalizedNl")
 pastDeadlinePromptTitle_xml=$(process "$defaultPastDeadlinePromptTitle")
 pastDeadlinePromptTitleLocalizedEn_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedEn")
 pastDeadlinePromptTitleLocalizedDe_xml=$(process "$defaultPastDeadlinePromptTitleLocalizedDe")
@@ -962,11 +1031,31 @@ pastDeadlineForceMessageLocalizedIt_xml=$(process "$defaultPastDeadlineForceMess
 pastDeadlineForceMessageLocalizedPt_xml=$(process "$defaultPastDeadlineForceMessageLocalizedPt")
 pastDeadlineForceMessageLocalizedJa_xml=$(process "$defaultPastDeadlineForceMessageLocalizedJa")
 pastDeadlineForceMessageLocalizedNl_xml=$(process "$defaultPastDeadlineForceMessageLocalizedNl")
+aggressiveModeTitle_xml=$(process "$defaultAggressiveModeTitle")
+aggressiveModeTitleLocalizedEn_xml=$(process "$defaultAggressiveModeTitleLocalizedEn")
+aggressiveModeTitleLocalizedDe_xml=$(process "$defaultAggressiveModeTitleLocalizedDe")
+aggressiveModeTitleLocalizedFr_xml=$(process "$defaultAggressiveModeTitleLocalizedFr")
+aggressiveModeTitleLocalizedEs_xml=$(process "$defaultAggressiveModeTitleLocalizedEs")
+aggressiveModeTitleLocalizedIt_xml=$(process "$defaultAggressiveModeTitleLocalizedIt")
+aggressiveModeTitleLocalizedPt_xml=$(process "$defaultAggressiveModeTitleLocalizedPt")
+aggressiveModeTitleLocalizedJa_xml=$(process "$defaultAggressiveModeTitleLocalizedJa")
+aggressiveModeTitleLocalizedNl_xml=$(process "$defaultAggressiveModeTitleLocalizedNl")
+aggressiveModeMessage_xml=$(process "$defaultAggressiveModeMessage")
+aggressiveModeMessageLocalizedEn_xml=$(process "$defaultAggressiveModeMessageLocalizedEn")
+aggressiveModeMessageLocalizedDe_xml=$(process "$defaultAggressiveModeMessageLocalizedDe")
+aggressiveModeMessageLocalizedFr_xml=$(process "$defaultAggressiveModeMessageLocalizedFr")
+aggressiveModeMessageLocalizedEs_xml=$(process "$defaultAggressiveModeMessageLocalizedEs")
+aggressiveModeMessageLocalizedIt_xml=$(process "$defaultAggressiveModeMessageLocalizedIt")
+aggressiveModeMessageLocalizedPt_xml=$(process "$defaultAggressiveModeMessageLocalizedPt")
+aggressiveModeMessageLocalizedJa_xml=$(process "$defaultAggressiveModeMessageLocalizedJa")
+aggressiveModeMessageLocalizedNl_xml=$(process "$defaultAggressiveModeMessageLocalizedNl")
 
 infobuttonaction_xml=$(printf "%s" "$resolvedInfobuttonaction" | xml_escape)
 supportKBURL_xml=$(printf "%s" "$resolvedSupportKBURL" | xml_escape)
 
 scriptLog_xml=$(echo "$scriptLog" | xml_escape)
+dailyReminderTimes_xml=$(printf "%s" "$dailyReminderTimes" | xml_escape)
+minutesBeforeDeadlineReminderSchedule_xml=$(printf "%s" "$minutesBeforeDeadlineReminderSchedule" | xml_escape)
 pastDeadlineRestartBehavior_xml=$(echo "$pastDeadlineRestartBehavior" | xml_escape)
 dateFormat_xml=$(echo "$dateFormatDeadlineHumanReadable" | xml_escape)
 languageOverride_xml=$(echo "$languageOverride" | xml_escape)
@@ -998,18 +1087,38 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <integer>${daysBeforeDeadlineHidingButton2}</integer>
     <key>DaysOfExcessiveUptimeWarning</key>
     <integer>${daysOfExcessiveUptimeWarning}</integer>
+    <key>QuietPeriodMinutes</key>
+    <integer>${quietPeriodMinutes}</integer>
+    <key>OutsideDisplayWindowPeriodicReminderDays</key>
+    <integer>${outsideDisplayWindowPeriodicReminderDays}</integer>
     <!-- Past-deadline restart behavior:
          Off | Prompt | Force -->
     <key>PastDeadlineRestartBehavior</key>
     <string>${pastDeadlineRestartBehavior_xml}</string>
     <key>DaysPastDeadlineRestartWorkflow</key>
     <integer>${daysPastDeadlineRestartWorkflow}</integer>
+    <key>PastDeadlineRestartMinimumUptimeMinutes</key>
+    <integer>${pastDeadlineRestartMinimumUptimeMinutes}</integer>
+    <key>PastDeadlineForceTimerSeconds</key>
+    <integer>${pastDeadlineForceTimerSeconds}</integer>
+    <key>PastDeadlineForceRedisplayDelaySeconds</key>
+    <integer>${pastDeadlineForceRedisplayDelaySeconds}</integer>
+    <key>AggressiveModePastDeadlineHours</key>
+    <integer>${aggressiveModePastDeadlineHours}</integer>
+    <key>AggressiveModeFrequencyMinutes</key>
+    <integer>${aggressiveModeFrequencyMinutes}</integer>
     <key>MeetingDelay</key>
     <integer>${meetingDelay}</integer>
+    <key>DailyReminderTimes</key>
+    <string>${dailyReminderTimes_xml}</string>
+    <key>MinutesBeforeDeadlineReminderSchedule</key>
+    <string>${minutesBeforeDeadlineReminderSchedule_xml}</string>
     <key>AcceptableAssertionApplicationNames</key>
     <string>${acceptableAssertionApplicationNames_xml}</string>
     <key>MinimumDiskFreePercentage</key>
     <integer>${minimumDiskFreePercentage}</integer>
+    <key>DisableButton2InsteadOfHide</key>
+    ${disableButton2InsteadOfHide_xml}
 
     <!-- Branding -->
     <key>OrganizationOverlayIconURL</key>
@@ -1504,6 +1613,42 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${deadlineEnforcementMessageRelativeLocalizedJa_xml}</string>
     <key>DeadlineEnforcementMessageRelativeLocalized_nl</key>
     <string>${deadlineEnforcementMessageRelativeLocalizedNl_xml}</string>
+    <key>PreDeadlineThresholdTitle</key>
+    <string>${preDeadlineThresholdTitle_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_en</key>
+    <string>${preDeadlineThresholdTitleLocalizedEn_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_de</key>
+    <string>${preDeadlineThresholdTitleLocalizedDe_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_fr</key>
+    <string>${preDeadlineThresholdTitleLocalizedFr_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_es</key>
+    <string>${preDeadlineThresholdTitleLocalizedEs_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_it</key>
+    <string>${preDeadlineThresholdTitleLocalizedIt_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_pt</key>
+    <string>${preDeadlineThresholdTitleLocalizedPt_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_ja</key>
+    <string>${preDeadlineThresholdTitleLocalizedJa_xml}</string>
+    <key>PreDeadlineThresholdTitleLocalized_nl</key>
+    <string>${preDeadlineThresholdTitleLocalizedNl_xml}</string>
+    <key>PreDeadlineThresholdMessage</key>
+    <string>${preDeadlineThresholdMessage_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_en</key>
+    <string>${preDeadlineThresholdMessageLocalizedEn_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_de</key>
+    <string>${preDeadlineThresholdMessageLocalizedDe_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_fr</key>
+    <string>${preDeadlineThresholdMessageLocalizedFr_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_es</key>
+    <string>${preDeadlineThresholdMessageLocalizedEs_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_it</key>
+    <string>${preDeadlineThresholdMessageLocalizedIt_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_pt</key>
+    <string>${preDeadlineThresholdMessageLocalizedPt_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_ja</key>
+    <string>${preDeadlineThresholdMessageLocalizedJa_xml}</string>
+    <key>PreDeadlineThresholdMessageLocalized_nl</key>
+    <string>${preDeadlineThresholdMessageLocalizedNl_xml}</string>
     <key>PastDeadlinePromptTitle</key>
     <string>${pastDeadlinePromptTitle_xml}</string>
     <key>PastDeadlinePromptTitleLocalized_en</key>
@@ -1576,6 +1721,42 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${pastDeadlineForceMessageLocalizedJa_xml}</string>
     <key>PastDeadlineForceMessageLocalized_nl</key>
     <string>${pastDeadlineForceMessageLocalizedNl_xml}</string>
+    <key>AggressiveModeTitle</key>
+    <string>${aggressiveModeTitle_xml}</string>
+    <key>AggressiveModeTitleLocalized_en</key>
+    <string>${aggressiveModeTitleLocalizedEn_xml}</string>
+    <key>AggressiveModeTitleLocalized_de</key>
+    <string>${aggressiveModeTitleLocalizedDe_xml}</string>
+    <key>AggressiveModeTitleLocalized_fr</key>
+    <string>${aggressiveModeTitleLocalizedFr_xml}</string>
+    <key>AggressiveModeTitleLocalized_es</key>
+    <string>${aggressiveModeTitleLocalizedEs_xml}</string>
+    <key>AggressiveModeTitleLocalized_it</key>
+    <string>${aggressiveModeTitleLocalizedIt_xml}</string>
+    <key>AggressiveModeTitleLocalized_pt</key>
+    <string>${aggressiveModeTitleLocalizedPt_xml}</string>
+    <key>AggressiveModeTitleLocalized_ja</key>
+    <string>${aggressiveModeTitleLocalizedJa_xml}</string>
+    <key>AggressiveModeTitleLocalized_nl</key>
+    <string>${aggressiveModeTitleLocalizedNl_xml}</string>
+    <key>AggressiveModeMessage</key>
+    <string>${aggressiveModeMessage_xml}</string>
+    <key>AggressiveModeMessageLocalized_en</key>
+    <string>${aggressiveModeMessageLocalizedEn_xml}</string>
+    <key>AggressiveModeMessageLocalized_de</key>
+    <string>${aggressiveModeMessageLocalizedDe_xml}</string>
+    <key>AggressiveModeMessageLocalized_fr</key>
+    <string>${aggressiveModeMessageLocalizedFr_xml}</string>
+    <key>AggressiveModeMessageLocalized_es</key>
+    <string>${aggressiveModeMessageLocalizedEs_xml}</string>
+    <key>AggressiveModeMessageLocalized_it</key>
+    <string>${aggressiveModeMessageLocalizedIt_xml}</string>
+    <key>AggressiveModeMessageLocalized_pt</key>
+    <string>${aggressiveModeMessageLocalizedPt_xml}</string>
+    <key>AggressiveModeMessageLocalized_ja</key>
+    <string>${aggressiveModeMessageLocalizedJa_xml}</string>
+    <key>AggressiveModeMessageLocalized_nl</key>
+    <string>${aggressiveModeMessageLocalizedNl_xml}</string>
     <key>Message</key>
     <string>${message_xml}</string>
     <key>MessageLocalized_en</key>
@@ -1676,16 +1857,36 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <integer>${daysBeforeDeadlineHidingButton2}</integer>
                                 <key>DaysOfExcessiveUptimeWarning</key>
                                 <integer>${daysOfExcessiveUptimeWarning}</integer>
+                                <key>QuietPeriodMinutes</key>
+                                <integer>${quietPeriodMinutes}</integer>
+                                <key>OutsideDisplayWindowPeriodicReminderDays</key>
+                                <integer>${outsideDisplayWindowPeriodicReminderDays}</integer>
                                 <key>PastDeadlineRestartBehavior</key>
                                 <string>${pastDeadlineRestartBehavior_xml}</string>
                                 <key>DaysPastDeadlineRestartWorkflow</key>
                                 <integer>${daysPastDeadlineRestartWorkflow}</integer>
+                                <key>PastDeadlineRestartMinimumUptimeMinutes</key>
+                                <integer>${pastDeadlineRestartMinimumUptimeMinutes}</integer>
+                                <key>PastDeadlineForceTimerSeconds</key>
+                                <integer>${pastDeadlineForceTimerSeconds}</integer>
+                                <key>PastDeadlineForceRedisplayDelaySeconds</key>
+                                <integer>${pastDeadlineForceRedisplayDelaySeconds}</integer>
+                                <key>AggressiveModePastDeadlineHours</key>
+                                <integer>${aggressiveModePastDeadlineHours}</integer>
+                                <key>AggressiveModeFrequencyMinutes</key>
+                                <integer>${aggressiveModeFrequencyMinutes}</integer>
                                 <key>MeetingDelay</key>
                                 <integer>${meetingDelay}</integer>
+                                <key>DailyReminderTimes</key>
+                                <string>${dailyReminderTimes_xml}</string>
+                                <key>MinutesBeforeDeadlineReminderSchedule</key>
+                                <string>${minutesBeforeDeadlineReminderSchedule_xml}</string>
                                 <key>AcceptableAssertionApplicationNames</key>
                                 <string>${acceptableAssertionApplicationNames_xml}</string>
                                 <key>MinimumDiskFreePercentage</key>
                                 <integer>${minimumDiskFreePercentage}</integer>
+                                <key>DisableButton2InsteadOfHide</key>
+                                ${disableButton2InsteadOfHide_xml}
                                 <key>OrganizationOverlayIconURL</key>
                                 <string>${overlayicon_xml}</string>
                                 <key>OrganizationOverlayIconURLdark</key>
@@ -2172,6 +2373,42 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${deadlineEnforcementMessageRelativeLocalizedJa_xml}</string>
                                 <key>DeadlineEnforcementMessageRelativeLocalized_nl</key>
                                 <string>${deadlineEnforcementMessageRelativeLocalizedNl_xml}</string>
+                                <key>PreDeadlineThresholdTitle</key>
+                                <string>${preDeadlineThresholdTitle_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_en</key>
+                                <string>${preDeadlineThresholdTitleLocalizedEn_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_de</key>
+                                <string>${preDeadlineThresholdTitleLocalizedDe_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_fr</key>
+                                <string>${preDeadlineThresholdTitleLocalizedFr_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_es</key>
+                                <string>${preDeadlineThresholdTitleLocalizedEs_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_it</key>
+                                <string>${preDeadlineThresholdTitleLocalizedIt_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_pt</key>
+                                <string>${preDeadlineThresholdTitleLocalizedPt_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_ja</key>
+                                <string>${preDeadlineThresholdTitleLocalizedJa_xml}</string>
+                                <key>PreDeadlineThresholdTitleLocalized_nl</key>
+                                <string>${preDeadlineThresholdTitleLocalizedNl_xml}</string>
+                                <key>PreDeadlineThresholdMessage</key>
+                                <string>${preDeadlineThresholdMessage_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_en</key>
+                                <string>${preDeadlineThresholdMessageLocalizedEn_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_de</key>
+                                <string>${preDeadlineThresholdMessageLocalizedDe_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_fr</key>
+                                <string>${preDeadlineThresholdMessageLocalizedFr_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_es</key>
+                                <string>${preDeadlineThresholdMessageLocalizedEs_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_it</key>
+                                <string>${preDeadlineThresholdMessageLocalizedIt_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_pt</key>
+                                <string>${preDeadlineThresholdMessageLocalizedPt_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_ja</key>
+                                <string>${preDeadlineThresholdMessageLocalizedJa_xml}</string>
+                                <key>PreDeadlineThresholdMessageLocalized_nl</key>
+                                <string>${preDeadlineThresholdMessageLocalizedNl_xml}</string>
                                 <key>PastDeadlinePromptTitle</key>
                                 <string>${pastDeadlinePromptTitle_xml}</string>
                                 <key>PastDeadlinePromptTitleLocalized_en</key>
@@ -2244,6 +2481,42 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${pastDeadlineForceMessageLocalizedJa_xml}</string>
                                 <key>PastDeadlineForceMessageLocalized_nl</key>
                                 <string>${pastDeadlineForceMessageLocalizedNl_xml}</string>
+                                <key>AggressiveModeTitle</key>
+                                <string>${aggressiveModeTitle_xml}</string>
+                                <key>AggressiveModeTitleLocalized_en</key>
+                                <string>${aggressiveModeTitleLocalizedEn_xml}</string>
+                                <key>AggressiveModeTitleLocalized_de</key>
+                                <string>${aggressiveModeTitleLocalizedDe_xml}</string>
+                                <key>AggressiveModeTitleLocalized_fr</key>
+                                <string>${aggressiveModeTitleLocalizedFr_xml}</string>
+                                <key>AggressiveModeTitleLocalized_es</key>
+                                <string>${aggressiveModeTitleLocalizedEs_xml}</string>
+                                <key>AggressiveModeTitleLocalized_it</key>
+                                <string>${aggressiveModeTitleLocalizedIt_xml}</string>
+                                <key>AggressiveModeTitleLocalized_pt</key>
+                                <string>${aggressiveModeTitleLocalizedPt_xml}</string>
+                                <key>AggressiveModeTitleLocalized_ja</key>
+                                <string>${aggressiveModeTitleLocalizedJa_xml}</string>
+                                <key>AggressiveModeTitleLocalized_nl</key>
+                                <string>${aggressiveModeTitleLocalizedNl_xml}</string>
+                                <key>AggressiveModeMessage</key>
+                                <string>${aggressiveModeMessage_xml}</string>
+                                <key>AggressiveModeMessageLocalized_en</key>
+                                <string>${aggressiveModeMessageLocalizedEn_xml}</string>
+                                <key>AggressiveModeMessageLocalized_de</key>
+                                <string>${aggressiveModeMessageLocalizedDe_xml}</string>
+                                <key>AggressiveModeMessageLocalized_fr</key>
+                                <string>${aggressiveModeMessageLocalizedFr_xml}</string>
+                                <key>AggressiveModeMessageLocalized_es</key>
+                                <string>${aggressiveModeMessageLocalizedEs_xml}</string>
+                                <key>AggressiveModeMessageLocalized_it</key>
+                                <string>${aggressiveModeMessageLocalizedIt_xml}</string>
+                                <key>AggressiveModeMessageLocalized_pt</key>
+                                <string>${aggressiveModeMessageLocalizedPt_xml}</string>
+                                <key>AggressiveModeMessageLocalized_ja</key>
+                                <string>${aggressiveModeMessageLocalizedJa_xml}</string>
+                                <key>AggressiveModeMessageLocalized_nl</key>
+                                <string>${aggressiveModeMessageLocalizedNl_xml}</string>
                                 <key>Message</key>
                                 <string>${message_xml}</string>
                                 <key>MessageLocalized_en</key>

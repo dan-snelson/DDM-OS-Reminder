@@ -1,10 +1,10 @@
 # Runtime Decision Tree
 
-This flowchart shows the complete decision logic executed each time the LaunchDaemon triggers the DDM OS Reminder script.
+This flowchart shows the complete decision logic executed each time the heartbeat LaunchDaemon and `dor-starter.zsh` decide a DDM OS Reminder run is due.
 
 ```mermaid
 flowchart TD
-    Start([LaunchDaemon Triggers<br/>RunAtLoad or 8am/4pm]) --> CheckRoot{Running<br/>as Root?}
+    Start([dor-starter Launches Main Script<br/>RunAtLoad or due heartbeat check]) --> CheckRoot{Running<br/>as Root?}
 
     CheckRoot -->|No| Fatal1[FATAL ERROR<br/>Must run as root]
     CheckRoot -->|Yes| CheckUser{Logged-in<br/>User Found?<br/>Wait up to 120s}
@@ -21,15 +21,18 @@ flowchart TD
     CompareVersions -->|Yes| ResolveDeadline[Resolve effective deadline<br/>declared date or safe padded date]
     ResolveDeadline --> EvalYukon[Evaluate post-deadline<br/>restart eligibility state]
 
-    EvalYukon --> GetInteraction[Read last interaction<br/>codes 0/2/3/4/10<br/>exclude restart-related]
-    GetInteraction --> CheckWindow{Inside display window?<br/>daysRemaining <=<br/>daysBeforeDeadlineDisplayReminder}
+    EvalYukon --> EvalThreshold[Evaluate pre-deadline<br/>minute thresholds]
+    EvalThreshold --> GetInteraction[Read last interaction<br/>codes 0/2/3/4/10<br/>exclude restart-related]
+    GetInteraction --> ThresholdDue{Due configured<br/>minute threshold?}
+    ThresholdDue -->|Yes| ForceMeetingBypass
+    ThresholdDue -->|No| CheckWindow{Inside display window?<br/>daysRemaining <=<br/>daysBeforeDeadlineDisplayReminder}
     CheckWindow -->|No| PeriodicGate{Periodic reminder due?<br/>No interaction OR<br/>>= 28 days since interaction}
     PeriodicGate -->|No| Exit4[Exit Silently<br/>Outside display window<br/>not periodic-due]
     PeriodicGate -->|Yes| ForceQuietBypass
     CheckWindow -->|Yes| ForceQuietBypass{Force mode active?}
 
     ForceQuietBypass -->|Yes| ForceMeetingBypass
-    ForceQuietBypass -->|No| CheckQuiet{Within quiet period?<br/>last interaction < 76 min}
+    ForceQuietBypass -->|No| CheckQuiet{Within quiet period?<br/>last interaction < QuietPeriodMinutes}
     CheckQuiet -->|Yes| Exit5[Exit Silently<br/>Quiet period active]
     CheckQuiet -->|No| ForceMeetingBypass{Force mode active?}
 
@@ -37,12 +40,13 @@ flowchart TD
     ForceMeetingBypass -->|No| Deadline24{More than 24 hours<br/>to deadline?}
     Deadline24 -->|No| BuildDialog
     Deadline24 -->|Yes| MeetingLoop[Run display-sleep assertion loop<br/>allowlist-filtered; 5-min checks<br/>proceed when clear OR<br/>meetingDelay limit reached]
-    MeetingLoop --> BuildDialog[Build dialog content<br/>warnings + staged status + deadline text<br/>apply restart-mode overrides<br/>replace placeholders + hide rules]
+    MeetingLoop --> BuildDialog[Build dialog content<br/>warnings + staged status + deadline text<br/>apply restart / threshold overrides<br/>replace placeholders + hide rules]
 
     BuildDialog --> DialogMode{Dialog mode selected?}
     DialogMode -->|Update flow| CheckDeadline{Days Until<br/>Deadline?}
+    DialogMode -->|Pre-deadline threshold| ThresholdDialog[Final-minute reminder<br/>threshold-specific copy]
     DialogMode -->|Restart Prompt| PromptDialog[Restart-only dialog<br/>Button1 = Restart Now]
-    DialogMode -->|Restart Force| ForceDialog[Restart-only forced dialog<br/>--timer 60]
+    DialogMode -->|Restart Force| ForceDialog[Restart-only forced dialog<br/>--timer PastDeadlineForceTimerSeconds]
 
     CheckDeadline -->|>= blurscreen threshold<br/>default: 45 days| Standard[Standard Dialog<br/>Button2 enabled<br/>no blurscreen]
     CheckDeadline -->|< blurscreen threshold and<br/>> hide-button threshold<br/>default: 44..22 days| Blur[Blurscreen Dialog<br/>Button2 enabled]
@@ -51,13 +55,14 @@ flowchart TD
     Standard --> Display[Display swiftDialog]
     Blur --> Display
     Urgent --> Display
+    ThresholdDialog --> Display
     PromptDialog --> Display
     ForceDialog --> Display
 
     Display --> ForceReturnMode{Force mode active?}
     ForceReturnMode -->|Yes| ForceReturn{Return code 0 or 4?}
     ForceReturn -->|Yes| RestartNow[Invoke Restart command]
-    ForceReturn -->|No| ForceRedisplay[Sleep ~5s and re-display<br/>within same run]
+    ForceReturn -->|No| ForceRedisplay[Sleep PastDeadlineForceRedisplayDelaySeconds<br/>and re-display within same run]
     ForceRedisplay --> Display
 
     ForceReturnMode -->|No| NormalReturn{Return code}
@@ -183,21 +188,25 @@ flowchart TD
 - **Computed before reminder gating**:
   - Deadline is in the past
   - Days past deadline `>= daysPastDeadlineRestartWorkflow`
-  - Uptime `>= 75` minutes
+  - Uptime `>= pastDeadlineRestartMinimumUptimeMinutes`
   - `pastDeadlineRestartBehavior` is not `Off`
 - **Modes**:
   - `Off`: Normal update-focused flow
   - `Prompt`: Restart-only dialog, normal per-run exit behavior
   - `Force`: Restart-only dialog with forced redisplay loop
-- **Suppression case**: If past-deadline day threshold is met but uptime is below 75 minutes, restart mode is suppressed for that run
+- **Suppression case**: If past-deadline day threshold is met but uptime is below `PastDeadlineRestartMinimumUptimeMinutes`, restart mode is suppressed for that run
 
 ### 7. Reminder Window + Periodic Reminder Logic
 - **Inside window** (`daysRemaining <= daysBeforeDeadlineDisplayReminder`): proceed
-- **Outside window**: only proceed if no interaction history exists or last interaction is `>= 28` days old
+- **Outside window**: only proceed if no interaction history exists or last interaction is `>= OutsideDisplayWindowPeriodicReminderDays`
+- **Disable option**: `OutsideDisplayWindowPeriodicReminderDays = 0` disables repeat reminders outside the display window after first interaction
 - **Exit if**: Outside window and periodic reminder is not due
 
 ### 8. Quiet-Period Suppression
-- **Check**: Most recent interaction (`Return Code: 0|2|3|4|10`) is within 76 minutes
+- **Check**: Most recent interaction (`Return Code: 0|2|3|4|10`) is within `QuietPeriodMinutes`
+- **`Remind Me Later` behavior**: Return code `2` schedules an exact redisplay at `now + QuietPeriodMinutes`
+- **Disable option**: `QuietPeriodMinutes = 0` disables quiet-period suppression
+- **Threshold precedence**: If an earlier pre-deadline threshold reminder is due, it overrides the quiet-period redisplay time
 - **Special handling**: Restart-related interactions are excluded from quiet-period suppression
 - **Bypass**: `Force` mode skips quiet-period suppression
 
@@ -232,7 +241,7 @@ When not overridden by restart mode:
 ### 12. Return-Code Action Handling
 - **Force mode**:
   - `0` or `4` triggers restart command
-  - Any other return code re-displays within the same run after ~5 seconds
+  - Any other return code re-displays within the same run after `PastDeadlineForceRedisplayDelaySeconds`
 - **Non-force modes**:
   - `0`:
     - `systempreferences` action opens Software Update
@@ -258,16 +267,15 @@ Key preferences that affect decision tree:
 | `daysPastDeadlineRestartWorkflow` | 2 | Days-past-deadline threshold for Yukon mode |
 | `pastDeadlineRestartBehavior` | Off | Yukon Cornelius mode (`Off` / `Prompt` / `Force`) |
 | `meetingDelay` | 75 minutes | Meeting detection delay |
+| `minutesBeforeDeadlineReminderSchedule` | `45,30,15,10,5` | Final-minute threshold reminders |
 | `acceptableAssertionApplicationNames` | MSTeams zoom.us Webex | Meeting app allowlist filter |
 | `minimumDiskFreePercentage` | 99 | Disk space warning |
 | `disableButton2InsteadOfHide` | YES | Button 2 behavior (disabled vs hidden) |
-
-Additional runtime constants used by the decision tree:
-- `quietPeriodSeconds = 4560` (76 minutes)
-- `periodicReminderDays = 28`
-- `pastDeadlineRestartMinimumUptimeMinutes = 75`
-- `pastDeadlineForceTimerSeconds = 60`
-- `pastDeadlineRedisplayDelaySeconds = 5`
+| `quietPeriodMinutes` | 76 | Interaction-based quiet period |
+| `outsideDisplayWindowPeriodicReminderDays` | 28 | Long-range periodic reminder cadence |
+| `pastDeadlineRestartMinimumUptimeMinutes` | 75 | Restart workflow uptime gate |
+| `pastDeadlineForceTimerSeconds` | 60 | Force-mode countdown timer |
+| `pastDeadlineForceRedisplayDelaySeconds` | 5 | Force-mode redisplay pause |
 
 ## Exit Points
 
@@ -290,12 +298,16 @@ Fatal errors include no logged-in user after 120 seconds and running without roo
 
 ## Timing
 
-**Default Schedule**: RunAtLoad plus 8:00 AM and 4:00 PM daily
+**Heartbeat Schedule**: RunAtLoad plus `StartInterval=60` seconds
+
+**Default Baseline Reminder Slots**: `08:00,12:00,16:00` local time via `DailyReminderTimes`
 
 This ensures:
-- Morning reminder catches users starting their day
-- Afternoon reminder catches users before end of day
-- Not intrusive during lunch (typically 12-1 PM)
-- Configurable via LaunchDaemon CalendarInterval
+- launchd overhead stays minimal while exact reminder timing remains script-controlled
+- baseline reminder slots are admin-controlled in the deployed `.plist` / `.mobileconfig`
+- `Remind Me Later` quiet-period redisplay can use exact timestamps without another LaunchDaemon redesign
+- final-minute thresholds can schedule exact reminders through `NextScheduledReminder`
 
-**Re-execution**: Script exits after each run; LaunchDaemon handles re-scheduling automatically.
+**Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically. Threshold delivery state also lives in `dor-state.plist` so each configured threshold displays once per resolved deadline/version.
+
+**Boot Behavior**: `RunAtLoad` does not override a future `NextScheduledReminder`. After a reboot, `dor-starter.zsh` re-checks `dor-state.plist` and exits quietly until the stored due time arrives.

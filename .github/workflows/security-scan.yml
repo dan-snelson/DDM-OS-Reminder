@@ -61,12 +61,14 @@ jobs:
         # Always attempt SARIF generation so findings can land in the Security tab even when blocking scan fails.
         continue-on-error: true
         shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -o pipefail
 
           baseline_args=()
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${{ github.event.pull_request.base.sha }}" ]]; then
-            baseline_args+=(--baseline-commit "${{ github.event.pull_request.base.sha }}")
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${PR_BASE_SHA}" ]]; then
+            baseline_args+=(--baseline-commit "${PR_BASE_SHA}")
           fi
 
           semgrep scan \
@@ -125,11 +127,15 @@ jobs:
 
       - name: Finalize Semgrep Result
         if: success() || failure()
+        env:
+          SARIF_OUTCOME: ${{ steps.semgrep_sarif.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload_sarif.outcome }}
+          TRUSTED_UPLOAD_CTX: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         shell: bash
         run: |
-          sarif_outcome="${{ steps.semgrep_sarif.outcome }}"
-          upload_outcome="${{ steps.upload_sarif.outcome }}"
-          trusted_upload_context="${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}"
+          sarif_outcome="${SARIF_OUTCOME}"
+          upload_outcome="${UPLOAD_OUTCOME}"
+          trusted_upload_context="${TRUSTED_UPLOAD_CTX}"
 
           if [[ "${sarif_outcome}" == "success" ]]; then
             if [[ "${trusted_upload_context}" == "true" && "${upload_outcome}" != "success" ]]; then

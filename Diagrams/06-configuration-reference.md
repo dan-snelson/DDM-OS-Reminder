@@ -2477,18 +2477,17 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 4.0.0 | 08-Jul-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
 | 4.0.0 | 08-Jul-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
 | 4.0.0 | 08-Jul-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
-| 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
+ 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
 | 3.0.0 | 28-Mar-2026 | Added localization documentation (`LanguageOverride`, localized key families, fallback chain), plus localized support-assistance coverage and merged 2.6.0 behavior references |
 | 3.0.0 | 28-Mar-2026 | Added locale-aware deadline date token behavior and Swiss-format example for `DateFormatDeadlineHumanReadable` |
 | 3.0.0 | 28-Mar-2026 | Documented prior-plist upgrade-assist coverage around `2.2.0+`, plus best-effort import warnings for older/metadata-light plists and the lane-suffix requirement for automatic deployment-mode inference during assembly |
-| 4.0.0 | 08-Jul-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
-| 4.0.0 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
+| 3.3.0 | 21-May-2026 | Replaced legacy `:l` placeholder examples with explicit lowercase placeholder variants, added the natural Japanese `DateFormatDeadlineHumanReadableLocalized_ja` sample override, and aligned German sample wording with `macOS-Update` noun usage |
+| 3.3.0 | 14-May-2026 | Added region-aware `DateFormatDeadlineHumanReadableLocalized_<code>` overrides with exact locale -> base language -> global fallback behavior, plus matching relative `Today` / `Tomorrow` time-format guidance |
 | 3.2.0 | 30-Mar-2026 | Added Dutch (`nl`) as a fully supported language: `LanguageOverride` gains `nl`, all localized key families gain `*Localized_nl` variants, and `auto` detection now normalizes `nl-*`/`nl_*` locales. Externalized hard-coded runtime strings into plist-backed families (section 9): `RelativeDeadlineToday/Tomorrow`, `UpdateWord`, `UpgradeWord`, `SoftwareUpdateButtonTextUpdate/Upgrade`, `RestartNowButtonText`, six `InfoboxLabel*` keys, `DeadlineEnforcementMessageAbsolute/Relative`, and four `PastDeadline*` keys. Updated quick reference table, localized key families list, and added section 9 (Dynamic Localization Primitives). |
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
-
 ---
 
 **Last Updated**: 08-Jul-2026

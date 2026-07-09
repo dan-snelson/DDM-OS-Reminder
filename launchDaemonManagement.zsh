@@ -149,7 +149,9 @@ function discoverDDMOSReminderLaunchDaemonPaths() {
     local candidatePath=""
     local -A discoveredPaths=()
 
-    for candidatePath in "${launchDaemonPath}" /Library/LaunchDaemons/*.dor.plist(N); do
+    setopt local_options null_glob
+
+    for candidatePath in "${launchDaemonPath}" /Library/LaunchDaemons/*.dor.plist; do
         [[ -n "${discoveredPaths[${candidatePath}]:-}" ]] && continue
 
         if [[ "${candidatePath}" == "${launchDaemonPath}" ]] || isDDMOSReminderLaunchDaemonPlist "${candidatePath}"; then
@@ -359,7 +361,6 @@ function createDorStarterScript() {
 (
 cat <<'ENDOFSTARTER'
 #!/bin/zsh --no-rcs
-# shellcheck shell=bash
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 

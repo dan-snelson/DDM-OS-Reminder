@@ -51,6 +51,13 @@ function printUsage() {
     echo "  --help, -h          Show this help"
 }
 
+function validateReverseDomainNameNotation() {
+    local rdnnValue="${1}"
+    local rdnnRegex='^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$'
+
+    [[ "${rdnnValue}" =~ ${rdnnRegex} ]]
+}
+
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
         --help|-h)
@@ -59,6 +66,11 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --rdnn)
             if [[ -z "${2:-}" ]]; then
+                printUsage
+                exit 64
+            fi
+            if ! validateReverseDomainNameNotation "${2}"; then
+                echo "Invalid --rdnn '${2}'. Use reverse-domain labels with letters, digits, dots, and hyphens only."
                 printUsage
                 exit 64
             fi

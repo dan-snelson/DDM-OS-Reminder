@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (3.3.0)
+# DDM OS Reminder (4.0.0)
 
-> Another Mac Admin **quality-of-life** update focused on **leaner** multi-language artifacts, **smarter** interactive assembly, **region-aware** formatting and **hardened** DDM handling
+> Another **major** upgrade to Mac Admins’ go-to solution for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines features a new, robust **heartbeat daemon** architecture, **easily configurable** daily reminder times, **pre-deadline** threshold alerts, and **aggressive past-deadline mode** with persistent compliance prompting.
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -23,17 +23,35 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 - **Customizable**: Easily customize the reminder dialog’s title, message, icons (including light/dark overlay icons) and button text to fit your organization’s requirements by distributing a Configuration Profile via any MDM solution.
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
-- **Set-it-and-forget-it**: Once configured and installed, a LaunchDaemon displays your customized reminder dialog — automatically checking the installed macOS version against the DDM-required version — to remind users if an update is required.
+- **Set-it-and-forget-it**: Once configured and installed, a heartbeat `LaunchDaemon` plus lightweight `dor-starter.zsh` honors your configured `DailyReminderTimes` baseline schedule and displays your customized reminder dialog only when a reminder is actually due.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
+- **Configurable reminder cadence controls**: Use `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, and post-deadline restart timing keys to tune reminder suppression, long-range periodic reminders, secondary-button behavior, and Force-mode restart cadence from deployed preferences.
+- **Default-on Past-Deadline Aggressive Mode**: Macs past the effective DDM deadline and still below the required macOS version switch to an urgent cadence after `AggressiveModePastDeadlineHours` (default `2`) and redisplay every `AggressiveModeFrequencyMinutes` (default `20`) until the Mac updates, restarts, or support temporarily suppresses the cadence with `/Library/Management/<rdnn>/dor-aggressive-kill` — including after the user clicks **Open Software Update**.
+- **Final-minute deadline reminders**: Use `MinutesBeforeDeadlineReminderSchedule` to display discrete reminders at configured minute thresholds before the effective DDM enforcement deadline; default thresholds are `45,30,15,10,5`, and any open daemon-managed reminder refreshes when the next threshold becomes due.
 - **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
 - **Full Multi-language Experience**: Beginning with version `3.1.0`, English dialog defaults are provided in-script, with `.plist` support for: German, French, Spanish, Italian, Dutch, Portuguese, and Japanese. Additional languages through localized `*Localized_<code>` preference keys, with locale-aware dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that match the resolved language.
 - **Granular Control for Displaying IT Support Information**: New `HideSupport*` preferences allow Mac Admins to easily choose which IT Support fields are displayed to their end-users.
 - **Use [`Resources/reminderDialogPreferenceTest.zsh`](Resources/reminderDialogPreferenceTest.zsh)** when you want to easily validate dialog copy, localization, branding, support contact details, button visibility, and infobox rendering from deployed preferences without waiting for an actual DDM deadline.
-- :new: **Lean Artifact Options**: `assemble.zsh` and `Resources/createPlist.zsh` can keep the full localization surface, generate a minimal artifact (`--minimal` = base keys + exact `_Localized_en` keys only), or retain only selected language families with `--languages <csv>`. In `assemble.zsh --interactive`, same choice appears as `Full`, `Minimal`, or `Selected languages`.
+- **Admin-controlled baseline reminder times**: Set `DailyReminderTimes` in your deployed `.plist` / `.mobileconfig` to define local baseline reminder slots such as `08:00,12:00,16:00`.
+- **Lean Artifact Options**: `assemble.zsh` and `Resources/createPlist.zsh` can keep the full localization surface, generate a minimal artifact (`--minimal` = base keys + exact `_Localized_en` keys only), or retain only selected language families with `--languages <csv>`. In `assemble.zsh --interactive`, same choice appears as `Full`, `Minimal`, or `Selected languages`.
+
+---
+
+## :new: 4.0.0 Highlights
+
+- **Heartbeat daemon architecture**: `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds. The starter checks `/Library/Management/<rdnn>/dor-state.plist` and only launches `dor.zsh` when a reminder is due.
+- **Runtime scheduler state**: `NextScheduledReminder`, `DaemonLastTriggered`, delivered pre-deadline thresholds, and the active `dor.pid` live in `/Library/Management/<rdnn>/`. Managed and local preferences remain admin-controlled configuration only.
+- **Remote session monitoring**: [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) provides one remote-Terminal snapshot of the heartbeat LaunchDaemon, deployed runtime files, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries. Use `--rdnn <value>` for your organization's deployments, `--watch <seconds>` for live refresh, and `--log-lines <n>` to adjust log tail depth.
+- **Baseline reminder schedule**: `DailyReminderTimes` controls local reminder slots in `HH:MM` CSV format. The default baseline is `08:00,12:00,16:00`.
+- **Final-minute threshold reminders**: `MinutesBeforeDeadlineReminderSchedule` controls discrete pre-deadline reminders, defaulting to `45,30,15,10,5`. These threshold reminders bypass quiet-period suppression and can refresh an already-open daemon-managed dialog when a later threshold becomes due.
+- **Pre-deadline copy and emphasis**: New `PreDeadlineThresholdTitle` / `PreDeadlineThresholdMessage` keys, localized variants, `{minutesBeforeDeadline}`, and `{preDeadlineThresholdEmphasisOpen}` / `{preDeadlineThresholdEmphasisClose}` placeholders support urgent threshold-specific dialog text and color-safe emphasis.
+- **Expanded cadence controls**: `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds` are now preference-backed.
+- **Aggressive past-deadline mode**: `AggressiveModePastDeadlineHours` and `AggressiveModeFrequencyMinutes` control urgent redisplay cadence after the effective deadline. Exact redisplay scheduling continues after **Open Software Update** until compliance or support suppression with `/Library/Management/<rdnn>/dor-aggressive-kill`.
+- **Effective-deadline display**: Reminder copy, deadline placeholders, and infobox `Deadline` / `Day(s) Remaining` values now follow the safely resolved effective enforcement deadline, including trusted padded enforcement dates.
 
 ---
 
@@ -53,7 +71,7 @@ When prior-plist import and localization filtering are used together, `assemble.
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.3.0)
+🧩 Assemble DDM OS Reminder (4.0.0)
 ===============================================================
 
 📍 Full Paths:
@@ -213,9 +231,9 @@ Localization precedence stays deliberate: base keys provide shared/default copy,
 
 Starting with `3.1.0`, `reminderDialog.zsh` only ships English built-in fallback strings. To display a non-English interface, provide localized preference keys such as `TitleLocalized_it`, `MessageLocalized_it`, and related `*Localized_<code>` entries in managed or local preferences.
 
-Artifact generation keeps the full localization surface by default. Use `zsh assemble.zsh --minimal` for base keys plus exact `_Localized_en` keys only, or `zsh assemble.zsh --languages en,fr` when deployment artifacts need English plus additional language families such as `fr` and `fr_CA`. `Resources/sample.plist` now also demonstrates natural Japanese deadline-date formatting and preserves title-cased German `macOS-Update` / `macOS-Upgrade` nouns where grammar requires them.
+Artifact generation keeps the full localization surface by default. Use `zsh assemble.zsh --minimal` for base keys plus exact `_Localized_en` keys only, or `zsh assemble.zsh --languages en,fr` when deployment artifacts need English plus additional language families such as `fr` and `fr_CA`. `Resources/sample.plist` now also demonstrates natural Japanese deadline-date formatting, aggressive-mode title/message families (`AggressiveModeTitleLocalized_<code>` / `AggressiveModeMessageLocalized_<code>`), and preserves title-cased German `macOS-Update` / `macOS-Upgrade` nouns where grammar requires them.
 
-For placeholder authoring, use `{titleMessageUpdateOrUpgrade}` for title/default/title-case wording and `{titleMessageUpdateOrUpgradeLower}` when sentence grammar needs lowercase wording. Legacy lowercase placeholder modifier handling is no longer documented path for `3.3.0`.
+For placeholder authoring, use `{titleMessageUpdateOrUpgrade}` for title/default/title-case wording and `{titleMessageUpdateOrUpgradeLower}` when sentence grammar needs lowercase wording. Legacy lowercase placeholder modifier handling is no longer documented path for `4.0.0`.
 
 ```zsh
 # German screenshots

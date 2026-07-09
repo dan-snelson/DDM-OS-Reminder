@@ -4,6 +4,46 @@
 <dict>
 	<key>AcceptableAssertionApplicationNames</key>
 	<string>MSTeams zoom.us Webex</string>
+	<key>AggressiveModeFrequencyMinutes</key>
+	<integer>20</integer>
+	<key>AggressiveModeMessage</key>
+	<string>**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_de</key>
+	<string>**Dein Mac hat die erforderliche macOS-{titleMessageUpdateOrUpgradeLower}-Frist überschritten.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Die Frist **{ddmVersionStringDeadlineHumanReadable}** ist seit **{aggressiveModeHoursPastDeadline} Stunde(n)** überschritten, und dieser Mac benötigt weiterhin macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Klicke auf **{button1text}**, folge den Hinweisen auf dem Bildschirm und klicke anschließend auf **{softwareUpdateButtonText}**. Diese Erinnerung erscheint etwa alle {aggressiveModeFrequencyMinutes} Minuten, bis macOS {ddmVersionString} installiert ist.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_en</key>
+	<string>**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**&lt;br&gt;&lt;br&gt;Happy {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_es</key>
+	<string>**Su Mac ha superado la fecha límite obligatoria de {titleMessageUpdateOrUpgradeLower} de macOS.**&lt;br&gt;&lt;br&gt;Hola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;Su Mac ha superado la fecha límite de **{ddmVersionStringDeadlineHumanReadable}** por **{aggressiveModeHoursPastDeadline} hora(s)** y aún necesita macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Haga clic en **{button1text}**, revise las instrucciones en pantalla y luego haga clic en **{softwareUpdateButtonText}**. Este recordatorio volverá aproximadamente cada {aggressiveModeFrequencyMinutes} minutos hasta que macOS {ddmVersionString} esté instalado.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_fr</key>
+	<string>**Votre Mac a dépassé l'échéance requise de {titleMessageUpdateOrUpgradeLower} macOS.**&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Votre Mac a dépassé l'échéance **{ddmVersionStringDeadlineHumanReadable}** depuis **{aggressiveModeHoursPastDeadline} heure(s)** et nécessite toujours macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Cliquez sur **{button1text}**, suivez les instructions à l'écran, puis cliquez sur **{softwareUpdateButtonText}**. Ce rappel reviendra environ toutes les {aggressiveModeFrequencyMinutes} minutes jusqu'à l'installation de macOS {ddmVersionString}.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_it</key>
+	<string>**Il tuo Mac ha superato la scadenza obbligatoria per l'{titleMessageUpdateOrUpgradeLower} di macOS.**&lt;br&gt;&lt;br&gt;Buon {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Il tuo Mac ha superato la scadenza **{ddmVersionStringDeadlineHumanReadable}** da **{aggressiveModeHoursPastDeadline} ora/e** e richiede ancora macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Fai clic su **{button1text}**, segui le istruzioni sullo schermo, quindi fai clic su **{softwareUpdateButtonText}**. Questo promemoria tornerà circa ogni {aggressiveModeFrequencyMinutes} minuti finché macOS {ddmVersionString} non sarà installato.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_ja</key>
+	<string>**このMacは必須のmacOS {titleMessageUpdateOrUpgradeLower}期限を過ぎています。**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;期限 **{ddmVersionStringDeadlineHumanReadable}** から **{aggressiveModeHoursPastDeadline} 時間** が経過しており、まだ macOS {ddmVersionString} が必要です。&lt;br&gt;&lt;br&gt;**{button1text}** をクリックし、画面の案内を確認したあと **{softwareUpdateButtonText}** をクリックしてください。macOS {ddmVersionString} がインストールされるまで、このリマインダーは約 {aggressiveModeFrequencyMinutes} 分ごとに戻ります。{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_nl</key>
+	<string>**Uw Mac is voorbij de vereiste macOS {titleMessageUpdateOrUpgradeLower}-deadline.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac is al **{aggressiveModeHoursPastDeadline} uur** voorbij de deadline **{ddmVersionStringDeadlineHumanReadable}** en heeft nog steeds macOS {ddmVersionString} nodig.&lt;br&gt;&lt;br&gt;Klik op **{button1text}**, volg de instructies op het scherm en klik daarna op **{softwareUpdateButtonText}**. Deze herinnering komt ongeveer elke {aggressiveModeFrequencyMinutes} minuten terug totdat macOS {ddmVersionString} is geïnstalleerd.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModeMessageLocalized_pt</key>
+	<string>**O seu Mac ultrapassou o prazo obrigatório da {titleMessageUpdateOrUpgradeLower} do macOS.**&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;O seu Mac ultrapassou o prazo de **{ddmVersionStringDeadlineHumanReadable}** há **{aggressiveModeHoursPastDeadline} hora(s)** e ainda precisa do macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Clique em **{button1text}**, reveja as instruções no ecrã e clique em **{softwareUpdateButtonText}**. Este lembrete voltará aproximadamente a cada {aggressiveModeFrequencyMinutes} minutos até o macOS {ddmVersionString} estar instalado.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>AggressiveModePastDeadlineHours</key>
+	<integer>2</integer>
+	<key>AggressiveModeTitle</key>
+	<string>macOS {titleMessageUpdateOrUpgrade} Required Now</string>
+	<key>AggressiveModeTitleLocalized_de</key>
+	<string>macOS-{titleMessageUpdateOrUpgrade} jetzt erforderlich</string>
+	<key>AggressiveModeTitleLocalized_en</key>
+	<string>macOS {titleMessageUpdateOrUpgrade} Required Now</string>
+	<key>AggressiveModeTitleLocalized_es</key>
+	<string>{titleMessageUpdateOrUpgrade} de macOS obligatoria ahora</string>
+	<key>AggressiveModeTitleLocalized_fr</key>
+	<string>{titleMessageUpdateOrUpgrade} macOS requise maintenant</string>
+	<key>AggressiveModeTitleLocalized_it</key>
+	<string>{titleMessageUpdateOrUpgrade} macOS richiesta ora</string>
+	<key>AggressiveModeTitleLocalized_ja</key>
+	<string>macOSの{titleMessageUpdateOrUpgrade}が今すぐ必要です</string>
+	<key>AggressiveModeTitleLocalized_nl</key>
+	<string>macOS {titleMessageUpdateOrUpgrade} nu vereist</string>
+	<key>AggressiveModeTitleLocalized_pt</key>
+	<string>{titleMessageUpdateOrUpgrade} do macOS obrigatória agora</string>
 	<key>Button1Text</key>
 	<string>Assembled Open Software Update</string>
 	<key>Button1TextLocalized_de</key>
@@ -40,6 +80,8 @@
 	<string>Assembled Herinner me later</string>
 	<key>Button2TextLocalized_pt</key>
 	<string>Assembled Lembrar-me mais tarde</string>
+	<key>DailyReminderTimes</key>
+	<string>08:00,12:00,16:00</string>
 	<key>DateFormatDeadlineHumanReadable</key>
 	<string>+%a, %d-%b-%Y, %-l:%M %p</string>
 	<key>DateFormatDeadlineHumanReadableLocalized_en_GB</key>
@@ -96,6 +138,8 @@
 	<string>Anders wordt uw Mac **automatisch opnieuw opgestart en wordt de {titleMessageUpdateOrUpgradeLower} uitgevoerd** **{deadlineDisplay}**.</string>
 	<key>DeadlineEnforcementMessageRelativeLocalized_pt</key>
 	<string>Caso contrario, o seu Mac **reiniciará automaticamente e aplicará a {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}**.</string>
+	<key>DisableButton2InsteadOfHide</key>
+	<true/>
 	<key>DiskSpaceWarningMessage</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled **Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}.</string>
 	<key>DiskSpaceWarningMessageLocalized_de</key>
@@ -318,10 +362,14 @@
 	<string>Assembled **Já está disponível uma {titleMessageUpdateOrUpgradeLower} obrigatória do macOS**&lt;br&gt;&lt;br&gt;Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Efetue a {titleMessageUpdateOrUpgradeLower} para o macOS **{ddmVersionString}** para manter o seu Mac seguro e em conformidade com as políticas da organização.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para efetuar a {titleMessageUpdateOrUpgradeLower} agora, clique em **{button1text}**, siga as instruções no ecrã e depois clique em **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Se não puder efetuar esta {titleMessageUpdateOrUpgradeLower} agora, clique em **{button2text}** para receber outro lembrete mais tarde (esta opção fica desativada quando o prazo se aproxima).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 	<key>MinimumDiskFreePercentage</key>
 	<integer>10</integer>
+	<key>MinutesBeforeDeadlineReminderSchedule</key>
+	<string>45,30,15,10,5</string>
 	<key>OrganizationOverlayIconURL</key>
 	<string>https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d</string>
 	<key>OrganizationOverlayIconURLdark</key>
 	<string>https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39</string>
+	<key>OutsideDisplayWindowPeriodicReminderDays</key>
+	<integer>28</integer>
 	<key>PartiallyStagedUpdateMessage</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging.</string>
 	<key>PartiallyStagedUpdateMessageLocalized_de</key>
@@ -358,6 +406,10 @@
 	<string>**Uw Mac wordt opnieuw opgestart wanneer de timer hieronder afloopt.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac heeft de deadline van **{ddmVersionStringDeadlineHumanReadable}** overschreden om macOS {ddmVersionString} te installeren en moet opnieuw worden opgestart om het {titleMessageUpdateOrUpgradeLower}-proces te helpen voltooien, of u kunt op **{button1text}** klikken.&lt;br&gt;&lt;br&gt;(Deze herinnering blijft zichtbaar totdat uw Mac opnieuw is opgestart.)</string>
 	<key>PastDeadlineForceMessageLocalized_pt</key>
 	<string>**O seu Mac será reiniciado quando o temporizador abaixo terminar.**&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;O seu Mac ultrapassou o prazo de **{ddmVersionStringDeadlineHumanReadable}** para instalar o macOS {ddmVersionString} e precisa de ser reiniciado para ajudar a concluir a {titleMessageUpdateOrUpgradeLower}, ou pode clicar em **{button1text}**.&lt;br&gt;&lt;br&gt;(Este lembrete permanecerá visível até o seu Mac ser reiniciado.)</string>
+	<key>PastDeadlineForceRedisplayDelaySeconds</key>
+	<integer>5</integer>
+	<key>PastDeadlineForceTimerSeconds</key>
+	<integer>60</integer>
 	<key>PastDeadlineForceTitle</key>
 	<string>Your Mac is restarting</string>
 	<key>PastDeadlineForceTitleLocalized_de</key>
@@ -391,7 +443,7 @@
 	<key>PastDeadlinePromptMessageLocalized_ja</key>
 	<string>**今すぐMacを再起動してください**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;このMacは、macOS {ddmVersionString} への {titleMessageUpdateOrUpgradeLower} の期限 **{ddmVersionStringDeadlineHumanReadable}** を過ぎています。&lt;br&gt;&lt;br&gt;必須の {titleMessageUpdateOrUpgradeLower} を完了するため、**{button1text}** をクリックして今すぐ再起動してください。&lt;br&gt;&lt;br&gt;（この通知はMacが再起動されるまで表示されます。）</string>
 	<key>PastDeadlinePromptMessageLocalized_nl</key>
-	<string>**Start uw Mac nu opnieuw op**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac heeft de deadline van **{ddmVersionStringDeadlineHumanReadable}** overschreden om de {titleMessageUpdateOrUpgradeLower} naar macOS {ddmVersionString} uit te voeren.&lt;br&gt;&lt;br&gt;Klik op **{button1text}** om nu opnieuw op te starten en de vereiste {titleMessageUpdateOrUpgradeLower} te helpen voltooien.&lt;br&gt;&lt;br&gt;(Deze herinnering blijft zichtbaar totdat uw Mac opnieuw is opgestart.)</string>
+	<string>**Start uw Mac nu opnieuw op**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac heeft de deadline van **{ddmVersionStringDeadlineHumanReadable}** overschreden om de {titleMessageUpdateOrUpgradeLower} naar macOS **{ddmVersionString}** uit te voeren.&lt;br&gt;&lt;br&gt;Klik op **{button1text}** om nu opnieuw op te starten en de vereiste {titleMessageUpdateOrUpgradeLower} te helpen voltooien.&lt;br&gt;&lt;br&gt;(Deze herinnering blijft zichtbaar totdat uw Mac opnieuw is opgestart.)</string>
 	<key>PastDeadlinePromptMessageLocalized_pt</key>
 	<string>**Reinicie o seu Mac agora**&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;O seu Mac ultrapassou o prazo de **{ddmVersionStringDeadlineHumanReadable}** para aplicar a {titleMessageUpdateOrUpgradeLower} para o macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Clique em **{button1text}** para reiniciar agora e ajudar a concluir a {titleMessageUpdateOrUpgradeLower} obrigatória.&lt;br&gt;&lt;br&gt;(Este lembrete permanecerá visível até o seu Mac ser reiniciado.)</string>
 	<key>PastDeadlinePromptTitle</key>
@@ -414,6 +466,8 @@
 	<string>Reinicie o seu Mac</string>
 	<key>PastDeadlineRestartBehavior</key>
 	<string>Off</string>
+	<key>PastDeadlineRestartMinimumUptimeMinutes</key>
+	<integer>75</integer>
 	<key>PendingDownloadMessage</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled Your Mac will begin downloading the update shortly.</string>
 	<key>PendingDownloadMessageLocalized_de</key>
@@ -432,6 +486,44 @@
 	<string>&lt;br&gt;&lt;br&gt;Assembled Uw Mac zal binnenkort beginnen met het downloaden van de update.</string>
 	<key>PendingDownloadMessageLocalized_pt</key>
 	<string>&lt;br&gt;&lt;br&gt;Assembled O seu Mac irá começar a descarregar a atualização em breve.</string>
+	<key>PreDeadlineThresholdMessage</key>
+	<string>Assembled **{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_de</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}Dieser Mac erreicht die Frist für macOS {ddmVersionString} in {minutesBeforeDeadline} Minuten.{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Bitte installiere macOS {ddmVersionString} jetzt, damit die automatische Durchsetzung um {ddmVersionStringDeadlineHumanReadable} vermieden wird.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;Klicke zum Starten auf **{button1text}**, folge den Hinweisen auf dem Bildschirm und klicke anschließend auf **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_en</key>
+	<string>Assembled **{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**&lt;br&gt;&lt;br&gt;Greetings, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_es</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}Su Mac alcanza la fecha límite de aplicación de macOS {ddmVersionString} en {minutesBeforeDeadline} minutos.{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;Hola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Aplique la {titleMessageUpdateOrUpgradeLower} a macOS {ddmVersionString} ahora para evitar la acción automática prevista a las {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para realizar la {titleMessageUpdateOrUpgradeLower} ahora, haga clic en **{button1text}**, revise las instrucciones en pantalla y luego haga clic en **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_fr</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}Votre Mac atteint l'échéance d'application de macOS {ddmVersionString} dans {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;Bonjour {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Veuillez effectuer la {titleMessageUpdateOrUpgradeLower} vers macOS {ddmVersionString} maintenant afin d'éviter l'action automatique prévue à {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;Pour effectuer la {titleMessageUpdateOrUpgradeLower} maintenant, cliquez sur **{button1text}**, suivez les instructions à l'écran, puis cliquez sur **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_it</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}Il tuo Mac raggiungerà la scadenza di applicazione di macOS {ddmVersionString} tra {minutesBeforeDeadline} minuti.{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;Buon {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Esegui ora l'{titleMessageUpdateOrUpgradeLower} a macOS {ddmVersionString} per evitare l'azione automatica prevista alle {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;Per eseguire ora l'{titleMessageUpdateOrUpgradeLower}, fai clic su **{button1text}**, segui le istruzioni sullo schermo, quindi fai clic su **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_ja</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}このMacは {minutesBeforeDeadline} 分後に macOS {ddmVersionString} の適用期限に到達します。{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}{ddmVersionStringDeadlineHumanReadable} の自動適用を避けるため、今すぐ macOS {ddmVersionString} への {titleMessageUpdateOrUpgradeLower} を実行してください。{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;今すぐ実行するには **{button1text}** をクリックし、画面の指示を確認してから **{softwareUpdateButtonText}** をクリックしてください。{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_nl</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}Uw Mac bereikt de afdwingdeadline voor macOS {ddmVersionString} over {minutesBeforeDeadline} minuten.{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Voer de {titleMessageUpdateOrUpgradeLower} naar macOS {ddmVersionString} nu uit om de automatische afdwingactie om {ddmVersionStringDeadlineHumanReadable} te voorkomen.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;Klik op **{button1text}** om de {titleMessageUpdateOrUpgradeLower} nu uit te voeren, volg de instructies op het scherm en klik daarna op **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdMessageLocalized_pt</key>
+	<string>Assembled {preDeadlineThresholdEmphasisOpen}O seu Mac atinge o prazo de aplicação do macOS {ddmVersionString} em {minutesBeforeDeadline} minutos.{preDeadlineThresholdEmphasisClose}&lt;br&gt;&lt;br&gt;Ola {loggedInUserFirstname}.&lt;br&gt;&lt;br&gt;{preDeadlineThresholdEmphasisOpen}Aplique a {titleMessageUpdateOrUpgradeLower} para o macOS {ddmVersionString} agora para evitar a ação automática prevista para {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para efetuar a {titleMessageUpdateOrUpgradeLower} agora, clique em **{button1text}**, reveja as instruções no ecrã e clique em **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+	<key>PreDeadlineThresholdTitle</key>
+	<string>Assembled macOS {titleMessageUpdateOrUpgrade} Deadline Soon</string>
+	<key>PreDeadlineThresholdTitleLocalized_de</key>
+	<string>Assembled macOS-{titleMessageUpdateOrUpgrade}-Frist endet bald</string>
+	<key>PreDeadlineThresholdTitleLocalized_en</key>
+	<string>Assembled macOS {titleMessageUpdateOrUpgrade} Deadline Soon</string>
+	<key>PreDeadlineThresholdTitleLocalized_es</key>
+	<string>Assembled Fecha límite de {titleMessageUpdateOrUpgrade} de macOS inminente</string>
+	<key>PreDeadlineThresholdTitleLocalized_fr</key>
+	<string>Assembled Échéance de {titleMessageUpdateOrUpgrade} macOS imminente</string>
+	<key>PreDeadlineThresholdTitleLocalized_it</key>
+	<string>Assembled Scadenza per {titleMessageUpdateOrUpgrade} di macOS imminente</string>
+	<key>PreDeadlineThresholdTitleLocalized_ja</key>
+	<string>Assembled macOSの{titleMessageUpdateOrUpgrade}期限が近づいています</string>
+	<key>PreDeadlineThresholdTitleLocalized_nl</key>
+	<string>Assembled macOS {titleMessageUpdateOrUpgrade}-deadline nadert</string>
+	<key>PreDeadlineThresholdTitleLocalized_pt</key>
+	<string>Assembled Prazo da {titleMessageUpdateOrUpgrade} do macOS iminente</string>
+	<key>QuietPeriodMinutes</key>
+	<integer>76</integer>
 	<key>RelativeDeadlineToday</key>
 	<string>Today</string>
 	<key>RelativeDeadlineTodayLocalized_de</key>

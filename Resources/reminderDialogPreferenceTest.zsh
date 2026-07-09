@@ -34,14 +34,39 @@
 ####################################################################################################
 
 cliReverseDomainNameNotation=""
+cliPreDeadlineThresholdMinutes=""
+cliAggressiveModePreview="NO"
 scriptRelativePath="Resources/reminderDialogPreferenceTest.zsh"
 defaultUsage="zsh ${scriptRelativePath}"
 rdnnUsage="zsh ${scriptRelativePath} --rdnn <your.reverse.domain.name.notation>"
 
+function validateReverseDomainNameNotation() {
+    local rdnnValue="${1}"
+    local rdnnRegex='^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$'
+
+    [[ "${rdnnValue}" =~ ${rdnnRegex} ]]
+}
+
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
+        --help|-h)
+            echo "Usage:"
+            echo "  ${defaultUsage}"
+            echo "  ${rdnnUsage}"
+            echo "  ${rdnnUsage} --pre-deadline-threshold 30"
+            echo "  ${rdnnUsage} --aggressive"
+            exit 0
+            ;;
         --rdnn)
             if [[ -z "${2:-}" ]]; then
+                echo "Usage:"
+                echo "  ${defaultUsage}"
+                echo "  ${rdnnUsage}"
+                exit 64
+            fi
+
+            if ! validateReverseDomainNameNotation "${2}"; then
+                echo "Invalid --rdnn '${2}'. Use reverse-domain labels with letters, digits, dots, and hyphens only."
                 echo "Usage:"
                 echo "  ${defaultUsage}"
                 echo "  ${rdnnUsage}"
@@ -51,14 +76,37 @@ while [[ "$#" -gt 0 ]]; do
             cliReverseDomainNameNotation="${2}"
             shift 2
             ;;
+        --pre-deadline-threshold)
+            if [[ -z "${2:-}" || ! "${2}" =~ ^[0-9]+$ || "${2}" -lt 1 || "${2}" -gt 999 ]]; then
+                echo "Usage:"
+                echo "  ${defaultUsage}"
+                echo "  ${rdnnUsage}"
+                echo "  ${rdnnUsage} --pre-deadline-threshold 30"
+                exit 64
+            fi
+
+            cliPreDeadlineThresholdMinutes="${2}"
+            shift 2
+            ;;
+        --aggressive)
+            cliAggressiveModePreview="YES"
+            shift
+            ;;
         *)
             echo "Usage:"
             echo "  ${defaultUsage}"
             echo "  ${rdnnUsage}"
+            echo "  ${rdnnUsage} --pre-deadline-threshold 30"
+            echo "  ${rdnnUsage} --aggressive"
             exit 64
             ;;
     esac
 done
+
+if [[ -n "${cliPreDeadlineThresholdMinutes}" && "${cliAggressiveModePreview}" == "YES" ]]; then
+    echo "--pre-deadline-threshold and --aggressive are mutually exclusive preview modes."
+    exit 64
+fi
 
 
 
@@ -70,7 +118,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="3.3.0"
+scriptVersion="4.0.0"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -105,6 +153,16 @@ rerunCommand="${defaultUsage}"
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
+deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
+dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
+dailyReminderTimesResolvedCSV=""
+minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+preDeadlineThresholdReminderMode="NO"
+preDeadlineThresholdMinutes="${cliPreDeadlineThresholdMinutes}"
+aggressiveModeActive="NO"
+aggressiveModeHoursPastDeadline="0"
+typeset -ga dailyReminderTimesResolved=()
+typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
 if [[ -n "${cliReverseDomainNameNotation}" ]]; then
     rerunCommand="zsh ${scriptRelativePath} --rdnn ${reverseDomainNameNotation}"
@@ -118,11 +176,21 @@ fi
 
 declare -A preferenceConfiguration=(
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
+    ["quietPeriodMinutes"]="numeric|76"
+    ["outsideDisplayWindowPeriodicReminderDays"]="numeric|28"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="numeric|75"
+    ["pastDeadlineForceTimerSeconds"]="numeric|60"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="numeric|5"
     ["minimumDiskFreePercentage"]="numeric|99"
+    ["disableButton2InsteadOfHide"]="boolean|YES"
     ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
+    ["dailyReminderTimes"]="string|08:00,12:00,16:00"
+    ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
+    ["aggressiveModePastDeadlineHours"]="numeric|2"
+    ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["supportTeamName"]="string|IT Support"
     ["supportTeamPhone"]="string|+1 (801) 555-1212"
     ["hideSupportTeamPhone"]="boolean|NO"
@@ -162,6 +230,10 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
+    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["aggressiveModeTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Required Now"
+    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
@@ -170,11 +242,21 @@ declare -A preferenceConfiguration=(
 
 declare -A plistKeyMap=(
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
+    ["quietPeriodMinutes"]="QuietPeriodMinutes"
+    ["outsideDisplayWindowPeriodicReminderDays"]="OutsideDisplayWindowPeriodicReminderDays"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="PastDeadlineRestartMinimumUptimeMinutes"
+    ["pastDeadlineForceTimerSeconds"]="PastDeadlineForceTimerSeconds"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="PastDeadlineForceRedisplayDelaySeconds"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
     ["dateFormatDeadlineHumanReadable"]="DateFormatDeadlineHumanReadable"
+    ["dailyReminderTimes"]="DailyReminderTimes"
+    ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
+    ["aggressiveModePastDeadlineHours"]="AggressiveModePastDeadlineHours"
+    ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["supportTeamName"]="SupportTeamName"
     ["supportTeamPhone"]="SupportTeamPhone"
     ["hideSupportTeamPhone"]="HideSupportTeamPhone"
@@ -214,6 +296,10 @@ declare -A plistKeyMap=(
     ["infoboxLabelFreeDiskSpace"]="InfoboxLabelFreeDiskSpace"
     ["deadlineEnforcementMessageAbsolute"]="DeadlineEnforcementMessageAbsolute"
     ["deadlineEnforcementMessageRelative"]="DeadlineEnforcementMessageRelative"
+    ["preDeadlineThresholdTitle"]="PreDeadlineThresholdTitle"
+    ["preDeadlineThresholdMessage"]="PreDeadlineThresholdMessage"
+    ["aggressiveModeTitle"]="AggressiveModeTitle"
+    ["aggressiveModeMessage"]="AggressiveModeMessage"
     ["message"]="Message"
     ["infobox"]="InfoBox"
     ["helpmessage"]="HelpMessage"
@@ -672,6 +758,182 @@ function trimSurroundingWhitespace() {
     echo "${value}"
 }
 
+function readRuntimeStateValue() {
+    local stateKey="${1}"
+
+    [[ -f "${dorStatePlistPath}" ]] || return 0
+
+    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null
+}
+
+function validateRuntimeStatePlistForPreview() {
+    [[ -f "${dorStatePlistPath}" ]] || return 1
+
+    if [[ ! -x "/usr/libexec/PlistBuddy" ]]; then
+        warning "Missing required PlistBuddy binary: /usr/libexec/PlistBuddy; runtime scheduler state cannot be inspected."
+        return 1
+    fi
+
+    if ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        warning "Unable to read runtime scheduler state plist '${dorStatePlistPath}'. Check plist syntax and permissions."
+        return 1
+    fi
+
+    return 0
+}
+
+function validateReminderTimeEntry() {
+    local timeEntry="$(trimSurroundingWhitespace "${1}")"
+
+    if [[ "${timeEntry}" =~ ^([01][0-9]|2[0-3]):([0-5][0-9])$ ]]; then
+        echo "${timeEntry}"
+        return 0
+    fi
+
+    return 1
+}
+
+function normalizeDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        normalizedEntry="$(validateReminderTimeEntry "${rawEntry}")"
+        if [[ -n "${normalizedEntry}" ]]; then
+            validEntries+=("${normalizedEntry}")
+        elif [[ -n "$(trimSurroundingWhitespace "${rawEntry}")" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid DailyReminderTimes entry '${rawEntry}'. Expected HH:MM in 24-hour time."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
+    echo "${dailyReminderTimesResolvedCSV}"
+}
+
+function normalizeMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local trimmedEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    rawValue="$(trimSurroundingWhitespace "${rawValue}")"
+    if [[ -z "${rawValue}" ]]; then
+        echo ""
+        return 0
+    fi
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        trimmedEntry="$(trimSurroundingWhitespace "${rawEntry}")"
+        if [[ "${trimmedEntry}" =~ ^[0-9]+$ ]]; then
+            normalizedEntry=$(( 10#${trimmedEntry} ))
+            if (( normalizedEntry >= 1 && normalizedEntry <= 999 )); then
+                validEntries+=("${normalizedEntry}")
+            elif [[ "${warnOnInvalid}" == "YES" ]]; then
+                warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+            fi
+        elif [[ -n "${trimmedEntry}" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolved=()
+    if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
+        IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+    fi
+    echo "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+}
+
+function resolveMinuteThresholdSchedule() {
+    local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
+    local normalizedMinuteThresholdSchedule=""
+
+    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+        warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
+        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+    }
+
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
+}
+
+function resolveAggressiveModeFrequency() {
+    local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
+
+    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 || aggressiveModeFrequencyMinutes > 999 )); then
+        warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
+        aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
+    fi
+}
+
+function resolveAggressiveModeThreshold() {
+    local defaultAggressiveModePastDeadlineHours="${preferenceConfiguration[aggressiveModePastDeadlineHours]#*|}"
+
+    if [[ ! "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || (( aggressiveModePastDeadlineHours < 0 || aggressiveModePastDeadlineHours > 999 )); then
+        warning "AggressiveModePastDeadlineHours value '${aggressiveModePastDeadlineHours}' is invalid; defaulting to '${defaultAggressiveModePastDeadlineHours}'."
+        aggressiveModePastDeadlineHours="${defaultAggressiveModePastDeadlineHours}"
+    fi
+}
+
+function resolveDailyReminderTimes() {
+    local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
+    local normalizedDailyReminderTimes=""
+
+    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+        warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
+        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+    }
+
+    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
+}
+
 function formatDeadlineFromEpoch() {
     local sourceEpoch="${1}"
     local requestedFormat="${2}"
@@ -1077,6 +1339,8 @@ function applyLocalizedDialogText() {
         "infoboxLabelCurrent" "infoboxLabelRequired" "infoboxLabelDeadline"
         "infoboxLabelDaysRemaining" "infoboxLabelLastRestart" "infoboxLabelFreeDiskSpace"
         "deadlineEnforcementMessageAbsolute" "deadlineEnforcementMessageRelative"
+        "preDeadlineThresholdTitle" "preDeadlineThresholdMessage"
+        "aggressiveModeTitle" "aggressiveModeMessage"
     )
 
     for localizedField in "${localizedFields[@]}"; do
@@ -1206,15 +1470,37 @@ function prepareDemoRuntimeState() {
     [[ -z "${installedPatchVersion}" || ! "${installedPatchVersion}" =~ ^[0-9]+$ ]] && installedPatchVersion="0"
 
     ddmVersionString="${installedMajorVersion}.${installedMinorVersion}.$(( installedPatchVersion + 1 ))"
-    deadlineEpoch=$(date -v+7d +%s)
+    if [[ "${cliAggressiveModePreview}" == "YES" ]]; then
+        aggressiveModeActive="YES"
+        aggressiveModeHoursPastDeadline="${aggressiveModePastDeadlineHours}"
+        deadlineEpoch=$(( $(date +%s) - (aggressiveModeHoursPastDeadline * 3600) ))
+    elif [[ -n "${preDeadlineThresholdMinutes}" ]]; then
+        preDeadlineThresholdReminderMode="YES"
+        deadlineEpoch=$(( $(date +%s) + (preDeadlineThresholdMinutes * 60) ))
+    else
+        deadlineEpoch=$(date -v+7d +%s)
+    fi
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDaysRemaining="7"
+    [[ "${preDeadlineThresholdReminderMode}" == "YES" ]] && ddmVersionStringDaysRemaining="0"
+    [[ "${aggressiveModeActive}" == "YES" ]] && ddmVersionStringDaysRemaining="-1"
     ddmEnforcedInstallDateHumanReadable="$(formatDeadlineFromEpoch "${deadlineEpoch}" "${dateFormatDeadlineHumanReadable}")"
     ddmEnforcedInstallDateRelativeHumanReadable="$(formatRelativeDeadlineHumanReadable "${deadlineEpoch}" "${ddmEnforcedInstallDateHumanReadable}")"
-    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateHumanReadable}"
+    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
     versionComparisonResult="Update Required"
     hideSecondaryButton="NO"
+    if [[ "${aggressiveModeActive}" == "YES" ]]; then
+        case "${disableButton2InsteadOfHide}" in
+            "YES")
+                hideSecondaryButton="DISABLED"
+                ;;
+            *)
+                hideSecondaryButton="YES"
+                ;;
+        esac
+    fi
     blurscreen="--noblurscreen"
+    [[ "${aggressiveModeActive}" == "YES" ]] && blurscreen="--blurscreen"
     updateOrUpgradeMode="update"
     updateStagingStatus="Fully staged"
 
@@ -1378,7 +1664,7 @@ function computeDeadlineEnforcementMessage() {
 }
 
 function computeInfoboxHighlights() {
-    infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
+    infoboxDeadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable:-${ddmVersionStringDeadlineHumanReadable}}}"
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
 
@@ -1394,6 +1680,14 @@ function computeInfoboxHighlights() {
 }
 
 function buildPlaceholderMap() {
+    local preDeadlineThresholdEmphasisOpen=""
+    local preDeadlineThresholdEmphasisClose=""
+
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
+        preDeadlineThresholdEmphasisOpen=":red["
+        preDeadlineThresholdEmphasisClose="]"
+    fi
+
     declare -gA PLACEHOLDER_MAP=(
         [weekday]="$(localizedWeekdayName "${dialogLanguage}")"
         [userfirstname]="${loggedInUserFirstname}"
@@ -1439,6 +1733,11 @@ function buildPlaceholderMap() {
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
+        [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
+        [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
+        [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
+        [aggressiveModeHoursPastDeadline]="${aggressiveModeHoursPastDeadline}"
+        [aggressiveModeFrequencyMinutes]="${aggressiveModeFrequencyMinutes}"
     )
 }
 
@@ -1467,6 +1766,13 @@ function replacePlaceholders() {
         (( pass++ ))
         [[ "${value}" == "${previousValue}" ]] && break
     done
+
+    value="${value//a.m../a.m.}"
+    value="${value//p.m../p.m.}"
+    value="${value//A.M../A.M.}"
+    value="${value//P.M../P.M.}"
+    value="${value//AM../AM.}"
+    value="${value//PM../PM.}"
 
     printf -v "${targetVariable}" '%s' "${value}"
 }
@@ -1548,6 +1854,29 @@ function applyHideRules() {
     esac
 }
 
+function isPreDeadlineThresholdReminderMode() {
+    [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]
+}
+
+function applyPreDeadlineThresholdDialogOverrides() {
+    isPreDeadlineThresholdReminderMode || return 0
+
+    title="${preDeadlineThresholdTitle}"
+    message="${preDeadlineThresholdMessage}"
+}
+
+function isAggressiveModeActive() {
+    [[ "${aggressiveModeActive}" == "YES" ]]
+}
+
+function applyAggressiveModeDialogOverrides() {
+    isAggressiveModeActive || return 0
+
+    title="${aggressiveModeTitle}"
+    message="${aggressiveModeMessage}"
+    blurscreen="--blurscreen"
+}
+
 function updateRequiredVariables() {
     dialogBinary="/usr/local/bin/dialog"
     [[ ! -x "${dialogBinary}" ]] && fatal "swiftDialog not found at '${dialogBinary}'."
@@ -1561,6 +1890,8 @@ function updateRequiredVariables() {
     computeUpdateStagingMessage
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
+    applyAggressiveModeDialogOverrides
+    applyPreDeadlineThresholdDialogOverrides
 
     applySupportFieldVisibility
 
@@ -1587,9 +1918,20 @@ function updateRequiredVariables() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function printResolvedPreferenceSummary() {
+    local runtimeNextScheduledReminder=""
+    local runtimeDaemonLastTriggered=""
+
     preFlight "Preference domain: ${preferenceDomain}"
     preFlight "Managed preferences: ${managedPreferencesPlist}.plist (${foundManagedPreferences})"
     preFlight "Local preferences: ${localPreferencesPlist}.plist (${foundLocalPreferences})"
+    preFlight "Daily reminder times: ${dailyReminderTimesResolvedCSV}"
+    preFlight "Pre-deadline minute thresholds: ${minutesBeforeDeadlineReminderScheduleResolvedCSV:-<disabled>}"
+    if [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]; then
+        preFlight "Pre-deadline threshold preview: ${preDeadlineThresholdMinutes} minute(s)"
+    fi
+    if [[ "${aggressiveModeActive}" == "YES" ]]; then
+        preFlight "Aggressive mode preview: ${aggressiveModeHoursPastDeadline} hour(s) past deadline; frequency ${aggressiveModeFrequencyMinutes} minute(s)"
+    fi
     preFlight "Resolved language: ${dialogLanguage}"
     preFlight "Detected appearance: ${requestedAppearanceMode}"
     preFlight "Title: ${title}"
@@ -1601,6 +1943,19 @@ function printResolvedPreferenceSummary() {
     preFlight "Help image: ${helpimage}"
     preFlight "Infobox: ${infobox}"
     preFlight "Message: ${message}"
+
+    if [[ -f "${dorStatePlistPath}" ]]; then
+        preFlight "Runtime state plist: ${dorStatePlistPath}"
+        if validateRuntimeStatePlistForPreview; then
+            runtimeNextScheduledReminder="$(readRuntimeStateValue "NextScheduledReminder")"
+            runtimeDaemonLastTriggered="$(readRuntimeStateValue "DaemonLastTriggered")"
+            preFlight "Runtime NextScheduledReminder: ${runtimeNextScheduledReminder:-<unset>}"
+            preFlight "Runtime DaemonLastTriggered: ${runtimeDaemonLastTriggered:-<unset>}"
+        else
+            preFlight "Runtime NextScheduledReminder: <unavailable>"
+            preFlight "Runtime DaemonLastTriggered: <unavailable>"
+        fi
+    fi
 }
 
 function printDialogArguments() {
@@ -1722,6 +2077,10 @@ fi
 resolveEffectiveUserContext
 resolveDialogLanguage
 initializeLocalizedRuntimeFields
+resolveDailyReminderTimes
+resolveMinuteThresholdSchedule
+resolveAggressiveModeThreshold
+resolveAggressiveModeFrequency
 prepareDemoRuntimeState
 
 # -------------------------------------------------------------------------

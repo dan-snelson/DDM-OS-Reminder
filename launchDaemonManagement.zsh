@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0"
+scriptVersion="4.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -67,6 +67,11 @@ organizationScriptName="dor"
 
 # Organization’s Directory (i.e., where your client-side scripts reside)
 organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
+dormScriptPath="${organizationDirectory}/${organizationScriptName}.zsh"
+dorStarterPath="${organizationDirectory}/dor-starter.zsh"
+dorStatePlistPath="${organizationDirectory}/dor-state.plist"
+dorPidFilePath="${organizationDirectory}/dor.pid"
+dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -101,6 +106,135 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Runtime Asset Cleanup
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function removeDeployedRuntimeAssets() {
+    local runtimeAssetPath=""
+    local runtimeAssetPaths=(
+        "${dormScriptPath}"
+        "${dorStarterPath}"
+        "${dorStatePlistPath}"
+        "${dorPidFilePath}"
+        "${dorAggressiveKillSwitchPath}"
+    )
+
+    for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
+        if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
+            logComment "Runtime asset not present: '${runtimeAssetPath}'"
+            continue
+        fi
+
+        logComment "Removing '${runtimeAssetPath}' … "
+        if rm -f "${runtimeAssetPath}" 2>/dev/null; then
+            logComment "Removed '${runtimeAssetPath}'"
+        else
+            warning "Failed to remove '${runtimeAssetPath}'"
+        fi
+    done
+}
+
+function isDDMOSReminderLaunchDaemonPlist() {
+    local candidatePath="${1}"
+    local candidateLabel=""
+    local programArguments=""
+
+    [[ -f "${candidatePath}" ]] || return 1
+    [[ "${candidatePath}" == *.dor.plist ]] || return 1
+    [[ "${candidatePath}" == "${launchDaemonPath}" ]] && return 0
+
+    candidateLabel="$(/usr/libexec/PlistBuddy -c "Print :Label" "${candidatePath}" 2>/dev/null || true)"
+    programArguments="$(/usr/libexec/PlistBuddy -c "Print :ProgramArguments" "${candidatePath}" 2>/dev/null || true)"
+
+    [[ "${candidateLabel}" == *.dor ]] || return 1
+    [[ "${programArguments}" == *"/Library/Management/"* ]] || return 1
+    if [[ "${programArguments}" == *"/dor-starter.zsh"* || "${programArguments}" == *"/dor.zsh"* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+function discoverDDMOSReminderLaunchDaemonPaths() {
+    local candidatePath=""
+    local -A discoveredPaths=()
+
+    setopt local_options null_glob
+
+    for candidatePath in "${launchDaemonPath}" /Library/LaunchDaemons/*.dor.plist; do
+        [[ -n "${discoveredPaths["${candidatePath}"]:-}" ]] && continue
+
+        if [[ "${candidatePath}" == "${launchDaemonPath}" ]] || isDDMOSReminderLaunchDaemonPlist "${candidatePath}"; then
+            discoveredPaths["${candidatePath}"]="YES"
+            echo "${candidatePath}"
+        fi
+    done
+}
+
+function launchDaemonLabelForPath() {
+    local daemonPath="${1}"
+    local daemonLabel=""
+
+    if [[ -f "${daemonPath}" ]]; then
+        daemonLabel="$(/usr/libexec/PlistBuddy -c "Print :Label" "${daemonPath}" 2>/dev/null || true)"
+    fi
+
+    if [[ -z "${daemonLabel}" && "${daemonPath}" == "${launchDaemonPath}" ]]; then
+        daemonLabel="${launchDaemonLabel}"
+    fi
+
+    if [[ -z "${daemonLabel}" ]]; then
+        daemonLabel="${daemonPath:t:r}"
+    fi
+
+    echo "${daemonLabel}"
+}
+
+function unloadAndRemoveLaunchDaemon() {
+    local daemonPath="${1}"
+    local daemonLabel=""
+
+    [[ -n "${daemonPath}" ]] || return 0
+
+    daemonLabel="$(launchDaemonLabelForPath "${daemonPath}")"
+    if [[ -n "${daemonLabel}" ]]; then
+        logComment "Unload LaunchDaemon label '${daemonLabel}' … "
+        launchctl bootout "system/${daemonLabel}" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -f "${daemonPath}" ]]; then
+        logComment "Unload LaunchDaemon plist '${daemonPath}' … "
+        launchctl bootout system "${daemonPath}" >/dev/null 2>&1 || true
+        logComment "Removing '${daemonPath}' … "
+        if rm -f "${daemonPath}" 2>/dev/null; then
+            logComment "Removed '${daemonPath}'"
+        else
+            warning "Failed to remove '${daemonPath}'"
+        fi
+    else
+        logComment "LaunchDaemon plist not present: '${daemonPath}'"
+    fi
+}
+
+function resetLaunchDaemons() {
+    local resetAction="${1:-Reset}"
+    local daemonPath=""
+    local -a daemonPaths=()
+
+    info "${resetAction} LaunchDaemon … "
+    launchDaemonStatus
+
+    daemonPaths=("${(@f)$(discoverDDMOSReminderLaunchDaemonPaths)}")
+    for daemonPath in "${daemonPaths[@]}"; do
+        unloadAndRemoveLaunchDaemon "${daemonPath}"
+    done
+
+    launchDaemonStatus
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Reset Configuration
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -125,44 +259,22 @@ function resetConfiguration() {
             info "Reset All Configuration Files … "
 
             # Reset LaunchDaemon
-            info "Reset LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Reset"
 
             # Reset Script
             info "Reset Script … "
-            logComment "Removing '${organizationDirectory}/${organizationScriptName}.zsh' … "
-            rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
-            logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
+            removeDeployedRuntimeAssets
             ;;
 
         "LaunchDaemon" )
 
-            info "Reset LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Reset"
             ;;
 
         "Script" )
 
             info "Reset Script … "
-            logComment "Removing '${organizationDirectory}/${organizationScriptName}.zsh' … "
-            rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
-            logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
+            removeDeployedRuntimeAssets
             ;;
 
         "Uninstall" )
@@ -170,22 +282,11 @@ function resetConfiguration() {
             warning "*** UNINSTALLING ${humanReadableScriptName} ***"
 
             # Uninstall LaunchDaemon
-            info "Uninstall LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Uninstall"
 
             # Uninstall Script
             info "Uninstall Script … "
-            logComment "Removing '${organizationDirectory}/${organizationScriptName}.zsh' … "
-            rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
-            logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
+            removeDeployedRuntimeAssets
 
             # Remove legacy nested directory if it exists and is empty (pre-v1.3.0 cleanup)
             if [[ -d "${organizationDirectory}/${reverseDomainNameNotation}" ]]; then
@@ -226,7 +327,7 @@ function resetConfiguration() {
 
 function createDDMOSReminderScript() {
 
-    notice "Create '${humanReadableScriptName}' script: ${organizationDirectory}/${organizationScriptName}.zsh"
+    notice "Create '${humanReadableScriptName}' script: ${dormScriptPath}"
 
 (
 cat <<'ENDOFSCRIPT'
@@ -249,14 +350,217 @@ cat <<'ENDOFSCRIPT'
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ENDOFSCRIPT
-) > "${organizationDirectory}/${organizationScriptName}.zsh"
+) > "${dormScriptPath}"
 
     logComment "${humanReadableScriptName} script created"
 
     logComment "Setting permissions …"
-    chown root:wheel "${organizationDirectory}/${organizationScriptName}.zsh"
-    chmod 755 "${organizationDirectory}/${organizationScriptName}.zsh"
-    chmod +x "${organizationDirectory}/${organizationScriptName}.zsh"
+    chown root:wheel "${dormScriptPath}"
+    chmod 755 "${dormScriptPath}"
+    chmod +x "${dormScriptPath}"
+
+}
+
+function escapeSedReplacement() {
+    local replacementValue="${1}"
+
+    replacementValue="${replacementValue//\\/\\\\}"
+    replacementValue="${replacementValue//&/\\&}"
+    replacementValue="${replacementValue//|/\\|}"
+
+    print -r -- "${replacementValue}"
+}
+
+function createDorStarterScript() {
+
+    local escapedScriptVersion="$(escapeSedReplacement "${scriptVersion}")"
+    local escapedScriptLog="$(escapeSedReplacement "${scriptLog}")"
+    local escapedMainScriptPath="$(escapeSedReplacement "${dormScriptPath}")"
+    local escapedStatePlistPath="$(escapeSedReplacement "${dorStatePlistPath}")"
+    local escapedPidFilePath="$(escapeSedReplacement "${dorPidFilePath}")"
+
+    notice "Create 'dor-starter' script: ${dorStarterPath}"
+
+(
+cat <<'ENDOFSTARTER'
+#!/bin/zsh --no-rcs
+
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+
+scriptVersion="__SCRIPT_VERSION__"
+scriptLog="__SCRIPT_LOG__"
+mainScriptPath="__MAIN_SCRIPT_PATH__"
+statePlistPath="__STATE_PLIST_PATH__"
+pidFilePath="__PID_FILE_PATH__"
+plistBuddyPath="/usr/libexec/PlistBuddy"
+
+function updateScriptLog() {
+    echo "dor (${scriptVersion}): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" >> "${scriptLog}"
+}
+
+function notice()  { updateScriptLog "[NOTICE]          ${1}"; }
+function warning() { updateScriptLog "[WARNING]         ${1}"; }
+function error()   { updateScriptLog "[ERROR]           ${1}"; }
+
+function requirePlistBuddy() {
+    if [[ ! -x "${plistBuddyPath}" ]]; then
+        error "Missing required PlistBuddy binary: ${plistBuddyPath}; scheduler state cannot be trusted."
+        exit 1
+    fi
+}
+
+function createEmptyStatePlist() {
+    local createStatus=""
+
+    cat > "${statePlistPath}" <<'ENDOFPLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+ENDOFPLIST
+    createStatus="${?}"
+
+    if (( createStatus != 0 )); then
+        error "Unable to create scheduler state plist '${statePlistPath}'."
+        return 1
+    fi
+
+    chown root:wheel "${statePlistPath}" 2>/dev/null || true
+    chmod 644 "${statePlistPath}" 2>/dev/null || true
+
+    if ! "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1; then
+        error "Created scheduler state plist '${statePlistPath}' is not readable."
+        return 1
+    fi
+}
+
+function ensureStatePlist() {
+    local invalidStatePlistPath=""
+
+    mkdir -p "${statePlistPath:h}"
+    chown root:wheel "${statePlistPath:h}" 2>/dev/null || true
+    chmod 755 "${statePlistPath:h}" 2>/dev/null || true
+
+    if [[ ! -f "${statePlistPath}" ]]; then
+        createEmptyStatePlist || return 1
+    elif ! "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1; then
+        invalidStatePlistPath="${statePlistPath}.invalid.$(date '+%Y%m%d%H%M%S')"
+        warning "Unreadable scheduler state plist '${statePlistPath}'; recreating empty state."
+        if mv "${statePlistPath}" "${invalidStatePlistPath}" 2>/dev/null; then
+            warning "Moved unreadable scheduler state plist to '${invalidStatePlistPath}'."
+        else
+            warning "Unable to quarantine unreadable scheduler state plist '${statePlistPath}'; replacing in place."
+        fi
+        createEmptyStatePlist || return 1
+    fi
+
+    chown root:wheel "${statePlistPath}" 2>/dev/null || true
+    chmod 644 "${statePlistPath}" 2>/dev/null || true
+
+    "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1
+}
+
+function writeStateValue() {
+    local key="${1}"
+    local value="${2}"
+
+    ensureStatePlist || return 1
+
+    if "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" >/dev/null 2>&1; then
+        if ! "${plistBuddyPath}" -c "Set :${key} ${value}" "${statePlistPath}" >/dev/null 2>&1; then
+            error "Unable to set scheduler state key '${key}' in '${statePlistPath}'."
+            return 1
+        fi
+    else
+        if ! "${plistBuddyPath}" -c "Add :${key} string ${value}" "${statePlistPath}" >/dev/null 2>&1; then
+            error "Unable to add scheduler state key '${key}' in '${statePlistPath}'."
+            return 1
+        fi
+    fi
+}
+
+function readStateValue() {
+    local key="${1}"
+
+    ensureStatePlist || return 1
+
+    "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null || true
+}
+
+function epochFromScheduleTimestamp() {
+    local scheduleTimestamp="${1}"
+    local scheduleEpoch=""
+
+    scheduleEpoch=$(date -j -f "%Y-%m-%d:%H:%M:%S" "${scheduleTimestamp}" "+%s" 2>/dev/null)
+    echo "${scheduleEpoch}"
+}
+
+if [[ ! -x "${mainScriptPath}" ]]; then
+    error "Missing deployed main script: ${mainScriptPath}"
+    exit 1
+fi
+
+requirePlistBuddy
+
+if [[ -f "${pidFilePath}" ]]; then
+    if pgrep -F "${pidFilePath}" >/dev/null 2>&1; then
+        exit 0
+    fi
+
+    warning "Removing stale PID file '${pidFilePath}'."
+    rm -f "${pidFilePath}" 2>/dev/null || true
+fi
+
+nextScheduledReminder="$(readStateValue "NextScheduledReminder")"
+stateReadStatus="${?}"
+if (( stateReadStatus != 0 )); then
+    error "Unable to read scheduler state; not launching main script."
+    exit 1
+fi
+
+if [[ "${nextScheduledReminder:l}" == "false" ]]; then
+    exit 0
+fi
+
+if [[ -n "${nextScheduledReminder}" ]]; then
+    nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
+    if [[ -n "${nextScheduledReminderEpoch}" ]]; then
+        nowEpoch="$(date +%s)"
+        if (( nextScheduledReminderEpoch > nowEpoch )); then
+            exit 0
+        fi
+    else
+        warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
+    fi
+fi
+
+if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
+    error "Unable to update scheduler trigger state; not launching main script."
+    exit 1
+fi
+
+notice "Heartbeat launch triggered '${mainScriptPath}'."
+DOR_LAUNCH_SOURCE="starter" "${mainScriptPath}" &
+disown
+
+exit 0
+ENDOFSTARTER
+) | sed \
+    -e "s|__SCRIPT_VERSION__|${escapedScriptVersion}|g" \
+    -e "s|__SCRIPT_LOG__|${escapedScriptLog}|g" \
+    -e "s|__MAIN_SCRIPT_PATH__|${escapedMainScriptPath}|g" \
+    -e "s|__STATE_PLIST_PATH__|${escapedStatePlistPath}|g" \
+    -e "s|__PID_FILE_PATH__|${escapedPidFilePath}|g" \
+    > "${dorStarterPath}"
+
+    logComment "dor-starter script created"
+
+    logComment "Setting permissions …"
+    chown root:wheel "${dorStarterPath}"
+    chmod 755 "${dorStarterPath}"
+    chmod +x "${dorStarterPath}"
 
 }
 
@@ -266,10 +570,9 @@ ENDOFSCRIPT
 #
 # CREATE LAUNCHDAEMON
 #
-#   The following function creates the LaunchDaemon which executes the previously created,
-#   client-side "reminderDialog.zsh" script.
-#
-#   We've elected to prompt our users twice a day (8 a.m. and 4 p.m.) to ensure they see the message.
+#   The following function creates the LaunchDaemon which executes the lightweight heartbeat
+#   starter script. The starter checks runtime scheduling state and only launches the main
+#   reminder script when a reminder is due.
 #
 #   NOTE: Leave a full return at the end of the content before the "ENDOFLAUNCHDAEMON" line.
 #
@@ -278,6 +581,9 @@ ENDOFSCRIPT
 function createLaunchDaemon() {
 
     notice "Create LaunchDaemon"
+
+    logComment "Ensuring previous '${launchDaemonLabel}' definition is unloaded …"
+    launchctl bootout system "${launchDaemonPath}" >/dev/null 2>&1 || true
 
     logComment "Creating '${launchDaemonPath}' …"
 
@@ -294,30 +600,19 @@ cat <<ENDOFLAUNCHDAEMON
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>${organizationDirectory}/${organizationScriptName}.zsh</string>
+        <string>${dorStarterPath}</string>
     </array>
     <key>RunAtLoad</key>
+    <true/>
+    <key>AbandonProcessGroup</key>
     <true/>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin</string>
     </dict>
-    <key>StartCalendarInterval</key>
-    <array>
-        <dict>
-            <key>Hour</key>
-            <integer>8</integer>
-            <key>Minute</key>
-            <integer>0</integer>
-        </dict>
-        <dict>
-            <key>Hour</key>
-            <integer>16</integer>
-            <key>Minute</key>
-            <integer>0</integer>
-        </dict>
-    </array>
+    <key>StartInterval</key>
+    <integer>60</integer>
     <key>StandardErrorPath</key>
     <string>${scriptLog}</string>
     <key>StandardOutPath</key>
@@ -334,7 +629,7 @@ ENDOFLAUNCHDAEMON
 
     logComment "Loading '${launchDaemonLabel}' …"
     launchctl bootstrap system "${launchDaemonPath}"
-    launchctl start "${launchDaemonPath}"
+    launchctl kickstart -k "system/${launchDaemonLabel}"
 
 }
 
@@ -546,17 +841,21 @@ resetConfiguration "${resetConfiguration}"
 # Script Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "Validating Script"
+notice "Refreshing Script"
 
-if [[ -f "${organizationDirectory}/${organizationScriptName}.zsh" ]]; then
-
-    logComment "${humanReadableScriptName} script '"${organizationDirectory}/${organizationScriptName}.zsh"' exists"
-
-else
-
-    createDDMOSReminderScript
-
+if [[ -f "${dormScriptPath}" ]]; then
+    logComment "Replacing existing ${humanReadableScriptName} script '${dormScriptPath}'"
 fi
+
+createDDMOSReminderScript
+
+notice "Refreshing Starter"
+
+if [[ -f "${dorStarterPath}" ]]; then
+    logComment "Replacing existing dor-starter script '${dorStarterPath}'"
+fi
+
+createDorStarterScript
 
 
 
@@ -564,33 +863,13 @@ fi
 # LaunchDaemon Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "Validating LaunchDaemon"
-
-logComment "Checking for LaunchDaemon '${launchDaemonPath}' …"
+notice "Refreshing LaunchDaemon"
 
 if [[ -f "${launchDaemonPath}" ]]; then
-
-    logComment "LaunchDaemon '${launchDaemonPath}' exists"
-
-    launchDaemonStatus
-
-    if [[ -n "${launchDaemonStatusResult}" ]]; then
-
-        logComment "${launchDaemonLabel} IS loaded"
-
-    else
-
-        logComment "Loading '${launchDaemonLabel}' …"
-        launchctl bootstrap system "${launchDaemonPath}"
-        launchDaemonStatus
-
-    fi
-
-else
-
-    createLaunchDaemon
-
+    logComment "Replacing existing LaunchDaemon '${launchDaemonPath}'"
 fi
+
+createLaunchDaemon
 
 
 

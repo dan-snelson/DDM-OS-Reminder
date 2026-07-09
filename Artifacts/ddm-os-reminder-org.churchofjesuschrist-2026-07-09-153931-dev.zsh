@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0"
+scriptVersion="4.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -67,6 +67,11 @@ organizationScriptName="dor"
 
 # Organization’s Directory (i.e., where your client-side scripts reside)
 organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
+dormScriptPath="${organizationDirectory}/${organizationScriptName}.zsh"
+dorStarterPath="${organizationDirectory}/dor-starter.zsh"
+dorStatePlistPath="${organizationDirectory}/dor-state.plist"
+dorPidFilePath="${organizationDirectory}/dor.pid"
+dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -101,6 +106,135 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Runtime Asset Cleanup
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function removeDeployedRuntimeAssets() {
+    local runtimeAssetPath=""
+    local runtimeAssetPaths=(
+        "${dormScriptPath}"
+        "${dorStarterPath}"
+        "${dorStatePlistPath}"
+        "${dorPidFilePath}"
+        "${dorAggressiveKillSwitchPath}"
+    )
+
+    for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
+        if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
+            logComment "Runtime asset not present: '${runtimeAssetPath}'"
+            continue
+        fi
+
+        logComment "Removing '${runtimeAssetPath}' … "
+        if rm -f "${runtimeAssetPath}" 2>/dev/null; then
+            logComment "Removed '${runtimeAssetPath}'"
+        else
+            warning "Failed to remove '${runtimeAssetPath}'"
+        fi
+    done
+}
+
+function isDDMOSReminderLaunchDaemonPlist() {
+    local candidatePath="${1}"
+    local candidateLabel=""
+    local programArguments=""
+
+    [[ -f "${candidatePath}" ]] || return 1
+    [[ "${candidatePath}" == *.dor.plist ]] || return 1
+    [[ "${candidatePath}" == "${launchDaemonPath}" ]] && return 0
+
+    candidateLabel="$(/usr/libexec/PlistBuddy -c "Print :Label" "${candidatePath}" 2>/dev/null || true)"
+    programArguments="$(/usr/libexec/PlistBuddy -c "Print :ProgramArguments" "${candidatePath}" 2>/dev/null || true)"
+
+    [[ "${candidateLabel}" == *.dor ]] || return 1
+    [[ "${programArguments}" == *"/Library/Management/"* ]] || return 1
+    if [[ "${programArguments}" == *"/dor-starter.zsh"* || "${programArguments}" == *"/dor.zsh"* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+function discoverDDMOSReminderLaunchDaemonPaths() {
+    local candidatePath=""
+    local -A discoveredPaths=()
+
+    setopt local_options null_glob
+
+    for candidatePath in "${launchDaemonPath}" /Library/LaunchDaemons/*.dor.plist; do
+        [[ -n "${discoveredPaths["${candidatePath}"]:-}" ]] && continue
+
+        if [[ "${candidatePath}" == "${launchDaemonPath}" ]] || isDDMOSReminderLaunchDaemonPlist "${candidatePath}"; then
+            discoveredPaths["${candidatePath}"]="YES"
+            echo "${candidatePath}"
+        fi
+    done
+}
+
+function launchDaemonLabelForPath() {
+    local daemonPath="${1}"
+    local daemonLabel=""
+
+    if [[ -f "${daemonPath}" ]]; then
+        daemonLabel="$(/usr/libexec/PlistBuddy -c "Print :Label" "${daemonPath}" 2>/dev/null || true)"
+    fi
+
+    if [[ -z "${daemonLabel}" && "${daemonPath}" == "${launchDaemonPath}" ]]; then
+        daemonLabel="${launchDaemonLabel}"
+    fi
+
+    if [[ -z "${daemonLabel}" ]]; then
+        daemonLabel="${daemonPath:t:r}"
+    fi
+
+    echo "${daemonLabel}"
+}
+
+function unloadAndRemoveLaunchDaemon() {
+    local daemonPath="${1}"
+    local daemonLabel=""
+
+    [[ -n "${daemonPath}" ]] || return 0
+
+    daemonLabel="$(launchDaemonLabelForPath "${daemonPath}")"
+    if [[ -n "${daemonLabel}" ]]; then
+        logComment "Unload LaunchDaemon label '${daemonLabel}' … "
+        launchctl bootout "system/${daemonLabel}" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -f "${daemonPath}" ]]; then
+        logComment "Unload LaunchDaemon plist '${daemonPath}' … "
+        launchctl bootout system "${daemonPath}" >/dev/null 2>&1 || true
+        logComment "Removing '${daemonPath}' … "
+        if rm -f "${daemonPath}" 2>/dev/null; then
+            logComment "Removed '${daemonPath}'"
+        else
+            warning "Failed to remove '${daemonPath}'"
+        fi
+    else
+        logComment "LaunchDaemon plist not present: '${daemonPath}'"
+    fi
+}
+
+function resetLaunchDaemons() {
+    local resetAction="${1:-Reset}"
+    local daemonPath=""
+    local -a daemonPaths=()
+
+    info "${resetAction} LaunchDaemon … "
+    launchDaemonStatus
+
+    daemonPaths=("${(@f)$(discoverDDMOSReminderLaunchDaemonPaths)}")
+    for daemonPath in "${daemonPaths[@]}"; do
+        unloadAndRemoveLaunchDaemon "${daemonPath}"
+    done
+
+    launchDaemonStatus
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Reset Configuration
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -125,44 +259,22 @@ function resetConfiguration() {
             info "Reset All Configuration Files … "
 
             # Reset LaunchDaemon
-            info "Reset LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Reset"
 
             # Reset Script
             info "Reset Script … "
-            logComment "Removing '${organizationDirectory}/${organizationScriptName}.zsh' … "
-            rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
-            logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
+            removeDeployedRuntimeAssets
             ;;
 
         "LaunchDaemon" )
 
-            info "Reset LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Reset"
             ;;
 
         "Script" )
 
             info "Reset Script … "
-            logComment "Removing '${organizationDirectory}/${organizationScriptName}.zsh' … "
-            rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
-            logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
+            removeDeployedRuntimeAssets
             ;;
 
         "Uninstall" )
@@ -170,22 +282,11 @@ function resetConfiguration() {
             warning "*** UNINSTALLING ${humanReadableScriptName} ***"
 
             # Uninstall LaunchDaemon
-            info "Uninstall LaunchDaemon … "
-            launchDaemonStatus
-            if [[ -n "${launchDaemonStatusResult}" ]]; then
-                logComment "Unload '${launchDaemonPath}' … "
-                launchctl bootout system "${launchDaemonPath}"
-                launchDaemonStatus
-            fi
-            logComment "Removing '${launchDaemonPath}' … "
-            rm -f "${launchDaemonPath}" 2>&1
-            logComment "Removed '${launchDaemonPath}'"
+            resetLaunchDaemons "Uninstall"
 
             # Uninstall Script
             info "Uninstall Script … "
-            logComment "Removing '${organizationDirectory}/${organizationScriptName}.zsh' … "
-            rm -f "${organizationDirectory}/${organizationScriptName}.zsh"
-            logComment "Removed '${organizationDirectory}/${organizationScriptName}.zsh' "
+            removeDeployedRuntimeAssets
 
             # Remove legacy nested directory if it exists and is empty (pre-v1.3.0 cleanup)
             if [[ -d "${organizationDirectory}/${reverseDomainNameNotation}" ]]; then
@@ -226,7 +327,7 @@ function resetConfiguration() {
 
 function createDDMOSReminderScript() {
 
-    notice "Create '${humanReadableScriptName}' script: ${organizationDirectory}/${organizationScriptName}.zsh"
+    notice "Create '${humanReadableScriptName}' script: ${dormScriptPath}"
 
 (
 cat <<'ENDOFSCRIPT'
@@ -252,7 +353,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="3.3.0"
+scriptVersion="4.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -302,10 +403,32 @@ organizationScriptName="dorm"
 preferenceDomain="${reverseDomainNameNotation}.${organizationScriptName}"
 managedPreferencesPlist="/Library/Managed Preferences/${preferenceDomain}"
 localPreferencesPlist="/Library/Preferences/${preferenceDomain}"
-
-# Disable button2 (instead of hiding it when approaching deadline)
-# Set to "YES" to disable button2 (shows greyed out), "NO" to hide it (previous behavior)
-disableButton2InsteadOfHide="YES"
+deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
+dorScriptPath="${deploymentScriptDirectory}/dor.zsh"
+dorStarterPath="${deploymentScriptDirectory}/dor-starter.zsh"
+dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
+dorPidFilePath="${deploymentScriptDirectory}/dor.pid"
+aggressiveModeKillSwitchPath="${deploymentScriptDirectory}/dor-aggressive-kill"
+dorLaunchDaemonLabel="${reverseDomainNameNotation}.dor"
+dorLaunchDaemonPath="/Library/LaunchDaemons/${dorLaunchDaemonLabel}.plist"
+launchSource="${DOR_LAUNCH_SOURCE:-manual}"
+isDemoModeRequested="NO"
+[[ "${1:-}" == "demo" ]] && isDemoModeRequested="YES"
+schedulerEnabledForCurrentRun="NO"
+[[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
+nextReminderScheduleMode="baseline"
+nextReminderScheduleEpoch=""
+nextReminderScheduleReason="Baseline reminder schedule"
+dailyReminderTimesResolvedCSV=""
+minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+preDeadlineThresholdReminderMode="NO"
+preDeadlineThresholdMinutes=""
+preDeadlineThresholdSignature=""
+preDeadlineThresholdDeliveredCSV=""
+preDeadlineThresholdSkippedCSV=""
+ownsDorPidFile="NO"
+typeset -ga dailyReminderTimesResolved=()
+typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
 # NOTE: All configurable preferences (days to deadline, blurscreen threshold, disk
 # space, meeting delay, format strings, icons, etc.) are now defined in the
@@ -313,11 +436,11 @@ disableButton2InsteadOfHide="YES"
 # to support managed and local plist overrides.
 
 # Past Deadline runtime state
-pastDeadlineForceTimerSeconds=60
-pastDeadlineRedisplayDelaySeconds=5
 pastDeadlineRestartEffective="Off"
-pastDeadlineRestartMinimumUptimeMinutes=75
 pastDeadlineRestartSuppressedForUptime="NO"
+aggressiveModeActive="NO"
+aggressiveModeKillSwitchDetected="NO"
+aggressiveModeHoursPastDeadline="0"
 dialogLanguage="en"
 deadlineFormatLanguageCode="en"
 relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
@@ -424,11 +547,21 @@ declare -A preferenceConfiguration=(
     ["daysBeforeDeadlineBlurscreen"]="numeric|45"
     ["daysBeforeDeadlineHidingButton2"]="numeric|21"
     ["daysOfExcessiveUptimeWarning"]="numeric|0"
+    ["quietPeriodMinutes"]="numeric|76"
+    ["outsideDisplayWindowPeriodicReminderDays"]="numeric|28"
     ["daysPastDeadlineRestartWorkflow"]="numeric|2"
     ["pastDeadlineRestartBehavior"]="string|Off"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="numeric|75"
+    ["pastDeadlineForceTimerSeconds"]="numeric|60"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="numeric|5"
     ["meetingDelay"]="numeric|75"
+    ["dailyReminderTimes"]="string|08:00,12:00,16:00"
+    ["minutesBeforeDeadlineReminderSchedule"]="string|45,30,15,10,5"
+    ["aggressiveModePastDeadlineHours"]="numeric|2"
+    ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreePercentage"]="numeric|99"
+    ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
     ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
@@ -484,10 +617,14 @@ declare -A preferenceConfiguration=(
     ["infoboxLabelFreeDiskSpace"]="string|Free Disk Space"
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
+    ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
+    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     ["pastDeadlinePromptTitle"]="string|Restart Your Mac"
     ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgradeLower}.<br><br>(This reminder will persist until your Mac has been restarted.)"
     ["pastDeadlineForceTitle"]="string|Your Mac is restarting"
     ["pastDeadlineForceMessage"]="string|**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgradeLower} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    ["aggressiveModeTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Required Now"
+    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
     
     # Complex UI Text
     ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
@@ -503,11 +640,21 @@ declare -A plistKeyMap=(
     ["daysBeforeDeadlineBlurscreen"]="DaysBeforeDeadlineBlurscreen"
     ["daysBeforeDeadlineHidingButton2"]="DaysBeforeDeadlineHidingButton2"
     ["daysOfExcessiveUptimeWarning"]="DaysOfExcessiveUptimeWarning"
+    ["quietPeriodMinutes"]="QuietPeriodMinutes"
+    ["outsideDisplayWindowPeriodicReminderDays"]="OutsideDisplayWindowPeriodicReminderDays"
     ["daysPastDeadlineRestartWorkflow"]="DaysPastDeadlineRestartWorkflow"
     ["pastDeadlineRestartBehavior"]="PastDeadlineRestartBehavior"
+    ["pastDeadlineRestartMinimumUptimeMinutes"]="PastDeadlineRestartMinimumUptimeMinutes"
+    ["pastDeadlineForceTimerSeconds"]="PastDeadlineForceTimerSeconds"
+    ["pastDeadlineForceRedisplayDelaySeconds"]="PastDeadlineForceRedisplayDelaySeconds"
     ["meetingDelay"]="MeetingDelay"
+    ["dailyReminderTimes"]="DailyReminderTimes"
+    ["minutesBeforeDeadlineReminderSchedule"]="MinutesBeforeDeadlineReminderSchedule"
+    ["aggressiveModePastDeadlineHours"]="AggressiveModePastDeadlineHours"
+    ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
     ["swapOverlayAndLogo"]="SwapOverlayAndLogo"
@@ -551,10 +698,14 @@ declare -A plistKeyMap=(
     ["infoboxLabelFreeDiskSpace"]="InfoboxLabelFreeDiskSpace"
     ["deadlineEnforcementMessageAbsolute"]="DeadlineEnforcementMessageAbsolute"
     ["deadlineEnforcementMessageRelative"]="DeadlineEnforcementMessageRelative"
+    ["preDeadlineThresholdTitle"]="PreDeadlineThresholdTitle"
+    ["preDeadlineThresholdMessage"]="PreDeadlineThresholdMessage"
     ["pastDeadlinePromptTitle"]="PastDeadlinePromptTitle"
     ["pastDeadlinePromptMessage"]="PastDeadlinePromptMessage"
     ["pastDeadlineForceTitle"]="PastDeadlineForceTitle"
     ["pastDeadlineForceMessage"]="PastDeadlineForceMessage"
+    ["aggressiveModeTitle"]="AggressiveModeTitle"
+    ["aggressiveModeMessage"]="AggressiveModeMessage"
     ["message"]="Message"
     ["infobox"]="InfoBox"
     ["helpmessage"]="HelpMessage"
@@ -756,18 +907,862 @@ function trimSurroundingWhitespace() {
     echo "${value}"
 }
 
+function shouldManageDaemonScheduling() {
+    [[ "${schedulerEnabledForCurrentRun}" == "YES" ]]
+}
+
+function removeDorPidFile() {
+    if [[ "${ownsDorPidFile}" == "YES" && -f "${dorPidFilePath}" ]]; then
+        rm -f "${dorPidFilePath}" 2>/dev/null || true
+    fi
+    ownsDorPidFile="NO"
+}
+
+function initializeDorPidFile() {
+    if ! shouldManageDaemonScheduling; then
+        return 0
+    fi
+
+    mkdir -p "${deploymentScriptDirectory}"
+    chown root:wheel "${deploymentScriptDirectory}" 2>/dev/null || true
+    chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
+
+    if [[ -f "${dorPidFilePath}" ]]; then
+        if pgrep -F "${dorPidFilePath}" >/dev/null 2>&1; then
+            fatal "Another ${humanReadableScriptName} process is already running."
+        fi
+
+        warning "Removing stale PID file '${dorPidFilePath}'."
+        rm -f "${dorPidFilePath}" 2>/dev/null || true
+    fi
+
+    printf '%s\n' "$$" > "${dorPidFilePath}"
+    chown root:wheel "${dorPidFilePath}" 2>/dev/null || true
+    chmod 644 "${dorPidFilePath}" 2>/dev/null || true
+    ownsDorPidFile="YES"
+}
+
+function createEmptyReminderStatePlist() {
+    local createStatus=""
+
+    cat > "${dorStatePlistPath}" <<'ENDOFPLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+ENDOFPLIST
+    createStatus="${?}"
+
+    if (( createStatus != 0 )); then
+        warning "Unable to create scheduler state plist '${dorStatePlistPath}'."
+        return 1
+    fi
+
+    chown root:wheel "${dorStatePlistPath}" 2>/dev/null || true
+    chmod 644 "${dorStatePlistPath}" 2>/dev/null || true
+
+    if ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        warning "Created scheduler state plist '${dorStatePlistPath}' is not readable."
+        return 1
+    fi
+}
+
+function ensureReminderStatePlist() {
+    local invalidStatePlistPath=""
+
+    mkdir -p "${deploymentScriptDirectory}"
+    chown root:wheel "${deploymentScriptDirectory}" 2>/dev/null || true
+    chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
+
+    if [[ ! -f "${dorStatePlistPath}" ]]; then
+        createEmptyReminderStatePlist || return 1
+    elif ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        invalidStatePlistPath="${dorStatePlistPath}.invalid.$(date '+%Y%m%d%H%M%S')"
+        warning "Unreadable scheduler state plist '${dorStatePlistPath}'; recreating empty state."
+        if mv "${dorStatePlistPath}" "${invalidStatePlistPath}" 2>/dev/null; then
+            warning "Moved unreadable scheduler state plist to '${invalidStatePlistPath}'."
+        else
+            warning "Unable to quarantine unreadable scheduler state plist '${dorStatePlistPath}'; replacing in place."
+        fi
+        createEmptyReminderStatePlist || return 1
+    fi
+
+    chown root:wheel "${dorStatePlistPath}" 2>/dev/null || true
+    chmod 644 "${dorStatePlistPath}" 2>/dev/null || true
+
+    /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1
+}
+
+function writeReminderStateKey() {
+    local stateKey="${1}"
+    local stateValue="${2}"
+
+    ensureReminderStatePlist || return 1
+
+    if /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        if ! /usr/libexec/PlistBuddy -c "Set :${stateKey} ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            warning "Unable to set scheduler state key '${stateKey}' in '${dorStatePlistPath}'."
+            return 1
+        fi
+    else
+        if ! /usr/libexec/PlistBuddy -c "Add :${stateKey} string ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            warning "Unable to add scheduler state key '${stateKey}' in '${dorStatePlistPath}'."
+            return 1
+        fi
+    fi
+}
+
+function readReminderStateKey() {
+    local stateKey="${1}"
+
+    if shouldManageDaemonScheduling; then
+        ensureReminderStatePlist || return 1
+    else
+        [[ -f "${dorStatePlistPath}" ]] || return 0
+        if ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            warning "Unreadable scheduler state plist '${dorStatePlistPath}'; ignoring state for non-daemon run."
+            return 0
+        fi
+    fi
+
+    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null || true
+}
+
+function deleteReminderStateKey() {
+    local stateKey="${1}"
+
+    if shouldManageDaemonScheduling; then
+        ensureReminderStatePlist || return 1
+    fi
+
+    if [[ -f "${dorStatePlistPath}" ]]; then
+        /usr/libexec/PlistBuddy -c "Delete :${stateKey}" "${dorStatePlistPath}" >/dev/null 2>&1 || true
+    fi
+}
+
+function scheduleTimestampFromEpoch() {
+    local targetEpoch="${1}"
+    local scheduleTimestamp=""
+
+    scheduleTimestamp=$(date -r "${targetEpoch}" "+%Y-%m-%d:%H:%M:%S" 2>/dev/null)
+    echo "${scheduleTimestamp}"
+}
+
+function epochFromScheduleTimestamp() {
+    local scheduleTimestamp="${1}"
+    local scheduleEpoch=""
+
+    scheduleEpoch=$(date -j -f "%Y-%m-%d:%H:%M:%S" "${scheduleTimestamp}" "+%s" 2>/dev/null)
+    echo "${scheduleEpoch}"
+}
+
+function validateReminderTimeEntry() {
+    local timeEntry="$(trimSurroundingWhitespace "${1}")"
+
+    if [[ "${timeEntry}" =~ ^([01][0-9]|2[0-3]):([0-5][0-9])$ ]]; then
+        echo "${timeEntry}"
+        return 0
+    fi
+
+    return 1
+}
+
+function normalizeDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        normalizedEntry="$(validateReminderTimeEntry "${rawEntry}")"
+        if [[ -n "${normalizedEntry}" ]]; then
+            validEntries+=("${normalizedEntry}")
+        elif [[ -n "$(trimSurroundingWhitespace "${rawEntry}")" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid DailyReminderTimes entry '${rawEntry}'. Expected HH:MM in 24-hour time."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseDailyReminderTimes() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
+    echo "${dailyReminderTimesResolvedCSV}"
+}
+
+function normalizeMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local rawEntry=""
+    local trimmedEntry=""
+    local normalizedEntry=""
+    local normalizedCSV=""
+    local -a rawEntries=()
+    local -a validEntries=()
+
+    rawValue="$(trimSurroundingWhitespace "${rawValue}")"
+    if [[ -z "${rawValue}" ]]; then
+        echo ""
+        return 0
+    fi
+
+    IFS=',' read -r -A rawEntries <<< "${rawValue}"
+
+    for rawEntry in "${rawEntries[@]}"; do
+        trimmedEntry="$(trimSurroundingWhitespace "${rawEntry}")"
+        if [[ "${trimmedEntry}" =~ ^[0-9]+$ ]]; then
+            normalizedEntry=$(( 10#${trimmedEntry} ))
+            if (( normalizedEntry >= 1 && normalizedEntry <= 999 )); then
+                validEntries+=("${normalizedEntry}")
+            elif [[ "${warnOnInvalid}" == "YES" ]]; then
+                warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+            fi
+        elif [[ -n "${trimmedEntry}" && "${warnOnInvalid}" == "YES" ]]; then
+            warning "Ignoring invalid MinutesBeforeDeadlineReminderSchedule entry '${rawEntry}'. Expected integer 1-999."
+        fi
+    done
+
+    if (( ${#validEntries[@]} == 0 )); then
+        return 1
+    fi
+
+    validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
+    normalizedCSV="${(j:,:)validEntries}"
+    echo "${normalizedCSV}"
+}
+
+function parseMinuteThresholdSchedule() {
+    local rawValue="${1}"
+    local warnOnInvalid="${2:-NO}"
+    local normalizedCSV=""
+
+    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolved=()
+    if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
+        IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+    fi
+    echo "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+}
+
+function csvContainsValue() {
+    local csvValue="${1}"
+    local searchValue="${2}"
+    local csvEntry=""
+    local -a csvEntries=()
+
+    [[ -n "${csvValue}" ]] || return 1
+
+    IFS=',' read -r -A csvEntries <<< "${csvValue}"
+    for csvEntry in "${csvEntries[@]}"; do
+        [[ "${csvEntry}" == "${searchValue}" ]] && return 0
+    done
+
+    return 1
+}
+
+function appendValueToNumericCSV() {
+    local csvValue="${1}"
+    local valueToAdd="${2}"
+    local csvEntry=""
+    local normalizedCSV=""
+    local -a csvEntries=()
+    local -a mergedEntries=()
+
+    [[ -n "${valueToAdd}" ]] || return 1
+
+    if [[ -n "${csvValue}" ]]; then
+        IFS=',' read -r -A csvEntries <<< "${csvValue}"
+        for csvEntry in "${csvEntries[@]}"; do
+            [[ -n "${csvEntry}" ]] && mergedEntries+=("${csvEntry}")
+        done
+    fi
+
+    mergedEntries+=("${valueToAdd}")
+    mergedEntries=($(printf "%s\n" "${mergedEntries[@]}" | LC_ALL=C sort -nr -u))
+    normalizedCSV="${(j:,:)mergedEntries}"
+    echo "${normalizedCSV}"
+}
+
+function resolveNextBaselineReminderEpoch() {
+    local nowEpoch="${1:-$(date +%s)}"
+    local scheduleDate=""
+    local scheduleTime=""
+    local scheduleTimestamp=""
+    local scheduleEpoch=""
+    local dayOffset=0
+
+    if [[ -z "${dailyReminderTimesResolvedCSV}" ]]; then
+        parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1 || return 1
+    fi
+
+    while (( dayOffset <= 1 )); do
+        scheduleDate=$(date -r $(( nowEpoch + (dayOffset * 86400) )) "+%Y-%m-%d")
+
+        for scheduleTime in "${dailyReminderTimesResolved[@]}"; do
+            scheduleTimestamp="${scheduleDate}:${scheduleTime}:00"
+            scheduleEpoch="$(epochFromScheduleTimestamp "${scheduleTimestamp}")"
+            if [[ -n "${scheduleEpoch}" ]] && (( scheduleEpoch > nowEpoch )); then
+                echo "${scheduleEpoch}"
+                return 0
+            fi
+        done
+
+        ((dayOffset++))
+    done
+
+    return 1
+}
+
+function preDeadlineThresholdStateSignature() {
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+
+    [[ -n "${deadlineReferenceEpoch}" ]] || return 1
+
+    echo "${ddmVersionString}|${ddmBuildVersionString}|${deadlineReferenceEpoch}"
+}
+
+function ensurePreDeadlineThresholdStateForSignature() {
+    local currentSignature="${1}"
+    local storedSignature=""
+
+    preDeadlineThresholdDeliveredCSV=""
+    preDeadlineThresholdSkippedCSV=""
+
+    [[ -n "${currentSignature}" ]] || return 1
+
+    storedSignature="$(readReminderStateKey "PreDeadlineThresholdSignature")"
+    if [[ "${storedSignature}" != "${currentSignature}" ]]; then
+        notice "Pre-deadline threshold state reset for deadline/version signature '${currentSignature}'."
+        if shouldManageDaemonScheduling; then
+            writeReminderStateKey "PreDeadlineThresholdSignature" "${currentSignature}" || return 1
+            deleteReminderStateKey "PreDeadlineThresholdDelivered" || return 1
+            deleteReminderStateKey "PreDeadlineThresholdSkipped" || return 1
+        fi
+        return 0
+    fi
+
+    preDeadlineThresholdDeliveredCSV="$(readReminderStateKey "PreDeadlineThresholdDelivered")"
+    preDeadlineThresholdSkippedCSV="$(readReminderStateKey "PreDeadlineThresholdSkipped")"
+}
+
+function markPreDeadlineThresholdStateValue() {
+    local stateKey="${1}"
+    local currentCSV="${2}"
+    local thresholdMinutes="${3}"
+    local updatedCSV=""
+
+    [[ -n "${thresholdMinutes}" ]] || return 1
+    csvContainsValue "${currentCSV}" "${thresholdMinutes}" && return 0
+
+    updatedCSV="$(appendValueToNumericCSV "${currentCSV}" "${thresholdMinutes}")" || return 1
+    writeReminderStateKey "${stateKey}" "${updatedCSV}"
+}
+
+function markPreDeadlineThresholdDelivered() {
+    local thresholdMinutes="${1}"
+
+    shouldManageDaemonScheduling || return 0
+
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}" >/dev/null 2>&1 || return 0
+    markPreDeadlineThresholdStateValue "PreDeadlineThresholdDelivered" "${preDeadlineThresholdDeliveredCSV}" "${thresholdMinutes}" || return 1
+    preDeadlineThresholdDeliveredCSV="$(readReminderStateKey "PreDeadlineThresholdDelivered")"
+    notice "Marked ${thresholdMinutes}-minute pre-deadline threshold delivered for current deadline/version."
+}
+
+function markPreDeadlineThresholdSkipped() {
+    local thresholdMinutes="${1}"
+
+    shouldManageDaemonScheduling || return 0
+
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}" >/dev/null 2>&1 || return 0
+    markPreDeadlineThresholdStateValue "PreDeadlineThresholdSkipped" "${preDeadlineThresholdSkippedCSV}" "${thresholdMinutes}" || return 1
+    preDeadlineThresholdSkippedCSV="$(readReminderStateKey "PreDeadlineThresholdSkipped")"
+    notice "Marked stale ${thresholdMinutes}-minute pre-deadline threshold skipped for current deadline/version."
+}
+
+function isPreDeadlineThresholdAlreadyHandled() {
+    local thresholdMinutes="${1}"
+
+    csvContainsValue "${preDeadlineThresholdDeliveredCSV}" "${thresholdMinutes}" && return 0
+    csvContainsValue "${preDeadlineThresholdSkippedCSV}" "${thresholdMinutes}" && return 0
+
+    return 1
+}
+
+function resolveNextPendingPreDeadlineThresholdEpoch() {
+    local nowEpoch="${1:-$(date +%s)}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local thresholdMinutes=""
+    local thresholdEpoch=""
+
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    (( deadlineReferenceEpoch > nowEpoch )) || return 1
+
+    preDeadlineThresholdSignature="$(preDeadlineThresholdStateSignature)" || return 1
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}"
+
+    for thresholdMinutes in "${minutesBeforeDeadlineReminderScheduleResolved[@]}"; do
+        isPreDeadlineThresholdAlreadyHandled "${thresholdMinutes}" && continue
+        thresholdEpoch=$(( deadlineReferenceEpoch - (thresholdMinutes * 60) ))
+        if (( thresholdEpoch > nowEpoch )); then
+            echo "${thresholdEpoch}|${thresholdMinutes}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+function setNextReminderScheduleForPendingThresholdOrBaseline() {
+    local scheduleReason="${1:-Pre-deadline threshold or baseline schedule}"
+    local nowEpoch="$(date +%s)"
+    local thresholdResult=""
+    local thresholdEpoch=""
+    local thresholdMinutes=""
+    local baselineEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdResult}" ]]; then
+        thresholdEpoch="${thresholdResult%%|*}"
+        thresholdMinutes="${thresholdResult##*|}"
+    fi
+
+    baselineEpoch="$(resolveNextBaselineReminderEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( thresholdEpoch < baselineEpoch )); }; then
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "${scheduleReason}: ${thresholdMinutes}-minute pre-deadline threshold"
+    else
+        setNextReminderScheduleBaseline "${scheduleReason}: baseline"
+    fi
+}
+
+function setNextReminderScheduleForQuietOrThreshold() {
+    local quietTargetEpoch="${1}"
+    local scheduleReason="${2:-Quiet period remains active from recent reminder interaction}"
+    local nowEpoch="$(date +%s)"
+    local thresholdResult=""
+    local thresholdEpoch=""
+    local thresholdMinutes=""
+
+    shouldManageDaemonScheduling || return 0
+
+    thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdResult}" ]]; then
+        thresholdEpoch="${thresholdResult%%|*}"
+        thresholdMinutes="${thresholdResult##*|}"
+    fi
+
+    if [[ -n "${thresholdEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( thresholdEpoch < quietTargetEpoch )); then
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Quiet-period bypass for ${thresholdMinutes}-minute pre-deadline threshold"
+    else
+        setNextReminderScheduleExactEpoch "${quietTargetEpoch}" "${scheduleReason}"
+    fi
+}
+
+function resolveDuePreDeadlineThresholdReminder() {
+    local nowEpoch="$(date +%s)"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local thresholdMinutes=""
+    local thresholdEpoch=""
+    local dueThreshold=""
+    local staleThreshold=""
+    local -a crossedThresholds=()
+    local -a staleThresholds=()
+
+    preDeadlineThresholdReminderMode="NO"
+    preDeadlineThresholdMinutes=""
+
+    [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
+    [[ "${pastDeadlineRestartEffective}" == "Off" ]] || return 1
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    (( deadlineReferenceEpoch > nowEpoch )) || return 1
+
+    preDeadlineThresholdSignature="$(preDeadlineThresholdStateSignature)" || return 1
+    ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}"
+
+    for thresholdMinutes in "${minutesBeforeDeadlineReminderScheduleResolved[@]}"; do
+        isPreDeadlineThresholdAlreadyHandled "${thresholdMinutes}" && continue
+        thresholdEpoch=$(( deadlineReferenceEpoch - (thresholdMinutes * 60) ))
+        if (( nowEpoch >= thresholdEpoch )); then
+            crossedThresholds+=("${thresholdMinutes}")
+        fi
+    done
+
+    (( ${#crossedThresholds[@]} > 0 )) || return 1
+
+    dueThreshold="${crossedThresholds[-1]}"
+    for staleThreshold in "${crossedThresholds[@]}"; do
+        [[ "${staleThreshold}" == "${dueThreshold}" ]] && continue
+        staleThresholds+=("${staleThreshold}")
+    done
+
+    for staleThreshold in "${staleThresholds[@]}"; do
+        markPreDeadlineThresholdSkipped "${staleThreshold}"
+    done
+
+    preDeadlineThresholdReminderMode="YES"
+    preDeadlineThresholdMinutes="${dueThreshold}"
+    notice "Pre-deadline threshold reminder due: ${preDeadlineThresholdMinutes} minute(s) before enforcement deadline."
+    return 0
+}
+
+function isPreDeadlineThresholdReminderMode() {
+    [[ "${preDeadlineThresholdReminderMode}" == "YES" ]]
+}
+
+function completePreDeadlineThresholdReminderDelivery() {
+    local deliveredThresholdMinutes="${preDeadlineThresholdMinutes}"
+
+    isPreDeadlineThresholdReminderMode || return 0
+
+    markPreDeadlineThresholdDelivered "${deliveredThresholdMinutes}"
+    if resolveDuePreDeadlineThresholdReminder; then
+        setNextReminderScheduleImmediate "Scheduled after pre-deadline threshold dialog remained open: ${preDeadlineThresholdMinutes}-minute pre-deadline threshold already due"
+    else
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after ${deliveredThresholdMinutes}-minute pre-deadline threshold reminder"
+    fi
+}
+
+function shouldAutoRefreshOpenDialogAtPreDeadlineThreshold() {
+    shouldManageDaemonScheduling || return 1
+    isPastDeadlineForceMode && return 1
+    [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]] || return 1
+
+    return 0
+}
+
+function monitorOpenDialogForPreDeadlineThreshold() {
+    local dialogPid="${1}"
+    local refreshMarkerPath="${2}"
+    local thresholdResult=""
+    local watchedThresholdEpoch=""
+    local watchedThresholdMinutes=""
+    local nowEpoch=""
+    local sleepSeconds=5
+
+    shouldAutoRefreshOpenDialogAtPreDeadlineThreshold || return 0
+    [[ -n "${dialogPid}" && -n "${refreshMarkerPath}" ]] || return 0
+
+    while kill -0 "${dialogPid}" >/dev/null 2>&1; do
+        nowEpoch="$(date +%s)"
+
+        if [[ -n "${watchedThresholdEpoch}" && "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= watchedThresholdEpoch )); then
+            notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
+            printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
+            kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
+            sleep 2
+            if kill -0 "${dialogPid}" >/dev/null 2>&1; then
+                warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
+                kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+            fi
+            return 0
+        fi
+
+        thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+        if [[ -n "${thresholdResult}" ]]; then
+            watchedThresholdEpoch="${thresholdResult%%|*}"
+            watchedThresholdMinutes="${thresholdResult##*|}"
+            if [[ "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]]; then
+                sleepSeconds=$(( watchedThresholdEpoch - nowEpoch ))
+                if (( sleepSeconds > 30 )); then
+                    sleepSeconds=30
+                elif (( sleepSeconds < 1 )); then
+                    sleepSeconds=1
+                fi
+            else
+                sleepSeconds=5
+            fi
+        else
+            watchedThresholdEpoch=""
+            watchedThresholdMinutes=""
+            sleepSeconds=5
+        fi
+
+        sleep "${sleepSeconds}"
+    done
+}
+
+function handlePreDeadlineThresholdDialogAutoRefresh() {
+    local triggeredThresholdMinutes="${1}"
+
+    if isPreDeadlineThresholdReminderMode; then
+        completePreDeadlineThresholdReminderDelivery
+    elif resolveDuePreDeadlineThresholdReminder; then
+        setNextReminderScheduleImmediate "Scheduled after open reminder dialog crossed ${preDeadlineThresholdMinutes}-minute pre-deadline threshold"
+    else
+        warning "Dialog auto-refresh requested for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold, but no threshold is currently due; falling back to pending threshold or baseline schedule."
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after threshold dialog auto-refresh fallback"
+    fi
+}
+
+function ensureLaunchDaemonHeartbeat() {
+    if [[ -f "${dorLaunchDaemonPath}" ]]; then
+        launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || launchctl bootstrap system "${dorLaunchDaemonPath}" >/dev/null 2>&1 || true
+    fi
+}
+
+function scheduleNextReminderAtEpoch() {
+    local targetEpoch="${1}"
+    local scheduleReason="${2:-Scheduled next reminder}"
+    local scheduleTimestamp=""
+    local nowEpoch="$(date +%s)"
+
+    shouldManageDaemonScheduling || return 0
+
+    if [[ -z "${targetEpoch}" ]]; then
+        warning "scheduleNextReminderAtEpoch called without a target epoch; falling back to baseline scheduling."
+        scheduleNextBaselineReminder "${scheduleReason}"
+        return 0
+    fi
+
+    if (( targetEpoch <= nowEpoch )); then
+        queueImmediateReminderCheck "${scheduleReason}"
+        return 0
+    fi
+
+    scheduleTimestamp="$(scheduleTimestampFromEpoch "${targetEpoch}")"
+    if [[ -z "${scheduleTimestamp}" ]]; then
+        warning "Unable to format scheduled reminder epoch '${targetEpoch}'; falling back to baseline scheduling."
+        scheduleNextBaselineReminder "${scheduleReason}"
+        return 0
+    fi
+
+    if ! writeReminderStateKey "NextScheduledReminder" "${scheduleTimestamp}"; then
+        warning "Unable to update NextScheduledReminder; leaving daemon scheduler state unchanged."
+        return 1
+    fi
+    notice "Scheduled next daemon reminder for ${scheduleTimestamp} (${scheduleReason})."
+    ensureLaunchDaemonHeartbeat
+}
+
+function scheduleNextReminderInMinutes() {
+    local minutesUntilReminder="${1}"
+    local scheduleReason="${2:-Scheduled next reminder in minutes}"
+    local targetEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    if [[ ! "${minutesUntilReminder}" =~ ^[0-9]+$ ]]; then
+        warning "Invalid scheduleNextReminderInMinutes value '${minutesUntilReminder}'; falling back to baseline scheduling."
+        scheduleNextBaselineReminder "${scheduleReason}"
+        return 0
+    fi
+
+    targetEpoch=$(( $(date +%s) + (minutesUntilReminder * 60) ))
+    scheduleNextReminderAtEpoch "${targetEpoch}" "${scheduleReason}"
+}
+
+function scheduleNextBaselineReminder() {
+    local scheduleReason="${1:-Baseline reminder schedule}"
+    local targetEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    targetEpoch="$(resolveNextBaselineReminderEpoch "$(date +%s)")"
+    if [[ -z "${targetEpoch}" ]]; then
+        warning "Unable to resolve next baseline reminder time from DailyReminderTimes; leaving existing scheduler state unchanged."
+        return 1
+    fi
+
+    scheduleNextReminderAtEpoch "${targetEpoch}" "${scheduleReason}"
+}
+
+function disableDaemonDrivenRuns() {
+    local scheduleReason="${1:-Daemon-driven reminders disabled}"
+
+    shouldManageDaemonScheduling || return 0
+
+    if ! writeReminderStateKey "NextScheduledReminder" "FALSE"; then
+        warning "Unable to disable daemon-driven reminders in scheduler state."
+        return 1
+    fi
+    notice "${scheduleReason}."
+    ensureLaunchDaemonHeartbeat
+}
+
+function queueImmediateReminderCheck() {
+    local scheduleReason="${1:-Queued immediate reminder check}"
+
+    shouldManageDaemonScheduling || return 0
+
+    if ! deleteReminderStateKey "NextScheduledReminder"; then
+        warning "Unable to clear NextScheduledReminder for immediate daemon check."
+        return 1
+    fi
+    notice "${scheduleReason}."
+    ensureLaunchDaemonHeartbeat
+    removeDorPidFile
+    launchctl kickstart -k "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || true
+}
+
+function setNextReminderScheduleBaseline() {
+    nextReminderScheduleMode="baseline"
+    nextReminderScheduleEpoch=""
+    nextReminderScheduleReason="${1:-Baseline reminder schedule}"
+}
+
+function setNextReminderScheduleExactEpoch() {
+    nextReminderScheduleMode="exact"
+    nextReminderScheduleEpoch="${1}"
+    nextReminderScheduleReason="${2:-Scheduled exact reminder time}"
+}
+
+function setNextReminderScheduleImmediate() {
+    nextReminderScheduleMode="immediate"
+    nextReminderScheduleEpoch=""
+    nextReminderScheduleReason="${1:-Queued immediate reminder check}"
+}
+
+function setNextReminderScheduleDisabled() {
+    nextReminderScheduleMode="disabled"
+    nextReminderScheduleEpoch=""
+    nextReminderScheduleReason="${1:-Daemon-driven reminders disabled}"
+}
+
+function setNextReminderScheduleInSeconds() {
+    local secondsUntilReminder="${1}"
+    local scheduleReason="${2:-Scheduled reminder after quiet period}"
+    local targetEpoch=""
+
+    if [[ ! "${secondsUntilReminder}" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    targetEpoch=$(( $(date +%s) + secondsUntilReminder ))
+    setNextReminderScheduleExactEpoch "${targetEpoch}" "${scheduleReason}"
+}
+
+function applyScheduledExitAction() {
+    shouldManageDaemonScheduling || return 0
+
+    case "${nextReminderScheduleMode}" in
+        disabled)
+            disableDaemonDrivenRuns "${nextReminderScheduleReason}"
+            ;;
+        immediate)
+            queueImmediateReminderCheck "${nextReminderScheduleReason}"
+            ;;
+        exact)
+            scheduleNextReminderAtEpoch "${nextReminderScheduleEpoch}" "${nextReminderScheduleReason}"
+            ;;
+        baseline|*)
+            scheduleNextBaselineReminder "${nextReminderScheduleReason}"
+            ;;
+    esac
+}
+
+trap removeDorPidFile EXIT
+
 function formatDeadlineFromISO8601() {
     local sourceTimestamp="${1}"
     local requestedFormat="${2}"
     local formattedDeadline=""
+    local sourceEpoch=""
 
-    formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
+    sourceEpoch="$(epochFromISO8601Timestamp "${sourceTimestamp}")"
+    if [[ -n "${sourceEpoch}" ]]; then
+        formattedDeadline=$(formatDeadlineFromEpoch "${sourceEpoch}" "${requestedFormat}")
+    fi
     if [[ -z "${formattedDeadline}" ]]; then
-        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
+        formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "${requestedFormat}")
+    fi
+    if [[ -z "${formattedDeadline}" ]]; then
+        if [[ -n "${sourceEpoch}" ]]; then
+            formattedDeadline=$(formatDeadlineFromEpoch "${sourceEpoch}" "+%a, %d-%b-%Y, %-l:%M %p")
+        else
+            formattedDeadline=$(formatDateWithLanguageCode "${deadlineFormatLanguageCode}" "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%a, %d-%b-%Y, %-l:%M %p")
+        fi
     fi
 
     formattedDeadline="$(trimSurroundingWhitespace "${formattedDeadline}")"
     echo "${formattedDeadline}"
+}
+
+function epochFromISO8601Timestamp() {
+    local sourceTimestamp="${1}"
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local offsetSign="+"
+    local offsetHours=0
+    local offsetMinutes=0
+    local totalOffsetMinutes=0
+    local days=0
+    local localTimestamp=""
+    local parsedEpoch=""
+
+    if [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$' ]]; then
+        year=$(( 10#${match[1]} ))
+        month=$(( 10#${match[2]} ))
+        day=$(( 10#${match[3]} ))
+        hour=$(( 10#${match[4]} ))
+        minute=$(( 10#${match[5]} ))
+        second=$(( 10#${match[6]} ))
+    elif [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})([+-])([0-9]{2}):?([0-9]{2})$' ]]; then
+        year=$(( 10#${match[1]} ))
+        month=$(( 10#${match[2]} ))
+        day=$(( 10#${match[3]} ))
+        hour=$(( 10#${match[4]} ))
+        minute=$(( 10#${match[5]} ))
+        second=$(( 10#${match[6]} ))
+        offsetSign="${match[7]}"
+        offsetHours=$(( 10#${match[8]} ))
+        offsetMinutes=$(( 10#${match[9]} ))
+    elif [[ "${sourceTimestamp}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$' ]]; then
+        parsedEpoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%s" 2>/dev/null)
+        echo "${parsedEpoch}"
+        return 0
+    else
+        return 1
+    fi
+
+    if (( month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59 || offsetHours > 23 || offsetMinutes > 59 )); then
+        return 1
+    fi
+
+    localTimestamp=$(printf "%04d-%02d-%02dT%02d:%02d:%02d" "${year}" "${month}" "${day}" "${hour}" "${minute}" "${second}")
+    date -j -f "%Y-%m-%dT%H:%M:%S" "${localTimestamp}" "+%s" >/dev/null 2>&1 || return 1
+
+    if ! ddmDaysFromCivil "${year}" "${month}" "${day}"; then
+        return 1
+    fi
+    days="${ddmDaysFromCivilResult}"
+
+    totalOffsetMinutes=$(( (offsetHours * 60) + offsetMinutes ))
+    if [[ "${offsetSign}" == "-" ]]; then
+        totalOffsetMinutes=$(( -totalOffsetMinutes ))
+    fi
+
+    parsedEpoch=$(( (days * 86400) + (hour * 3600) + (minute * 60) + second - (totalOffsetMinutes * 60) ))
+    echo "${parsedEpoch}"
 }
 
 function formatDeadlineFromEpoch() {
@@ -792,6 +1787,10 @@ function deriveRelativeDeadlineTimeFormat() {
     derivedFormat=$(printf '%s' "${normalizedFormat}" | /usr/bin/perl -ne '
         if (/(%[-_0^#]*[kKlHIrRTX].*)/) {
             $value = $1;
+            $prefix = $`;
+            if ($prefix =~ /(%[-_0^#]*[pP][[:space:],;:|\/.-]*)$/) {
+                $value = $1 . $value;
+            }
             $value =~ s/^[[:space:],;:|\/.-]+//;
             print "+$value";
             exit;
@@ -858,6 +1857,33 @@ function formatRelativeDeadlineHumanReadable() {
 
     relativeDeadlineHumanReadable="$(trimSurroundingWhitespace "${relativeDeadlineHumanReadable}")"
     echo "${relativeDeadlineHumanReadable}"
+}
+
+function computeSignedDaysRemainingDisplay() {
+    local targetEpoch="${1}"
+    local referenceEpoch="${2:-$(date +%s)}"
+    local secondsUntilDeadline=0
+    local overdueSeconds=0
+    local daysRemaining=0
+
+    if [[ -z "${targetEpoch}" || ! "${targetEpoch}" =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+
+    if [[ -z "${referenceEpoch}" || ! "${referenceEpoch}" =~ ^[0-9]+$ ]]; then
+        referenceEpoch=$(date +%s)
+    fi
+
+    secondsUntilDeadline=$(( targetEpoch - referenceEpoch ))
+
+    if (( secondsUntilDeadline >= 0 )); then
+        daysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 ))
+    else
+        overdueSeconds=$(( -secondsUntilDeadline ))
+        daysRemaining=$(( -1 - (overdueSeconds / 86400) ))
+    fi
+
+    echo "${daysRemaining}"
 }
 
 
@@ -1194,6 +2220,14 @@ function resolveDateFormatDeadlineHumanReadable() {
 function validatePreferenceLoad() {
     # Verify critical preferences loaded correctly
     local criticalVars=("scriptLog" "daysBeforeDeadlineDisplayReminder" "supportTeamName")
+    local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
+    local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
+    local defaultAggressiveModePastDeadlineHours="${preferenceConfiguration[aggressiveModePastDeadlineHours]#*|}"
+    local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
+    local defaultPastDeadlineForceTimerSeconds="${preferenceConfiguration[pastDeadlineForceTimerSeconds]#*|}"
+    local defaultPastDeadlineForceRedisplayDelaySeconds="${preferenceConfiguration[pastDeadlineForceRedisplayDelaySeconds]#*|}"
+    local normalizedDailyReminderTimes=""
+    local normalizedMinuteThresholdSchedule=""
     for var in "${criticalVars[@]}"; do
         if [[ -z "${(P)var}" ]]; then
             warning "Critical preference '${var}' is empty; using default"
@@ -1211,9 +2245,59 @@ function validatePreferenceLoad() {
             warning "Invalid pastDeadlineRestartBehavior value '${originalPastDeadlineRestartBehavior}'; defaulting to '${pastDeadlineRestartBehavior}'. Valid values: Off, Prompt, Force."
             ;;
     esac
+
+    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+        warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
+        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+    }
+
+    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
+    notice "Resolved DailyReminderTimes: ${dailyReminderTimesResolvedCSV}"
+
+    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+        warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
+        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+    }
+
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
+    if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
+        notice "Resolved MinutesBeforeDeadlineReminderSchedule: ${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+    else
+        notice "MinutesBeforeDeadlineReminderSchedule is empty; pre-deadline threshold reminders disabled."
+    fi
+
+    if [[ ! "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || (( aggressiveModePastDeadlineHours < 0 || aggressiveModePastDeadlineHours > 999 )); then
+        warning "AggressiveModePastDeadlineHours value '${aggressiveModePastDeadlineHours}' is invalid; defaulting to '${defaultAggressiveModePastDeadlineHours}'."
+        aggressiveModePastDeadlineHours="${defaultAggressiveModePastDeadlineHours}"
+    fi
+
+    if [[ ! "${aggressiveModeFrequencyMinutes}" =~ ^[0-9]+$ ]] || (( aggressiveModeFrequencyMinutes < 1 || aggressiveModeFrequencyMinutes > 999 )); then
+        warning "AggressiveModeFrequencyMinutes value '${aggressiveModeFrequencyMinutes}' is invalid; defaulting to '${defaultAggressiveModeFrequencyMinutes}'."
+        aggressiveModeFrequencyMinutes="${defaultAggressiveModeFrequencyMinutes}"
+    fi
+
+    if [[ ! "${pastDeadlineForceTimerSeconds}" =~ ^[0-9]+$ ]] || (( pastDeadlineForceTimerSeconds < 1 || pastDeadlineForceTimerSeconds > 999 )); then
+        warning "PastDeadlineForceTimerSeconds value '${pastDeadlineForceTimerSeconds}' is invalid; defaulting to '${defaultPastDeadlineForceTimerSeconds}'."
+        pastDeadlineForceTimerSeconds="${defaultPastDeadlineForceTimerSeconds}"
+    fi
+
+    if [[ ! "${pastDeadlineForceRedisplayDelaySeconds}" =~ ^[0-9]+$ ]] || (( pastDeadlineForceRedisplayDelaySeconds < 1 || pastDeadlineForceRedisplayDelaySeconds > 999 )); then
+        warning "PastDeadlineForceRedisplayDelaySeconds value '${pastDeadlineForceRedisplayDelaySeconds}' is invalid; defaulting to '${defaultPastDeadlineForceRedisplayDelaySeconds}'."
+        pastDeadlineForceRedisplayDelaySeconds="${defaultPastDeadlineForceRedisplayDelaySeconds}"
+    fi
 }
 
 function buildPlaceholderMap() {
+    local preDeadlineThresholdEmphasisOpen=""
+    local preDeadlineThresholdEmphasisClose=""
+
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
+        preDeadlineThresholdEmphasisOpen=":red["
+        preDeadlineThresholdEmphasisClose="]"
+    fi
+
     declare -gA PLACEHOLDER_MAP=(
         [weekday]="$(localizedWeekdayName "${dialogLanguage}")"
         [userfirstname]="${loggedInUserFirstname}"
@@ -1254,6 +2338,11 @@ function buildPlaceholderMap() {
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
+        [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
+        [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
+        [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
+        [aggressiveModeHoursPastDeadline]="${aggressiveModeHoursPastDeadline}"
+        [aggressiveModeFrequencyMinutes]="${aggressiveModeFrequencyMinutes}"
     )
 }
 
@@ -1285,6 +2374,13 @@ function replacePlaceholders() {
         # Stop if nothing changed in this pass
         [[ "${value}" == "${previousValue}" ]] && break
     done
+
+    value="${value//a.m../a.m.}"
+    value="${value//p.m../p.m.}"
+    value="${value//A.M../A.M.}"
+    value="${value//P.M../P.M.}"
+    value="${value//AM../AM.}"
+    value="${value//PM../PM.}"
 
     printf -v "${targetVariable}" '%s' "${value}"
 }
@@ -1681,8 +2777,10 @@ function applyLocalizedDialogText() {
                         "infoboxLabelCurrent" "infoboxLabelRequired" "infoboxLabelDeadline"
                         "infoboxLabelDaysRemaining" "infoboxLabelLastRestart" "infoboxLabelFreeDiskSpace"
                         "deadlineEnforcementMessageAbsolute" "deadlineEnforcementMessageRelative"
+                        "preDeadlineThresholdTitle" "preDeadlineThresholdMessage"
                         "pastDeadlinePromptTitle" "pastDeadlinePromptMessage"
-                        "pastDeadlineForceTitle" "pastDeadlineForceMessage")
+                        "pastDeadlineForceTitle" "pastDeadlineForceMessage"
+                        "aggressiveModeTitle" "aggressiveModeMessage")
 
     resolveDialogLanguage
 
@@ -1727,6 +2825,8 @@ function updateRequiredVariables() {
     computeDeadlineEnforcementMessage
     computeInfoboxHighlights
     applyPastDeadlineDialogOverrides
+    applyAggressiveModeDialogOverrides
+    applyPreDeadlineThresholdDialogOverrides
 
     applySupportFieldVisibility
 
@@ -2755,12 +3855,6 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
-    if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
-        versionComparisonResult="Up-to-date"
-        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}${ddmResolverStatus:+ despite resolver state ${ddmResolverStatus}}."
-        return
-    fi
-
     case "${ddmResolverStatus}" in
         missing)
             versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
@@ -2773,6 +3867,12 @@ installedOSvsDDMenforcedOS() {
             return
             ;;
     esac
+
+    if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
+        versionComparisonResult="Up-to-date"
+        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+        return
+    fi
 
     ddmLogEntry="${ddmDeclarationRawLine}"
     if [[ -z "${ddmLogEntry}" ]]; then
@@ -2791,7 +3891,7 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced Deadline
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
-    deadlineEpoch=$( date -jf "%Y-%m-%dT%H:%M:%S" "$ddmEnforcedInstallDate" "+%s" 2>/dev/null )
+    deadlineEpoch=$(epochFromISO8601Timestamp "${ddmEnforcedInstallDate}")
     if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
         fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
     fi
@@ -2836,6 +3936,8 @@ installedOSvsDDMenforcedOS() {
         notice "Relative deadline rendering applied: ${ddmEnforcedInstallDateRelativeHumanReadable}"
     fi
 
+    ddmVersionStringDeadlineHumanReadable="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
+
     # Blurscreen logic and secondary button hiding (based on precise timestamp comparison)
     nowEpoch=$(date +%s)
     effectiveDeadlineEpoch="${ddmEnforcedInstallDateEpoch}"
@@ -2846,6 +3948,8 @@ installedOSvsDDMenforcedOS() {
     blurThresholdSeconds=$(( daysBeforeDeadlineBlurscreen * 86400 ))
     hideButton2ThresholdSeconds=$(( daysBeforeDeadlineHidingButton2 * 86400 ))
     ddmVersionStringDaysRemaining=$(( (secondsUntilDeadline + 43200) / 86400 )) # Round to nearest whole day
+    ddmVersionStringDaysRemainingDisplay="$(computeSignedDaysRemainingDisplay "${effectiveDeadlineEpoch}" "${nowEpoch}")"
+    [[ -z "${ddmVersionStringDaysRemainingDisplay}" ]] && ddmVersionStringDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     if (( secondsUntilDeadline <= blurThresholdSeconds )); then
         blurscreen="--blurscreen"
     else
@@ -3144,8 +4248,8 @@ function computeDeadlineEnforcementMessage() {
 }
 
 function computeInfoboxHighlights() {
-    infoboxDeadlineDisplay="${ddmVersionStringDeadlineHumanReadable}"
-    infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
+    infoboxDeadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable:-${ddmVersionStringDeadlineHumanReadable}}}"
+    infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemainingDisplay:-${ddmVersionStringDaysRemaining}}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
     local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
 
@@ -3159,7 +4263,7 @@ function computeInfoboxHighlights() {
         infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
     fi
 
-    if [[ "${ddmVersionStringDaysRemaining}" =~ ^-?[0-9]+$ ]] && (( ddmVersionStringDaysRemaining <= 0 )); then
+    if [[ "${infoboxDaysRemainingDisplay}" =~ ^-?[0-9]+$ ]] && (( infoboxDaysRemainingDisplay <= 0 )); then
         infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
     fi
 
@@ -3208,8 +4312,45 @@ function evaluatePastDeadlineState() {
     fi
 }
 
+function evaluateAggressiveModeState() {
+    local nowEpochValue=$(date +%s)
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local isPastEffectiveDeadline="NO"
+
+    aggressiveModeActive="NO"
+    aggressiveModeKillSwitchDetected="NO"
+    aggressiveModeHoursPastDeadline="0"
+
+    if [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] && (( deadlineReferenceEpoch <= nowEpochValue )); then
+        isPastEffectiveDeadline="YES"
+        aggressiveModeHoursPastDeadline=$(( (nowEpochValue - deadlineReferenceEpoch) / 3600 ))
+    fi
+
+    if [[ "${versionComparisonResult}" != "Update Required" || "${isPastEffectiveDeadline}" != "YES" ]]; then
+        return
+    fi
+
+    if (( aggressiveModeHoursPastDeadline < aggressiveModePastDeadlineHours )); then
+        notice "Aggressive mode not yet active (${aggressiveModeHoursPastDeadline} hour(s) past effective deadline; threshold ${aggressiveModePastDeadlineHours} hour(s))."
+        return
+    fi
+
+    if [[ -e "${aggressiveModeKillSwitchPath}" ]]; then
+        aggressiveModeKillSwitchDetected="YES"
+        notice "Aggressive mode kill switch detected; falling back to non-aggressive reminder cadence for support assistance."
+        return
+    fi
+
+    aggressiveModeActive="YES"
+    notice "Aggressive mode active (${aggressiveModeHoursPastDeadline} hour(s) past effective deadline; threshold ${aggressiveModePastDeadlineHours} hour(s); frequency ${aggressiveModeFrequencyMinutes} minute(s))."
+}
+
 function isPastDeadlineForceMode() {
     [[ "${pastDeadlineRestartEffective}" == "Force" ]]
+}
+
+function isAggressiveModeActive() {
+    [[ "${aggressiveModeActive}" == "YES" ]]
 }
 
 function applyPastDeadlineDialogOverrides() {
@@ -3243,26 +4384,46 @@ function applyPastDeadlineDialogOverrides() {
     deadlineEnforcementMessage=""
 }
 
+function applyAggressiveModeDialogOverrides() {
+    isAggressiveModeActive || return 0
+    isPastDeadlineForceMode && return 0
+
+    blurscreen="--blurscreen"
+
+    if [[ "${pastDeadlineRestartEffective}" != "Off" ]]; then
+        return 0
+    fi
+
+    title="${aggressiveModeTitle}"
+    message="${aggressiveModeMessage}"
+}
+
+function applyPreDeadlineThresholdDialogOverrides() {
+    isPreDeadlineThresholdReminderMode || return 0
+    [[ "${pastDeadlineRestartEffective}" == "Off" ]] || return 0
+
+    title="${preDeadlineThresholdTitle}"
+    message="${preDeadlineThresholdMessage}"
+    notice "Applying ${preDeadlineThresholdMinutes}-minute pre-deadline threshold dialog copy."
+}
+
 function executeRestartAction() {
     local restartMode="${1:-Restart Confirm}"
-    local restartCommand=""
 
     case "${restartMode}" in
         "Restart")
-            restartCommand="sleep 1 && shutdown -r now &"
-            if /bin/zsh -c "${restartCommand}"; then
-                notice "Restart command '${restartMode}' sent as root: ${restartCommand}"
+            if ( sleep 1; /sbin/shutdown -r now ) &; then
+                notice "Restart command '${restartMode}' sent as root."
                 return 0
             fi
-            warning "Failed to invoke restart command '${restartMode}' as root: ${restartCommand}"
+            warning "Failed to invoke restart command '${restartMode}' as root."
             return 1
             ;;
         "Restart Confirm"|*)
-            restartCommand="/usr/bin/osascript -e 'tell app \"loginwindow\" to «event aevtrrst»'"
             ;;
     esac
 
-    if /usr/bin/su - "${loggedInUser}" -c "${restartCommand}"; then
+    if launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/osascript -e 'tell app "loginwindow" to «event aevtrrst»'; then
         notice "Restart command '${restartMode}' sent for ${loggedInUser}."
         return 0
     fi
@@ -3278,6 +4439,12 @@ function executeRestartAction() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function displayReminderDialog() {
+    local dialogAutoRefreshMarkerPath=""
+    local dialogAutoRefreshMarkerValue=""
+    local dialogAutoRefreshMonitorPid=""
+    local dialogAutoRefreshThresholdMinutes=""
+    local dialogAutoRefreshTriggered="NO"
+    local dialogPid=""
 
     additionalDialogOptions=("$@")
 
@@ -3305,10 +4472,61 @@ function displayReminderDialog() {
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
 
-    ${dialogBinary} "${dialogArgs[@]}"
+    dialogAutoRefreshMarkerPath="$(mktemp "/var/tmp/${organizationScriptName}-threshold-refresh.XXXXXX" 2>/dev/null || true)"
+    if [[ -z "${dialogAutoRefreshMarkerPath}" ]]; then
+        dialogAutoRefreshMarkerPath="/var/tmp/${organizationScriptName}-threshold-refresh.$$"
+        rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+    fi
 
+    ${dialogBinary} "${dialogArgs[@]}" &
+    dialogPid=$!
+
+    if shouldAutoRefreshOpenDialogAtPreDeadlineThreshold; then
+        monitorOpenDialogForPreDeadlineThreshold "${dialogPid}" "${dialogAutoRefreshMarkerPath}" &
+        dialogAutoRefreshMonitorPid=$!
+    fi
+
+    wait "${dialogPid}"
     returncode=$?
+
+    if [[ -n "${dialogAutoRefreshMonitorPid}" ]]; then
+        kill "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
+        wait "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -s "${dialogAutoRefreshMarkerPath}" ]]; then
+        dialogAutoRefreshTriggered="YES"
+        dialogAutoRefreshMarkerValue="$(cat "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true)"
+        dialogAutoRefreshThresholdMinutes="${dialogAutoRefreshMarkerValue%%|*}"
+    fi
+    rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+
+    if [[ "${dialogAutoRefreshTriggered}" == "YES" ]]; then
+        notice "swiftDialog was closed automatically because the ${dialogAutoRefreshThresholdMinutes:-next}-minute pre-deadline threshold became due."
+        handlePreDeadlineThresholdDialogAutoRefresh "${dialogAutoRefreshThresholdMinutes}"
+        quitScript "0"
+    fi
+
     info "Return Code: ${returncode}"
+
+    # Aggressive mode keeps exact redisplay scheduling until compliance, including
+    # the Open Software Update path. Quiet-period exact reschedules remain limited
+    # to dismissal-style return codes in non-aggressive update flows.
+    if isAggressiveModeActive && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
+        case ${returncode} in
+            0|2|4|10)
+                setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after return code ${returncode}"
+                ;;
+        esac
+    elif (( ${quietPeriodSeconds:-0} > 0 )) && ! isPastDeadlineForceMode && ! isPreDeadlineThresholdReminderMode; then
+        case ${returncode} in
+            2|4|10)
+                setNextReminderScheduleForQuietOrThreshold "$(( $(date +%s) + quietPeriodSeconds ))" "Scheduled quiet-period redisplay after return code ${returncode}"
+                ;;
+        esac
+    fi
+
+    completePreDeadlineThresholdReminderDelivery
 
     if isPastDeadlineForceMode; then
         while true; do
@@ -3330,7 +4548,7 @@ function displayReminderDialog() {
                     ;;
             esac
 
-            sleep "${pastDeadlineRedisplayDelaySeconds}"
+            sleep "${pastDeadlineForceRedisplayDelaySeconds}"
             ${dialogBinary} "${dialogArgs[@]}"
             returncode=$?
             info "Return Code: ${returncode}"
@@ -3350,7 +4568,7 @@ function displayReminderDialog() {
                 fi
                 ;;
             *"systempreferences"*)
-                launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
                 until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
                     info "Pending System Settings launch …"
@@ -3372,7 +4590,7 @@ function displayReminderDialog() {
                 '
                 ;;
             *)
-                launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 ;;
         esac
         quitScript "0"
@@ -3449,10 +4667,7 @@ function displayReminderDialogForMode() {
 # Quit Script (thanks, @bartreadon!)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function quitScript() {
-
-    quitOut "Exiting …"
-
+function cleanupDialogRuntimeArtifacts() {
     # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
         if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
@@ -3462,8 +4677,22 @@ function quitScript() {
 
     # Remove default dialog.log
     rm -f /var/tmp/dialog.log
+    removeDorPidFile
+}
 
-    quitOut "A cloud of eiderdown draws around me …"
+function quitScript() {
+
+    quitOut "Exiting …"
+
+    if shouldManageDaemonScheduling && [[ "${nextReminderScheduleMode}" == "immediate" ]]; then
+        cleanupDialogRuntimeArtifacts
+        applyScheduledExitAction
+    else
+        applyScheduledExitAction
+        cleanupDialogRuntimeArtifacts
+    fi
+
+    quitOut "Ticking away the moments that make up a dull day …"
 
     exit "${1}"
 
@@ -3521,6 +4750,8 @@ preFlight "Initiating …"
 if [[ $(id -u) -ne 0 ]]; then
     fatal "This script must be run as root; exiting."
 fi
+
+initializeDorPidFile
 
 
 
@@ -3585,6 +4816,8 @@ preFlight "Complete"
 
 installedOSvsDDMenforcedOS
 evaluatePastDeadlineState
+evaluateAggressiveModeState
+resolveDuePreDeadlineThresholdReminder || true
 
 
 
@@ -3598,8 +4831,8 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Deadline window and periodic reminder logic (thanks for the suggestion, @kristian!)
     # -------------------------------------------------------------------------
 
-    quietPeriodSeconds=4560     # 76 minutes (60 minutes + margin)
-    periodicReminderDays=28     # 28 days
+    quietPeriodSeconds=$(( quietPeriodMinutes * 60 ))
+    periodicReminderDays="${outsideDisplayWindowPeriodicReminderDays}"
     periodicReminderSeconds=$(( periodicReminderDays * 86400 ))
 
     # Look for the most recent user interaction by Return Code
@@ -3629,12 +4862,18 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         fi
     fi
 
-    if (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
+    if isPreDeadlineThresholdReminderMode; then
+        notice "Pre-deadline threshold reminder active; bypassing day-window and periodic reminder suppression."
+    elif (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
         # Outside the deadline window; check if we should display initial/periodic reminder
         
         if [[ -z "${lastInteraction}" ]]; then
             # No interaction history; display the initial reminder dialog
             notice "No reminder interaction history found; displaying initial reminder dialog"
+        elif (( periodicReminderDays <= 0 )); then
+            setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminders disabled"
+            quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and outside-display-window periodic reminders are disabled; exiting quietly."
+            quitScript "0"
         else
             # Validate the extracted timestamp matches expected format
             if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
@@ -3649,6 +4888,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     else
                         # Last interaction was within 28 days; skip
                         daysAgo=$(( delta / 86400 ))
+                        setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminder not due"
                         quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and last reminder was ${daysAgo} day(s) ago; exiting quietly."
                         quitScript "0"
                     fi
@@ -3669,6 +4909,12 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     if isPastDeadlineForceMode; then
         notice "Past Deadline Force mode active; bypassing quiet-period suppression."
+    elif isAggressiveModeActive; then
+        notice "Aggressive mode active; bypassing quiet-period suppression."
+    elif isPreDeadlineThresholdReminderMode; then
+        notice "Pre-deadline threshold reminder active; bypassing quiet-period suppression."
+    elif (( quietPeriodSeconds <= 0 )); then
+        notice "QuietPeriodMinutes is 0; quiet-period suppression disabled."
     else
         if [[ -n "${lastInteraction}" ]]; then
             # Validate the extracted timestamp matches expected format
@@ -3679,6 +4925,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     delta=$(( nowEpoch - lastEpoch ))
                     if (( delta < quietPeriodSeconds )); then
                         minutesAgo=$(( delta / 60 ))
+                        setNextReminderScheduleForQuietOrThreshold "$(( lastEpoch + quietPeriodSeconds ))" "Quiet period remains active from recent reminder interaction"
                         quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
                         quitScript "0"
                     fi
@@ -3713,35 +4960,39 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # Random pause depending on launch context (hourly vs login)
     # -------------------------------------------------------------------------
 
-    currentHour=$(( $(date +%H) ))
-    currentMinute=$(( $(date +%M) ))
-
-    if (( currentHour == 8 || currentHour == 16 )) && (( currentMinute == 0 )); then
-        notice "Daily Trigger Pause: Random 0 to 20 minutes"
-        sleepSeconds=$(( RANDOM % 1200 ))
+    if [[ "${launchSource}" == "starter" ]]; then
+        notice "Starter launch detected; skipping randomized pause to honor exact scheduled reminder time."
     else
-        notice "Login Trigger Pause: Random 30 to 90 seconds"
-        sleepSeconds=$(( 30 + RANDOM % 61 ))
-    fi
+        currentHour=$(( $(date +%H) ))
+        currentMinute=$(( $(date +%M) ))
 
-    if (( sleepSeconds >= 60 )); then
-        (( pauseMinutes = sleepSeconds / 60 ))
-        (( pauseSeconds = sleepSeconds % 60 ))
-        if (( pauseSeconds == 0 )); then
-            humanReadablePause="${pauseMinutes} minute(s)"
+        if (( currentHour == 8 || currentHour == 16 )) && (( currentMinute == 0 )); then
+            notice "Daily Trigger Pause: Random 0 to 20 minutes"
+            sleepSeconds=$(( RANDOM % 1200 ))
         else
-            humanReadablePause="${pauseMinutes} minute(s), ${pauseSeconds} second(s)"
+            notice "Login Trigger Pause: Random 30 to 90 seconds"
+            sleepSeconds=$(( 30 + RANDOM % 61 ))
         fi
-    else
-        humanReadablePause="${sleepSeconds} second(s)"
-    fi
 
-    # Skip sleep pause for beta / RC builds
-    if [[ "${scriptVersion}" =~ [a-zA-Z] ]]; then
-        notice "Beta / RC build detected (${scriptVersion}); skipping pause"
-    else
-        info "Pausing for ${humanReadablePause} …"
-        sleep "${sleepSeconds}"
+        if (( sleepSeconds >= 60 )); then
+            (( pauseMinutes = sleepSeconds / 60 ))
+            (( pauseSeconds = sleepSeconds % 60 ))
+            if (( pauseSeconds == 0 )); then
+                humanReadablePause="${pauseMinutes} minute(s)"
+            else
+                humanReadablePause="${pauseMinutes} minute(s), ${pauseSeconds} second(s)"
+            fi
+        else
+            humanReadablePause="${sleepSeconds} second(s)"
+        fi
+
+        # Skip sleep pause for beta / RC builds
+        if [[ "${scriptVersion}" =~ [a-zA-Z] ]]; then
+            notice "Beta / RC build detected (${scriptVersion}); skipping pause"
+        else
+            info "Pausing for ${humanReadablePause} …"
+            sleep "${sleepSeconds}"
+        fi
     fi
 
 
@@ -3749,6 +5000,10 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
     # -------------------------------------------------------------------------
     # Continue with normal processing
     # -------------------------------------------------------------------------
+
+    if ! isPastDeadlineForceMode; then
+        setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after reminder display"
+    fi
 
     updateRequiredVariables
     displayReminderDialogForMode
@@ -3768,14 +5023,217 @@ fi
 quitScript "0"
 
 ENDOFSCRIPT
-) > "${organizationDirectory}/${organizationScriptName}.zsh"
+) > "${dormScriptPath}"
 
     logComment "${humanReadableScriptName} script created"
 
     logComment "Setting permissions …"
-    chown root:wheel "${organizationDirectory}/${organizationScriptName}.zsh"
-    chmod 755 "${organizationDirectory}/${organizationScriptName}.zsh"
-    chmod +x "${organizationDirectory}/${organizationScriptName}.zsh"
+    chown root:wheel "${dormScriptPath}"
+    chmod 755 "${dormScriptPath}"
+    chmod +x "${dormScriptPath}"
+
+}
+
+function escapeSedReplacement() {
+    local replacementValue="${1}"
+
+    replacementValue="${replacementValue//\/\\}"
+    replacementValue="${replacementValue//&/\&}"
+    replacementValue="${replacementValue//|/\|}"
+
+    print -r -- "${replacementValue}"
+}
+
+function createDorStarterScript() {
+
+    local escapedScriptVersion="$(escapeSedReplacement "${scriptVersion}")"
+    local escapedScriptLog="$(escapeSedReplacement "${scriptLog}")"
+    local escapedMainScriptPath="$(escapeSedReplacement "${dormScriptPath}")"
+    local escapedStatePlistPath="$(escapeSedReplacement "${dorStatePlistPath}")"
+    local escapedPidFilePath="$(escapeSedReplacement "${dorPidFilePath}")"
+
+    notice "Create 'dor-starter' script: ${dorStarterPath}"
+
+(
+cat <<'ENDOFSTARTER'
+#!/bin/zsh --no-rcs
+
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+
+scriptVersion="__SCRIPT_VERSION__"
+scriptLog="__SCRIPT_LOG__"
+mainScriptPath="__MAIN_SCRIPT_PATH__"
+statePlistPath="__STATE_PLIST_PATH__"
+pidFilePath="__PID_FILE_PATH__"
+plistBuddyPath="/usr/libexec/PlistBuddy"
+
+function updateScriptLog() {
+    echo "dor (${scriptVersion}): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" >> "${scriptLog}"
+}
+
+function notice()  { updateScriptLog "[NOTICE]          ${1}"; }
+function warning() { updateScriptLog "[WARNING]         ${1}"; }
+function error()   { updateScriptLog "[ERROR]           ${1}"; }
+
+function requirePlistBuddy() {
+    if [[ ! -x "${plistBuddyPath}" ]]; then
+        error "Missing required PlistBuddy binary: ${plistBuddyPath}; scheduler state cannot be trusted."
+        exit 1
+    fi
+}
+
+function createEmptyStatePlist() {
+    local createStatus=""
+
+    cat > "${statePlistPath}" <<'ENDOFPLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+ENDOFPLIST
+    createStatus="${?}"
+
+    if (( createStatus != 0 )); then
+        error "Unable to create scheduler state plist '${statePlistPath}'."
+        return 1
+    fi
+
+    chown root:wheel "${statePlistPath}" 2>/dev/null || true
+    chmod 644 "${statePlistPath}" 2>/dev/null || true
+
+    if ! "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1; then
+        error "Created scheduler state plist '${statePlistPath}' is not readable."
+        return 1
+    fi
+}
+
+function ensureStatePlist() {
+    local invalidStatePlistPath=""
+
+    mkdir -p "${statePlistPath:h}"
+    chown root:wheel "${statePlistPath:h}" 2>/dev/null || true
+    chmod 755 "${statePlistPath:h}" 2>/dev/null || true
+
+    if [[ ! -f "${statePlistPath}" ]]; then
+        createEmptyStatePlist || return 1
+    elif ! "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1; then
+        invalidStatePlistPath="${statePlistPath}.invalid.$(date '+%Y%m%d%H%M%S')"
+        warning "Unreadable scheduler state plist '${statePlistPath}'; recreating empty state."
+        if mv "${statePlistPath}" "${invalidStatePlistPath}" 2>/dev/null; then
+            warning "Moved unreadable scheduler state plist to '${invalidStatePlistPath}'."
+        else
+            warning "Unable to quarantine unreadable scheduler state plist '${statePlistPath}'; replacing in place."
+        fi
+        createEmptyStatePlist || return 1
+    fi
+
+    chown root:wheel "${statePlistPath}" 2>/dev/null || true
+    chmod 644 "${statePlistPath}" 2>/dev/null || true
+
+    "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1
+}
+
+function writeStateValue() {
+    local key="${1}"
+    local value="${2}"
+
+    ensureStatePlist || return 1
+
+    if "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" >/dev/null 2>&1; then
+        if ! "${plistBuddyPath}" -c "Set :${key} ${value}" "${statePlistPath}" >/dev/null 2>&1; then
+            error "Unable to set scheduler state key '${key}' in '${statePlistPath}'."
+            return 1
+        fi
+    else
+        if ! "${plistBuddyPath}" -c "Add :${key} string ${value}" "${statePlistPath}" >/dev/null 2>&1; then
+            error "Unable to add scheduler state key '${key}' in '${statePlistPath}'."
+            return 1
+        fi
+    fi
+}
+
+function readStateValue() {
+    local key="${1}"
+
+    ensureStatePlist || return 1
+
+    "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null || true
+}
+
+function epochFromScheduleTimestamp() {
+    local scheduleTimestamp="${1}"
+    local scheduleEpoch=""
+
+    scheduleEpoch=$(date -j -f "%Y-%m-%d:%H:%M:%S" "${scheduleTimestamp}" "+%s" 2>/dev/null)
+    echo "${scheduleEpoch}"
+}
+
+if [[ ! -x "${mainScriptPath}" ]]; then
+    error "Missing deployed main script: ${mainScriptPath}"
+    exit 1
+fi
+
+requirePlistBuddy
+
+if [[ -f "${pidFilePath}" ]]; then
+    if pgrep -F "${pidFilePath}" >/dev/null 2>&1; then
+        exit 0
+    fi
+
+    warning "Removing stale PID file '${pidFilePath}'."
+    rm -f "${pidFilePath}" 2>/dev/null || true
+fi
+
+nextScheduledReminder="$(readStateValue "NextScheduledReminder")"
+stateReadStatus="${?}"
+if (( stateReadStatus != 0 )); then
+    error "Unable to read scheduler state; not launching main script."
+    exit 1
+fi
+
+if [[ "${nextScheduledReminder:l}" == "false" ]]; then
+    exit 0
+fi
+
+if [[ -n "${nextScheduledReminder}" ]]; then
+    nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
+    if [[ -n "${nextScheduledReminderEpoch}" ]]; then
+        nowEpoch="$(date +%s)"
+        if (( nextScheduledReminderEpoch > nowEpoch )); then
+            exit 0
+        fi
+    else
+        warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
+    fi
+fi
+
+if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
+    error "Unable to update scheduler trigger state; not launching main script."
+    exit 1
+fi
+
+notice "Heartbeat launch triggered '${mainScriptPath}'."
+DOR_LAUNCH_SOURCE="starter" "${mainScriptPath}" &
+disown
+
+exit 0
+ENDOFSTARTER
+) | sed \
+    -e "s|__SCRIPT_VERSION__|${escapedScriptVersion}|g" \
+    -e "s|__SCRIPT_LOG__|${escapedScriptLog}|g" \
+    -e "s|__MAIN_SCRIPT_PATH__|${escapedMainScriptPath}|g" \
+    -e "s|__STATE_PLIST_PATH__|${escapedStatePlistPath}|g" \
+    -e "s|__PID_FILE_PATH__|${escapedPidFilePath}|g" \
+    > "${dorStarterPath}"
+
+    logComment "dor-starter script created"
+
+    logComment "Setting permissions …"
+    chown root:wheel "${dorStarterPath}"
+    chmod 755 "${dorStarterPath}"
+    chmod +x "${dorStarterPath}"
 
 }
 
@@ -3785,10 +5243,9 @@ ENDOFSCRIPT
 #
 # CREATE LAUNCHDAEMON
 #
-#   The following function creates the LaunchDaemon which executes the previously created,
-#   client-side "reminderDialog.zsh" script.
-#
-#   We've elected to prompt our users twice a day (8 a.m. and 4 p.m.) to ensure they see the message.
+#   The following function creates the LaunchDaemon which executes the lightweight heartbeat
+#   starter script. The starter checks runtime scheduling state and only launches the main
+#   reminder script when a reminder is due.
 #
 #   NOTE: Leave a full return at the end of the content before the "ENDOFLAUNCHDAEMON" line.
 #
@@ -3797,6 +5254,9 @@ ENDOFSCRIPT
 function createLaunchDaemon() {
 
     notice "Create LaunchDaemon"
+
+    logComment "Ensuring previous '${launchDaemonLabel}' definition is unloaded …"
+    launchctl bootout system "${launchDaemonPath}" >/dev/null 2>&1 || true
 
     logComment "Creating '${launchDaemonPath}' …"
 
@@ -3813,30 +5273,19 @@ cat <<ENDOFLAUNCHDAEMON
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>${organizationDirectory}/${organizationScriptName}.zsh</string>
+        <string>${dorStarterPath}</string>
     </array>
     <key>RunAtLoad</key>
+    <true/>
+    <key>AbandonProcessGroup</key>
     <true/>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin</string>
     </dict>
-    <key>StartCalendarInterval</key>
-    <array>
-        <dict>
-            <key>Hour</key>
-            <integer>8</integer>
-            <key>Minute</key>
-            <integer>0</integer>
-        </dict>
-        <dict>
-            <key>Hour</key>
-            <integer>16</integer>
-            <key>Minute</key>
-            <integer>0</integer>
-        </dict>
-    </array>
+    <key>StartInterval</key>
+    <integer>60</integer>
     <key>StandardErrorPath</key>
     <string>${scriptLog}</string>
     <key>StandardOutPath</key>
@@ -3853,7 +5302,7 @@ ENDOFLAUNCHDAEMON
 
     logComment "Loading '${launchDaemonLabel}' …"
     launchctl bootstrap system "${launchDaemonPath}"
-    launchctl start "${launchDaemonPath}"
+    launchctl kickstart -k "system/${launchDaemonLabel}"
 
 }
 
@@ -4075,17 +5524,21 @@ resetConfiguration "${resetConfiguration}"
 # Script Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "Validating Script"
+notice "Refreshing Script"
 
-if [[ -f "${organizationDirectory}/${organizationScriptName}.zsh" ]]; then
-
-    logComment "${humanReadableScriptName} script '"${organizationDirectory}/${organizationScriptName}.zsh"' exists"
-
-else
-
-    createDDMOSReminderScript
-
+if [[ -f "${dormScriptPath}" ]]; then
+    logComment "Replacing existing ${humanReadableScriptName} script '${dormScriptPath}'"
 fi
+
+createDDMOSReminderScript
+
+notice "Refreshing Starter"
+
+if [[ -f "${dorStarterPath}" ]]; then
+    logComment "Replacing existing dor-starter script '${dorStarterPath}'"
+fi
+
+createDorStarterScript
 
 
 
@@ -4093,33 +5546,13 @@ fi
 # LaunchDaemon Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-notice "Validating LaunchDaemon"
-
-logComment "Checking for LaunchDaemon '${launchDaemonPath}' …"
+notice "Refreshing LaunchDaemon"
 
 if [[ -f "${launchDaemonPath}" ]]; then
-
-    logComment "LaunchDaemon '${launchDaemonPath}' exists"
-
-    launchDaemonStatus
-
-    if [[ -n "${launchDaemonStatusResult}" ]]; then
-
-        logComment "${launchDaemonLabel} IS loaded"
-
-    else
-
-        logComment "Loading '${launchDaemonLabel}' …"
-        launchctl bootstrap system "${launchDaemonPath}"
-        launchDaemonStatus
-
-    fi
-
-else
-
-    createLaunchDaemon
-
+    logComment "Replacing existing LaunchDaemon '${launchDaemonPath}'"
 fi
+
+createLaunchDaemon
 
 
 

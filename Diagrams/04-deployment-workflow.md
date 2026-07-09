@@ -29,7 +29,7 @@ flowchart TD
     EditTiming --> EditMessages[💬 Message Content<br/>- Dialog text<br/>- Button labels<br/>- Help text]
     
     EditMessages --> CustomizeLaunchDaemon[Edit launchDaemonManagement.zsh]
-    CustomizeLaunchDaemon --> EditSchedule[📅 Schedule Configuration<br/>- Daily trigger times<br/>- Calendar intervals]
+    CustomizeLaunchDaemon --> EditSchedule[📅 Schedule Configuration<br/>- `DailyReminderTimes` in prefs<br/>- `dor-starter` heartbeat]
     
     EditSchedule --> ReviewCustom{Review<br/>Customizations?}
     ReviewCustom -->|Need Changes| CustomizeReminder
@@ -241,24 +241,20 @@ reverseDomainNameNotation="org.churchofjesuschrist"
 organizationScriptName="dor"
 ```
 
-**LaunchDaemon Schedule** (Lines ~380-395):
+**LaunchDaemon Heartbeat** (Lines ~430-465):
 ```xml
-<key>StartCalendarInterval</key>
+<key>ProgramArguments</key>
 <array>
-    <dict>
-        <key>Hour</key>
-        <integer>8</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
-    <dict>
-        <key>Hour</key>
-        <integer>16</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
+    <string>/bin/zsh</string>
+    <string>/Library/Management/<RDNN>/dor-starter.zsh</string>
 </array>
+<key>RunAtLoad</key>
+<true/>
+<key>StartInterval</key>
+<integer>60</integer>
 ```
+
+Actual baseline reminder times come from `DailyReminderTimes` in the deployed preference plist/profile.
 
 ---
 
@@ -298,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (3.3.0)
+🧩 Assemble DDM OS Reminder (4.0.0)
 ===============================================================
 
 Full Paths:
@@ -413,8 +409,10 @@ This removes comment, whitespace, and key-order noise and highlights only real p
 # Check LaunchDaemon
 sudo launchctl list | grep org.churchofjesuschrist.dor
 
-# Check script file
-ls -lh /Library/Management/org.churchofjesuschrist/dorm.zsh
+# Check deployed scripts and runtime state
+ls -lh /Library/Management/org.churchofjesuschrist/dor.zsh
+ls -lh /Library/Management/org.churchofjesuschrist/dor-starter.zsh
+ls -lh /Library/Management/org.churchofjesuschrist/dor-state.plist
 
 # Check managed preferences
 ls -lh /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
@@ -434,7 +432,7 @@ Expected output:
 
 #### 4.5 Test Dialog Display
 
-**Option 1: Wait for Schedule** (RunAtLoad, 8am, or 4pm)
+**Option 1: Wait for Due Reminder** (RunAtLoad or the next `DailyReminderTimes` slot)
 
 **Option 2: Manual Trigger** (Immediate)
 ```bash
@@ -444,7 +442,7 @@ Note: Demo mode is removed during `assemble.zsh`, so use the source script for d
 
 **Option 3: Force Run** (Respects all logic)
 ```bash
-sudo launchctl start org.churchofjesuschrist.dor
+sudo launchctl kickstart -kp system/org.churchofjesuschrist.dor
 ```
 
 #### 4.6 Troubleshooting Tests
@@ -580,7 +578,7 @@ Recommended bundled EAs:
 
 The pending date/version EAs now fail closed and return `None` when recent `install.log` state is missing, conflicting, invalid, or no longer maps to an available update.
 
-As of `3.3.0`, those EAs also treat a matching or trailing current macOS `VersionString` as compliant when Apple omits a usable `BuildVersionString`, and expose internal `installLogPathOverride`, `currentVersionOverride`, and `currentBuildOverride` hooks for local trace replay during troubleshooting. These hooks are for manual validation only and are not configuration-profile keys.
+As of `4.0.0`, those EAs also treat a matching or trailing current macOS `VersionString` as compliant when Apple omits a usable `BuildVersionString`, and expose internal `installLogPathOverride`, `currentVersionOverride`, and `currentBuildOverride` hooks for local trace replay during troubleshooting. These hooks are for manual validation only and are not configuration-profile keys.
 
 #### 6.3 Common Issues and Solutions
 
@@ -631,7 +629,7 @@ sudo zsh /path/to/assembled-script.zsh Uninstall
 ```
 
 **What Gets Removed**:
-- LaunchDaemon unloaded and deleted
+- Current and stale DDM OS Reminder LaunchDaemons unloaded and deleted
 - Client-side script removed
 - Empty management directories removed
 - Preferences remain (manual removal if needed)
@@ -643,7 +641,10 @@ sudo launchctl bootout system /Library/LaunchDaemons/org.churchofjesuschrist.dor
 
 # Remove files
 sudo rm /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
-sudo rm /Library/Management/org.churchofjesuschrist/dorm.zsh
+sudo rm /Library/Management/org.churchofjesuschrist/dor.zsh
+sudo rm /Library/Management/org.churchofjesuschrist/dor-starter.zsh
+sudo rm /Library/Management/org.churchofjesuschrist/dor-state.plist
+sudo rm /Library/Management/org.churchofjesuschrist/dor.pid
 sudo rm -rf /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 # Remove logs (optional)
@@ -666,7 +667,7 @@ sudo rm /var/log/org.churchofjesuschrist.log
 - [ ] Organization branding configured (icons, logos)
 - [ ] Timing thresholds reviewed and adjusted
 - [ ] Message content reviewed and customized
-- [ ] LaunchDaemon schedule confirmed
+- [ ] Baseline reminder slots and heartbeat confirmed
 
 ### Assembly
 - [ ] `assemble.zsh` executed successfully

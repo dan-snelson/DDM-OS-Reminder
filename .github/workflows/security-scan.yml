@@ -1,4 +1,4 @@
-# Protects DDM OS Reminder (3.3.0) from common vulnerabilities with Semgrep,
+# Protects DDM OS Reminder (4.0.0) from common vulnerabilities with Semgrep,
 # Gitleaks, zsh syntax validation, and ShellCheck. Semgrep scans the full
 # repository, including reminderDialog.zsh, launchDaemonManagement.zsh,
 # assemble.zsh, Resources/, Artifacts/, and other tracked content, then
@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: Check Out Repository
         # Fetch full history so diff-aware scans and code scanning uploads have the right context.
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -61,12 +61,14 @@ jobs:
         # Always attempt SARIF generation so findings can land in the Security tab even when blocking scan fails.
         continue-on-error: true
         shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -o pipefail
 
           baseline_args=()
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${{ github.event.pull_request.base.sha }}" ]]; then
-            baseline_args+=(--baseline-commit "${{ github.event.pull_request.base.sha }}")
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${PR_BASE_SHA}" ]]; then
+            baseline_args+=(--baseline-commit "${PR_BASE_SHA}")
           fi
 
           semgrep scan \
@@ -118,18 +120,22 @@ jobs:
         id: upload_sarif
         if: hashFiles('semgrep.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         # Repo Actions permissions must allow SARIF uploads or this step will fail even with security-events: write.
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           sarif_file: semgrep.sarif
           category: semgrep
 
       - name: Finalize Semgrep Result
         if: success() || failure()
+        env:
+          SARIF_OUTCOME: ${{ steps.semgrep_sarif.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload_sarif.outcome }}
+          TRUSTED_UPLOAD_CTX: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         shell: bash
         run: |
-          sarif_outcome="${{ steps.semgrep_sarif.outcome }}"
-          upload_outcome="${{ steps.upload_sarif.outcome }}"
-          trusted_upload_context="${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}"
+          sarif_outcome="${SARIF_OUTCOME}"
+          upload_outcome="${UPLOAD_OUTCOME}"
+          trusted_upload_context="${TRUSTED_UPLOAD_CTX}"
 
           if [[ "${sarif_outcome}" == "success" ]]; then
             if [[ "${trusted_upload_context}" == "true" && "${upload_outcome}" != "success" ]]; then
@@ -183,7 +189,7 @@ jobs:
     steps:
       - name: Check Out Repository
         # Fetch full history so Gitleaks can scan past commits on protected branches.
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -196,7 +202,7 @@ jobs:
       - name: Run Gitleaks (Blocking)
         id: gitleaks_scan
         continue-on-error: true
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: ${{ steps.gitleaks_mode.outputs.enable_comments }}
@@ -240,7 +246,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Out Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -335,7 +341,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Out Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 

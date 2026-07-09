@@ -121,8 +121,11 @@ function removeDeployedRuntimeAssets() {
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
         logComment "Removing '${runtimeAssetPath}' … "
-        rm -f "${runtimeAssetPath}" 2>/dev/null
-        logComment "Removed '${runtimeAssetPath}'"
+        if rm -f "${runtimeAssetPath}" 2>/dev/null; then
+            logComment "Removed '${runtimeAssetPath}'"
+        else
+            warning "Failed to remove '${runtimeAssetPath}'"
+        fi
     done
 }
 
@@ -198,8 +201,11 @@ function unloadAndRemoveLaunchDaemon() {
         logComment "Unload LaunchDaemon plist '${daemonPath}' … "
         launchctl bootout system "${daemonPath}" >/dev/null 2>&1 || true
         logComment "Removing '${daemonPath}' … "
-        rm -f "${daemonPath}" 2>&1
-        logComment "Removed '${daemonPath}'"
+        if rm -f "${daemonPath}" 2>/dev/null; then
+            logComment "Removed '${daemonPath}'"
+        else
+            warning "Failed to remove '${daemonPath}'"
+        fi
     else
         logComment "LaunchDaemon plist not present: '${daemonPath}'"
     fi

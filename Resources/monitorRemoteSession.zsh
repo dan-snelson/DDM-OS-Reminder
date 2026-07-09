@@ -108,7 +108,7 @@ done
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/local
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 scriptVersion="1.0.0"
 reverseDomainNameNotation="${cliReverseDomainNameNotation:-org.churchofjesuschrist}"

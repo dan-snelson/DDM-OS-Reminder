@@ -371,6 +371,7 @@ scriptLog="__SCRIPT_LOG__"
 mainScriptPath="__MAIN_SCRIPT_PATH__"
 statePlistPath="__STATE_PLIST_PATH__"
 pidFilePath="__PID_FILE_PATH__"
+plistBuddyPath="/usr/libexec/PlistBuddy"
 
 function updateScriptLog() {
     echo "dor (${scriptVersion}): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" >> "${scriptLog}"
@@ -379,6 +380,13 @@ function updateScriptLog() {
 function notice()  { updateScriptLog "[NOTICE]          ${1}"; }
 function warning() { updateScriptLog "[WARNING]         ${1}"; }
 function error()   { updateScriptLog "[ERROR]           ${1}"; }
+
+function requirePlistBuddy() {
+    if [[ ! -x "${plistBuddyPath}" ]]; then
+        error "Missing required PlistBuddy binary: ${plistBuddyPath}; scheduler state cannot be trusted."
+        exit 1
+    fi
+}
 
 function ensureStatePlist() {
     mkdir -p "${statePlistPath:h}"
@@ -405,10 +413,10 @@ function writeStateValue() {
 
     ensureStatePlist
 
-    if /usr/libexec/PlistBuddy -c "Print :${key}" "${statePlistPath}" >/dev/null 2>&1; then
-        /usr/libexec/PlistBuddy -c "Set :${key} ${value}" "${statePlistPath}" >/dev/null 2>&1
+    if "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" >/dev/null 2>&1; then
+        "${plistBuddyPath}" -c "Set :${key} ${value}" "${statePlistPath}" >/dev/null 2>&1
     else
-        /usr/libexec/PlistBuddy -c "Add :${key} string ${value}" "${statePlistPath}" >/dev/null 2>&1
+        "${plistBuddyPath}" -c "Add :${key} string ${value}" "${statePlistPath}" >/dev/null 2>&1
     fi
 }
 
@@ -417,7 +425,7 @@ function readStateValue() {
 
     [[ -f "${statePlistPath}" ]] || return 0
 
-    /usr/libexec/PlistBuddy -c "Print :${key}" "${statePlistPath}" 2>/dev/null || true
+    "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null || true
 }
 
 function epochFromScheduleTimestamp() {
@@ -432,6 +440,8 @@ if [[ ! -x "${mainScriptPath}" ]]; then
     error "Missing deployed main script: ${mainScriptPath}"
     exit 1
 fi
+
+requirePlistBuddy
 
 if [[ -f "${pidFilePath}" ]]; then
     if pgrep -F "${pidFilePath}" >/dev/null 2>&1; then

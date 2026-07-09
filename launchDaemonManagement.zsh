@@ -162,10 +162,10 @@ function discoverDDMOSReminderLaunchDaemonPaths() {
     setopt local_options null_glob
 
     for candidatePath in "${launchDaemonPath}" /Library/LaunchDaemons/*.dor.plist; do
-        [[ -n "${discoveredPaths[${candidatePath}]:-}" ]] && continue
+        [[ -n "${discoveredPaths["${candidatePath}"]:-}" ]] && continue
 
         if [[ "${candidatePath}" == "${launchDaemonPath}" ]] || isDDMOSReminderLaunchDaemonPlist "${candidatePath}"; then
-            discoveredPaths[${candidatePath}]="YES"
+            discoveredPaths["${candidatePath}"]="YES"
             echo "${candidatePath}"
         fi
     done

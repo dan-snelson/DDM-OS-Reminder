@@ -1298,7 +1298,7 @@ sed 's/| tee -a "\${scriptLog}"/# | tee -a "\${scriptLog}"/' "${messageScript}" 
 
 # Second: remove the Demo Mode block, including its leading separator
 # and trailing blank lines, using awk (BSD-safe)
-awk '
+/usr/bin/awk '
 {
     line[NR] = $0
 }
@@ -1554,7 +1554,7 @@ innerDictCleaned=$(
 # Indent for embedding
 indentedInnerDict=$(
   printf "%s\n" "$innerDictCleaned" \
-    | sed 's/^/                                /'
+    | sed -e 's/^[[:space:]]*//' -e 's/^/                                /'
 )
 
 # Generate UUIDs
@@ -1672,7 +1672,7 @@ echo "🔁 Updating scriptLog path based on RDNN …"
 # Update outer deployment script plus embedded reminder script, but leave the
 # dor-starter template placeholder untouched for runtime substitution.
 scriptLogUpdateTmp="${outputScript}.scriptlog.tmp"
-awk \
+/usr/bin/awk \
   -v scriptLogReplacement="scriptLog=\"${resolvedScriptLogPath}\"" \
   -v scriptLogPreferenceReplacement="    [\"scriptLog\"]=\"string|${resolvedScriptLogPath}\"" '
   /^function createDorStarterScript\(\)/ {

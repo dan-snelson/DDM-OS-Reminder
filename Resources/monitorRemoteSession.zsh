@@ -122,6 +122,7 @@ dorStatePlistPath="${organizationDirectory}/dor-state.plist"
 dorPidFilePath="${organizationDirectory}/dor.pid"
 aggressiveModeKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
 scriptLog="/var/log/${reverseDomainNameNotation}.log"
+plistBuddyPath="/usr/libexec/PlistBuddy"
 
 
 
@@ -147,7 +148,9 @@ function readStateValue() {
     local key="${1}"
 
     [[ -f "${dorStatePlistPath}" ]] || return 1
-    /usr/libexec/PlistBuddy -c "Print :${key}" "${dorStatePlistPath}" 2>/dev/null
+    [[ -x "${plistBuddyPath}" ]] || return 2
+    "${plistBuddyPath}" -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1 || return 3
+    "${plistBuddyPath}" -c "Print :${key}" "${dorStatePlistPath}" 2>/dev/null
 }
 
 function renderLaunchDaemonStatus() {
@@ -195,13 +198,28 @@ function renderSchedulerState() {
         return
     fi
 
-    nextScheduledReminder="$(readStateValue "NextScheduledReminder" 2>/dev/null || true)"
-    daemonLastTriggered="$(readStateValue "DaemonLastTriggered" 2>/dev/null || true)"
+    if [[ ! -x "${plistBuddyPath}" ]]; then
+        printKeyValue "State" "PlistBuddy not available: ${plistBuddyPath}"
+        return
+    fi
 
-    printKeyValue "NextScheduledReminder" "${nextScheduledReminder:-Unavailable}"
-    printKeyValue "DaemonLastTriggered" "${daemonLastTriggered:-Unavailable}"
+    if ! "${plistBuddyPath}" -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        printKeyValue "State" "unreadable or corrupt dor-state.plist"
+        echo "Unable to read ${dorStatePlistPath}"
+        return
+    fi
+
+    if ! nextScheduledReminder="$(readStateValue "NextScheduledReminder")"; then
+        nextScheduledReminder="<unset>"
+    fi
+    if ! daemonLastTriggered="$(readStateValue "DaemonLastTriggered")"; then
+        daemonLastTriggered="<unset>"
+    fi
+
+    printKeyValue "NextScheduledReminder" "${nextScheduledReminder:-<unset>}"
+    printKeyValue "DaemonLastTriggered" "${daemonLastTriggered:-<unset>}"
     echo ""
-    /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" 2>/dev/null || echo "Unable to read ${dorStatePlistPath}"
+    "${plistBuddyPath}" -c "Print" "${dorStatePlistPath}"
 }
 
 function renderPidStatus() {
@@ -237,7 +255,7 @@ function renderMatchingProcesses() {
         return
     fi
 
-    print -r -- "${processSnapshot}" | awk -v rdnn="${reverseDomainNameNotation}" '
+    print -r -- "${processSnapshot}" | /usr/bin/awk -v rdnn="${reverseDomainNameNotation}" '
         NR == 1 {
             print
             next

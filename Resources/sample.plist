@@ -5,7 +5,7 @@
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
     <!-- Version: 4.0.0 -->
-    <!-- Generated on: 2026-07-08-112204 -->
+    <!-- Generated on: 2026-07-09-152351 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -728,7 +728,7 @@
     <key>AggressiveModeMessageLocalized_ja</key>
     <string>**このMacは必須のmacOS {titleMessageUpdateOrUpgradeLower}期限を過ぎています。**&lt;br&gt;&lt;br&gt;{loggedInUserFirstname}さん、{weekday}もお疲れさまです。&lt;br&gt;&lt;br&gt;期限 **{ddmVersionStringDeadlineHumanReadable}** から **{aggressiveModeHoursPastDeadline} 時間** が経過しており、まだ macOS {ddmVersionString} が必要です。&lt;br&gt;&lt;br&gt;**{button1text}** をクリックし、画面の案内を確認したあと **{softwareUpdateButtonText}** をクリックしてください。macOS {ddmVersionString} がインストールされるまで、このリマインダーは約 {aggressiveModeFrequencyMinutes} 分ごとに戻ります。{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>AggressiveModeMessageLocalized_nl</key>
-    <string>**Uw Mac is voorbij de vereiste macOS {titleMessageUpdateOrUpgradeLower}-deadline.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac is al **{aggressiveModeHoursPastDeadline} uur** voorbij de deadline **{ddmVersionStringDeadlineHumanReadable}** en heeft nog steeds macOS {ddmVersionString} nodig.&lt;br&gt;&lt;br&gt;Klik op **{button1text}**, volg de instructies op het scherm en klik daarna op **{softwareUpdateButtonText}**. Deze herinnering komt ongeveer elke {aggressiveModeFrequencyMinutes} minuten terug totdat macOS {ddmVersionString} is geinstalleerd.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
+    <string>**Uw Mac is voorbij de vereiste macOS {titleMessageUpdateOrUpgradeLower}-deadline.**&lt;br&gt;&lt;br&gt;Hallo {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Uw Mac is al **{aggressiveModeHoursPastDeadline} uur** voorbij de deadline **{ddmVersionStringDeadlineHumanReadable}** en heeft nog steeds macOS {ddmVersionString} nodig.&lt;br&gt;&lt;br&gt;Klik op **{button1text}**, volg de instructies op het scherm en klik daarna op **{softwareUpdateButtonText}**. Deze herinnering komt ongeveer elke {aggressiveModeFrequencyMinutes} minuten terug totdat macOS {ddmVersionString} is geïnstalleerd.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
     <key>AggressiveModeMessageLocalized_it</key>
     <string>**Il tuo Mac ha superato la scadenza obbligatoria per l&apos;{titleMessageUpdateOrUpgradeLower} di macOS.**&lt;br&gt;&lt;br&gt;Buon {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Il tuo Mac ha superato la scadenza **{ddmVersionStringDeadlineHumanReadable}** da **{aggressiveModeHoursPastDeadline} ora/e** e richiede ancora macOS {ddmVersionString}.&lt;br&gt;&lt;br&gt;Fai clic su **{button1text}**, segui le istruzioni sullo schermo, quindi fai clic su **{softwareUpdateButtonText}**. Questo promemoria tornerà circa ogni {aggressiveModeFrequencyMinutes} minuti finché macOS {ddmVersionString} non sarà installato.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 

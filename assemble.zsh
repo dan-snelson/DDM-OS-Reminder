@@ -1704,6 +1704,11 @@ mv "${scriptLogUpdateTmp}" "${outputScript}" || {
   exit 1
 }
 
+chmod +x "${outputScript}" || {
+  echo "❌ Failed to restore execute permission on assembled script."
+  exit 1
+}
+
 
 
 ####################################################################################################

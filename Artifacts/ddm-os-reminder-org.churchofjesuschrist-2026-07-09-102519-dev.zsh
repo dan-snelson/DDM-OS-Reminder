@@ -71,6 +71,7 @@ dormScriptPath="${organizationDirectory}/${organizationScriptName}.zsh"
 dorStarterPath="${organizationDirectory}/dor-starter.zsh"
 dorStatePlistPath="${organizationDirectory}/dor-state.plist"
 dorPidFilePath="${organizationDirectory}/dor.pid"
+dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -115,6 +116,7 @@ function removeDeployedRuntimeAssets() {
         "${dorStarterPath}"
         "${dorStatePlistPath}"
         "${dorPidFilePath}"
+        "${dorAggressiveKillSwitchPath}"
     )
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
@@ -4335,24 +4337,21 @@ function applyPreDeadlineThresholdDialogOverrides() {
 
 function executeRestartAction() {
     local restartMode="${1:-Restart Confirm}"
-    local restartCommand=""
 
     case "${restartMode}" in
         "Restart")
-            restartCommand="sleep 1 && shutdown -r now &"
-            if /bin/zsh -c "${restartCommand}"; then
-                notice "Restart command '${restartMode}' sent as root: ${restartCommand}"
+            if /bin/zsh -c 'sleep 1 && shutdown -r now &'; then
+                notice "Restart command '${restartMode}' sent as root."
                 return 0
             fi
-            warning "Failed to invoke restart command '${restartMode}' as root: ${restartCommand}"
+            warning "Failed to invoke restart command '${restartMode}' as root."
             return 1
             ;;
         "Restart Confirm"|*)
-            restartCommand="/usr/bin/osascript -e 'tell app \"loginwindow\" to «event aevtrrst»'"
             ;;
     esac
 
-    if /usr/bin/su - "${loggedInUser}" -c "${restartCommand}"; then
+    if launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/osascript -e 'tell app "loginwindow" to «event aevtrrst»'; then
         notice "Restart command '${restartMode}' sent for ${loggedInUser}."
         return 0
     fi
@@ -4497,7 +4496,7 @@ function displayReminderDialog() {
                 fi
                 ;;
             *"systempreferences"*)
-                launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
                 until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
                     info "Pending System Settings launch …"
@@ -4519,7 +4518,7 @@ function displayReminderDialog() {
                 '
                 ;;
             *)
-                launchctl asuser "${loggedInUserID}" su - "${loggedInUser}" -c "open '$action'"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 ;;
         esac
         quitScript "0"

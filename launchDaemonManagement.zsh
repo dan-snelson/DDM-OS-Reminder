@@ -71,6 +71,7 @@ dormScriptPath="${organizationDirectory}/${organizationScriptName}.zsh"
 dorStarterPath="${organizationDirectory}/dor-starter.zsh"
 dorStatePlistPath="${organizationDirectory}/dor-state.plist"
 dorPidFilePath="${organizationDirectory}/dor.pid"
+dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -115,6 +116,7 @@ function removeDeployedRuntimeAssets() {
         "${dorStarterPath}"
         "${dorStatePlistPath}"
         "${dorPidFilePath}"
+        "${dorAggressiveKillSwitchPath}"
     )
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do

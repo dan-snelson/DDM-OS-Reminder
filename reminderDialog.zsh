@@ -4029,7 +4029,7 @@ function executeRestartAction() {
             ;;
     esac
 
-    if /usr/bin/su - "${loggedInUser}" /usr/bin/osascript -e 'tell app "loginwindow" to «event aevtrrst»'; then
+    if launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/osascript -e 'tell app "loginwindow" to «event aevtrrst»'; then
         notice "Restart command '${restartMode}' sent for ${loggedInUser}."
         return 0
     fi
@@ -4174,7 +4174,7 @@ function displayReminderDialog() {
                 fi
                 ;;
             *"systempreferences"*)
-                launchctl asuser "${loggedInUserID}" /usr/bin/open "${action}"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
                 until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
                     info "Pending System Settings launch …"
@@ -4196,7 +4196,7 @@ function displayReminderDialog() {
                 '
                 ;;
             *)
-                launchctl asuser "${loggedInUserID}" /usr/bin/open "${action}"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 ;;
         esac
         quitScript "0"

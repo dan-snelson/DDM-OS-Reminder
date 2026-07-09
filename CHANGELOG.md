@@ -15,6 +15,7 @@
 - Added automatic refresh for open daemon-managed reminder dialogs when a configured final-minute threshold becomes due, closing the stale swiftDialog process and immediately queuing the latest due threshold reminder.
 - Fixed post-dialog pre-deadline scheduling so if a threshold dialog remains open while later thresholds pass, the latest due threshold is queued immediately instead of falling back to the baseline schedule.
 - Hardened runtime scheduler state handling so malformed `dor-state.plist` files are logged, quarantined, and recreated instead of causing the heartbeat to relaunch `dor.zsh` every 60 seconds.
+- Updated `Resources/reminderDialogPreferenceTest.zsh` to warn when runtime scheduler state cannot be inspected instead of reporting unreadable `dor-state.plist` values as unset.
 - Fixed rendered deadline punctuation so relative times such as `Today, 5:50 a.m.` do not gain a duplicate period when managed copy adds sentence punctuation after the deadline placeholder.
 - Updated runtime scheduling to honor exact quiet-period redisplay times, while keeping direct/manual/demo runs from mutating daemon scheduler state.
 - Updated `All`, `LaunchDaemon`, and `Uninstall` reset paths to unload and remove every discovered DDM OS Reminder LaunchDaemon plist before recreating the current heartbeat daemon, while reporting absent runtime assets separately from removed files.

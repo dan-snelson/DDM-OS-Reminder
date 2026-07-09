@@ -763,7 +763,23 @@ function readRuntimeStateValue() {
 
     [[ -f "${dorStatePlistPath}" ]] || return 0
 
-    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null
+}
+
+function validateRuntimeStatePlistForPreview() {
+    [[ -f "${dorStatePlistPath}" ]] || return 1
+
+    if [[ ! -x "/usr/libexec/PlistBuddy" ]]; then
+        warning "Missing required PlistBuddy binary: /usr/libexec/PlistBuddy; runtime scheduler state cannot be inspected."
+        return 1
+    fi
+
+    if ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        warning "Unable to read runtime scheduler state plist '${dorStatePlistPath}'. Check plist syntax and permissions."
+        return 1
+    fi
+
+    return 0
 }
 
 function validateReminderTimeEntry() {
@@ -1929,11 +1945,16 @@ function printResolvedPreferenceSummary() {
     preFlight "Message: ${message}"
 
     if [[ -f "${dorStatePlistPath}" ]]; then
-        runtimeNextScheduledReminder="$(readRuntimeStateValue "NextScheduledReminder")"
-        runtimeDaemonLastTriggered="$(readRuntimeStateValue "DaemonLastTriggered")"
         preFlight "Runtime state plist: ${dorStatePlistPath}"
-        preFlight "Runtime NextScheduledReminder: ${runtimeNextScheduledReminder:-<unset>}"
-        preFlight "Runtime DaemonLastTriggered: ${runtimeDaemonLastTriggered:-<unset>}"
+        if validateRuntimeStatePlistForPreview; then
+            runtimeNextScheduledReminder="$(readRuntimeStateValue "NextScheduledReminder")"
+            runtimeDaemonLastTriggered="$(readRuntimeStateValue "DaemonLastTriggered")"
+            preFlight "Runtime NextScheduledReminder: ${runtimeNextScheduledReminder:-<unset>}"
+            preFlight "Runtime DaemonLastTriggered: ${runtimeDaemonLastTriggered:-<unset>}"
+        else
+            preFlight "Runtime NextScheduledReminder: <unavailable>"
+            preFlight "Runtime DaemonLastTriggered: <unavailable>"
+        fi
     fi
 }
 

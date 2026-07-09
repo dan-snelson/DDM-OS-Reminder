@@ -4018,7 +4018,7 @@ function executeRestartAction() {
 
     case "${restartMode}" in
         "Restart")
-            if /bin/zsh -c 'sleep 1 && shutdown -r now &'; then
+            if ( sleep 1; /sbin/shutdown -r now ) &; then
                 notice "Restart command '${restartMode}' sent as root."
                 return 0
             fi

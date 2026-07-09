@@ -361,13 +361,23 @@ ENDOFSCRIPT
 
 }
 
+function escapeSedReplacement() {
+    local replacementValue="${1}"
+
+    replacementValue="${replacementValue//\\/\\\\}"
+    replacementValue="${replacementValue//&/\\&}"
+    replacementValue="${replacementValue//|/\\|}"
+
+    print -r -- "${replacementValue}"
+}
+
 function createDorStarterScript() {
 
-    local escapedScriptVersion="${scriptVersion//&/\\&}"
-    local escapedScriptLog="${scriptLog//&/\\&}"
-    local escapedMainScriptPath="${dormScriptPath//&/\\&}"
-    local escapedStatePlistPath="${dorStatePlistPath//&/\\&}"
-    local escapedPidFilePath="${dorPidFilePath//&/\\&}"
+    local escapedScriptVersion="$(escapeSedReplacement "${scriptVersion}")"
+    local escapedScriptLog="$(escapeSedReplacement "${scriptLog}")"
+    local escapedMainScriptPath="$(escapeSedReplacement "${dormScriptPath}")"
+    local escapedStatePlistPath="$(escapeSedReplacement "${dorStatePlistPath}")"
+    local escapedPidFilePath="$(escapeSedReplacement "${dorPidFilePath}")"
 
     notice "Create 'dor-starter' script: ${dorStarterPath}"
 

@@ -61,6 +61,13 @@ Invoke relevant skill name during planning.
 4. Validate fallback behavior, especially English and existing language families.
 5. Update docs and changelog when operator-facing behavior changes.
 
+### Security Workflow Change Skill
+1. Treat `.github/workflows/security-scan.yml` as a blocking security gate: Semgrep runs with `--error`, Gitleaks is blocking, and finalizer steps should fail when findings or upload failures require attention.
+2. Pin every GitHub Actions `uses:` reference in `security-scan.yml` to a full 40-character commit SHA, not a mutable tag or branch. Keep the upstream tag as a trailing maintenance comment, for example `uses: actions/checkout@<40-char-sha> # v6`.
+3. When refreshing action pins, resolve annotated tags to the underlying commit SHA before updating the workflow.
+4. Do not weaken blocking scan behavior, SARIF upload conditions, or finalizer failure logic unless the task explicitly asks for a policy change.
+5. Validate workflow edits with `git diff --check` and confirm no mutable action refs remain in `security-scan.yml`.
+
 ## Boundaries
 **Always allowed without asking**
 - Read any repository file.
@@ -144,6 +151,7 @@ Out of scope:
 - Admin-controlled baseline schedule lives in `DailyReminderTimes` within managed/local preferences. Mutable scheduler state must stay in `dor-state.plist`, not deployable preference payloads.
 - Treat `Artifacts/` as generated but potentially tracked output. Do not rebuild or replace artifacts unless task specifically calls for it.
 - Localization additions should usually start in `Resources/sample.plist`; runtime and config generators are designed to carry those keys forward.
+- GitHub Actions in `.github/workflows/security-scan.yml` must use full commit-SHA pins for `uses:` actions, with the human tag retained only as a comment (for example `# v6`).
 - Submit PR-targeted guidance against `development` branch unless task or maintainer instruction says otherwise.
 - Check `git status` before editing shared docs, generated artifacts, or cross-cutting files so unrelated local work is not overwritten.
 - Avoid hidden behavior changes during refactors.
@@ -182,9 +190,10 @@ These rules override ad-hoc prompting. Match established shipped-script style un
 2. For `reminderDialog.zsh` behavior changes, run `zsh reminderDialog.zsh demo`.
 3. For `assemble.zsh` or deployment-flow changes, review generated artifact expectations against `Resources/README.md` and related docs before calling work complete.
 4. For packaging changes, account for self-extracting bundle workflow in `Resources/createSelfExtracting.zsh` and validate generated `.mobileconfig` with `/usr/bin/plutil -lint`.
-5. For `AGENTS.md` or docs-only changes, verify Markdown structure, terminology, links, and repo references.
-6. When behavior, preferences, or operator workflows change, update affected docs in `README.md`, `Resources/README.md`, `Diagrams/`, and `CHANGELOG.md` as needed.
-7. Do not add new production dependencies without explicit approval.
+5. For `.github/workflows/security-scan.yml` changes, verify GitHub Actions `uses:` refs are pinned to full commit SHAs and no mutable action tags or branches remain.
+6. For `AGENTS.md` or docs-only changes, verify Markdown structure, terminology, links, and repo references.
+7. When behavior, preferences, or operator workflows change, update affected docs in `README.md`, `Resources/README.md`, `Diagrams/`, and `CHANGELOG.md` as needed.
+8. Do not add new production dependencies without explicit approval.
 
 ## Release Checklist
 Apply only for release or packaging prep.

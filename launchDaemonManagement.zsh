@@ -120,6 +120,11 @@ function removeDeployedRuntimeAssets() {
     )
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
+        if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
+            logComment "Runtime asset not present: '${runtimeAssetPath}'"
+            continue
+        fi
+
         logComment "Removing '${runtimeAssetPath}' … "
         if rm -f "${runtimeAssetPath}" 2>/dev/null; then
             logComment "Removed '${runtimeAssetPath}'"
@@ -394,13 +399,10 @@ function requirePlistBuddy() {
     fi
 }
 
-function ensureStatePlist() {
-    mkdir -p "${statePlistPath:h}"
-    chown root:wheel "${statePlistPath:h}" 2>/dev/null || true
-    chmod 755 "${statePlistPath:h}" 2>/dev/null || true
+function createEmptyStatePlist() {
+    local createStatus=""
 
-    if [[ ! -f "${statePlistPath}" ]]; then
-        cat > "${statePlistPath}" <<'ENDOFPLIST'
+    cat > "${statePlistPath}" <<'ENDOFPLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -408,28 +410,71 @@ function ensureStatePlist() {
 </dict>
 </plist>
 ENDOFPLIST
-        chown root:wheel "${statePlistPath}" 2>/dev/null || true
-        chmod 644 "${statePlistPath}" 2>/dev/null || true
+    createStatus="${?}"
+
+    if (( createStatus != 0 )); then
+        error "Unable to create scheduler state plist '${statePlistPath}'."
+        return 1
     fi
+
+    chown root:wheel "${statePlistPath}" 2>/dev/null || true
+    chmod 644 "${statePlistPath}" 2>/dev/null || true
+
+    if ! "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1; then
+        error "Created scheduler state plist '${statePlistPath}' is not readable."
+        return 1
+    fi
+}
+
+function ensureStatePlist() {
+    local invalidStatePlistPath=""
+
+    mkdir -p "${statePlistPath:h}"
+    chown root:wheel "${statePlistPath:h}" 2>/dev/null || true
+    chmod 755 "${statePlistPath:h}" 2>/dev/null || true
+
+    if [[ ! -f "${statePlistPath}" ]]; then
+        createEmptyStatePlist || return 1
+    elif ! "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1; then
+        invalidStatePlistPath="${statePlistPath}.invalid.$(date '+%Y%m%d%H%M%S')"
+        warning "Unreadable scheduler state plist '${statePlistPath}'; recreating empty state."
+        if mv "${statePlistPath}" "${invalidStatePlistPath}" 2>/dev/null; then
+            warning "Moved unreadable scheduler state plist to '${invalidStatePlistPath}'."
+        else
+            warning "Unable to quarantine unreadable scheduler state plist '${statePlistPath}'; replacing in place."
+        fi
+        createEmptyStatePlist || return 1
+    fi
+
+    chown root:wheel "${statePlistPath}" 2>/dev/null || true
+    chmod 644 "${statePlistPath}" 2>/dev/null || true
+
+    "${plistBuddyPath}" -c "Print" "${statePlistPath}" >/dev/null 2>&1
 }
 
 function writeStateValue() {
     local key="${1}"
     local value="${2}"
 
-    ensureStatePlist
+    ensureStatePlist || return 1
 
     if "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" >/dev/null 2>&1; then
-        "${plistBuddyPath}" -c "Set :${key} ${value}" "${statePlistPath}" >/dev/null 2>&1
+        if ! "${plistBuddyPath}" -c "Set :${key} ${value}" "${statePlistPath}" >/dev/null 2>&1; then
+            error "Unable to set scheduler state key '${key}' in '${statePlistPath}'."
+            return 1
+        fi
     else
-        "${plistBuddyPath}" -c "Add :${key} string ${value}" "${statePlistPath}" >/dev/null 2>&1
+        if ! "${plistBuddyPath}" -c "Add :${key} string ${value}" "${statePlistPath}" >/dev/null 2>&1; then
+            error "Unable to add scheduler state key '${key}' in '${statePlistPath}'."
+            return 1
+        fi
     fi
 }
 
 function readStateValue() {
     local key="${1}"
 
-    [[ -f "${statePlistPath}" ]] || return 0
+    ensureStatePlist || return 1
 
     "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null || true
 }
@@ -459,6 +504,12 @@ if [[ -f "${pidFilePath}" ]]; then
 fi
 
 nextScheduledReminder="$(readStateValue "NextScheduledReminder")"
+stateReadStatus="${?}"
+if (( stateReadStatus != 0 )); then
+    error "Unable to read scheduler state; not launching main script."
+    exit 1
+fi
+
 if [[ "${nextScheduledReminder:l}" == "false" ]]; then
     exit 0
 fi
@@ -475,7 +526,11 @@ if [[ -n "${nextScheduledReminder}" ]]; then
     fi
 fi
 
-writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"
+if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
+    error "Unable to update scheduler trigger state; not launching main script."
+    exit 1
+fi
+
 notice "Heartbeat launch triggered '${mainScriptPath}'."
 DOR_LAUNCH_SOURCE="starter" "${mainScriptPath}" &
 disown

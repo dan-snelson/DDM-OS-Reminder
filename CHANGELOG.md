@@ -14,9 +14,10 @@
 - Added color-safe pre-deadline threshold emphasis placeholders so final-minute warning and action sentences render red on swiftDialog builds with markdown color support.
 - Added automatic refresh for open daemon-managed reminder dialogs when a configured final-minute threshold becomes due, closing the stale swiftDialog process and immediately queuing the latest due threshold reminder.
 - Fixed post-dialog pre-deadline scheduling so if a threshold dialog remains open while later thresholds pass, the latest due threshold is queued immediately instead of falling back to the baseline schedule.
+- Hardened runtime scheduler state handling so malformed `dor-state.plist` files are logged, quarantined, and recreated instead of causing the heartbeat to relaunch `dor.zsh` every 60 seconds.
 - Fixed rendered deadline punctuation so relative times such as `Today, 5:50 a.m.` do not gain a duplicate period when managed copy adds sentence punctuation after the deadline placeholder.
 - Updated runtime scheduling to honor exact quiet-period redisplay times, while keeping direct/manual/demo runs from mutating daemon scheduler state.
-- Updated `All`, `LaunchDaemon`, and `Uninstall` reset paths to unload and remove every discovered DDM OS Reminder LaunchDaemon plist before recreating the current heartbeat daemon.
+- Updated `All`, `LaunchDaemon`, and `Uninstall` reset paths to unload and remove every discovered DDM OS Reminder LaunchDaemon plist before recreating the current heartbeat daemon, while reporting absent runtime assets separately from removed files.
 - Added an `assemble.zsh` source-version guard so artifacts fail fast when the wrapper, assembler, and embedded `reminderDialog.zsh` versions are out of sync.
 - Updated `Resources/sample.plist`, `Resources/reminderDialogPreferenceTest.zsh`, `README.md`, `Resources/README.md`, and `AGENTS.md` to document the heartbeat starter architecture and new `dor-` runtime asset names.
 - Updated deadline display placeholders and infobox `Deadline` / `Day(s) Remaining` values to follow the effective enforcement deadline, including trusted padded enforcement dates, so reminder copy matches macOS managed-update notifications.

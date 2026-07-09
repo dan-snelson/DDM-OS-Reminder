@@ -609,13 +609,10 @@ function initializeDorPidFile() {
     ownsDorPidFile="YES"
 }
 
-function ensureReminderStatePlist() {
-    mkdir -p "${deploymentScriptDirectory}"
-    chown root:wheel "${deploymentScriptDirectory}" 2>/dev/null || true
-    chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
+function createEmptyReminderStatePlist() {
+    local createStatus=""
 
-    if [[ ! -f "${dorStatePlistPath}" ]]; then
-        cat > "${dorStatePlistPath}" <<'ENDOFPLIST'
+    cat > "${dorStatePlistPath}" <<'ENDOFPLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -623,34 +620,89 @@ function ensureReminderStatePlist() {
 </dict>
 </plist>
 ENDOFPLIST
-        chown root:wheel "${dorStatePlistPath}" 2>/dev/null || true
-        chmod 644 "${dorStatePlistPath}" 2>/dev/null || true
+    createStatus="${?}"
+
+    if (( createStatus != 0 )); then
+        warning "Unable to create scheduler state plist '${dorStatePlistPath}'."
+        return 1
     fi
+
+    chown root:wheel "${dorStatePlistPath}" 2>/dev/null || true
+    chmod 644 "${dorStatePlistPath}" 2>/dev/null || true
+
+    if ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        warning "Created scheduler state plist '${dorStatePlistPath}' is not readable."
+        return 1
+    fi
+}
+
+function ensureReminderStatePlist() {
+    local invalidStatePlistPath=""
+
+    mkdir -p "${deploymentScriptDirectory}"
+    chown root:wheel "${deploymentScriptDirectory}" 2>/dev/null || true
+    chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
+
+    if [[ ! -f "${dorStatePlistPath}" ]]; then
+        createEmptyReminderStatePlist || return 1
+    elif ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+        invalidStatePlistPath="${dorStatePlistPath}.invalid.$(date '+%Y%m%d%H%M%S')"
+        warning "Unreadable scheduler state plist '${dorStatePlistPath}'; recreating empty state."
+        if mv "${dorStatePlistPath}" "${invalidStatePlistPath}" 2>/dev/null; then
+            warning "Moved unreadable scheduler state plist to '${invalidStatePlistPath}'."
+        else
+            warning "Unable to quarantine unreadable scheduler state plist '${dorStatePlistPath}'; replacing in place."
+        fi
+        createEmptyReminderStatePlist || return 1
+    fi
+
+    chown root:wheel "${dorStatePlistPath}" 2>/dev/null || true
+    chmod 644 "${dorStatePlistPath}" 2>/dev/null || true
+
+    /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1
 }
 
 function writeReminderStateKey() {
     local stateKey="${1}"
     local stateValue="${2}"
 
-    ensureReminderStatePlist
+    ensureReminderStatePlist || return 1
 
     if /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" >/dev/null 2>&1; then
-        /usr/libexec/PlistBuddy -c "Set :${stateKey} ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1
+        if ! /usr/libexec/PlistBuddy -c "Set :${stateKey} ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            warning "Unable to set scheduler state key '${stateKey}' in '${dorStatePlistPath}'."
+            return 1
+        fi
     else
-        /usr/libexec/PlistBuddy -c "Add :${stateKey} string ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1
+        if ! /usr/libexec/PlistBuddy -c "Add :${stateKey} string ${stateValue}" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            warning "Unable to add scheduler state key '${stateKey}' in '${dorStatePlistPath}'."
+            return 1
+        fi
     fi
 }
 
 function readReminderStateKey() {
     local stateKey="${1}"
 
-    [[ -f "${dorStatePlistPath}" ]] || return 0
+    if shouldManageDaemonScheduling; then
+        ensureReminderStatePlist || return 1
+    else
+        [[ -f "${dorStatePlistPath}" ]] || return 0
+        if ! /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            warning "Unreadable scheduler state plist '${dorStatePlistPath}'; ignoring state for non-daemon run."
+            return 0
+        fi
+    fi
 
     /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null || true
 }
 
 function deleteReminderStateKey() {
     local stateKey="${1}"
+
+    if shouldManageDaemonScheduling; then
+        ensureReminderStatePlist || return 1
+    fi
 
     if [[ -f "${dorStatePlistPath}" ]]; then
         /usr/libexec/PlistBuddy -c "Delete :${stateKey}" "${dorStatePlistPath}" >/dev/null 2>&1 || true
@@ -871,9 +923,9 @@ function ensurePreDeadlineThresholdStateForSignature() {
     if [[ "${storedSignature}" != "${currentSignature}" ]]; then
         notice "Pre-deadline threshold state reset for deadline/version signature '${currentSignature}'."
         if shouldManageDaemonScheduling; then
-            writeReminderStateKey "PreDeadlineThresholdSignature" "${currentSignature}"
-            deleteReminderStateKey "PreDeadlineThresholdDelivered"
-            deleteReminderStateKey "PreDeadlineThresholdSkipped"
+            writeReminderStateKey "PreDeadlineThresholdSignature" "${currentSignature}" || return 1
+            deleteReminderStateKey "PreDeadlineThresholdDelivered" || return 1
+            deleteReminderStateKey "PreDeadlineThresholdSkipped" || return 1
         fi
         return 0
     fi
@@ -901,7 +953,7 @@ function markPreDeadlineThresholdDelivered() {
     shouldManageDaemonScheduling || return 0
 
     ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}" >/dev/null 2>&1 || return 0
-    markPreDeadlineThresholdStateValue "PreDeadlineThresholdDelivered" "${preDeadlineThresholdDeliveredCSV}" "${thresholdMinutes}"
+    markPreDeadlineThresholdStateValue "PreDeadlineThresholdDelivered" "${preDeadlineThresholdDeliveredCSV}" "${thresholdMinutes}" || return 1
     preDeadlineThresholdDeliveredCSV="$(readReminderStateKey "PreDeadlineThresholdDelivered")"
     notice "Marked ${thresholdMinutes}-minute pre-deadline threshold delivered for current deadline/version."
 }
@@ -912,7 +964,7 @@ function markPreDeadlineThresholdSkipped() {
     shouldManageDaemonScheduling || return 0
 
     ensurePreDeadlineThresholdStateForSignature "${preDeadlineThresholdSignature}" >/dev/null 2>&1 || return 0
-    markPreDeadlineThresholdStateValue "PreDeadlineThresholdSkipped" "${preDeadlineThresholdSkippedCSV}" "${thresholdMinutes}"
+    markPreDeadlineThresholdStateValue "PreDeadlineThresholdSkipped" "${preDeadlineThresholdSkippedCSV}" "${thresholdMinutes}" || return 1
     preDeadlineThresholdSkippedCSV="$(readReminderStateKey "PreDeadlineThresholdSkipped")"
     notice "Marked stale ${thresholdMinutes}-minute pre-deadline threshold skipped for current deadline/version."
 }
@@ -1167,7 +1219,10 @@ function scheduleNextReminderAtEpoch() {
         return 0
     fi
 
-    writeReminderStateKey "NextScheduledReminder" "${scheduleTimestamp}"
+    if ! writeReminderStateKey "NextScheduledReminder" "${scheduleTimestamp}"; then
+        warning "Unable to update NextScheduledReminder; leaving daemon scheduler state unchanged."
+        return 1
+    fi
     notice "Scheduled next daemon reminder for ${scheduleTimestamp} (${scheduleReason})."
     ensureLaunchDaemonHeartbeat
 }
@@ -1209,7 +1264,10 @@ function disableDaemonDrivenRuns() {
 
     shouldManageDaemonScheduling || return 0
 
-    writeReminderStateKey "NextScheduledReminder" "FALSE"
+    if ! writeReminderStateKey "NextScheduledReminder" "FALSE"; then
+        warning "Unable to disable daemon-driven reminders in scheduler state."
+        return 1
+    fi
     notice "${scheduleReason}."
     ensureLaunchDaemonHeartbeat
 }
@@ -1219,7 +1277,10 @@ function queueImmediateReminderCheck() {
 
     shouldManageDaemonScheduling || return 0
 
-    deleteReminderStateKey "NextScheduledReminder"
+    if ! deleteReminderStateKey "NextScheduledReminder"; then
+        warning "Unable to clear NextScheduledReminder for immediate daemon check."
+        return 1
+    fi
     notice "${scheduleReason}."
     ensureLaunchDaemonHeartbeat
     removeDorPidFile

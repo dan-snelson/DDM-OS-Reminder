@@ -75,7 +75,7 @@ gantt
 - 🤝 Respects meeting detection
 
 **User Options**:
-1. Click "Open Software Update" → Opens System Settings
+1. Click "Open Software Update" → Opens System Settings; normal cadence returns to `DailyReminderTimes`, but this still counts as an interaction for later quiet-period suppression
 2. Click "Remind Me Later" → Dismissed and re-displayed after `QuietPeriodMinutes`, unless an earlier pre-deadline threshold reminder is due
 3. Close dialog → Same as "Remind Me Later"
 
@@ -444,6 +444,8 @@ Between dialog displays (same day):
 - Prevents excessive nagging
 - Enforces minimum time between reminders
 - Default: `QuietPeriodMinutes = 76`
+- If a daemon-managed baseline run occurs before quiet period expires, it exits quietly and schedules exact redisplay at `lastInteraction + QuietPeriodMinutes`
+- `Open Software Update` returns to baseline cadence immediately after the dialog, but the Button 1 return code still counts as recent interaction for subsequent quiet-period checks
 - Bypassed in post-deadline `Force` mode
 - Bypassed while aggressive mode is active; aggressive cadence is controlled by `AggressiveModeFrequencyMinutes`
 

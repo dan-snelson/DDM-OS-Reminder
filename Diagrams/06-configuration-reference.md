@@ -384,6 +384,11 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Description**: Minutes after a user interaction during which normal update-focused reminders are suppressed. Due pre-deadline threshold reminders, aggressive mode, and Force mode bypass this quiet period.
 
+**Behavior**:
+- Interaction return codes `0|2|3|4|10` can start quiet-period suppression
+- If a daemon-managed run exits because the quiet period is still active, `NextScheduledReminder` is written as the quiet-period expiry (`lastInteraction + QuietPeriodMinutes`) unless an earlier pre-deadline threshold is pending
+- `Open Software Update` (`Return Code: 0`) normally returns to `DailyReminderTimes` baseline cadence after the dialog, but a later baseline run inside the quiet period can still be suppressed and exact-scheduled to the quiet-period expiry
+
 **Special Value**: `0` disables quiet-period suppression.
 
 ---
@@ -658,6 +663,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Entries are normalized, sorted, and de-duplicated by runtime
 - Invalid entries are ignored with warning logging; fully invalid values fall back to script default
 - Baseline scheduling uses this list when reminder flow returns to normal cadence, including after `Open Software Update`
+- A baseline run can still be suppressed by `QuietPeriodMinutes`; in that case the runtime scheduler stores an exact quiet-period expiry in `NextScheduledReminder`
 - A reboot does not bypass a future `NextScheduledReminder`; `RunAtLoad` checks `dor-state.plist` and exits until the stored due time
 
 **Examples**:
@@ -2471,6 +2477,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.0.0 | 10-Jul-2026 | Clarified quiet-period scheduling: baseline runs inside `QuietPeriodMinutes` exit quietly and write exact `NextScheduledReminder` for quiet-period expiry, including after prior Button 1 interaction |
 | 4.0.0 | 08-Jul-2026 | Added `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds` reference coverage |
 | 4.0.0 | 08-Jul-2026 | Clarified `NextScheduledReminder` reboot behavior: future-dated runtime schedule survives reboot and `RunAtLoad` exits quietly until due |
 | 4.0.0 | 08-Jul-2026 | Added aggressive-mode timing keys, title/message localized families, kill-switch guidance, and `{aggressiveModeHoursPastDeadline}` / `{aggressiveModeFrequencyMinutes}` placeholders |
@@ -2490,5 +2497,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 08-Jul-2026
+**Last Updated**: 10-Jul-2026
 **DDM OS Reminder Version**: 4.0.0

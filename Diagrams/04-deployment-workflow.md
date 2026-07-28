@@ -575,10 +575,13 @@ Recommended bundled EAs:
 - `Resources/JamfEA-Pending_OS_Update_Version.zsh`
 - `Resources/JamfEA-DDM_Executed_OS_Update_Date.zsh`
 - `Resources/JamfEA-DDM-OS-Reminder-User-Clicks.zsh`
+- `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh`
 
 The pending date/version EAs now fail closed and return `None` when recent `install.log` state is missing, conflicting, invalid, or no longer maps to an available update.
 
 As of `4.0.0`, those EAs also treat a matching or trailing current macOS `VersionString` as compliant when Apple omits a usable `BuildVersionString`, and expose internal `installLogPathOverride`, `currentVersionOverride`, and `currentBuildOverride` hooks for local trace replay during troubleshooting. These hooks are for manual validation only and are not configuration-profile keys.
+
+Configure the Next Scheduled Reminder EA with Jamf Pro Data Type `Date` and set its `reverseDomainNameNotation` to the deployed RDNN. It converts the device-local `NextScheduledReminder` scheduler value to Jamf's date format and uses documented sentinel dates for disabled, missing, unset, corrupt, or invalid state.
 
 #### 6.3 Common Issues and Solutions
 

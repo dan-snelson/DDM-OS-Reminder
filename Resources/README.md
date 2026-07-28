@@ -280,7 +280,27 @@ Reports the date when the DDM-enforced macOS update was executed.
 Thu Nov 13 08:59:56 2025
 ```
 
-**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
+**4.5.** [`JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh`](JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh)
+
+Reports the device-local date and time stored in `NextScheduledReminder` within `/Library/Management/<rdnn>/dor-state.plist`.
+Configure this Extension Attribute in Jamf Pro with Input Type `Script` and Data Type `Date`.
+Before uploading the script, set `reverseDomainNameNotation` to the RDNN used to assemble DDM OS Reminder; for example, `org.churchofjesuschrist.ics`.
+Jamf Pro stores Date Extension Attribute values as static dates and does not convert them between time zones. The reported value updates during the Mac's next inventory collection.
+
+The EA converts the runtime format `YYYY-MM-DD:HH:MM:SS` to Jamf's `YYYY-MM-DD HH:MM:SS` format and returns these sentinel dates for non-date scheduler states:
+
+- `2000-01-01 00:00:00` = daemon-driven reminders disabled (`FALSE`)
+- `2000-01-01 00:00:01` = state plist missing or unreadable
+- `2000-01-01 00:00:02` = `NextScheduledReminder` unset or empty; the heartbeat may evaluate immediately
+- `2000-01-01 00:00:03` = corrupt plist or invalid timestamp
+
+The internal `reverseDomainNameNotationOverride` and `dorStatePlistPathOverride` hooks support local fixture testing only; they are not configuration-profile keys.
+
+```
+2026-07-28 12:00:00
+```
+
+**4.6.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
 Reports all local users with SecureToken enabled (comma-separated).
 
 ```
@@ -293,7 +313,7 @@ On macOS earlier than 10.13, this EA reports:
 N/A (macOS X.Y.Z)
 ```
 
-**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
+**4.7.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
 Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
 
 ```

@@ -749,6 +749,62 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
   - PreDeadlineThresholdSkipped
 ```
 
+#### PreDeadlineThresholdSignature Runtime State
+
+`PreDeadlineThresholdSignature` is an internal identity for the final-minute threshold-delivery ledger. It is runtime state, not a configurable preference.
+
+**Location**:
+
+```text
+/Library/Management/<rdnn>/dor-state.plist
+```
+
+**Format**:
+
+```text
+<VersionString>|<BuildVersionString>|<effective-enforcement-epoch>
+```
+
+**Example**:
+
+```text
+26.6|(null)|1785880800
+```
+
+| Component | Example | Meaning |
+|-----------|---------|---------|
+| `VersionString` | `26.6` | Required macOS product version resolved from the applicable DDM declaration |
+| `BuildVersionString` | `(null)` | Required build when supplied; Apple may emit the literal `(null)` when no usable build is present, in which case compliance falls back to product-version comparison |
+| Effective enforcement epoch | `1785880800` | Unix epoch used for threshold calculations; normally the declared future enforcement date, or a trusted padded enforcement date when one is safely resolved after the original deadline |
+
+**Ledger Behavior**:
+
+- Runtime compares the calculated signature with the value already stored in `dor-state.plist`
+- When the signature matches, `PreDeadlineThresholdDelivered` and `PreDeadlineThresholdSkipped` remain associated with that declaration
+- When the version, build, or effective enforcement epoch changes, runtime writes the new signature and deletes both threshold lists
+- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`
+- `PreDeadlineThresholdSkipped` is a descending, de-duplicated CSV of earlier thresholds crossed before the nearest due threshold could be displayed
+- Together, these values ensure each configured threshold is handled at most once for one resolved deadline/version signature
+
+**Operational Interpretation**:
+
+- A signature may appear before any threshold is due because daemon-managed runs evaluate the next pending threshold while choosing between that exact time and the next `DailyReminderTimes` baseline slot
+- Missing `PreDeadlineThresholdDelivered` or `PreDeadlineThresholdSkipped` keys normally mean no thresholds have yet been recorded for the current signature
+- `NextScheduledReminder` remains the separate scheduler instruction; the signature does not itself indicate that a reminder is due
+- The signature contains declaration identity only; changing `MinutesBeforeDeadlineReminderSchedule` does not reset delivered/skipped history for an otherwise unchanged declaration
+- Direct, manual, and demo runs do not mutate this daemon scheduler state
+- Do not deploy these keys through a `.plist` or Configuration Profile
+- Do not delete or edit the signature during normal troubleshooting; changing it resets delivered/skipped history on the next daemon-managed run and can make a threshold eligible again
+
+**Inspection**:
+
+```zsh
+plutil -p "/Library/Management/<rdnn>/dor-state.plist"
+date -r 1785880800 '+%Y-%m-%d %H:%M:%S %Z'
+```
+
+The `date` command renders the epoch in the Mac's local time zone.
+
 ---
 
 #### acceptableAssertionApplicationNames
@@ -2477,6 +2533,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.0.0 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` format, declaration identity fields, `(null)` build handling, effective-enforcement epoch semantics, delivered/skipped ledger reset behavior, and operational interpretation |
 | 4.0.0 | 10-Jul-2026 | Clarified quiet-period scheduling: baseline runs inside `QuietPeriodMinutes` exit quietly and write exact `NextScheduledReminder` for quiet-period expiry, including after prior Button 1 interaction |
 | 4.0.0 | 08-Jul-2026 | Added `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds` reference coverage |
 | 4.0.0 | 08-Jul-2026 | Clarified `NextScheduledReminder` reboot behavior: future-dated runtime schedule survives reboot and `RunAtLoad` exits quietly until due |
@@ -2497,5 +2554,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 10-Jul-2026
+**Last Updated**: 28-Jul-2026
 **DDM OS Reminder Version**: 4.0.0

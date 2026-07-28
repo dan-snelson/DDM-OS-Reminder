@@ -188,9 +188,19 @@ gantt
 - Uses the existing heartbeat + `dor-starter` + `NextScheduledReminder` exact scheduler path
 
 **Runtime State**:
-- `PreDeadlineThresholdSignature`
-- `PreDeadlineThresholdDelivered`
-- `PreDeadlineThresholdSkipped`
+- `PreDeadlineThresholdSignature` identifies the threshold-delivery ledger for the resolved declaration using `<VersionString>|<BuildVersionString>|<effective-enforcement-epoch>`
+- `PreDeadlineThresholdDelivered` records configured minute thresholds already displayed for that signature
+- `PreDeadlineThresholdSkipped` records older thresholds crossed before the most-recent due threshold could be displayed
+- When the version, build, or effective enforcement epoch changes, runtime replaces the signature and clears the delivered/skipped lists so the new declaration receives its own threshold sequence
+- These keys are mutable runtime state in `/Library/Management/<rdnn>/dor-state.plist`; they are not Configuration Profile preferences
+
+Example:
+
+```text
+PreDeadlineThresholdSignature = 26.6|(null)|1785880800
+```
+
+Here, `26.6` is the target `VersionString`, `(null)` means Apple did not supply a usable `BuildVersionString`, and `1785880800` is the effective enforcement time as a Unix epoch. The signature can be created while the deadline remains days away because each scheduled run compares the next pending threshold with the next baseline reminder. Its presence does not mean a threshold is currently due. See [PreDeadlineThresholdSignature runtime state](06-configuration-reference.md#predeadlinethresholdsignature-runtime-state) for complete behavior and troubleshooting guidance.
 
 **Configuration**:
 - `MinutesBeforeDeadlineReminderSchedule = 45,30,15,10,5`

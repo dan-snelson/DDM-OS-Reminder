@@ -491,6 +491,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.12 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` structure, `(null)` build semantics, effective-enforcement epoch, threshold delivery/skipped ledger resets, and runtime-only troubleshooting guidance |
 | 1.0.11 | 10-Jul-2026 | Clarified quiet-period scheduling when baseline daemon runs occur before `QuietPeriodMinutes` expires, including exact `NextScheduledReminder` behavior after prior Button 1 interaction |
 | 1.0.10 | 08-Jul-2026 | Clarified `NextScheduledReminder` runtime behavior after reboot: future-dated scheduler state survives reboot and `RunAtLoad` exits quietly until due |
 | 1.0.9 | 08-Jul-2026 | Updated daemon/scheduling diagrams for the v4 heartbeat `dor-starter.zsh` flow, `dor.zsh` deployed path, runtime state assets, and `DailyReminderTimes`-driven baseline reminder slots |
@@ -513,5 +514,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 10-Jul-2026
+**Last Updated**: 28-Jul-2026
 **DDM OS Reminder Version**: 4.0.0

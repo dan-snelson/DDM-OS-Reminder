@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0b2"
+scriptVersion="4.1.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -49,6 +49,12 @@ autoload -Uz is-at-least
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
 resetConfiguration="${4:-"All"}"
+
+# Parameter 5: Fallback Required macOS Version (i.e., 26.6)
+fallbackVersionString="${5:-}"
+
+# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T22:00:00Z)
+fallbackEnforcedInstallDate="${6:-}"
 
 
 
@@ -72,6 +78,7 @@ dorStarterPath="${organizationDirectory}/dor-starter.zsh"
 dorStatePlistPath="${organizationDirectory}/dor-state.plist"
 dorPidFilePath="${organizationDirectory}/dor.pid"
 dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
+dorFallbackDeclarationPlistPath="${organizationDirectory}/dor-fallback-declaration.plist"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -117,6 +124,7 @@ function removeDeployedRuntimeAssets() {
         "${dorStatePlistPath}"
         "${dorPidFilePath}"
         "${dorAggressiveKillSwitchPath}"
+        "${dorFallbackDeclarationPlistPath}"
     )
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
@@ -132,6 +140,168 @@ function removeDeployedRuntimeAssets() {
             warning "Failed to remove '${runtimeAssetPath}'"
         fi
     done
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# MDM Fallback Requirement
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isValidFallbackVersionString() {
+    local value="${1}"
+    local versionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
+
+    [[ -n "${value}" && "${value}" =~ ${versionRegex} ]]
+}
+
+function isValidCivilDate() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local daysInMonth=31
+
+    (( month >= 1 && month <= 12 && day >= 1 )) || return 1
+
+    case "${month}" in
+        2)
+            daysInMonth=28
+            if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+                daysInMonth=29
+            fi
+            ;;
+        4|6|9|11)
+            daysInMonth=30
+            ;;
+    esac
+
+    (( day <= daysInMonth ))
+}
+
+function isValidFallbackEnforcementDate() {
+    local value="${1}"
+    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local timezoneSuffix=""
+    local offsetHours=0
+    local offsetMinutes=0
+
+    [[ "${value}" =~ ${timestampRegex} ]] || return 1
+
+    year=$(( 10#${match[2]} ))
+    month=$(( 10#${match[3]} ))
+    day=$(( 10#${match[4]} ))
+    hour=$(( 10#${match[5]} ))
+    minute=$(( 10#${match[6]} ))
+    second=$(( 10#${match[7]} ))
+    timezoneSuffix="${match[8]}"
+    offsetHours=$(( 10#${match[9]:-0} ))
+    offsetMinutes=$(( 10#${match[10]:-0} ))
+
+    isValidCivilDate "${year}" "${month}" "${day}" || return 1
+    (( hour <= 23 && minute <= 59 && second <= 59 )) || return 1
+
+    if [[ "${timezoneSuffix}" != "Z" ]]; then
+        (( offsetHours <= 23 && offsetMinutes <= 59 )) || return 1
+    fi
+
+    return 0
+}
+
+function removeFallbackDeclarationPlist() {
+    local removalReason="${1}"
+
+    if [[ ! -e "${dorFallbackDeclarationPlistPath}" && ! -L "${dorFallbackDeclarationPlistPath}" ]]; then
+        logComment "MDM fallback requirement plist not present: '${dorFallbackDeclarationPlistPath}'"
+        return 0
+    fi
+
+    if rm -f "${dorFallbackDeclarationPlistPath}" 2>/dev/null; then
+        notice "Removed MDM fallback requirement plist (${removalReason}): '${dorFallbackDeclarationPlistPath}'"
+        return 0
+    fi
+
+    warning "Failed to remove MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'"
+    return 1
+}
+
+function writeFallbackDeclarationPlist() {
+    local temporaryPath=""
+    local plistValidationOutput=""
+    local plistPermissions=""
+    local writeAction="Created"
+
+    [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]] && writeAction="Replaced"
+
+    temporaryPath="$(/usr/bin/mktemp "${dorFallbackDeclarationPlistPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${temporaryPath}" || ! -f "${temporaryPath}" ]]; then
+        fatal "Unable to create temporary MDM fallback requirement plist beside '${dorFallbackDeclarationPlistPath}'."
+    fi
+
+    if ! /usr/bin/plutil -create xml1 "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert SchemaVersion -integer 1 "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert VersionString -string "${fallbackVersionString}" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert BuildVersionString -string "(null)" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert EnforcedInstallDate -string "${fallbackEnforcedInstallDate}" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert Source -string "JamfProScriptParameters" "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to write temporary MDM fallback requirement plist."
+    fi
+
+    if ! plistValidationOutput="$(/usr/bin/plutil -lint "${temporaryPath}" 2>&1)"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "MDM fallback requirement plist validation failed: ${plistValidationOutput:-no plutil output}"
+    fi
+
+    if ! chown root:wheel "${temporaryPath}" || ! chmod 644 "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to secure temporary MDM fallback requirement plist."
+    fi
+
+    plistPermissions="$(/usr/bin/stat -f '%Su:%Sg %Lp' "${temporaryPath}" 2>/dev/null)"
+    if [[ "${plistPermissions}" != "root:wheel 644" ]]; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unexpected MDM fallback requirement plist ownership or mode '${plistPermissions:-unknown}'; expected 'root:wheel 644'."
+    fi
+
+    if ! mv -f "${temporaryPath}" "${dorFallbackDeclarationPlistPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to atomically replace MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'."
+    fi
+
+    notice "${writeAction} MDM fallback requirement plist: '${dorFallbackDeclarationPlistPath}'"
+}
+
+function applyFallbackDeclarationParameters() {
+    if [[ -z "${fallbackVersionString}" && -z "${fallbackEnforcedInstallDate}" ]]; then
+        removeFallbackDeclarationPlist "intentionally disabled by blank Parameters 5 and 6"
+        return
+    fi
+
+    if [[ -z "${fallbackVersionString}" || -z "${fallbackEnforcedInstallDate}" ]]; then
+        warning "Rejected partial MDM fallback requirement; Parameters 5 and 6 must both be populated."
+        removeFallbackDeclarationPlist "partial parameter pair rejected"
+        return
+    fi
+
+    if ! isValidFallbackVersionString "${fallbackVersionString}"; then
+        warning "Rejected malformed MDM fallback requirement version from Parameter 5: '${fallbackVersionString}'"
+        removeFallbackDeclarationPlist "malformed version rejected"
+        return
+    fi
+
+    if ! isValidFallbackEnforcementDate "${fallbackEnforcedInstallDate}"; then
+        warning "Rejected malformed MDM fallback requirement deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
+        removeFallbackDeclarationPlist "malformed or timezone-free deadline rejected"
+        return
+    fi
+
+    writeFallbackDeclarationPlist
 }
 
 function isDDMOSReminderLaunchDaemonPlist() {
@@ -905,6 +1075,14 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 resetConfiguration "${resetConfiguration}"
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# MDM Fallback Requirement Validation / Persistence
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+applyFallbackDeclarationParameters
 
 
 

@@ -42,7 +42,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0b2)
+🧩 Assemble DDM OS Reminder (4.1.0b3)
 ===============================================================
 
 Full Paths:
@@ -160,6 +160,36 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 > **Note:** The [Create `.plist`](#4-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
 > **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, past-deadline restart copy, and aggressive-mode copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`, and can now emit either the full localization surface, a minimal English-focused artifact (`--minimal`), or a selected language subset (`--languages <csv>`).
+
+---
+
+## Missing-DDM Emergency Fallback
+
+The assembled deployment script supports these Jamf Pro parameters:
+
+| Parameter | Label | Example |
+|---|---|---|
+| 4 | Reset Configuration | `All` |
+| 5 | Fallback Required macOS Version | `26.6` |
+| 6 | Fallback Enforcement Deadline | `2026-08-04T22:00:00Z` |
+
+Parameter 5 accepts `X.Y` or `X.Y.Z`, with one to three digits per component. Parameter 6 requires `YYYY-MM-DDTHH:MM:SSZ` or an explicit offset such as `2026-08-05T03:30:00+05:30`. Timezone-free timestamps are rejected.
+
+When both values are valid, deployment atomically creates or replaces `/Library/Management/<rdnn>/dor-fallback-declaration.plist` as `root:wheel` mode `0644` in the mode `0755` management directory:
+
+| Key | Type | Required value |
+|---|---|---|
+| `SchemaVersion` | Integer | `1` |
+| `VersionString` | String | Parameter 5 |
+| `BuildVersionString` | String | `(null)` |
+| `EnforcedInstallDate` | String | Parameter 6 |
+| `Source` | String | `JamfProScriptParameters` |
+
+Both blank removes any stale fallback and intentionally disables the feature. A partial or malformed pair is rejected and also removes stale fallback data. `Uninstall` ignores fallback input and removes the plist. `All` and `Script` remove old fallback before valid values recreate it; `LaunchDaemon` preserves scheduler state while valid, blank, or invalid fallback inputs are applied before daemon bootstrap.
+
+Normal DDM declaration resolution always runs first. Runtime selects fallback only for exact resolver status `missing`; `conflict`, `noMatch`, and `invalidVersion` remain suppressed. Confirmed DDM supersedes persisted fallback. Corrupt, incomplete, wrong-type, or invalid fallback plists fail closed and are never repaired by runtime.
+
+Fallback activation and past-deadline direct timestamp use log at `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
 
 ---
 

@@ -294,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0b2)
+🧩 Assemble DDM OS Reminder (4.1.0b3)
 ===============================================================
 
 Full Paths:
@@ -369,6 +369,10 @@ This removes comment, whitespace, and key-order noise and highlights only real p
    - Priority: After
    - Parameter 4 Label: "Reset Configuration"
    - Parameter 4 Default: "All"
+   - Parameter 5 Label: "Fallback Required macOS Version" (optional; for example `26.6`)
+   - Parameter 6 Label: "Fallback Enforcement Deadline" (optional; for example `2026-08-04T22:00:00Z`)
+
+Parameters 5 and 6 form one fail-closed pair. Both blank disables fallback and removes stale data; partial or malformed values are rejected and also remove stale data. A valid pair is persisted after reset cleanup and before LaunchDaemon bootstrap. Runtime still performs normal DDM resolution first and can select fallback only for exact `missing`.
 
 **Intune**:
 1. Devices → macOS → Shell scripts
@@ -511,6 +515,8 @@ MDM → Policies → New
 - Execution frequency: Ongoing
 - Scripts: Select uploaded script
 - Parameter 4: "All" (reset and deploy fresh)
+- Parameter 5: Emergency fallback version, or blank to disable
+- Parameter 6: Timezone-bearing emergency fallback deadline, or blank to disable
 ```
 
 **Step 3: Deploy Configuration Profile**

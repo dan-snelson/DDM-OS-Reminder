@@ -2,6 +2,11 @@
 
 ## Changelog
 
+### Version 4.1.0b2 (30-Jul-2026)
+- Hardened LaunchDaemon installation for macOS 27 by validating a fresh adjacent temporary plist, atomically replacing the target, removing only `com.apple.quarantine`, and failing deployment when bootstrap or label-specific verification fails. ([Issue #117](https://github.com/dan-snelson/DDM-OS-Reminder/issues/117))
+- Added actionable runtime heartbeat recovery logging for missing, quarantined, or unloadable LaunchDaemon plists without changing trust metadata outside the controlled installer path.
+- Updated `Resources/monitorRemoteSession.zsh` to report LaunchDaemon quarantine state and documented fleet audit plus targeted remediation guidance.
+
 ### Version 4.1.0b1 (28-Jul-2026)
 - Added `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh` so Jamf Pro administrators can inventory the device-local `NextScheduledReminder` value as a Date Extension Attribute, with documented sentinel dates for non-date scheduler states.
 

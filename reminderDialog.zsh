@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0"
+scriptVersion="4.1.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1188,9 +1188,36 @@ function handlePreDeadlineThresholdDialogAutoRefresh() {
 }
 
 function ensureLaunchDaemonHeartbeat() {
-    if [[ -f "${dorLaunchDaemonPath}" ]]; then
-        launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || launchctl bootstrap system "${dorLaunchDaemonPath}" >/dev/null 2>&1 || true
+    local bootstrapOutput=""
+
+    shouldManageDaemonScheduling || return 0
+
+    if launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1; then
+        return 0
     fi
+
+    if [[ ! -f "${dorLaunchDaemonPath}" ]]; then
+        warning "Unable to recover LaunchDaemon heartbeat because '${dorLaunchDaemonPath}' is missing; controlled redeployment is required."
+        return 0
+    fi
+
+    if /usr/bin/xattr -p com.apple.quarantine "${dorLaunchDaemonPath}" >/dev/null 2>&1; then
+        warning "LaunchDaemon plist '${dorLaunchDaemonPath}' carries com.apple.quarantine. Runtime recovery will not remove trust metadata; validate the plist and perform a controlled redeployment or targeted quarantine removal."
+    fi
+
+    if ! bootstrapOutput="$(launchctl bootstrap system "${dorLaunchDaemonPath}" 2>&1)"; then
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
+        warning "Unable to recover LaunchDaemon heartbeat for '${dorLaunchDaemonLabel}': ${bootstrapOutput:-no launchctl output}"
+        return 0
+    fi
+
+    if ! launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1; then
+        warning "launchctl bootstrap returned success, but '${dorLaunchDaemonLabel}' could not be verified with label-specific launchctl print."
+        return 0
+    fi
+
+    notice "Recovered LaunchDaemon heartbeat '${dorLaunchDaemonLabel}'."
+    return 0
 }
 
 function scheduleNextReminderAtEpoch() {

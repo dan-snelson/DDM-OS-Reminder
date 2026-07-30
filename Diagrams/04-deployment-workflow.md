@@ -294,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0)
+🧩 Assemble DDM OS Reminder (4.1.0b2)
 ===============================================================
 
 Full Paths:
@@ -407,7 +407,11 @@ This removes comment, whitespace, and key-order noise and highlights only real p
 
 ```bash
 # Check LaunchDaemon
-sudo launchctl list | grep org.churchofjesuschrist.dor
+sudo launchctl print system/org.churchofjesuschrist.dor
+
+# Read-only macOS 27 quarantine audit
+xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist \
+    >/dev/null 2>&1 && echo "Quarantine: present" || echo "Quarantine: absent"
 
 # Check deployed scripts and runtime state
 ls -lh /Library/Management/org.churchofjesuschrist/dor.zsh
@@ -472,10 +476,15 @@ tail -100 /var/log/org.churchofjesuschrist.log
 # Check plist syntax
 plutil -lint /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 
-# Manually load
-sudo launchctl bootstrap system /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+# Check macOS 27 quarantine state without changing the file
+xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 
-# Check status
+# Preferred fix: redeploy with 4.1.0b2. For immediate targeted remediation
+# of a validated DDM OS Reminder plist which reports quarantine:
+sudo xattr -d com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+
+# Load and verify by label
+sudo launchctl bootstrap system /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 sudo launchctl print system/org.churchofjesuschrist.dor
 ```
 
@@ -589,7 +598,7 @@ Configure the Next Scheduled Reminder EA with Jamf Pro Data Type `Date` and set 
 |-------|-------|----------|
 | Dialog not appearing | No DDM enforcement date | Configure DDM policy in MDM |
 | Wrong branding | Preferences not deployed | Deploy Configuration Profile |
-| LaunchDaemon not running | Plist syntax error | Validate with `plutil -lint` |
+| LaunchDaemon not running | Plist syntax error or macOS 27 quarantine enforcement | Validate with `plutil -lint`, audit `com.apple.quarantine`, then redeploy with `4.1.0b2` |
 | Script not found | Installation failed | Check MDM policy logs |
 | Old swiftDialog version | swiftDialog not updating | Run script manually to trigger update |
 

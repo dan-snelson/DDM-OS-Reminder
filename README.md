@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.0.0)
+# DDM OS Reminder (4.1.0b2)
 
 > Another **major** upgrade to Mac Admins’ go-to solution for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines features a new, robust **heartbeat daemon** architecture, **easily configurable** daily reminder times, **pre-deadline** threshold alerts, and **aggressive past-deadline mode** with persistent compliance prompting.
 
@@ -45,7 +45,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 - **Heartbeat daemon architecture**: `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds. The starter checks `/Library/Management/<rdnn>/dor-state.plist` and only launches `dor.zsh` when a reminder is due.
 - **Runtime scheduler state**: `NextScheduledReminder`, `DaemonLastTriggered`, delivered pre-deadline thresholds, and the active `dor.pid` live in `/Library/Management/<rdnn>/`. Managed and local preferences remain admin-controlled configuration only.
-- **Remote session monitoring**: [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) provides one remote-Terminal snapshot of the heartbeat LaunchDaemon, deployed runtime files, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries. Use `--rdnn <value>` for your organization's deployments, `--watch <seconds>` for live refresh, and `--log-lines <n>` to adjust log tail depth.
+- **Remote session monitoring**: [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) provides one remote-Terminal snapshot of the heartbeat LaunchDaemon, read-only quarantine state, deployed runtime files, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries. Use `--rdnn <value>` for your organization's deployments, `--watch <seconds>` for live refresh, and `--log-lines <n>` to adjust log tail depth.
 - **Baseline reminder schedule**: `DailyReminderTimes` controls local reminder slots in `HH:MM` CSV format. The default baseline is `08:00,12:00,16:00`.
 - **Final-minute threshold reminders**: `MinutesBeforeDeadlineReminderSchedule` controls discrete pre-deadline reminders, defaulting to `45,30,15,10,5`. These threshold reminders bypass quiet-period suppression and can refresh an already-open daemon-managed dialog when a later threshold becomes due.
 - **Pre-deadline copy and emphasis**: New `PreDeadlineThresholdTitle` / `PreDeadlineThresholdMessage` keys, localized variants, `{minutesBeforeDeadline}`, and `{preDeadlineThresholdEmphasisOpen}` / `{preDeadlineThresholdEmphasisClose}` placeholders support urgent threshold-specific dialog text and color-safe emphasis.
@@ -64,6 +64,12 @@ Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now pri
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
 
+### macOS 27 LaunchDaemon quarantine enforcement
+
+macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0b2` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
+
+Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) for a read-only quarantine and load-state check. For affected Macs, preferred remediation is controlled redeployment with `4.1.0b2`; detailed fleet-audit and targeted manual-remediation commands are in [Resources/README.md](Resources/README.md#61-macos-27-quarantine-audit-and-remediation).
+
 <details>
 <summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>
 
@@ -71,7 +77,7 @@ When prior-plist import and localization filtering are used together, `assemble.
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0)
+🧩 Assemble DDM OS Reminder (4.1.0b2)
 ===============================================================
 
 📍 Full Paths:

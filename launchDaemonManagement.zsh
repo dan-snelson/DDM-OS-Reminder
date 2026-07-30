@@ -30,13 +30,13 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0"
+scriptVersion="4.1.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
-swiftDialogMinimumRequiredVersion="3.0.1.4955"
+swiftDialogMinimumRequiredVersion="3.1.0.4994"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -222,14 +222,14 @@ function resetLaunchDaemons() {
     local -a daemonPaths=()
 
     info "${resetAction} LaunchDaemon … "
-    launchDaemonStatus
+    launchDaemonStatus || true
 
     daemonPaths=("${(@f)$(discoverDDMOSReminderLaunchDaemonPaths)}")
     for daemonPath in "${daemonPaths[@]}"; do
         unloadAndRemoveLaunchDaemon "${daemonPath}"
     done
 
-    launchDaemonStatus
+    launchDaemonStatus || true
 }
 
 
@@ -580,15 +580,26 @@ ENDOFSTARTER
 
 function createLaunchDaemon() {
 
+    local bootstrapOutput=""
+    local kickstartOutput=""
+    local launchDaemonPermissions=""
+    local launchDaemonTemporaryPath=""
+    local plistValidationOutput=""
+    local quarantineRemovalOutput=""
+
     notice "Create LaunchDaemon"
 
     logComment "Ensuring previous '${launchDaemonLabel}' definition is unloaded …"
     launchctl bootout system "${launchDaemonPath}" >/dev/null 2>&1 || true
 
-    logComment "Creating '${launchDaemonPath}' …"
+    launchDaemonTemporaryPath="$(/usr/bin/mktemp "${launchDaemonPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${launchDaemonTemporaryPath}" || ! -f "${launchDaemonTemporaryPath}" ]]; then
+        fatal "Unable to create temporary LaunchDaemon plist beside '${launchDaemonPath}'."
+    fi
 
-(
-cat <<ENDOFLAUNCHDAEMON
+    logComment "Creating temporary LaunchDaemon plist '${launchDaemonTemporaryPath}' …"
+
+    if ! cat > "${launchDaemonTemporaryPath}" <<ENDOFLAUNCHDAEMON
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -621,15 +632,72 @@ cat <<ENDOFLAUNCHDAEMON
 </plist>
 
 ENDOFLAUNCHDAEMON
-)  > "${launchDaemonPath}"
+    then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to write temporary LaunchDaemon plist '${launchDaemonTemporaryPath}'."
+    fi
 
-    logComment "Setting permissions for '${launchDaemonPath}' …"
-    chmod 644 "${launchDaemonPath}"
-    chown root:wheel "${launchDaemonPath}"
+    if ! plistValidationOutput="$(/usr/bin/plutil -lint "${launchDaemonTemporaryPath}" 2>&1)"; then
+        plistValidationOutput="${plistValidationOutput//$'\n'/; }"
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "LaunchDaemon plist validation failed: ${plistValidationOutput:-no plutil output}"
+    fi
+    logComment "${plistValidationOutput}"
+
+    logComment "Setting permissions for temporary LaunchDaemon plist …"
+    if ! chown root:wheel "${launchDaemonTemporaryPath}"; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to set root:wheel ownership on '${launchDaemonTemporaryPath}'."
+    fi
+    if ! chmod 644 "${launchDaemonTemporaryPath}"; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to set mode 0644 on '${launchDaemonTemporaryPath}'."
+    fi
+
+    launchDaemonPermissions="$(/usr/bin/stat -f '%Su:%Sg %Lp' "${launchDaemonTemporaryPath}" 2>/dev/null)"
+    if [[ "${launchDaemonPermissions}" != "root:wheel 644" ]]; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unexpected LaunchDaemon ownership or mode '${launchDaemonPermissions:-unknown}'; expected 'root:wheel 644'."
+    fi
+
+    logComment "Atomically replacing '${launchDaemonPath}' …"
+    if ! mv -f "${launchDaemonTemporaryPath}" "${launchDaemonPath}"; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to atomically replace LaunchDaemon plist '${launchDaemonPath}'."
+    fi
+    launchDaemonTemporaryPath=""
+
+    if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+        notice "Removing com.apple.quarantine from validated installer-generated LaunchDaemon plist"
+        if ! quarantineRemovalOutput="$(/usr/bin/xattr -d com.apple.quarantine "${launchDaemonPath}" 2>&1)"; then
+            quarantineRemovalOutput="${quarantineRemovalOutput//$'\n'/; }"
+            fatal "Unable to remove com.apple.quarantine from '${launchDaemonPath}': ${quarantineRemovalOutput:-no xattr output}"
+        fi
+        if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+            fatal "LaunchDaemon plist '${launchDaemonPath}' still carries com.apple.quarantine after targeted removal."
+        fi
+    else
+        logComment "LaunchDaemon plist does not carry com.apple.quarantine"
+    fi
 
     logComment "Loading '${launchDaemonLabel}' …"
-    launchctl bootstrap system "${launchDaemonPath}"
-    launchctl kickstart -k "system/${launchDaemonLabel}"
+    if ! bootstrapOutput="$(launchctl bootstrap system "${launchDaemonPath}" 2>&1)"; then
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
+        fatal "launchctl bootstrap failed for '${launchDaemonLabel}': ${bootstrapOutput:-no launchctl output}"
+    fi
+    if [[ -n "${bootstrapOutput}" ]]; then
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
+        logComment "launchctl bootstrap: ${bootstrapOutput}"
+    fi
+
+    if ! kickstartOutput="$(launchctl kickstart -k "system/${launchDaemonLabel}" 2>&1)"; then
+        kickstartOutput="${kickstartOutput//$'\n'/; }"
+        if launchctl print "system/${launchDaemonLabel}" >/dev/null 2>&1; then
+            warning "launchctl kickstart failed, but '${launchDaemonLabel}' remains loaded: ${kickstartOutput:-no launchctl output}"
+        else
+            fatal "launchctl kickstart failed and '${launchDaemonLabel}' is not loaded: ${kickstartOutput:-no launchctl output}"
+        fi
+    fi
 
 }
 
@@ -641,15 +709,18 @@ ENDOFLAUNCHDAEMON
 
 function launchDaemonStatus() {
 
-    notice "LaunchDaemon Status"
-    
-    launchDaemonStatusResult=$( launchctl list | grep "${launchDaemonLabel}" )
+    local launchDaemonStatusOutput=""
 
-    if [[ -n "${launchDaemonStatusResult}" ]]; then
-        logComment "${launchDaemonStatusResult}"
-    else
-        logComment "${launchDaemonLabel} is NOT loaded"
+    notice "LaunchDaemon Status"
+
+    if launchDaemonStatusOutput="$(launchctl print "system/${launchDaemonLabel}" 2>&1)"; then
+        logComment "${launchDaemonLabel} is loaded"
+        return 0
     fi
+
+    launchDaemonStatusOutput="${launchDaemonStatusOutput//$'\n'/; }"
+    logComment "${launchDaemonLabel} is NOT loaded: ${launchDaemonStatusOutput:-no launchctl output}"
+    return 1
 
 }
 
@@ -882,7 +953,9 @@ notice "Status Checks"
 logComment "I/O pause …"
 sleep 1.3
 
-launchDaemonStatus
+if ! launchDaemonStatus; then
+    fatal "LaunchDaemon verification failed for '${launchDaemonLabel}'; deployment did not complete."
+fi
 
 
 

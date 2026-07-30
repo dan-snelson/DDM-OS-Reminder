@@ -7,6 +7,7 @@
 3. [Create `.plist`](#3-create-plist-optional)
 4. [Extension Attributes](#4-extension-attributes)
 5. [Using `reminderDialogPreferenceTest.zsh`](#5-using-reminderdialogpreferencetestzsh)
+6. [Using `monitorRemoteSession.zsh`](#6-using-monitorremotesessionzsh)
 
 ---
 
@@ -41,7 +42,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0)
+🧩 Assemble DDM OS Reminder (4.1.0b2)
 ===============================================================
 
 Full Paths:
@@ -410,7 +411,7 @@ Use this script for appearance and preference validation. Use `zsh reminderDialo
 
 ### 6. Using `monitorRemoteSession.zsh`
 
-Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
+Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, its read-only quarantine state, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
 
 Examples:
 
@@ -428,3 +429,37 @@ The helper is intended for runtime monitoring, not deployment. It reads the curr
 - `/Library/Management/<rdnn>/dor.pid`
 - `/Library/Management/<rdnn>/dor-aggressive-kill`
 - `/var/log/<rdnn>.log`
+
+#### 6.1. macOS 27 quarantine audit and remediation
+
+macOS 27 refuses to load LaunchDaemon property lists carrying `com.apple.quarantine`. Version `4.1.0b2` protects controlled deployments by creating and validating a fresh plist, atomically replacing the target, removing only that quarantine attribute, and verifying `launchctl print system/<rdnn>.dor` before reporting completion. Earlier macOS releases retain the same RDNN paths, permissions, heartbeat cadence, and scheduler behavior.
+
+For a read-only fleet audit, replace `us.snelson` with the deployed RDNN:
+
+```zsh
+launchDaemonPath="/Library/LaunchDaemons/us.snelson.dor.plist"
+
+if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+    echo "Quarantine: present"
+else
+    echo "Quarantine: absent"
+fi
+```
+
+`monitorRemoteSession.zsh --rdnn us.snelson` reports the same state without modifying the file. Preferred remediation for a quarantined DDM OS Reminder plist is controlled redeployment with `4.1.0b2`.
+
+When immediate manual remediation is required, first confirm the path belongs to the intended DDM OS Reminder deployment. Run targeted removal only when the audit reports `present`:
+
+```zsh
+launchDaemonLabel="us.snelson.dor"
+launchDaemonPath="/Library/LaunchDaemons/${launchDaemonLabel}.plist"
+
+sudo /usr/bin/plutil -lint "${launchDaemonPath}"
+sudo /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}"
+sudo /usr/bin/xattr -d com.apple.quarantine "${launchDaemonPath}"
+sudo /bin/launchctl bootout "system/${launchDaemonLabel}" 2>/dev/null || true
+sudo /bin/launchctl bootstrap system "${launchDaemonPath}"
+sudo /bin/launchctl print "system/${launchDaemonLabel}"
+```
+
+Do not use `xattr -c`; it removes unrelated extended attributes. Runtime heartbeat recovery diagnoses quarantine and logs bootstrap failures, but intentionally does not change trust metadata.

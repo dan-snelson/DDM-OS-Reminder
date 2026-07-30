@@ -110,7 +110,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="1.0.0"
+scriptVersion="1.1.0"
 reverseDomainNameNotation="${cliReverseDomainNameNotation:-org.churchofjesuschrist}"
 organizationScriptName="dor"
 organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
@@ -161,8 +161,15 @@ function renderLaunchDaemonStatus() {
     printKeyValue "Plist" "${launchDaemonPath}"
 
     if [[ ! -f "${launchDaemonPath}" ]]; then
+        printKeyValue "Quarantine" "not checked (plist missing)"
         printKeyValue "Status" "LaunchDaemon plist not found"
         return
+    fi
+
+    if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+        printKeyValue "Quarantine" "present"
+    else
+        printKeyValue "Quarantine" "absent"
     fi
 
     launchctlOutput="$(launchctl print "system/${launchDaemonLabel}" 2>&1)"

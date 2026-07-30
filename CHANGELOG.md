@@ -8,8 +8,6 @@
 - Added actionable runtime heartbeat recovery logging for missing, quarantined, or unloadable LaunchDaemon plists without changing trust metadata outside the controlled installer path.
 - Updated `Resources/monitorRemoteSession.zsh` to report LaunchDaemon quarantine state and documented fleet audit plus targeted remediation guidance.
 - Fixed interactive assembly so custom `InfoButtonText` values also update `InfoButtonTextLocalized_en`, preventing stale sample English text from overriding admin-entered button labels. ([Issue #118](https://github.com/dan-snelson/DDM-OS-Reminder/issues/118); thanks for the heads-up, @macpancakes!)
-
-### Version 4.1.0b1 (28-Jul-2026)
 - Added `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh` so Jamf Pro administrators can inventory the device-local `NextScheduledReminder` value as a Date Extension Attribute, with documented sentinel dates for non-date scheduler states.
 
 ### Version 4.0.0 (09-Jul-2026)

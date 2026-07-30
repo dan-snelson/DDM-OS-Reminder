@@ -79,9 +79,9 @@ When prior-plist import and localization filtering are used together, `assemble.
 
 ### macOS 27 LaunchDaemon quarantine enforcement
 
-macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0b2` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
+macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0b3` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
 
-Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) for a read-only quarantine and load-state check. For affected Macs, preferred remediation is controlled redeployment with `4.1.0b2`; detailed fleet-audit and targeted manual-remediation commands are in [Resources/README.md](Resources/README.md#61-macos-27-quarantine-audit-and-remediation).
+Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) for a read-only quarantine and load-state check. For affected Macs, preferred remediation is controlled redeployment with `4.1.0b3`; detailed fleet-audit and targeted manual-remediation commands are in [Resources/README.md](Resources/README.md#61-macos-27-quarantine-audit-and-remediation).
 
 <details>
 <summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>

@@ -462,7 +462,7 @@ The helper is intended for runtime monitoring, not deployment. It reads the curr
 
 #### 6.1. macOS 27 quarantine audit and remediation
 
-macOS 27 refuses to load LaunchDaemon property lists carrying `com.apple.quarantine`. Version `4.1.0b2` protects controlled deployments by creating and validating a fresh plist, atomically replacing the target, removing only that quarantine attribute, and verifying `launchctl print system/<rdnn>.dor` before reporting completion. Earlier macOS releases retain the same RDNN paths, permissions, heartbeat cadence, and scheduler behavior.
+macOS 27 refuses to load LaunchDaemon property lists carrying `com.apple.quarantine`. Version `4.1.0b3` protects controlled deployments by creating and validating a fresh plist, atomically replacing the target, removing only that quarantine attribute, and verifying `launchctl print system/<rdnn>.dor` before reporting completion. Earlier macOS releases retain the same RDNN paths, permissions, heartbeat cadence, and scheduler behavior.
 
 For a read-only fleet audit, replace `us.snelson` with the deployed RDNN:
 
@@ -476,7 +476,7 @@ else
 fi
 ```
 
-`monitorRemoteSession.zsh --rdnn us.snelson` reports the same state without modifying the file. Preferred remediation for a quarantined DDM OS Reminder plist is controlled redeployment with `4.1.0b2`.
+`monitorRemoteSession.zsh --rdnn us.snelson` reports the same state without modifying the file. Preferred remediation for a quarantined DDM OS Reminder plist is controlled redeployment with `4.1.0b3`.
 
 When immediate manual remediation is required, first confirm the path belongs to the intended DDM OS Reminder deployment. Run targeted removal only when the audit reports `present`:
 

@@ -3,6 +3,7 @@
 ## Changelog
 
 ### Version 4.1.0b3 (30-Jul-2026)
+- Added an opt-in Missing-DDM Emergency Fallback using Jamf Pro Script Parameters 5 and 6, with strict fail-closed validation, atomic RDNN-scoped plist persistence, exact-`missing` resolver eligibility, confirmed-DDM precedence, and direct past-deadline evaluation. ([Issue #120](https://github.com/dan-snelson/DDM-OS-Reminder/issues/120))
 - Hardened LaunchDaemon installation for macOS 27 by validating a fresh adjacent temporary plist, atomically replacing the target, removing only `com.apple.quarantine`, and failing deployment when bootstrap or label-specific verification fails. ([Issue #117](https://github.com/dan-snelson/DDM-OS-Reminder/issues/117))
 - Added actionable runtime heartbeat recovery logging for missing, quarantined, or unloadable LaunchDaemon plists without changing trust metadata outside the controlled installer path.
 - Updated `Resources/monitorRemoteSession.zsh` to report LaunchDaemon quarantine state and documented fleet audit plus targeted remediation guidance.

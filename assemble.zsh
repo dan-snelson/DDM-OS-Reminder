@@ -28,6 +28,7 @@
 #       /Library/Management/<reverseDomainNameNotation>/dor-starter.zsh
 #       /Library/Management/<reverseDomainNameNotation>/dor-state.plist
 #       /Library/Management/<reverseDomainNameNotation>/dor.pid
+#       /Library/Management/<reverseDomainNameNotation>/dor-fallback-declaration.plist (optional)
 #
 # http://snelson.us/ddm
 #
@@ -1724,6 +1725,7 @@ echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
 echo "  Deployed Runtime Assets: /Library/Management/<RDNN>/dor-starter.zsh, dor-state.plist, dor.pid"
+echo " Optional Fallback Config: /Library/Management/<RDNN>/dor-fallback-declaration.plist"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

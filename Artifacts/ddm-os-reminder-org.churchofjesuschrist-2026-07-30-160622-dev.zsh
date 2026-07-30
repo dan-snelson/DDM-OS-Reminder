@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0b2"
+scriptVersion="4.1.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -49,6 +49,12 @@ autoload -Uz is-at-least
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
 resetConfiguration="${4:-"All"}"
+
+# Parameter 5: Fallback Required macOS Version (i.e., 26.6)
+fallbackVersionString="${5:-}"
+
+# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T22:00:00Z)
+fallbackEnforcedInstallDate="${6:-}"
 
 
 
@@ -72,6 +78,7 @@ dorStarterPath="${organizationDirectory}/dor-starter.zsh"
 dorStatePlistPath="${organizationDirectory}/dor-state.plist"
 dorPidFilePath="${organizationDirectory}/dor.pid"
 dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
+dorFallbackDeclarationPlistPath="${organizationDirectory}/dor-fallback-declaration.plist"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -117,6 +124,7 @@ function removeDeployedRuntimeAssets() {
         "${dorStatePlistPath}"
         "${dorPidFilePath}"
         "${dorAggressiveKillSwitchPath}"
+        "${dorFallbackDeclarationPlistPath}"
     )
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
@@ -132,6 +140,168 @@ function removeDeployedRuntimeAssets() {
             warning "Failed to remove '${runtimeAssetPath}'"
         fi
     done
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# MDM Fallback Requirement
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isValidFallbackVersionString() {
+    local value="${1}"
+    local versionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
+
+    [[ -n "${value}" && "${value}" =~ ${versionRegex} ]]
+}
+
+function isValidCivilDate() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local daysInMonth=31
+
+    (( month >= 1 && month <= 12 && day >= 1 )) || return 1
+
+    case "${month}" in
+        2)
+            daysInMonth=28
+            if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+                daysInMonth=29
+            fi
+            ;;
+        4|6|9|11)
+            daysInMonth=30
+            ;;
+    esac
+
+    (( day <= daysInMonth ))
+}
+
+function isValidFallbackEnforcementDate() {
+    local value="${1}"
+    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local timezoneSuffix=""
+    local offsetHours=0
+    local offsetMinutes=0
+
+    [[ "${value}" =~ ${timestampRegex} ]] || return 1
+
+    year=$(( 10#${match[2]} ))
+    month=$(( 10#${match[3]} ))
+    day=$(( 10#${match[4]} ))
+    hour=$(( 10#${match[5]} ))
+    minute=$(( 10#${match[6]} ))
+    second=$(( 10#${match[7]} ))
+    timezoneSuffix="${match[8]}"
+    offsetHours=$(( 10#${match[9]:-0} ))
+    offsetMinutes=$(( 10#${match[10]:-0} ))
+
+    isValidCivilDate "${year}" "${month}" "${day}" || return 1
+    (( hour <= 23 && minute <= 59 && second <= 59 )) || return 1
+
+    if [[ "${timezoneSuffix}" != "Z" ]]; then
+        (( offsetHours <= 23 && offsetMinutes <= 59 )) || return 1
+    fi
+
+    return 0
+}
+
+function removeFallbackDeclarationPlist() {
+    local removalReason="${1}"
+
+    if [[ ! -e "${dorFallbackDeclarationPlistPath}" && ! -L "${dorFallbackDeclarationPlistPath}" ]]; then
+        logComment "MDM fallback requirement plist not present: '${dorFallbackDeclarationPlistPath}'"
+        return 0
+    fi
+
+    if rm -f "${dorFallbackDeclarationPlistPath}" 2>/dev/null; then
+        notice "Removed MDM fallback requirement plist (${removalReason}): '${dorFallbackDeclarationPlistPath}'"
+        return 0
+    fi
+
+    warning "Failed to remove MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'"
+    return 1
+}
+
+function writeFallbackDeclarationPlist() {
+    local temporaryPath=""
+    local plistValidationOutput=""
+    local plistPermissions=""
+    local writeAction="Created"
+
+    [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]] && writeAction="Replaced"
+
+    temporaryPath="$(/usr/bin/mktemp "${dorFallbackDeclarationPlistPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${temporaryPath}" || ! -f "${temporaryPath}" ]]; then
+        fatal "Unable to create temporary MDM fallback requirement plist beside '${dorFallbackDeclarationPlistPath}'."
+    fi
+
+    if ! /usr/bin/plutil -create xml1 "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert SchemaVersion -integer 1 "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert VersionString -string "${fallbackVersionString}" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert BuildVersionString -string "(null)" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert EnforcedInstallDate -string "${fallbackEnforcedInstallDate}" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert Source -string "JamfProScriptParameters" "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to write temporary MDM fallback requirement plist."
+    fi
+
+    if ! plistValidationOutput="$(/usr/bin/plutil -lint "${temporaryPath}" 2>&1)"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "MDM fallback requirement plist validation failed: ${plistValidationOutput:-no plutil output}"
+    fi
+
+    if ! chown root:wheel "${temporaryPath}" || ! chmod 644 "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to secure temporary MDM fallback requirement plist."
+    fi
+
+    plistPermissions="$(/usr/bin/stat -f '%Su:%Sg %Lp' "${temporaryPath}" 2>/dev/null)"
+    if [[ "${plistPermissions}" != "root:wheel 644" ]]; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unexpected MDM fallback requirement plist ownership or mode '${plistPermissions:-unknown}'; expected 'root:wheel 644'."
+    fi
+
+    if ! mv -f "${temporaryPath}" "${dorFallbackDeclarationPlistPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to atomically replace MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'."
+    fi
+
+    notice "${writeAction} MDM fallback requirement plist: '${dorFallbackDeclarationPlistPath}'"
+}
+
+function applyFallbackDeclarationParameters() {
+    if [[ -z "${fallbackVersionString}" && -z "${fallbackEnforcedInstallDate}" ]]; then
+        removeFallbackDeclarationPlist "intentionally disabled by blank Parameters 5 and 6"
+        return
+    fi
+
+    if [[ -z "${fallbackVersionString}" || -z "${fallbackEnforcedInstallDate}" ]]; then
+        warning "Rejected partial MDM fallback requirement; Parameters 5 and 6 must both be populated."
+        removeFallbackDeclarationPlist "partial parameter pair rejected"
+        return
+    fi
+
+    if ! isValidFallbackVersionString "${fallbackVersionString}"; then
+        warning "Rejected malformed MDM fallback requirement version from Parameter 5: '${fallbackVersionString}'"
+        removeFallbackDeclarationPlist "malformed version rejected"
+        return
+    fi
+
+    if ! isValidFallbackEnforcementDate "${fallbackEnforcedInstallDate}"; then
+        warning "Rejected malformed MDM fallback requirement deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
+        removeFallbackDeclarationPlist "malformed or timezone-free deadline rejected"
+        return
+    fi
+
+    writeFallbackDeclarationPlist
 }
 
 function isDDMOSReminderLaunchDaemonPlist() {
@@ -353,7 +523,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0b2"
+scriptVersion="4.1.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -409,6 +579,7 @@ dorStarterPath="${deploymentScriptDirectory}/dor-starter.zsh"
 dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
 dorPidFilePath="${deploymentScriptDirectory}/dor.pid"
 aggressiveModeKillSwitchPath="${deploymentScriptDirectory}/dor-aggressive-kill"
+dorFallbackDeclarationPlistPath="${deploymentScriptDirectory}/dor-fallback-declaration.plist"
 dorLaunchDaemonLabel="${reverseDomainNameNotation}.dor"
 dorLaunchDaemonPath="/Library/LaunchDaemons/${dorLaunchDaemonLabel}.plist"
 launchSource="${DOR_LAUNCH_SOURCE:-manual}"
@@ -755,6 +926,96 @@ function isValidDDMVersionString() {
     fi
 
     return 1
+}
+
+function isValidCivilDate() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local daysInMonth=31
+
+    (( month >= 1 && month <= 12 && day >= 1 )) || return 1
+
+    case "${month}" in
+        2)
+            daysInMonth=28
+            if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+                daysInMonth=29
+            fi
+            ;;
+        4|6|9|11)
+            daysInMonth=30
+            ;;
+    esac
+
+    (( day <= daysInMonth ))
+}
+
+function isValidFallbackEnforcementDate() {
+    local value="${1}"
+    local timestampRegex='^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})$'
+
+    [[ "${value}" =~ ${timestampRegex} ]] || return 1
+    epochFromISO8601Timestamp "${value}" >/dev/null 2>&1
+}
+
+function selectMDMFallbackRequirement() {
+    local schemaVersion=""
+    local fallbackVersion=""
+    local fallbackBuild=""
+    local fallbackDeadline=""
+    local fallbackSource=""
+
+    [[ -f "${dorFallbackDeclarationPlistPath}" ]] || return 1
+
+    if ! /usr/bin/plutil -lint "${dorFallbackDeclarationPlistPath}" >/dev/null 2>&1; then
+        warning "MDM fallback requirement plist is unreadable or corrupt; leaving resolver status missing."
+        return 1
+    fi
+
+    schemaVersion="$(/usr/bin/plutil -extract SchemaVersion raw -expect integer "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || schemaVersion=""
+    fallbackVersion="$(/usr/bin/plutil -extract VersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackVersion=""
+    fallbackBuild="$(/usr/bin/plutil -extract BuildVersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackBuild=""
+    fallbackDeadline="$(/usr/bin/plutil -extract EnforcedInstallDate raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackDeadline=""
+    fallbackSource="$(/usr/bin/plutil -extract Source raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackSource=""
+
+    if [[ "${schemaVersion}" != "1" || "${fallbackBuild}" != "(null)" || "${fallbackSource}" != "JamfProScriptParameters" ]]; then
+        warning "MDM fallback requirement plist schema or constants are invalid; leaving resolver status missing."
+        return 1
+    fi
+
+    if ! isValidDDMVersionString "${fallbackVersion}"; then
+        warning "MDM fallback requirement version is invalid: '${fallbackVersion:-missing}'"
+        return 1
+    fi
+
+    if ! isValidFallbackEnforcementDate "${fallbackDeadline}"; then
+        warning "MDM fallback requirement deadline is invalid or timezone-free: '${fallbackDeadline:-missing}'"
+        return 1
+    fi
+
+    ddmResolverStatus="fallback"
+    ddmResolverSource="mdmFallback"
+    ddmResolverSuppressionType=""
+    ddmResolverReason="Normal DDM declaration resolution returned missing; MDM fallback requirement selected"
+    ddmVersionString="${fallbackVersion}"
+    ddmBuildVersionString="${fallbackBuild}"
+    ddmEnforcedInstallDate="${fallbackDeadline}"
+    ddmDeclarationLogTimestamp=""
+    ddmDeclarationRawLine=""
+
+    warning "Selected MDM fallback requirement because normal DDM declaration status is exactly missing."
+    warning "MDM fallback requirement version: ${ddmVersionString}"
+    warning "MDM fallback requirement enforcement date: ${ddmEnforcedInstallDate}"
+    return 0
+}
+
+function requirementLogLabel() {
+    if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+        echo "MDM fallback requirement"
+    else
+        echo "DDM-enforced requirement"
+    fi
 }
 
 
@@ -1743,7 +2004,6 @@ function epochFromISO8601Timestamp() {
     local offsetMinutes=0
     local totalOffsetMinutes=0
     local days=0
-    local localTimestamp=""
     local parsedEpoch=""
 
     if [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$' ]]; then
@@ -1771,12 +2031,13 @@ function epochFromISO8601Timestamp() {
         return 1
     fi
 
-    if (( month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59 || offsetHours > 23 || offsetMinutes > 59 )); then
+    if ! isValidCivilDate "${year}" "${month}" "${day}"; then
         return 1
     fi
 
-    localTimestamp=$(printf "%04d-%02d-%02dT%02d:%02d:%02d" "${year}" "${month}" "${day}" "${hour}" "${minute}" "${second}")
-    date -j -f "%Y-%m-%dT%H:%M:%S" "${localTimestamp}" "+%s" >/dev/null 2>&1 || return 1
+    if (( hour > 23 || minute > 59 || second > 59 || offsetHours > 23 || offsetMinutes > 59 )); then
+        return 1
+    fi
 
     if ! ddmDaysFromCivil "${year}" "${month}" "${day}"; then
         return 1
@@ -3045,9 +3306,9 @@ function detectStagedUpdate() {
         if readStagedMacOSVersion "${stagedMetadataPath}"; then
             if isValidDDMVersionString "${ddmVersionString}"; then
                 if is-at-least "${ddmVersionString}" "${stagedProposedVersion}" && is-at-least "${stagedProposedVersion}" "${ddmVersionString}"; then
-                    notice "Staged proposed macOS version ${stagedProposedVersion} matches DDM-enforced version ${ddmVersionString}."
+                    notice "Staged proposed macOS version ${stagedProposedVersion} matches $(requirementLogLabel) version ${ddmVersionString}."
                 else
-                    warning "Staged proposed macOS version ${stagedProposedVersion} does not match DDM-enforced version ${ddmVersionString}; treating staged status as Pending download."
+                    warning "Staged proposed macOS version ${stagedProposedVersion} does not match $(requirementLogLabel) version ${ddmVersionString}; treating staged status as Pending download."
                     stagedUpdateStatus="Pending download"
                     stagedUpdateSize="0"
                     stagedUpdateLocation="Not detected"
@@ -3883,11 +4144,21 @@ installedOSvsDDMenforcedOS() {
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
     case "${ddmResolverStatus}" in
+        resolved)
+            if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
+                notice "Confirmed DDM declaration takes precedence over persisted MDM fallback requirement."
+            fi
+            ;;
         missing)
-            versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
-            return
+            if ! selectMDMFallbackRequirement; then
+                versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
+                return
+            fi
             ;;
         conflict|noMatch|invalidVersion)
+            if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
+                warning "MDM fallback requirement is ineligible while resolver status is '${ddmResolverStatus}'."
+            fi
             versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
             warning "Resolver suppression summary: ${ddmResolverSuppressionType:-${ddmResolverStatus:-unknown}} | ${ddmResolverReason}"
             quitOut "${ddmResolverReason}; exiting quietly."
@@ -3897,20 +4168,24 @@ installedOSvsDDMenforcedOS() {
 
     if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
         versionComparisonResult="Up-to-date"
-        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            notice "Installed macOS already satisfies MDM fallback requirement ${ddmVersionString}."
+        else
+            notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+        fi
         return
     fi
 
     ddmLogEntry="${ddmDeclarationRawLine}"
-    if [[ -z "${ddmLogEntry}" ]]; then
+    if [[ "${ddmResolverStatus}" != "fallback" && -z "${ddmLogEntry}" ]]; then
         versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
         return
     fi
 
     # Parse enforced date and version
     if ! isValidDDMVersionString "${ddmVersionString}"; then
-        warning "Invalid DDM-enforced OS Version format. Log entry: ${ddmLogEntry}"
-        warning "Invalid DDM-enforced OS Version: ${ddmVersionString}"
+        warning "Invalid $(requirementLogLabel) OS version format. Log entry: ${ddmLogEntry}"
+        warning "Invalid $(requirementLogLabel) OS version: ${ddmVersionString}"
         versionComparisonResult="Invalid DDM version string; suppressing reminder dialog."
         quitOut "Invalid DDM version string; exiting quietly."
         return
@@ -3920,7 +4195,7 @@ installedOSvsDDMenforcedOS() {
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$(epochFromISO8601Timestamp "${ddmEnforcedInstallDate}")
     if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
-        fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
+        fatal "Unable to parse $(requirementLogLabel) deadline: ${ddmEnforcedInstallDate}"
     fi
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDeadlineHumanReadable=$( formatDeadlineFromISO8601 "${ddmEnforcedInstallDate}" "${dateFormatDeadlineHumanReadable}" )
@@ -3931,17 +4206,24 @@ installedOSvsDDMenforcedOS() {
     if (( deadlineEpoch <= $(date +%s) )); then
 
         # Enforcement deadline passed
-        notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
-
-        if resolvePaddedEnforcementDateForCandidate; then
-            ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${ddmResolvedPaddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
-            ddmEnforcedInstallDateEpoch="${ddmResolvedPaddedEpoch}"
-            info "Effective enforcement source: setPastDuePaddedEnforcementDate"
-        else
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            warning "MDM fallback requirement deadline has passed; using supplied timestamp directly without padded-date waiting."
             ddmEnforcedInstallDateHumanReadable="${ddmVersionStringDeadlineHumanReadable}"
             ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
-            warning "Safe padded enforcement date unavailable; continuing with declared enforcement date ${ddmVersionStringDeadlineHumanReadable}"
-            info "Effective enforcement source: EnforcedInstallDate"
+            info "Effective enforcement source: MDM fallback requirement EnforcedInstallDate"
+        else
+            notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
+
+            if resolvePaddedEnforcementDateForCandidate; then
+                ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${ddmResolvedPaddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
+                ddmEnforcedInstallDateEpoch="${ddmResolvedPaddedEpoch}"
+                info "Effective enforcement source: setPastDuePaddedEnforcementDate"
+            else
+                ddmEnforcedInstallDateHumanReadable="${ddmVersionStringDeadlineHumanReadable}"
+                ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
+                warning "Safe padded enforcement date unavailable; continuing with declared enforcement date ${ddmVersionStringDeadlineHumanReadable}"
+                info "Effective enforcement source: EnforcedInstallDate"
+            fi
         fi
 
     else
@@ -3988,7 +4270,7 @@ installedOSvsDDMenforcedOS() {
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
 
         versionComparisonResult="Up-to-date"
-        info "DDM-enforced OS Version: $ddmVersionString"
+        info "$(requirementLogLabel) OS Version: $ddmVersionString"
 
     else
 
@@ -4003,8 +4285,8 @@ installedOSvsDDMenforcedOS() {
         fi
 
         # Determine if an "Update" or an "Upgrade" is needed
-        info "DDM-enforced OS Version: $ddmVersionString"
-        info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
+        info "$(requirementLogLabel) OS Version: $ddmVersionString"
+        info "$(requirementLogLabel) OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
         majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
@@ -4329,7 +4611,7 @@ function evaluatePastDeadlineState() {
 
     if [[ "${isPastDeadlineEligible}" == "YES" ]]; then
         pastDeadlineRestartEffective="${pastDeadlineRestartBehavior}"
-        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past DDM deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s); uptime ${upTimeMin} minute(s), minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s))."
+        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past $(requirementLogLabel) deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s); uptime ${upTimeMin} minute(s), minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s))."
     else
         pastDeadlineRestartEffective="Off"
         if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" && "${isPastDeadlineUptimeThresholdMet}" != "YES" ]]; then
@@ -5621,6 +5903,14 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 resetConfiguration "${resetConfiguration}"
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# MDM Fallback Requirement Validation / Persistence
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+applyFallbackDeclarationParameters
 
 
 

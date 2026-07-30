@@ -41,7 +41,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.1.0b2"
+scriptVersion="4.1.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1489,6 +1489,7 @@ if [[ -f "${plistSample}" ]]; then
       /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
       /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
       /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
+      /usr/bin/plutil -replace InfoButtonTextLocalized_en -string "${infoButtonText}" "${plistOutput}"
       /usr/bin/plutil -replace HideSupportAssistanceMessage -bool "${hideSupportAssistanceMessage}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"

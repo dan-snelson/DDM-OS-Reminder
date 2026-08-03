@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0b3"
+scriptVersion="4.1.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -127,6 +127,8 @@ function removeDeployedRuntimeAssets() {
         "${dorFallbackDeclarationPlistPath}"
     )
 
+    stopActiveReminderRuntime
+
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
         if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
             logComment "Runtime asset not present: '${runtimeAssetPath}'"
@@ -140,6 +142,90 @@ function removeDeployedRuntimeAssets() {
             warning "Failed to remove '${runtimeAssetPath}'"
         fi
     done
+}
+
+function collectDescendantPids() {
+    local parentPid="${1}"
+    local childPid=""
+    local -a childPids=()
+
+    childPids=( "${(@f)$(pgrep -P "${parentPid}" 2>/dev/null || true)}" )
+    for childPid in "${childPids[@]}"; do
+        [[ "${childPid}" =~ ^[0-9]+$ ]] || continue
+        collectDescendantPids "${childPid}"
+        echo "${childPid}"
+    done
+}
+
+function stopActiveReminderRuntime() {
+    local runtimePid=""
+    local runtimeCommand=""
+    local currentCommand=""
+    local processPid=""
+    local processStillRunning="NO"
+    local attempt=0
+    local -a descendantPids=()
+    local -a runtimeProcessPids=()
+    local -A runtimeProcessCommands=()
+
+    [[ -f "${dorPidFilePath}" ]] || return 0
+
+    runtimePid="$(head -n 1 "${dorPidFilePath}" 2>/dev/null || true)"
+    if [[ ! "${runtimePid}" =~ ^[0-9]+$ ]] || (( runtimePid <= 1 )); then
+        warning "Invalid active-runtime PID in '${dorPidFilePath}'; refusing to terminate any process."
+        return 0
+    fi
+
+    if ! kill -0 "${runtimePid}" >/dev/null 2>&1; then
+        logComment "Runtime PID ${runtimePid} is no longer active; stale PID file will be removed."
+        return 0
+    fi
+
+    runtimeCommand="$(ps -p "${runtimePid}" -o command= 2>/dev/null || true)"
+    if [[ "${runtimePid}" == "$$" || "${runtimeCommand}" != *"${dormScriptPath}"* ]]; then
+        warning "PID ${runtimePid} does not match deployed DDM OS Reminder runtime '${dormScriptPath}'; refusing to terminate it."
+        return 0
+    fi
+
+    descendantPids=( "${(@f)$(collectDescendantPids "${runtimePid}")}" )
+    runtimeProcessPids=( "${descendantPids[@]}" "${runtimePid}" )
+    notice "Stopping active DDM OS Reminder runtime PID ${runtimePid} before replacing runtime assets."
+
+    for processPid in "${runtimeProcessPids[@]}"; do
+        [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+        runtimeProcessCommands["${processPid}"]="$(ps -p "${processPid}" -o command= 2>/dev/null || true)"
+        kill -TERM "${processPid}" >/dev/null 2>&1 || true
+    done
+
+    for (( attempt = 0; attempt < 20; attempt++ )); do
+        processStillRunning="NO"
+        for processPid in "${runtimeProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            if kill -0 "${processPid}" >/dev/null 2>&1; then
+                processStillRunning="YES"
+                break
+            fi
+        done
+        [[ "${processStillRunning}" == "NO" ]] && break
+        sleep 0.25
+    done
+
+    if [[ "${processStillRunning}" == "YES" ]]; then
+        for processPid in "${runtimeProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            kill -0 "${processPid}" >/dev/null 2>&1 || continue
+            currentCommand="$(ps -p "${processPid}" -o command= 2>/dev/null || true)"
+            if [[ -n "${currentCommand}" && "${currentCommand}" == "${runtimeProcessCommands["${processPid}"]:-}" ]]; then
+                warning "Owned DDM OS Reminder process PID ${processPid} did not exit after TERM; forcing termination."
+                kill -KILL "${processPid}" >/dev/null 2>&1 || true
+            else
+                warning "Process PID ${processPid} changed after the termination request; refusing forced termination."
+            fi
+        done
+        sleep 0.25
+    fi
+
+    notice "Completed active DDM OS Reminder runtime shutdown request for PID ${runtimePid}."
 }
 
 
@@ -275,6 +361,7 @@ function writeFallbackDeclarationPlist() {
     fi
 
     notice "${writeAction} MDM fallback requirement plist: '${dorFallbackDeclarationPlistPath}'"
+    info "MDM fallback requirement configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
 }
 
 function applyFallbackDeclarationParameters() {

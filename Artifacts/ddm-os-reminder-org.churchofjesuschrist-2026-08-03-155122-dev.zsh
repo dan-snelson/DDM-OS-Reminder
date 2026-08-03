@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0b3"
+scriptVersion="4.1.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -127,6 +127,8 @@ function removeDeployedRuntimeAssets() {
         "${dorFallbackDeclarationPlistPath}"
     )
 
+    stopActiveReminderRuntime
+
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
         if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
             logComment "Runtime asset not present: '${runtimeAssetPath}'"
@@ -140,6 +142,90 @@ function removeDeployedRuntimeAssets() {
             warning "Failed to remove '${runtimeAssetPath}'"
         fi
     done
+}
+
+function collectDescendantPids() {
+    local parentPid="${1}"
+    local childPid=""
+    local -a childPids=()
+
+    childPids=( "${(@f)$(pgrep -P "${parentPid}" 2>/dev/null || true)}" )
+    for childPid in "${childPids[@]}"; do
+        [[ "${childPid}" =~ ^[0-9]+$ ]] || continue
+        collectDescendantPids "${childPid}"
+        echo "${childPid}"
+    done
+}
+
+function stopActiveReminderRuntime() {
+    local runtimePid=""
+    local runtimeCommand=""
+    local currentCommand=""
+    local processPid=""
+    local processStillRunning="NO"
+    local attempt=0
+    local -a descendantPids=()
+    local -a runtimeProcessPids=()
+    local -A runtimeProcessCommands=()
+
+    [[ -f "${dorPidFilePath}" ]] || return 0
+
+    runtimePid="$(head -n 1 "${dorPidFilePath}" 2>/dev/null || true)"
+    if [[ ! "${runtimePid}" =~ ^[0-9]+$ ]] || (( runtimePid <= 1 )); then
+        warning "Invalid active-runtime PID in '${dorPidFilePath}'; refusing to terminate any process."
+        return 0
+    fi
+
+    if ! kill -0 "${runtimePid}" >/dev/null 2>&1; then
+        logComment "Runtime PID ${runtimePid} is no longer active; stale PID file will be removed."
+        return 0
+    fi
+
+    runtimeCommand="$(ps -p "${runtimePid}" -o command= 2>/dev/null || true)"
+    if [[ "${runtimePid}" == "$$" || "${runtimeCommand}" != *"${dormScriptPath}"* ]]; then
+        warning "PID ${runtimePid} does not match deployed DDM OS Reminder runtime '${dormScriptPath}'; refusing to terminate it."
+        return 0
+    fi
+
+    descendantPids=( "${(@f)$(collectDescendantPids "${runtimePid}")}" )
+    runtimeProcessPids=( "${descendantPids[@]}" "${runtimePid}" )
+    notice "Stopping active DDM OS Reminder runtime PID ${runtimePid} before replacing runtime assets."
+
+    for processPid in "${runtimeProcessPids[@]}"; do
+        [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+        runtimeProcessCommands["${processPid}"]="$(ps -p "${processPid}" -o command= 2>/dev/null || true)"
+        kill -TERM "${processPid}" >/dev/null 2>&1 || true
+    done
+
+    for (( attempt = 0; attempt < 20; attempt++ )); do
+        processStillRunning="NO"
+        for processPid in "${runtimeProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            if kill -0 "${processPid}" >/dev/null 2>&1; then
+                processStillRunning="YES"
+                break
+            fi
+        done
+        [[ "${processStillRunning}" == "NO" ]] && break
+        sleep 0.25
+    done
+
+    if [[ "${processStillRunning}" == "YES" ]]; then
+        for processPid in "${runtimeProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            kill -0 "${processPid}" >/dev/null 2>&1 || continue
+            currentCommand="$(ps -p "${processPid}" -o command= 2>/dev/null || true)"
+            if [[ -n "${currentCommand}" && "${currentCommand}" == "${runtimeProcessCommands["${processPid}"]:-}" ]]; then
+                warning "Owned DDM OS Reminder process PID ${processPid} did not exit after TERM; forcing termination."
+                kill -KILL "${processPid}" >/dev/null 2>&1 || true
+            else
+                warning "Process PID ${processPid} changed after the termination request; refusing forced termination."
+            fi
+        done
+        sleep 0.25
+    fi
+
+    notice "Completed active DDM OS Reminder runtime shutdown request for PID ${runtimePid}."
 }
 
 
@@ -275,6 +361,7 @@ function writeFallbackDeclarationPlist() {
     fi
 
     notice "${writeAction} MDM fallback requirement plist: '${dorFallbackDeclarationPlistPath}'"
+    info "MDM fallback requirement configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
 }
 
 function applyFallbackDeclarationParameters() {
@@ -523,7 +610,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0b3"
+scriptVersion="4.1.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -537,6 +624,9 @@ ddmResolverStatus=""
 ddmResolverReason=""
 ddmResolverSource=""
 ddmResolverSuppressionType=""
+normalDDMResolverStatus=""
+normalDDMResolverReason=""
+normalDDMResolverSource=""
 ddmDeclarationLogTimestamp=""
 ddmDeclarationRawLine=""
 ddmBuildVersionString=""
@@ -587,6 +677,9 @@ isDemoModeRequested="NO"
 [[ "${1:-}" == "demo" ]] && isDemoModeRequested="YES"
 schedulerEnabledForCurrentRun="NO"
 [[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
+activeDialogPid=""
+activeDialogMonitorPid=""
+runtimeTerminationInProgress="NO"
 nextReminderScheduleMode="baseline"
 nextReminderScheduleEpoch=""
 nextReminderScheduleReason="Baseline reminder schedule"
@@ -1004,9 +1097,9 @@ function selectMDMFallbackRequirement() {
     ddmDeclarationLogTimestamp=""
     ddmDeclarationRawLine=""
 
-    warning "Selected MDM fallback requirement because normal DDM declaration status is exactly missing."
-    warning "MDM fallback requirement version: ${ddmVersionString}"
-    warning "MDM fallback requirement enforcement date: ${ddmEnforcedInstallDate}"
+    notice "Evaluated MDM fallback requirement because normal DDM declaration status is exactly missing."
+    info "MDM fallback requirement version: ${ddmVersionString}"
+    info "MDM fallback requirement enforcement date: ${ddmEnforcedInstallDate}"
     return 0
 }
 
@@ -1201,6 +1294,58 @@ function initializeDorPidFile() {
     chown root:wheel "${dorPidFilePath}" 2>/dev/null || true
     chmod 644 "${dorPidFilePath}" 2>/dev/null || true
     ownsDorPidFile="YES"
+}
+
+function terminateOwnedDialogProcesses() {
+    local processPid=""
+    local parentPid=""
+    local attempt=0
+    local processStillRunning="NO"
+    local -a ownedProcessPids=( "${activeDialogMonitorPid}" "${activeDialogPid}" )
+
+    for processPid in "${ownedProcessPids[@]}"; do
+        [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+        kill -TERM "${processPid}" >/dev/null 2>&1 || true
+    done
+
+    for (( attempt = 0; attempt < 20; attempt++ )); do
+        processStillRunning="NO"
+        for processPid in "${ownedProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            if kill -0 "${processPid}" >/dev/null 2>&1; then
+                processStillRunning="YES"
+                break
+            fi
+        done
+        [[ "${processStillRunning}" == "NO" ]] && break
+        sleep 0.1
+    done
+
+    if [[ "${processStillRunning}" == "YES" ]]; then
+        for processPid in "${ownedProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            parentPid="$(ps -p "${processPid}" -o ppid= 2>/dev/null | tr -d '[:space:]')"
+            if [[ "${parentPid}" == "$$" ]]; then
+                kill -KILL "${processPid}" >/dev/null 2>&1 || true
+            fi
+        done
+    fi
+
+    activeDialogMonitorPid=""
+    activeDialogPid=""
+}
+
+function handleRuntimeTermination() {
+    local signalName="${1:-TERM}"
+
+    [[ "${runtimeTerminationInProgress}" == "YES" ]] && exit 0
+    runtimeTerminationInProgress="YES"
+    trap - TERM INT HUP
+
+    notice "Received ${signalName}; closing owned reminder dialog and exiting."
+    terminateOwnedDialogProcesses
+    cleanupDialogRuntimeArtifacts
+    exit 0
 }
 
 function createEmptyReminderStatePlist() {
@@ -4143,6 +4288,10 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
+    normalDDMResolverStatus="${ddmResolverStatus:-unknown}"
+    normalDDMResolverSource="${ddmResolverSource:-none}"
+    normalDDMResolverReason="${ddmResolverReason:-none}"
+    notice "Normal DDM resolver result: status=${normalDDMResolverStatus}; source=${normalDDMResolverSource}; reason=${normalDDMResolverReason}"
     case "${ddmResolverStatus}" in
         resolved)
             if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
@@ -4170,6 +4319,7 @@ installedOSvsDDMenforcedOS() {
         versionComparisonResult="Up-to-date"
         if [[ "${ddmResolverStatus}" == "fallback" ]]; then
             notice "Installed macOS already satisfies MDM fallback requirement ${ddmVersionString}."
+            notice "MDM fallback contribution: updateRequired=NO; reminderDisplayed=NO."
         else
             notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
         fi
@@ -4275,6 +4425,9 @@ installedOSvsDDMenforcedOS() {
     else
 
         versionComparisonResult="Update Required"
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            notice "MDM fallback contribution: updateRequired=YES; reminderDisplayed=PENDING."
+        fi
 
         # Detect staged updates
         if [[ "${hideStagedInfo}" == "YES" ]]; then
@@ -4757,6 +4910,11 @@ function displayReminderDialog() {
 
     additionalDialogOptions=("$@")
 
+    if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+        warning "Selected MDM fallback requirement because normal DDM declaration status is exactly missing."
+        warning "MDM fallback contribution: updateRequired=YES; reminderDisplayed=YES; target=${ddmVersionString}; deadline=${ddmEnforcedInstallDate}"
+    fi
+
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
 
     dialogArgs=(
@@ -4789,10 +4947,12 @@ function displayReminderDialog() {
 
     ${dialogBinary} "${dialogArgs[@]}" &
     dialogPid=$!
+    activeDialogPid="${dialogPid}"
 
     if shouldAutoRefreshOpenDialogAtPreDeadlineThreshold; then
         monitorOpenDialogForPreDeadlineThreshold "${dialogPid}" "${dialogAutoRefreshMarkerPath}" &
         dialogAutoRefreshMonitorPid=$!
+        activeDialogMonitorPid="${dialogAutoRefreshMonitorPid}"
     fi
 
     wait "${dialogPid}"
@@ -4802,6 +4962,8 @@ function displayReminderDialog() {
         kill "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
         wait "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
     fi
+    activeDialogMonitorPid=""
+    activeDialogPid=""
 
     if [[ -s "${dialogAutoRefreshMarkerPath}" ]]; then
         dialogAutoRefreshTriggered="YES"
@@ -4877,6 +5039,7 @@ function displayReminderDialog() {
                 fi
                 ;;
             *"systempreferences"*)
+                notice "Software Update handoff: requirementSource=${ddmResolverSource:-unknown}; normalResolverStatus=${normalDDMResolverStatus:-unknown}; target=${ddmVersionString:-unknown}; deadline=${ddmEnforcedInstallDate:-unknown}; action=${action}"
                 launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
                 until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
@@ -4948,6 +5111,11 @@ function displayReminderDialog() {
             quitScript "0"
             ;;
 
+        15) ## Externally terminated dialog; do not classify as user interaction
+            notice "swiftDialog exited externally with code 15; not recording user interaction."
+            quitScript "${returncode}"
+            ;;
+
         20) ## Process exit code 20 scenario here
             notice "User had Do Not Disturb enabled"
             quitScript "0"
@@ -4977,6 +5145,8 @@ function displayReminderDialogForMode() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function cleanupDialogRuntimeArtifacts() {
+    terminateOwnedDialogProcesses
+
     # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
         if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
@@ -5061,6 +5231,9 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 initializeDorPidFile
+trap 'handleRuntimeTermination TERM' TERM
+trap 'handleRuntimeTermination INT' INT
+trap 'handleRuntimeTermination HUP' HUP
 
 
 

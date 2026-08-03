@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.1.0b3)
+# DDM OS Reminder (4.1.0b4)
 
-> Another **major** upgrade to Mac Admins’ go-to solution for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines features a new, robust **heartbeat daemon** architecture, **easily configurable** daily reminder times, **pre-deadline** threshold alerts, and **aggressive past-deadline mode** with persistent compliance prompting.
+> A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring a new, opt-in missing-DDM Emergency Fallback option and a hardend LaunchDaemon installation for macOS 27.
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -60,7 +60,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 Use this opt-in path only when managed Macs remain reachable but temporarily lack their expected DDM software-update declaration. In Jamf Pro, set Parameter 5 to the required macOS version (`26.6`) and Parameter 6 to a timezone-bearing deadline (`2026-08-04T22:00:00Z` or an explicit offset such as `+05:30`).
 
-Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it, selects it only for resolver status `missing`, and logs activation at `[WARNING]`. Resolver states `conflict`, `noMatch`, and `invalidVersion` remain fail-safe suppression states. A confirmed Apple DDM declaration supersedes persisted fallback automatically.
+Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it and evaluates it only for resolver status `missing`. Evaluation is logged at `[NOTICE]`; `[WARNING]` activation is reserved for a fallback requirement that actually reaches reminder display. Resolver states `conflict`, `noMatch`, and `invalidVersion` remain fail-safe suppression states. A confirmed Apple DDM declaration supersedes persisted fallback automatically.
 
 Fallback is separate from managed/local preferences and `dor-state.plist`. Existing compliance checks, reminder windows, pre-deadline thresholds, restart workflow, aggressive mode, and starter-only scheduler ownership remain unchanged. Past fallback deadlines use their supplied timestamp directly because no Apple declaration exists to correlate with `setPastDuePaddedEnforcementDate`.
 
@@ -72,6 +72,8 @@ See [Resources/README.md](Resources/README.md#missing-ddm-emergency-fallback) fo
 
 Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
 
+Controlled `All`, `Script`, and `Uninstall` deployments validate any active `dor.pid`, stop only the matching DDM OS Reminder runtime and its owned child processes, then replace or remove runtime assets. This prevents an open dialog from an earlier version surviving beside the replacement deployment; unrelated swiftDialog processes are not targeted.
+
 If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that exact suffix still import supported values, but continue to prompt for deployment mode.
 Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.
 
@@ -79,9 +81,9 @@ When prior-plist import and localization filtering are used together, `assemble.
 
 ### macOS 27 LaunchDaemon quarantine enforcement
 
-macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0b3` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
+macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0b4` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
 
-Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) for a read-only quarantine and load-state check. For affected Macs, preferred remediation is controlled redeployment with `4.1.0b3`; detailed fleet-audit and targeted manual-remediation commands are in [Resources/README.md](Resources/README.md#61-macos-27-quarantine-audit-and-remediation).
+Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) for a read-only quarantine and load-state check. For affected Macs, preferred remediation is controlled redeployment with `4.1.0b4`; detailed fleet-audit and targeted manual-remediation commands are in [Resources/README.md](Resources/README.md#61-macos-27-quarantine-audit-and-remediation).
 
 <details>
 <summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>
@@ -90,7 +92,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0b3)
+🧩 Assemble DDM OS Reminder (4.1.0b4)
 ===============================================================
 
 📍 Full Paths:

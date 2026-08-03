@@ -42,7 +42,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0b3)
+🧩 Assemble DDM OS Reminder (4.1.0b4)
 ===============================================================
 
 Full Paths:
@@ -187,9 +187,11 @@ When both values are valid, deployment atomically creates or replaces `/Library/
 
 Both blank removes any stale fallback and intentionally disables the feature. A partial or malformed pair is rejected and also removes stale fallback data. `Uninstall` ignores fallback input and removes the plist. `All` and `Script` remove old fallback before valid values recreate it; `LaunchDaemon` preserves scheduler state while valid, blank, or invalid fallback inputs are applied before daemon bootstrap.
 
+Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment validates `dor.pid` against the expected deployed `dor.zsh` command, requests termination of that runtime and its owned descendants, and waits briefly for shutdown. A missing, stale, malformed, or mismatched PID is logged without broadly terminating swiftDialog or unrelated processes.
+
 Normal DDM declaration resolution always runs first. Runtime selects fallback only for exact resolver status `missing`; `conflict`, `noMatch`, and `invalidVersion` remain suppressed. Confirmed DDM supersedes persisted fallback. Corrupt, incomplete, wrong-type, or invalid fallback plists fail closed and are never repaired by runtime.
 
-Fallback activation and past-deadline direct timestamp use log at `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
+Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs exact-`missing` fallback evaluation at `[NOTICE]`, whether it changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
 
 ---
 
@@ -443,6 +445,8 @@ Use this script for appearance and preference validation. Use `zsh reminderDialo
 
 Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, its read-only quarantine state, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
 
+For update-causality investigations, collect the current `/var/log/install.log` plus rotated `/var/log/install.log.*` files, including compressed `.gz` rotations. An update, authorization, reboot, or final version transition may have rotated out of the current file even while later DDM scheduling messages remain. Pair those Apple logs with the RDNN project log and MDM client/policy logs. Apple `softwareupdated` text such as `Falling back to default applicable declaration` describes Apple declaration selection and is not DDM OS Reminder's Missing-DDM Emergency Fallback.
+
 Examples:
 
 ```zsh
@@ -462,7 +466,7 @@ The helper is intended for runtime monitoring, not deployment. It reads the curr
 
 #### 6.1. macOS 27 quarantine audit and remediation
 
-macOS 27 refuses to load LaunchDaemon property lists carrying `com.apple.quarantine`. Version `4.1.0b3` protects controlled deployments by creating and validating a fresh plist, atomically replacing the target, removing only that quarantine attribute, and verifying `launchctl print system/<rdnn>.dor` before reporting completion. Earlier macOS releases retain the same RDNN paths, permissions, heartbeat cadence, and scheduler behavior.
+macOS 27 refuses to load LaunchDaemon property lists carrying `com.apple.quarantine`. Version `4.1.0b4` protects controlled deployments by creating and validating a fresh plist, atomically replacing the target, removing only that quarantine attribute, and verifying `launchctl print system/<rdnn>.dor` before reporting completion. Earlier macOS releases retain the same RDNN paths, permissions, heartbeat cadence, and scheduler behavior.
 
 For a read-only fleet audit, replace `us.snelson` with the deployed RDNN:
 
@@ -476,7 +480,7 @@ else
 fi
 ```
 
-`monitorRemoteSession.zsh --rdnn us.snelson` reports the same state without modifying the file. Preferred remediation for a quarantined DDM OS Reminder plist is controlled redeployment with `4.1.0b3`.
+`monitorRemoteSession.zsh --rdnn us.snelson` reports the same state without modifying the file. Preferred remediation for a quarantined DDM OS Reminder plist is controlled redeployment with `4.1.0b4`.
 
 When immediate manual remediation is required, first confirm the path belongs to the intended DDM OS Reminder deployment. Run targeted removal only when the audit reports `present`:
 

@@ -219,13 +219,13 @@ zsh Resources/createSelfExtracting.zsh
 When run, it will extract to /var/tmp/ddm-os-reminder-us.snelson-2026-01-08-054323.zsh and execute automatically.
 ```
 
-**3.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
+**2.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
 
 ```
 Artifacts/ddm-os-reminder-RDNN-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
 ```
 
-**3.3.** Deploy the assembled, self-extracting script
+**2.3.** Deploy the assembled, self-extracting script
 
 You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload to `/var/tmp` and executes it automatically.
 

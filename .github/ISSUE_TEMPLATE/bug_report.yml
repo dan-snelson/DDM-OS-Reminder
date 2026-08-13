@@ -30,7 +30,7 @@ body:
     attributes:
       label: Installed macOS version
       description: From **About This Mac** or `sw_vers -productVersion`
-      placeholder: "e.g. 15.7.5"
+      placeholder: "e.g. 15.7.9"
     validations:
       required: true
 
@@ -39,7 +39,7 @@ body:
     attributes:
       label: Target macOS version
       description: As specified by your Declarative Device Management (DDM) software update declaration.
-      placeholder: "e.g. 26.4.1"
+      placeholder: "e.g. 26.6.2"
     validations:
       required: true
 
@@ -57,7 +57,7 @@ body:
     attributes:
       label: swiftDialog version
       description: From `dialog --version`.
-      placeholder: "e.g. 3.1.0.4979"
+      placeholder: "e.g. 3.1.0.4994"
     validations:
       required: true
 

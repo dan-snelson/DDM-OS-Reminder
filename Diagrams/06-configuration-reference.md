@@ -2029,7 +2029,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.1.0b4 |
+| `{scriptVersion}` | System | Script version | 4.1.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,7 +2546,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 |---------|------|---------|
 | 4.1.0b3 | 30-Jul-2026 | Documented Missing-DDM Emergency Fallback schema, exact-`missing` precedence, lifecycle boundaries, and threshold signature behavior |
 | 4.1.0b3 | 30-Jul-2026 | Updated current-version metadata for LaunchDaemon quarantine hardening; no preference keys or precedence rules changed |
-| 4.1.0b4 | 03-Aug-2026 | Documented active-runtime teardown during controlled redeployment, fallback decision/activation audit logging, and rotated `install.log` collection guidance; no preference keys or precedence rules changed |
+| 4.1.0 | 03-Aug-2026 | Documented active-runtime teardown during controlled redeployment, fallback decision/activation audit logging, and rotated `install.log` collection guidance; no preference keys or precedence rules changed |
 | 4.0.0 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` format, declaration identity fields, `(null)` build handling, effective-enforcement epoch semantics, delivered/skipped ledger reset behavior, and operational interpretation |
 | 4.0.0 | 10-Jul-2026 | Clarified quiet-period scheduling: baseline runs inside `QuietPeriodMinutes` exit quietly and write exact `NextScheduledReminder` for quiet-period expiry, including after prior Button 1 interaction |
 | 4.0.0 | 08-Jul-2026 | Added `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds` reference coverage |
@@ -2569,4 +2569,4 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 ---
 
 **Last Updated**: 03-Aug-2026
-**DDM OS Reminder Version**: 4.1.0b4
+**DDM OS Reminder Version**: 4.1.0

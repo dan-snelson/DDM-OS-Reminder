@@ -294,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0b4)
+🧩 Assemble DDM OS Reminder (4.1.0)
 ===============================================================
 
 Full Paths:
@@ -483,7 +483,7 @@ plutil -lint /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 # Check macOS 27 quarantine state without changing the file
 xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 
-# Preferred fix: redeploy with 4.1.0b4. For immediate targeted remediation
+# Preferred fix: redeploy with 4.1.0. For immediate targeted remediation
 # of a validated DDM OS Reminder plist which reports quarantine:
 sudo xattr -d com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 
@@ -604,7 +604,7 @@ Configure the Next Scheduled Reminder EA with Jamf Pro Data Type `Date` and set 
 |-------|-------|----------|
 | Dialog not appearing | No DDM enforcement date | Configure DDM policy in MDM |
 | Wrong branding | Preferences not deployed | Deploy Configuration Profile |
-| LaunchDaemon not running | Plist syntax error or macOS 27 quarantine enforcement | Validate with `plutil -lint`, audit `com.apple.quarantine`, then redeploy with `4.1.0b4` |
+| LaunchDaemon not running | Plist syntax error or macOS 27 quarantine enforcement | Validate with `plutil -lint`, audit `com.apple.quarantine`, then redeploy with `4.1.0` |
 | Script not found | Installation failed | Check MDM policy logs |
 | Old swiftDialog version | swiftDialog not updating | Run script manually to trigger update |
 

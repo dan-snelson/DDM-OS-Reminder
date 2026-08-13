@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 4.1.0b4 (03-Aug-2026)
+### Version 4.1.0 (13-Aug-2026)
 - Fixed controlled `All`, `Script`, and `Uninstall` reset flows so a PID-validated active DDM OS Reminder runtime and its owned descendants receive a termination request before runtime assets are removed, preventing older reminder dialogs from surviving redeployment alongside the replacement version.
 - Added runtime termination traps and owned swiftDialog/threshold-monitor cleanup so current deployments exit cleanly when controlled redeployment stops an active run, without broadly terminating unrelated swiftDialog processes.
 - Added explicit normal-resolver status/source/reason logging before fallback evaluation, plus distinct fallback evaluation, update-required contribution, actual reminder activation, and Software Update handoff records.

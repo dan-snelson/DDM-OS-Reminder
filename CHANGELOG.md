@@ -5,6 +5,7 @@
 ### Version 4.1.0 (13-Aug-2026)
 - Fixed controlled `All`, `Script`, and `Uninstall` reset flows so a PID-validated active DDM OS Reminder runtime and its owned descendants receive a termination request before runtime assets are removed, preventing older reminder dialogs from surviving redeployment alongside the replacement version.
 - Added runtime termination traps and owned swiftDialog/threshold-monitor cleanup so current deployments exit cleanly when controlled redeployment stops an active run, without broadly terminating unrelated swiftDialog processes.
+- Hardened assembly so source lines containing backslash escapes remain byte-faithful in generated deployment scripts, and made embedded-runtime drift or syntax failures block artifact generation.
 - Added explicit normal-resolver status/source/reason logging before fallback evaluation, plus distinct fallback evaluation, update-required contribution, actual reminder activation, and Software Update handoff records.
 - Limited the decisive Missing-DDM fallback selection warning to actual reminder display; compliant Macs now log that fallback evaluation did not drive a reminder.
 - Added fallback version/deadline/source logging after deployment writes the validated plist, and classified swiftDialog exit code `15` as external termination rather than user interaction.

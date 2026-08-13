@@ -753,7 +753,6 @@ function handleRuntimeTermination() {
     trap - TERM INT HUP
 
     notice "Received ${signalName}; closing owned reminder dialog and exiting."
-    terminateOwnedDialogProcesses
     cleanupDialogRuntimeArtifacts
     exit 0
 }

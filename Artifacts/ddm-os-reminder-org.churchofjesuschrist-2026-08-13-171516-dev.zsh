@@ -1343,7 +1343,6 @@ function handleRuntimeTermination() {
     trap - TERM INT HUP
 
     notice "Received ${signalName}; closing owned reminder dialog and exiting."
-    terminateOwnedDialogProcesses
     cleanupDialogRuntimeArtifacts
     exit 0
 }
@@ -5519,9 +5518,9 @@ ENDOFSCRIPT
 function escapeSedReplacement() {
     local replacementValue="${1}"
 
-    replacementValue="${replacementValue//\/\\}"
-    replacementValue="${replacementValue//&/\&}"
-    replacementValue="${replacementValue//|/\|}"
+    replacementValue="${replacementValue//\\/\\\\}"
+    replacementValue="${replacementValue//&/\\&}"
+    replacementValue="${replacementValue//|/\\|}"
 
     print -r -- "${replacementValue}"
 }
@@ -5793,8 +5792,7 @@ ENDOFLAUNCHDAEMON
     fi
 
     if ! plistValidationOutput="$(/usr/bin/plutil -lint "${launchDaemonTemporaryPath}" 2>&1)"; then
-        plistValidationOutput="${plistValidationOutput//$'
-'/; }"
+        plistValidationOutput="${plistValidationOutput//$'\n'/; }"
         rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
         fatal "LaunchDaemon plist validation failed: ${plistValidationOutput:-no plutil output}"
     fi
@@ -5826,8 +5824,7 @@ ENDOFLAUNCHDAEMON
     if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
         notice "Removing com.apple.quarantine from validated installer-generated LaunchDaemon plist"
         if ! quarantineRemovalOutput="$(/usr/bin/xattr -d com.apple.quarantine "${launchDaemonPath}" 2>&1)"; then
-            quarantineRemovalOutput="${quarantineRemovalOutput//$'
-'/; }"
+            quarantineRemovalOutput="${quarantineRemovalOutput//$'\n'/; }"
             fatal "Unable to remove com.apple.quarantine from '${launchDaemonPath}': ${quarantineRemovalOutput:-no xattr output}"
         fi
         if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
@@ -5839,19 +5836,16 @@ ENDOFLAUNCHDAEMON
 
     logComment "Loading '${launchDaemonLabel}' …"
     if ! bootstrapOutput="$(launchctl bootstrap system "${launchDaemonPath}" 2>&1)"; then
-        bootstrapOutput="${bootstrapOutput//$'
-'/; }"
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
         fatal "launchctl bootstrap failed for '${launchDaemonLabel}': ${bootstrapOutput:-no launchctl output}"
     fi
     if [[ -n "${bootstrapOutput}" ]]; then
-        bootstrapOutput="${bootstrapOutput//$'
-'/; }"
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
         logComment "launchctl bootstrap: ${bootstrapOutput}"
     fi
 
     if ! kickstartOutput="$(launchctl kickstart -k "system/${launchDaemonLabel}" 2>&1)"; then
-        kickstartOutput="${kickstartOutput//$'
-'/; }"
+        kickstartOutput="${kickstartOutput//$'\n'/; }"
         if launchctl print "system/${launchDaemonLabel}" >/dev/null 2>&1; then
             warning "launchctl kickstart failed, but '${launchDaemonLabel}' remains loaded: ${kickstartOutput:-no launchctl output}"
         else
@@ -5878,8 +5872,7 @@ function launchDaemonStatus() {
         return 0
     fi
 
-    launchDaemonStatusOutput="${launchDaemonStatusOutput//$'
-'/; }"
+    launchDaemonStatusOutput="${launchDaemonStatusOutput//$'\n'/; }"
     logComment "${launchDaemonLabel} is NOT loaded: ${launchDaemonStatusOutput:-no launchctl output}"
     return 1
 
@@ -5902,9 +5895,7 @@ if [[ ! -f "${scriptLog}" ]]; then
     if [[ -f "${scriptLog}" ]]; then
         preFlight "Created specified scriptLog: ${scriptLog}"
     else
-        fatal "Unable to create specified scriptLog '${scriptLog}'; exiting.
-
-(Is this script running as 'root' ?)"
+        fatal "Unable to create specified scriptLog '${scriptLog}'; exiting.\n\n(Is this script running as 'root' ?)"
     fi
 else
     # preFlight "Specified scriptLog '${scriptLog}' exists; writing log entries to it"
@@ -5928,15 +5919,7 @@ fi
 # Pre-flight Check: Logging Preamble
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-preFlight "
-
-###
-# $humanReadableScriptName (${scriptVersion})
-# http://snelson.us/ddm
-#
-# Reset Configuration: ${resetConfiguration}
-###
-"
+preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n#\n# Reset Configuration: ${resetConfiguration}\n###\n"
 preFlight "Initiating …"
 
 
@@ -6001,7 +5984,7 @@ function dialogInstall() {
     else
 
         # Display a so-called "simple" dialog if Team ID fails to validate
-        osascript -e 'display dialog "Please advise your Support Representative of the following error:• Dialog Team ID verification failed" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution'
+        osascript -e 'display dialog "Please advise your Support Representative of the following error:\r\r• Dialog Team ID verification failed\r\r" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution'
         exit "1"
 
     fi

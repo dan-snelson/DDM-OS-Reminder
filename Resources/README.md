@@ -17,6 +17,8 @@ The [`assemble.zsh`](../assemble.zsh) script creates **combined, deployable** ar
 - `reminderDialog.zsh`
 - `launchDaemonManagement.zsh`
 
+Assembly preserves source lines literally while embedding `reminderDialog.zsh`, compares the embedded payload with the prepared runtime, and runs `zsh -n` against both the extracted runtime and complete deployment script. Payload drift or syntax failure stops artifact generation.
+
 **1.1.** Execute the assembly script
 
 ```zsh

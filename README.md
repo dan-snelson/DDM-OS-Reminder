@@ -2,7 +2,7 @@
 
 # DDM OS Reminder (4.1.0)
 
-> A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring a new, opt-in missing-DDM Emergency Fallback option and a hardend LaunchDaemon installation for macOS 27.
+> A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring a new, opt-in missing-DDM Emergency Fallback option and a hardened LaunchDaemon installation for macOS 27.
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -42,7 +42,18 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 4.0.0 Highlights
+## :new: 4.1.0 Highlights
+
+- **Missing-DDM Emergency Fallback**: Opt-in Jamf Pro Script Parameters 5 and 6 persist a validated emergency version and deadline requirement that runtime selects only when normal DDM resolution is exactly `missing`.
+- **Controlled runtime teardown**: `All`, `Script`, and `Uninstall` reset flows stop a PID-validated active runtime and its owned descendants before replacing or removing runtime assets.
+- **macOS 27 LaunchDaemon hardening**: Deployment validates a fresh adjacent plist, atomically replaces the target, removes only `com.apple.quarantine`, and verifies the loaded label before reporting success.
+- **Improved operational logging**: Resolver, fallback evaluation, reminder activation, Software Update handoff, fallback persistence, and external dialog termination now have distinct records.
+- **Interactive assembly fix**: Custom `InfoButtonText` values now update `InfoButtonTextLocalized_en`, preventing stale English sample text from overriding administrator input.
+- **Scheduler inventory**: `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh` reports device-local `NextScheduledReminder` state for Jamf Pro inventory.
+
+---
+
+## 4.0.0 Highlights
 
 - **Heartbeat daemon architecture**: `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds. The starter checks `/Library/Management/<rdnn>/dor-state.plist` and only launches `dor.zsh` when a reminder is due.
 - **Runtime scheduler state**: `NextScheduledReminder`, `DaemonLastTriggered`, delivered pre-deadline thresholds, and the active `dor.pid` live in `/Library/Management/<rdnn>/`. Managed and local preferences remain admin-controlled configuration only.

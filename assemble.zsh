@@ -28,6 +28,7 @@
 #       /Library/Management/<reverseDomainNameNotation>/dor-starter.zsh
 #       /Library/Management/<reverseDomainNameNotation>/dor-state.plist
 #       /Library/Management/<reverseDomainNameNotation>/dor.pid
+#       /Library/Management/<reverseDomainNameNotation>/dor-fallback-declaration.plist (optional)
 #
 # http://snelson.us/ddm
 #
@@ -41,7 +42,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.0.0"
+scriptVersion="4.1.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1489,6 +1490,7 @@ if [[ -f "${plistSample}" ]]; then
       /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
       /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
       /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
+      /usr/bin/plutil -replace InfoButtonTextLocalized_en -string "${infoButtonText}" "${plistOutput}"
       /usr/bin/plutil -replace HideSupportAssistanceMessage -bool "${hideSupportAssistanceMessage}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
@@ -1723,6 +1725,7 @@ echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
 echo "  Deployed Runtime Assets: /Library/Management/<RDNN>/dor-starter.zsh, dor-state.plist, dor.pid"
+echo " Optional Fallback Config: /Library/Management/<RDNN>/dor-fallback-declaration.plist"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

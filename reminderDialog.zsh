@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0"
+scriptVersion="4.1.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -34,6 +34,9 @@ ddmResolverStatus=""
 ddmResolverReason=""
 ddmResolverSource=""
 ddmResolverSuppressionType=""
+normalDDMResolverStatus=""
+normalDDMResolverReason=""
+normalDDMResolverSource=""
 ddmDeclarationLogTimestamp=""
 ddmDeclarationRawLine=""
 ddmBuildVersionString=""
@@ -76,6 +79,7 @@ dorStarterPath="${deploymentScriptDirectory}/dor-starter.zsh"
 dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
 dorPidFilePath="${deploymentScriptDirectory}/dor.pid"
 aggressiveModeKillSwitchPath="${deploymentScriptDirectory}/dor-aggressive-kill"
+dorFallbackDeclarationPlistPath="${deploymentScriptDirectory}/dor-fallback-declaration.plist"
 dorLaunchDaemonLabel="${reverseDomainNameNotation}.dor"
 dorLaunchDaemonPath="/Library/LaunchDaemons/${dorLaunchDaemonLabel}.plist"
 launchSource="${DOR_LAUNCH_SOURCE:-manual}"
@@ -83,6 +87,9 @@ isDemoModeRequested="NO"
 [[ "${1:-}" == "demo" ]] && isDemoModeRequested="YES"
 schedulerEnabledForCurrentRun="NO"
 [[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
+activeDialogPid=""
+activeDialogMonitorPid=""
+runtimeTerminationInProgress="NO"
 nextReminderScheduleMode="baseline"
 nextReminderScheduleEpoch=""
 nextReminderScheduleReason="Baseline reminder schedule"
@@ -424,6 +431,96 @@ function isValidDDMVersionString() {
     return 1
 }
 
+function isValidCivilDate() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local daysInMonth=31
+
+    (( month >= 1 && month <= 12 && day >= 1 )) || return 1
+
+    case "${month}" in
+        2)
+            daysInMonth=28
+            if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+                daysInMonth=29
+            fi
+            ;;
+        4|6|9|11)
+            daysInMonth=30
+            ;;
+    esac
+
+    (( day <= daysInMonth ))
+}
+
+function isValidFallbackEnforcementDate() {
+    local value="${1}"
+    local timestampRegex='^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})$'
+
+    [[ "${value}" =~ ${timestampRegex} ]] || return 1
+    epochFromISO8601Timestamp "${value}" >/dev/null 2>&1
+}
+
+function selectMDMFallbackRequirement() {
+    local schemaVersion=""
+    local fallbackVersion=""
+    local fallbackBuild=""
+    local fallbackDeadline=""
+    local fallbackSource=""
+
+    [[ -f "${dorFallbackDeclarationPlistPath}" ]] || return 1
+
+    if ! /usr/bin/plutil -lint "${dorFallbackDeclarationPlistPath}" >/dev/null 2>&1; then
+        warning "MDM fallback requirement plist is unreadable or corrupt; leaving resolver status missing."
+        return 1
+    fi
+
+    schemaVersion="$(/usr/bin/plutil -extract SchemaVersion raw -expect integer "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || schemaVersion=""
+    fallbackVersion="$(/usr/bin/plutil -extract VersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackVersion=""
+    fallbackBuild="$(/usr/bin/plutil -extract BuildVersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackBuild=""
+    fallbackDeadline="$(/usr/bin/plutil -extract EnforcedInstallDate raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackDeadline=""
+    fallbackSource="$(/usr/bin/plutil -extract Source raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackSource=""
+
+    if [[ "${schemaVersion}" != "1" || "${fallbackBuild}" != "(null)" || "${fallbackSource}" != "JamfProScriptParameters" ]]; then
+        warning "MDM fallback requirement plist schema or constants are invalid; leaving resolver status missing."
+        return 1
+    fi
+
+    if ! isValidDDMVersionString "${fallbackVersion}"; then
+        warning "MDM fallback requirement version is invalid: '${fallbackVersion:-missing}'"
+        return 1
+    fi
+
+    if ! isValidFallbackEnforcementDate "${fallbackDeadline}"; then
+        warning "MDM fallback requirement deadline is invalid or timezone-free: '${fallbackDeadline:-missing}'"
+        return 1
+    fi
+
+    ddmResolverStatus="fallback"
+    ddmResolverSource="mdmFallback"
+    ddmResolverSuppressionType=""
+    ddmResolverReason="Normal DDM declaration resolution returned missing; MDM fallback requirement selected"
+    ddmVersionString="${fallbackVersion}"
+    ddmBuildVersionString="${fallbackBuild}"
+    ddmEnforcedInstallDate="${fallbackDeadline}"
+    ddmDeclarationLogTimestamp=""
+    ddmDeclarationRawLine=""
+
+    notice "Evaluated MDM fallback requirement because normal DDM declaration status is exactly missing."
+    info "MDM fallback requirement version: ${ddmVersionString}"
+    info "MDM fallback requirement enforcement date: ${ddmEnforcedInstallDate}"
+    return 0
+}
+
+function requirementLogLabel() {
+    if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+        echo "MDM fallback requirement"
+    else
+        echo "DDM-enforced requirement"
+    fi
+}
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -607,6 +704,58 @@ function initializeDorPidFile() {
     chown root:wheel "${dorPidFilePath}" 2>/dev/null || true
     chmod 644 "${dorPidFilePath}" 2>/dev/null || true
     ownsDorPidFile="YES"
+}
+
+function terminateOwnedDialogProcesses() {
+    local processPid=""
+    local parentPid=""
+    local attempt=0
+    local processStillRunning="NO"
+    local -a ownedProcessPids=( "${activeDialogMonitorPid}" "${activeDialogPid}" )
+
+    for processPid in "${ownedProcessPids[@]}"; do
+        [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+        kill -TERM "${processPid}" >/dev/null 2>&1 || true
+    done
+
+    for (( attempt = 0; attempt < 20; attempt++ )); do
+        processStillRunning="NO"
+        for processPid in "${ownedProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            if kill -0 "${processPid}" >/dev/null 2>&1; then
+                processStillRunning="YES"
+                break
+            fi
+        done
+        [[ "${processStillRunning}" == "NO" ]] && break
+        sleep 0.1
+    done
+
+    if [[ "${processStillRunning}" == "YES" ]]; then
+        for processPid in "${ownedProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            parentPid="$(ps -p "${processPid}" -o ppid= 2>/dev/null | tr -d '[:space:]')"
+            if [[ "${parentPid}" == "$$" ]]; then
+                kill -KILL "${processPid}" >/dev/null 2>&1 || true
+            fi
+        done
+    fi
+
+    activeDialogMonitorPid=""
+    activeDialogPid=""
+}
+
+function handleRuntimeTermination() {
+    local signalName="${1:-TERM}"
+
+    [[ "${runtimeTerminationInProgress}" == "YES" ]] && exit 0
+    runtimeTerminationInProgress="YES"
+    trap - TERM INT HUP
+
+    notice "Received ${signalName}; closing owned reminder dialog and exiting."
+    terminateOwnedDialogProcesses
+    cleanupDialogRuntimeArtifacts
+    exit 0
 }
 
 function createEmptyReminderStatePlist() {
@@ -1188,9 +1337,36 @@ function handlePreDeadlineThresholdDialogAutoRefresh() {
 }
 
 function ensureLaunchDaemonHeartbeat() {
-    if [[ -f "${dorLaunchDaemonPath}" ]]; then
-        launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1 || launchctl bootstrap system "${dorLaunchDaemonPath}" >/dev/null 2>&1 || true
+    local bootstrapOutput=""
+
+    shouldManageDaemonScheduling || return 0
+
+    if launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1; then
+        return 0
     fi
+
+    if [[ ! -f "${dorLaunchDaemonPath}" ]]; then
+        warning "Unable to recover LaunchDaemon heartbeat because '${dorLaunchDaemonPath}' is missing; controlled redeployment is required."
+        return 0
+    fi
+
+    if /usr/bin/xattr -p com.apple.quarantine "${dorLaunchDaemonPath}" >/dev/null 2>&1; then
+        warning "LaunchDaemon plist '${dorLaunchDaemonPath}' carries com.apple.quarantine. Runtime recovery will not remove trust metadata; validate the plist and perform a controlled redeployment or targeted quarantine removal."
+    fi
+
+    if ! bootstrapOutput="$(launchctl bootstrap system "${dorLaunchDaemonPath}" 2>&1)"; then
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
+        warning "Unable to recover LaunchDaemon heartbeat for '${dorLaunchDaemonLabel}': ${bootstrapOutput:-no launchctl output}"
+        return 0
+    fi
+
+    if ! launchctl print "system/${dorLaunchDaemonLabel}" >/dev/null 2>&1; then
+        warning "launchctl bootstrap returned success, but '${dorLaunchDaemonLabel}' could not be verified with label-specific launchctl print."
+        return 0
+    fi
+
+    notice "Recovered LaunchDaemon heartbeat '${dorLaunchDaemonLabel}'."
+    return 0
 }
 
 function scheduleNextReminderAtEpoch() {
@@ -1383,7 +1559,6 @@ function epochFromISO8601Timestamp() {
     local offsetMinutes=0
     local totalOffsetMinutes=0
     local days=0
-    local localTimestamp=""
     local parsedEpoch=""
 
     if [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z$' ]]; then
@@ -1411,12 +1586,13 @@ function epochFromISO8601Timestamp() {
         return 1
     fi
 
-    if (( month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59 || offsetHours > 23 || offsetMinutes > 59 )); then
+    if ! isValidCivilDate "${year}" "${month}" "${day}"; then
         return 1
     fi
 
-    localTimestamp=$(printf "%04d-%02d-%02dT%02d:%02d:%02d" "${year}" "${month}" "${day}" "${hour}" "${minute}" "${second}")
-    date -j -f "%Y-%m-%dT%H:%M:%S" "${localTimestamp}" "+%s" >/dev/null 2>&1 || return 1
+    if (( hour > 23 || minute > 59 || second > 59 || offsetHours > 23 || offsetMinutes > 59 )); then
+        return 1
+    fi
 
     if ! ddmDaysFromCivil "${year}" "${month}" "${day}"; then
         return 1
@@ -2685,9 +2861,9 @@ function detectStagedUpdate() {
         if readStagedMacOSVersion "${stagedMetadataPath}"; then
             if isValidDDMVersionString "${ddmVersionString}"; then
                 if is-at-least "${ddmVersionString}" "${stagedProposedVersion}" && is-at-least "${stagedProposedVersion}" "${ddmVersionString}"; then
-                    notice "Staged proposed macOS version ${stagedProposedVersion} matches DDM-enforced version ${ddmVersionString}."
+                    notice "Staged proposed macOS version ${stagedProposedVersion} matches $(requirementLogLabel) version ${ddmVersionString}."
                 else
-                    warning "Staged proposed macOS version ${stagedProposedVersion} does not match DDM-enforced version ${ddmVersionString}; treating staged status as Pending download."
+                    warning "Staged proposed macOS version ${stagedProposedVersion} does not match $(requirementLogLabel) version ${ddmVersionString}; treating staged status as Pending download."
                     stagedUpdateStatus="Pending download"
                     stagedUpdateSize="0"
                     stagedUpdateLocation="Not detected"
@@ -3522,12 +3698,26 @@ installedOSvsDDMenforcedOS() {
 
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
+    normalDDMResolverStatus="${ddmResolverStatus:-unknown}"
+    normalDDMResolverSource="${ddmResolverSource:-none}"
+    normalDDMResolverReason="${ddmResolverReason:-none}"
+    notice "Normal DDM resolver result: status=${normalDDMResolverStatus}; source=${normalDDMResolverSource}; reason=${normalDDMResolverReason}"
     case "${ddmResolverStatus}" in
+        resolved)
+            if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
+                notice "Confirmed DDM declaration takes precedence over persisted MDM fallback requirement."
+            fi
+            ;;
         missing)
-            versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
-            return
+            if ! selectMDMFallbackRequirement; then
+                versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
+                return
+            fi
             ;;
         conflict|noMatch|invalidVersion)
+            if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
+                warning "MDM fallback requirement is ineligible while resolver status is '${ddmResolverStatus}'."
+            fi
             versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
             warning "Resolver suppression summary: ${ddmResolverSuppressionType:-${ddmResolverStatus:-unknown}} | ${ddmResolverReason}"
             quitOut "${ddmResolverReason}; exiting quietly."
@@ -3537,20 +3727,25 @@ installedOSvsDDMenforcedOS() {
 
     if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
         versionComparisonResult="Up-to-date"
-        notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            notice "Installed macOS already satisfies MDM fallback requirement ${ddmVersionString}."
+            notice "MDM fallback contribution: updateRequired=NO; reminderDisplayed=NO."
+        else
+            notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+        fi
         return
     fi
 
     ddmLogEntry="${ddmDeclarationRawLine}"
-    if [[ -z "${ddmLogEntry}" ]]; then
+    if [[ "${ddmResolverStatus}" != "fallback" && -z "${ddmLogEntry}" ]]; then
         versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
         return
     fi
 
     # Parse enforced date and version
     if ! isValidDDMVersionString "${ddmVersionString}"; then
-        warning "Invalid DDM-enforced OS Version format. Log entry: ${ddmLogEntry}"
-        warning "Invalid DDM-enforced OS Version: ${ddmVersionString}"
+        warning "Invalid $(requirementLogLabel) OS version format. Log entry: ${ddmLogEntry}"
+        warning "Invalid $(requirementLogLabel) OS version: ${ddmVersionString}"
         versionComparisonResult="Invalid DDM version string; suppressing reminder dialog."
         quitOut "Invalid DDM version string; exiting quietly."
         return
@@ -3560,7 +3755,7 @@ installedOSvsDDMenforcedOS() {
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$(epochFromISO8601Timestamp "${ddmEnforcedInstallDate}")
     if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
-        fatal "Unable to parse DDM enforcement deadline: ${ddmEnforcedInstallDate}"
+        fatal "Unable to parse $(requirementLogLabel) deadline: ${ddmEnforcedInstallDate}"
     fi
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDeadlineHumanReadable=$( formatDeadlineFromISO8601 "${ddmEnforcedInstallDate}" "${dateFormatDeadlineHumanReadable}" )
@@ -3571,17 +3766,24 @@ installedOSvsDDMenforcedOS() {
     if (( deadlineEpoch <= $(date +%s) )); then
 
         # Enforcement deadline passed
-        notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
-
-        if resolvePaddedEnforcementDateForCandidate; then
-            ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${ddmResolvedPaddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
-            ddmEnforcedInstallDateEpoch="${ddmResolvedPaddedEpoch}"
-            info "Effective enforcement source: setPastDuePaddedEnforcementDate"
-        else
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            warning "MDM fallback requirement deadline has passed; using supplied timestamp directly without padded-date waiting."
             ddmEnforcedInstallDateHumanReadable="${ddmVersionStringDeadlineHumanReadable}"
             ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
-            warning "Safe padded enforcement date unavailable; continuing with declared enforcement date ${ddmVersionStringDeadlineHumanReadable}"
-            info "Effective enforcement source: EnforcedInstallDate"
+            info "Effective enforcement source: MDM fallback requirement EnforcedInstallDate"
+        else
+            notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
+
+            if resolvePaddedEnforcementDateForCandidate; then
+                ddmEnforcedInstallDateHumanReadable=$( formatDeadlineFromEpoch "${ddmResolvedPaddedEpoch}" "${dateFormatDeadlineHumanReadable}" )
+                ddmEnforcedInstallDateEpoch="${ddmResolvedPaddedEpoch}"
+                info "Effective enforcement source: setPastDuePaddedEnforcementDate"
+            else
+                ddmEnforcedInstallDateHumanReadable="${ddmVersionStringDeadlineHumanReadable}"
+                ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
+                warning "Safe padded enforcement date unavailable; continuing with declared enforcement date ${ddmVersionStringDeadlineHumanReadable}"
+                info "Effective enforcement source: EnforcedInstallDate"
+            fi
         fi
 
     else
@@ -3628,11 +3830,14 @@ installedOSvsDDMenforcedOS() {
     if is-at-least "$ddmVersionString" "$installedmacOSVersion"; then
 
         versionComparisonResult="Up-to-date"
-        info "DDM-enforced OS Version: $ddmVersionString"
+        info "$(requirementLogLabel) OS Version: $ddmVersionString"
 
     else
 
         versionComparisonResult="Update Required"
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            notice "MDM fallback contribution: updateRequired=YES; reminderDisplayed=PENDING."
+        fi
 
         # Detect staged updates
         if [[ "${hideStagedInfo}" == "YES" ]]; then
@@ -3643,8 +3848,8 @@ installedOSvsDDMenforcedOS() {
         fi
 
         # Determine if an "Update" or an "Upgrade" is needed
-        info "DDM-enforced OS Version: $ddmVersionString"
-        info "DDM-enforced OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
+        info "$(requirementLogLabel) OS Version: $ddmVersionString"
+        info "$(requirementLogLabel) OS Version Deadline: $ddmVersionStringDeadlineHumanReadable"
         majorInstalled="${installedmacOSVersion%%.*}"
         majorDDM="${ddmVersionString%%.*}"
         if [[ "$majorInstalled" != "$majorDDM" ]]; then
@@ -3969,7 +4174,7 @@ function evaluatePastDeadlineState() {
 
     if [[ "${isPastDeadlineEligible}" == "YES" ]]; then
         pastDeadlineRestartEffective="${pastDeadlineRestartBehavior}"
-        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past DDM deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s); uptime ${upTimeMin} minute(s), minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s))."
+        notice "Past Deadline mode '${pastDeadlineRestartEffective}' enabled (${daysPastDdmDeadline} day(s) past $(requirementLogLabel) deadline; threshold ${daysPastDeadlineRestartWorkflow} day(s); uptime ${upTimeMin} minute(s), minimum ${pastDeadlineRestartMinimumUptimeMinutes} minute(s))."
     else
         pastDeadlineRestartEffective="Off"
         if [[ "${versionComparisonResult}" == "Update Required" && "${isPastDdmDeadline}" == "YES" && "${isPastDeadlineRestartThresholdMet}" == "YES" && "${pastDeadlineRestartBehavior}" != "Off" && "${isPastDeadlineUptimeThresholdMet}" != "YES" ]]; then
@@ -4115,6 +4320,11 @@ function displayReminderDialog() {
 
     additionalDialogOptions=("$@")
 
+    if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+        warning "Selected MDM fallback requirement because normal DDM declaration status is exactly missing."
+        warning "MDM fallback contribution: updateRequired=YES; reminderDisplayed=YES; target=${ddmVersionString}; deadline=${ddmEnforcedInstallDate}"
+    fi
+
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
 
     dialogArgs=(
@@ -4147,10 +4357,12 @@ function displayReminderDialog() {
 
     ${dialogBinary} "${dialogArgs[@]}" &
     dialogPid=$!
+    activeDialogPid="${dialogPid}"
 
     if shouldAutoRefreshOpenDialogAtPreDeadlineThreshold; then
         monitorOpenDialogForPreDeadlineThreshold "${dialogPid}" "${dialogAutoRefreshMarkerPath}" &
         dialogAutoRefreshMonitorPid=$!
+        activeDialogMonitorPid="${dialogAutoRefreshMonitorPid}"
     fi
 
     wait "${dialogPid}"
@@ -4160,6 +4372,8 @@ function displayReminderDialog() {
         kill "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
         wait "${dialogAutoRefreshMonitorPid}" >/dev/null 2>&1 || true
     fi
+    activeDialogMonitorPid=""
+    activeDialogPid=""
 
     if [[ -s "${dialogAutoRefreshMarkerPath}" ]]; then
         dialogAutoRefreshTriggered="YES"
@@ -4235,6 +4449,7 @@ function displayReminderDialog() {
                 fi
                 ;;
             *"systempreferences"*)
+                notice "Software Update handoff: requirementSource=${ddmResolverSource:-unknown}; normalResolverStatus=${normalDDMResolverStatus:-unknown}; target=${ddmVersionString:-unknown}; deadline=${ddmEnforcedInstallDate:-unknown}; action=${action}"
                 launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
                 until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
@@ -4306,6 +4521,11 @@ function displayReminderDialog() {
             quitScript "0"
             ;;
 
+        15) ## Externally terminated dialog; do not classify as user interaction
+            notice "swiftDialog exited externally with code 15; not recording user interaction."
+            quitScript "${returncode}"
+            ;;
+
         20) ## Process exit code 20 scenario here
             notice "User had Do Not Disturb enabled"
             quitScript "0"
@@ -4335,6 +4555,8 @@ function displayReminderDialogForMode() {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function cleanupDialogRuntimeArtifacts() {
+    terminateOwnedDialogProcesses
+
     # Remove downloaded icons (only those created in /var/tmp, not original paths)
     for img in "${icon}" "${overlayicon}"; do
         if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
@@ -4419,6 +4641,9 @@ if [[ $(id -u) -ne 0 ]]; then
 fi
 
 initializeDorPidFile
+trap 'handleRuntimeTermination TERM' TERM
+trap 'handleRuntimeTermination INT' INT
+trap 'handleRuntimeTermination HUP' HUP
 
 
 

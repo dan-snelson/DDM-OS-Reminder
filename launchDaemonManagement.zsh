@@ -30,13 +30,13 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.0.0"
+scriptVersion="4.1.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
 # Minimum Required Version of swiftDialog
-swiftDialogMinimumRequiredVersion="3.0.1.4955"
+swiftDialogMinimumRequiredVersion="3.1.0.4994"
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -49,6 +49,12 @@ autoload -Uz is-at-least
 
 # Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
 resetConfiguration="${4:-"All"}"
+
+# Parameter 5: Fallback Required macOS Version (i.e., 26.6)
+fallbackVersionString="${5:-}"
+
+# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T22:00:00Z)
+fallbackEnforcedInstallDate="${6:-}"
 
 
 
@@ -72,6 +78,7 @@ dorStarterPath="${organizationDirectory}/dor-starter.zsh"
 dorStatePlistPath="${organizationDirectory}/dor-state.plist"
 dorPidFilePath="${organizationDirectory}/dor.pid"
 dorAggressiveKillSwitchPath="${organizationDirectory}/dor-aggressive-kill"
+dorFallbackDeclarationPlistPath="${organizationDirectory}/dor-fallback-declaration.plist"
 
 # LaunchDaemon Name & Path
 launchDaemonLabel="${reverseDomainNameNotation}.${organizationScriptName}"
@@ -117,7 +124,10 @@ function removeDeployedRuntimeAssets() {
         "${dorStatePlistPath}"
         "${dorPidFilePath}"
         "${dorAggressiveKillSwitchPath}"
+        "${dorFallbackDeclarationPlistPath}"
     )
+
+    stopActiveReminderRuntime
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
         if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
@@ -132,6 +142,253 @@ function removeDeployedRuntimeAssets() {
             warning "Failed to remove '${runtimeAssetPath}'"
         fi
     done
+}
+
+function collectDescendantPids() {
+    local parentPid="${1}"
+    local childPid=""
+    local -a childPids=()
+
+    childPids=( "${(@f)$(pgrep -P "${parentPid}" 2>/dev/null || true)}" )
+    for childPid in "${childPids[@]}"; do
+        [[ "${childPid}" =~ ^[0-9]+$ ]] || continue
+        collectDescendantPids "${childPid}"
+        echo "${childPid}"
+    done
+}
+
+function stopActiveReminderRuntime() {
+    local runtimePid=""
+    local runtimeCommand=""
+    local currentCommand=""
+    local processPid=""
+    local processStillRunning="NO"
+    local attempt=0
+    local -a descendantPids=()
+    local -a runtimeProcessPids=()
+    local -A runtimeProcessCommands=()
+
+    [[ -f "${dorPidFilePath}" ]] || return 0
+
+    runtimePid="$(head -n 1 "${dorPidFilePath}" 2>/dev/null || true)"
+    if [[ ! "${runtimePid}" =~ ^[0-9]+$ ]] || (( runtimePid <= 1 )); then
+        warning "Invalid active-runtime PID in '${dorPidFilePath}'; refusing to terminate any process."
+        return 0
+    fi
+
+    if ! kill -0 "${runtimePid}" >/dev/null 2>&1; then
+        logComment "Runtime PID ${runtimePid} is no longer active; stale PID file will be removed."
+        return 0
+    fi
+
+    runtimeCommand="$(ps -p "${runtimePid}" -o command= 2>/dev/null || true)"
+    if [[ "${runtimePid}" == "$$" || "${runtimeCommand}" != *"${dormScriptPath}"* ]]; then
+        warning "PID ${runtimePid} does not match deployed DDM OS Reminder runtime '${dormScriptPath}'; refusing to terminate it."
+        return 0
+    fi
+
+    descendantPids=( "${(@f)$(collectDescendantPids "${runtimePid}")}" )
+    runtimeProcessPids=( "${descendantPids[@]}" "${runtimePid}" )
+    notice "Stopping active DDM OS Reminder runtime PID ${runtimePid} before replacing runtime assets."
+
+    for processPid in "${runtimeProcessPids[@]}"; do
+        [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+        runtimeProcessCommands["${processPid}"]="$(ps -p "${processPid}" -o command= 2>/dev/null || true)"
+        kill -TERM "${processPid}" >/dev/null 2>&1 || true
+    done
+
+    for (( attempt = 0; attempt < 20; attempt++ )); do
+        processStillRunning="NO"
+        for processPid in "${runtimeProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            if kill -0 "${processPid}" >/dev/null 2>&1; then
+                processStillRunning="YES"
+                break
+            fi
+        done
+        [[ "${processStillRunning}" == "NO" ]] && break
+        sleep 0.25
+    done
+
+    if [[ "${processStillRunning}" == "YES" ]]; then
+        for processPid in "${runtimeProcessPids[@]}"; do
+            [[ "${processPid}" =~ ^[0-9]+$ ]] || continue
+            kill -0 "${processPid}" >/dev/null 2>&1 || continue
+            currentCommand="$(ps -p "${processPid}" -o command= 2>/dev/null || true)"
+            if [[ -n "${currentCommand}" && "${currentCommand}" == "${runtimeProcessCommands["${processPid}"]:-}" ]]; then
+                warning "Owned DDM OS Reminder process PID ${processPid} did not exit after TERM; forcing termination."
+                kill -KILL "${processPid}" >/dev/null 2>&1 || true
+            else
+                warning "Process PID ${processPid} changed after the termination request; refusing forced termination."
+            fi
+        done
+        sleep 0.25
+    fi
+
+    notice "Completed active DDM OS Reminder runtime shutdown request for PID ${runtimePid}."
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# MDM Fallback Requirement
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isValidFallbackVersionString() {
+    local value="${1}"
+    local versionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
+
+    [[ -n "${value}" && "${value}" =~ ${versionRegex} ]]
+}
+
+function isValidCivilDate() {
+    local year="${1}"
+    local month="${2}"
+    local day="${3}"
+    local daysInMonth=31
+
+    (( month >= 1 && month <= 12 && day >= 1 )) || return 1
+
+    case "${month}" in
+        2)
+            daysInMonth=28
+            if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+                daysInMonth=29
+            fi
+            ;;
+        4|6|9|11)
+            daysInMonth=30
+            ;;
+    esac
+
+    (( day <= daysInMonth ))
+}
+
+function isValidFallbackEnforcementDate() {
+    local value="${1}"
+    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    local year=0
+    local month=0
+    local day=0
+    local hour=0
+    local minute=0
+    local second=0
+    local timezoneSuffix=""
+    local offsetHours=0
+    local offsetMinutes=0
+
+    [[ "${value}" =~ ${timestampRegex} ]] || return 1
+
+    year=$(( 10#${match[2]} ))
+    month=$(( 10#${match[3]} ))
+    day=$(( 10#${match[4]} ))
+    hour=$(( 10#${match[5]} ))
+    minute=$(( 10#${match[6]} ))
+    second=$(( 10#${match[7]} ))
+    timezoneSuffix="${match[8]}"
+    offsetHours=$(( 10#${match[9]:-0} ))
+    offsetMinutes=$(( 10#${match[10]:-0} ))
+
+    isValidCivilDate "${year}" "${month}" "${day}" || return 1
+    (( hour <= 23 && minute <= 59 && second <= 59 )) || return 1
+
+    if [[ "${timezoneSuffix}" != "Z" ]]; then
+        (( offsetHours <= 23 && offsetMinutes <= 59 )) || return 1
+    fi
+
+    return 0
+}
+
+function removeFallbackDeclarationPlist() {
+    local removalReason="${1}"
+
+    if [[ ! -e "${dorFallbackDeclarationPlistPath}" && ! -L "${dorFallbackDeclarationPlistPath}" ]]; then
+        logComment "MDM fallback requirement plist not present: '${dorFallbackDeclarationPlistPath}'"
+        return 0
+    fi
+
+    if rm -f "${dorFallbackDeclarationPlistPath}" 2>/dev/null; then
+        notice "Removed MDM fallback requirement plist (${removalReason}): '${dorFallbackDeclarationPlistPath}'"
+        return 0
+    fi
+
+    warning "Failed to remove MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'"
+    return 1
+}
+
+function writeFallbackDeclarationPlist() {
+    local temporaryPath=""
+    local plistValidationOutput=""
+    local plistPermissions=""
+    local writeAction="Created"
+
+    [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]] && writeAction="Replaced"
+
+    temporaryPath="$(/usr/bin/mktemp "${dorFallbackDeclarationPlistPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${temporaryPath}" || ! -f "${temporaryPath}" ]]; then
+        fatal "Unable to create temporary MDM fallback requirement plist beside '${dorFallbackDeclarationPlistPath}'."
+    fi
+
+    if ! /usr/bin/plutil -create xml1 "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert SchemaVersion -integer 1 "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert VersionString -string "${fallbackVersionString}" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert BuildVersionString -string "(null)" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert EnforcedInstallDate -string "${fallbackEnforcedInstallDate}" "${temporaryPath}" \
+        || ! /usr/bin/plutil -insert Source -string "JamfProScriptParameters" "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to write temporary MDM fallback requirement plist."
+    fi
+
+    if ! plistValidationOutput="$(/usr/bin/plutil -lint "${temporaryPath}" 2>&1)"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "MDM fallback requirement plist validation failed: ${plistValidationOutput:-no plutil output}"
+    fi
+
+    if ! chown root:wheel "${temporaryPath}" || ! chmod 644 "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to secure temporary MDM fallback requirement plist."
+    fi
+
+    plistPermissions="$(/usr/bin/stat -f '%Su:%Sg %Lp' "${temporaryPath}" 2>/dev/null)"
+    if [[ "${plistPermissions}" != "root:wheel 644" ]]; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unexpected MDM fallback requirement plist ownership or mode '${plistPermissions:-unknown}'; expected 'root:wheel 644'."
+    fi
+
+    if ! mv -f "${temporaryPath}" "${dorFallbackDeclarationPlistPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to atomically replace MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'."
+    fi
+
+    notice "${writeAction} MDM fallback requirement plist: '${dorFallbackDeclarationPlistPath}'"
+    info "MDM fallback requirement configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
+}
+
+function applyFallbackDeclarationParameters() {
+    if [[ -z "${fallbackVersionString}" && -z "${fallbackEnforcedInstallDate}" ]]; then
+        removeFallbackDeclarationPlist "intentionally disabled by blank Parameters 5 and 6"
+        return
+    fi
+
+    if [[ -z "${fallbackVersionString}" || -z "${fallbackEnforcedInstallDate}" ]]; then
+        warning "Rejected partial MDM fallback requirement; Parameters 5 and 6 must both be populated."
+        removeFallbackDeclarationPlist "partial parameter pair rejected"
+        return
+    fi
+
+    if ! isValidFallbackVersionString "${fallbackVersionString}"; then
+        warning "Rejected malformed MDM fallback requirement version from Parameter 5: '${fallbackVersionString}'"
+        removeFallbackDeclarationPlist "malformed version rejected"
+        return
+    fi
+
+    if ! isValidFallbackEnforcementDate "${fallbackEnforcedInstallDate}"; then
+        warning "Rejected malformed MDM fallback requirement deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
+        removeFallbackDeclarationPlist "malformed or timezone-free deadline rejected"
+        return
+    fi
+
+    writeFallbackDeclarationPlist
 }
 
 function isDDMOSReminderLaunchDaemonPlist() {
@@ -222,14 +479,14 @@ function resetLaunchDaemons() {
     local -a daemonPaths=()
 
     info "${resetAction} LaunchDaemon … "
-    launchDaemonStatus
+    launchDaemonStatus || true
 
     daemonPaths=("${(@f)$(discoverDDMOSReminderLaunchDaemonPaths)}")
     for daemonPath in "${daemonPaths[@]}"; do
         unloadAndRemoveLaunchDaemon "${daemonPath}"
     done
 
-    launchDaemonStatus
+    launchDaemonStatus || true
 }
 
 
@@ -580,15 +837,26 @@ ENDOFSTARTER
 
 function createLaunchDaemon() {
 
+    local bootstrapOutput=""
+    local kickstartOutput=""
+    local launchDaemonPermissions=""
+    local launchDaemonTemporaryPath=""
+    local plistValidationOutput=""
+    local quarantineRemovalOutput=""
+
     notice "Create LaunchDaemon"
 
     logComment "Ensuring previous '${launchDaemonLabel}' definition is unloaded …"
     launchctl bootout system "${launchDaemonPath}" >/dev/null 2>&1 || true
 
-    logComment "Creating '${launchDaemonPath}' …"
+    launchDaemonTemporaryPath="$(/usr/bin/mktemp "${launchDaemonPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${launchDaemonTemporaryPath}" || ! -f "${launchDaemonTemporaryPath}" ]]; then
+        fatal "Unable to create temporary LaunchDaemon plist beside '${launchDaemonPath}'."
+    fi
 
-(
-cat <<ENDOFLAUNCHDAEMON
+    logComment "Creating temporary LaunchDaemon plist '${launchDaemonTemporaryPath}' …"
+
+    if ! cat > "${launchDaemonTemporaryPath}" <<ENDOFLAUNCHDAEMON
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -621,15 +889,72 @@ cat <<ENDOFLAUNCHDAEMON
 </plist>
 
 ENDOFLAUNCHDAEMON
-)  > "${launchDaemonPath}"
+    then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to write temporary LaunchDaemon plist '${launchDaemonTemporaryPath}'."
+    fi
 
-    logComment "Setting permissions for '${launchDaemonPath}' …"
-    chmod 644 "${launchDaemonPath}"
-    chown root:wheel "${launchDaemonPath}"
+    if ! plistValidationOutput="$(/usr/bin/plutil -lint "${launchDaemonTemporaryPath}" 2>&1)"; then
+        plistValidationOutput="${plistValidationOutput//$'\n'/; }"
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "LaunchDaemon plist validation failed: ${plistValidationOutput:-no plutil output}"
+    fi
+    logComment "${plistValidationOutput}"
+
+    logComment "Setting permissions for temporary LaunchDaemon plist …"
+    if ! chown root:wheel "${launchDaemonTemporaryPath}"; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to set root:wheel ownership on '${launchDaemonTemporaryPath}'."
+    fi
+    if ! chmod 644 "${launchDaemonTemporaryPath}"; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to set mode 0644 on '${launchDaemonTemporaryPath}'."
+    fi
+
+    launchDaemonPermissions="$(/usr/bin/stat -f '%Su:%Sg %Lp' "${launchDaemonTemporaryPath}" 2>/dev/null)"
+    if [[ "${launchDaemonPermissions}" != "root:wheel 644" ]]; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unexpected LaunchDaemon ownership or mode '${launchDaemonPermissions:-unknown}'; expected 'root:wheel 644'."
+    fi
+
+    logComment "Atomically replacing '${launchDaemonPath}' …"
+    if ! mv -f "${launchDaemonTemporaryPath}" "${launchDaemonPath}"; then
+        rm -f "${launchDaemonTemporaryPath}" 2>/dev/null || true
+        fatal "Unable to atomically replace LaunchDaemon plist '${launchDaemonPath}'."
+    fi
+    launchDaemonTemporaryPath=""
+
+    if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+        notice "Removing com.apple.quarantine from validated installer-generated LaunchDaemon plist"
+        if ! quarantineRemovalOutput="$(/usr/bin/xattr -d com.apple.quarantine "${launchDaemonPath}" 2>&1)"; then
+            quarantineRemovalOutput="${quarantineRemovalOutput//$'\n'/; }"
+            fatal "Unable to remove com.apple.quarantine from '${launchDaemonPath}': ${quarantineRemovalOutput:-no xattr output}"
+        fi
+        if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+            fatal "LaunchDaemon plist '${launchDaemonPath}' still carries com.apple.quarantine after targeted removal."
+        fi
+    else
+        logComment "LaunchDaemon plist does not carry com.apple.quarantine"
+    fi
 
     logComment "Loading '${launchDaemonLabel}' …"
-    launchctl bootstrap system "${launchDaemonPath}"
-    launchctl kickstart -k "system/${launchDaemonLabel}"
+    if ! bootstrapOutput="$(launchctl bootstrap system "${launchDaemonPath}" 2>&1)"; then
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
+        fatal "launchctl bootstrap failed for '${launchDaemonLabel}': ${bootstrapOutput:-no launchctl output}"
+    fi
+    if [[ -n "${bootstrapOutput}" ]]; then
+        bootstrapOutput="${bootstrapOutput//$'\n'/; }"
+        logComment "launchctl bootstrap: ${bootstrapOutput}"
+    fi
+
+    if ! kickstartOutput="$(launchctl kickstart -k "system/${launchDaemonLabel}" 2>&1)"; then
+        kickstartOutput="${kickstartOutput//$'\n'/; }"
+        if launchctl print "system/${launchDaemonLabel}" >/dev/null 2>&1; then
+            warning "launchctl kickstart failed, but '${launchDaemonLabel}' remains loaded: ${kickstartOutput:-no launchctl output}"
+        else
+            fatal "launchctl kickstart failed and '${launchDaemonLabel}' is not loaded: ${kickstartOutput:-no launchctl output}"
+        fi
+    fi
 
 }
 
@@ -641,15 +966,18 @@ ENDOFLAUNCHDAEMON
 
 function launchDaemonStatus() {
 
-    notice "LaunchDaemon Status"
-    
-    launchDaemonStatusResult=$( launchctl list | grep "${launchDaemonLabel}" )
+    local launchDaemonStatusOutput=""
 
-    if [[ -n "${launchDaemonStatusResult}" ]]; then
-        logComment "${launchDaemonStatusResult}"
-    else
-        logComment "${launchDaemonLabel} is NOT loaded"
+    notice "LaunchDaemon Status"
+
+    if launchDaemonStatusOutput="$(launchctl print "system/${launchDaemonLabel}" 2>&1)"; then
+        logComment "${launchDaemonLabel} is loaded"
+        return 0
     fi
+
+    launchDaemonStatusOutput="${launchDaemonStatusOutput//$'\n'/; }"
+    logComment "${launchDaemonLabel} is NOT loaded: ${launchDaemonStatusOutput:-no launchctl output}"
+    return 1
 
 }
 
@@ -838,6 +1166,14 @@ resetConfiguration "${resetConfiguration}"
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# MDM Fallback Requirement Validation / Persistence
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+applyFallbackDeclarationParameters
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Script Validation / Creation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -882,7 +1218,9 @@ notice "Status Checks"
 logComment "I/O pause …"
 sleep 1.3
 
-launchDaemonStatus
+if ! launchDaemonStatus; then
+    fatal "LaunchDaemon verification failed for '${launchDaemonLabel}'; deployment did not complete."
+fi
 
 
 

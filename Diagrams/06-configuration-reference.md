@@ -16,6 +16,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
   - [Warning Messages](#8-warning-messages)
   - [Dynamic Localization Primitives](#9-dynamic-localization-primitives)
 - [Placeholder Reference](#placeholder-reference)
+- [Missing-DDM Emergency Fallback](#missing-ddm-emergency-fallback)
 - [Common Configuration Scenarios](#common-configuration-scenarios)
 - [Configuration Methods](#configuration-methods)
 - [Troubleshooting](#troubleshooting)
@@ -226,6 +227,16 @@ The sample profile in `Resources/sample.plist` uses shorter timing values (for e
 
 Runtime-only scheduler keys such as `NextScheduledReminder` and `DaemonLastTriggered` are intentionally excluded from this table because they live in `/Library/Management/<rdnn>/dor-state.plist`, not in the managed/local preference payload.
 Pre-deadline threshold delivery keys are also runtime-only and must not be deployed through managed/local preferences.
+
+## Missing-DDM Emergency Fallback
+
+`/Library/Management/<rdnn>/dor-fallback-declaration.plist` is deployment-owned emergency configuration, not a preference payload and not scheduler state. Jamf Pro Script Parameter 5 supplies `VersionString`; Parameter 6 supplies timezone-bearing `EnforcedInstallDate`.
+
+Required schema: integer `SchemaVersion=1`; string `VersionString`; string `BuildVersionString=(null)`; string `EnforcedInstallDate`; string `Source=JamfProScriptParameters`.
+
+Runtime precedence is confirmed DDM declaration, then fallback only when resolver status is exactly `missing`. Resolver states `conflict`, `noMatch`, and `invalidVersion` remain ineligible and suppress reminders. Do not add these keys to managed/local preferences, `Resources/sample.plist`, or `dor-state.plist`.
+
+Fallback uses the existing threshold signature `<version>|(null)|<effective-deadline-epoch>`, so changing its version or deadline resets threshold delivery state through existing scheduler behavior. Past fallback deadlines bypass Apple padded-date lookup and use the supplied timestamp directly.
 
 ---
 
@@ -2018,7 +2029,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.0.0 |
+| `{scriptVersion}` | System | Script version | 4.1.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2533,6 +2544,9 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.1.0b3 | 30-Jul-2026 | Documented Missing-DDM Emergency Fallback schema, exact-`missing` precedence, lifecycle boundaries, and threshold signature behavior |
+| 4.1.0b3 | 30-Jul-2026 | Updated current-version metadata for LaunchDaemon quarantine hardening; no preference keys or precedence rules changed |
+| 4.1.0 | 03-Aug-2026 | Documented active-runtime teardown during controlled redeployment, fallback decision/activation audit logging, and rotated `install.log` collection guidance; no preference keys or precedence rules changed |
 | 4.0.0 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` format, declaration identity fields, `(null)` build handling, effective-enforcement epoch semantics, delivered/skipped ledger reset behavior, and operational interpretation |
 | 4.0.0 | 10-Jul-2026 | Clarified quiet-period scheduling: baseline runs inside `QuietPeriodMinutes` exit quietly and write exact `NextScheduledReminder` for quiet-period expiry, including after prior Button 1 interaction |
 | 4.0.0 | 08-Jul-2026 | Added `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds` reference coverage |
@@ -2554,5 +2568,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 28-Jul-2026
-**DDM OS Reminder Version**: 4.0.0
+**Last Updated**: 03-Aug-2026
+**DDM OS Reminder Version**: 4.1.0

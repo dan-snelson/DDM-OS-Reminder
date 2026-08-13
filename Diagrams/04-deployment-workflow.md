@@ -294,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0)
+🧩 Assemble DDM OS Reminder (4.1.0)
 ===============================================================
 
 Full Paths:
@@ -369,6 +369,10 @@ This removes comment, whitespace, and key-order noise and highlights only real p
    - Priority: After
    - Parameter 4 Label: "Reset Configuration"
    - Parameter 4 Default: "All"
+   - Parameter 5 Label: "Fallback Required macOS Version" (optional; for example `26.6`)
+   - Parameter 6 Label: "Fallback Enforcement Deadline" (optional; for example `2026-08-04T22:00:00Z`)
+
+Parameters 5 and 6 form one fail-closed pair. Both blank disables fallback and removes stale data; partial or malformed values are rejected and also remove stale data. A valid pair is persisted after reset cleanup and before LaunchDaemon bootstrap. Runtime still performs normal DDM resolution first and can select fallback only for exact `missing`.
 
 **Intune**:
 1. Devices → macOS → Shell scripts
@@ -407,7 +411,11 @@ This removes comment, whitespace, and key-order noise and highlights only real p
 
 ```bash
 # Check LaunchDaemon
-sudo launchctl list | grep org.churchofjesuschrist.dor
+sudo launchctl print system/org.churchofjesuschrist.dor
+
+# Read-only macOS 27 quarantine audit
+xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist \
+    >/dev/null 2>&1 && echo "Quarantine: present" || echo "Quarantine: absent"
 
 # Check deployed scripts and runtime state
 ls -lh /Library/Management/org.churchofjesuschrist/dor.zsh
@@ -472,10 +480,15 @@ tail -100 /var/log/org.churchofjesuschrist.log
 # Check plist syntax
 plutil -lint /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 
-# Manually load
-sudo launchctl bootstrap system /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+# Check macOS 27 quarantine state without changing the file
+xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 
-# Check status
+# Preferred fix: redeploy with 4.1.0. For immediate targeted remediation
+# of a validated DDM OS Reminder plist which reports quarantine:
+sudo xattr -d com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+
+# Load and verify by label
+sudo launchctl bootstrap system /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
 sudo launchctl print system/org.churchofjesuschrist.dor
 ```
 
@@ -502,6 +515,8 @@ MDM → Policies → New
 - Execution frequency: Ongoing
 - Scripts: Select uploaded script
 - Parameter 4: "All" (reset and deploy fresh)
+- Parameter 5: Emergency fallback version, or blank to disable
+- Parameter 6: Timezone-bearing emergency fallback deadline, or blank to disable
 ```
 
 **Step 3: Deploy Configuration Profile**
@@ -589,7 +604,7 @@ Configure the Next Scheduled Reminder EA with Jamf Pro Data Type `Date` and set 
 |-------|-------|----------|
 | Dialog not appearing | No DDM enforcement date | Configure DDM policy in MDM |
 | Wrong branding | Preferences not deployed | Deploy Configuration Profile |
-| LaunchDaemon not running | Plist syntax error | Validate with `plutil -lint` |
+| LaunchDaemon not running | Plist syntax error or macOS 27 quarantine enforcement | Validate with `plutil -lint`, audit `com.apple.quarantine`, then redeploy with `4.1.0` |
 | Script not found | Installation failed | Check MDM policy logs |
 | Old swiftDialog version | swiftDialog not updating | Run script manually to trigger update |
 
@@ -633,6 +648,7 @@ sudo zsh /path/to/assembled-script.zsh Uninstall
 
 **What Gets Removed**:
 - Current and stale DDM OS Reminder LaunchDaemons unloaded and deleted
+- PID-validated active DDM OS Reminder runtime and owned dialog processes stopped
 - Client-side script removed
 - Empty management directories removed
 - Preferences remain (manual removal if needed)

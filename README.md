@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.0.0)
+# DDM OS Reminder (4.1.0)
 
-> Another **major** upgrade to Mac Admins’ go-to solution for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines features a new, robust **heartbeat daemon** architecture, **easily configurable** daily reminder times, **pre-deadline** threshold alerts, and **aggressive past-deadline mode** with persistent compliance prompting.
+> A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring a new, opt-in missing-DDM Emergency Fallback option and a hardened LaunchDaemon installation for macOS 27.
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -12,7 +12,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 <br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
-**DDM OS Reminder** intelligently resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity, while using a declaration-aware resolver which prioritizes applicable enforced-install signals. End-user reminders are suppressed when declaration state is missing, conflicting, or invalid, only honoring `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration. Failed stale `SoftwareUpdateSubscriber` attempts are ignored, and enforcement timestamps with full timezone offsets such as `+05:30` are accepted before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
+**DDM OS Reminder** intelligently resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity, while using a declaration-aware resolver which prioritizes applicable enforced-install signals. End-user reminders are suppressed when declaration state is missing, conflicting, or invalid, only honoring `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration. An optional MDM fallback requirement can cover the exact `missing` state without overriding conflicts, unavailable-update evidence, invalid versions, or a confirmed DDM declaration. Failed stale `SoftwareUpdateSubscriber` attempts are ignored, and enforcement timestamps with full timezone offsets such as `+05:30` are accepted before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
@@ -25,6 +25,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a heartbeat `LaunchDaemon` plus lightweight `dor-starter.zsh` honors your configured `DailyReminderTimes` baseline schedule and displays your customized reminder dialog only when a reminder is actually due.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
+- **Missing-DDM Emergency Fallback**: Jamf Pro Script Parameters 5 and 6 can persist an emergency version/deadline requirement at `/Library/Management/<rdnn>/dor-fallback-declaration.plist`. Runtime selects it only when normal DDM resolution is exactly `missing`; confirmed DDM always wins.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
@@ -41,11 +42,22 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 4.0.0 Highlights
+## :new: 4.1.0 Highlights
+
+- **Missing-DDM Emergency Fallback**: Opt-in Jamf Pro Script Parameters 5 and 6 persist a validated emergency version and deadline requirement that runtime selects only when normal DDM resolution is exactly `missing`.
+- **Controlled runtime teardown**: `All`, `Script`, and `Uninstall` reset flows stop a PID-validated active runtime and its owned descendants before replacing or removing runtime assets.
+- **macOS 27 LaunchDaemon hardening**: Deployment validates a fresh adjacent plist, atomically replaces the target, removes only `com.apple.quarantine`, and verifies the loaded label before reporting success.
+- **Improved operational logging**: Resolver, fallback evaluation, reminder activation, Software Update handoff, fallback persistence, and external dialog termination now have distinct records.
+- **Interactive assembly fix**: Custom `InfoButtonText` values now update `InfoButtonTextLocalized_en`, preventing stale English sample text from overriding administrator input.
+- **Scheduler inventory**: `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh` reports device-local `NextScheduledReminder` state for Jamf Pro inventory.
+
+---
+
+## 4.0.0 Highlights
 
 - **Heartbeat daemon architecture**: `/Library/LaunchDaemons/<rdnn>.dor.plist` now runs lightweight `dor-starter.zsh` every 60 seconds. The starter checks `/Library/Management/<rdnn>/dor-state.plist` and only launches `dor.zsh` when a reminder is due.
 - **Runtime scheduler state**: `NextScheduledReminder`, `DaemonLastTriggered`, delivered pre-deadline thresholds, and the active `dor.pid` live in `/Library/Management/<rdnn>/`. Managed and local preferences remain admin-controlled configuration only.
-- **Remote session monitoring**: [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) provides one remote-Terminal snapshot of the heartbeat LaunchDaemon, deployed runtime files, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries. Use `--rdnn <value>` for your organization's deployments, `--watch <seconds>` for live refresh, and `--log-lines <n>` to adjust log tail depth.
+- **Remote session monitoring**: [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) provides one remote-Terminal snapshot of the heartbeat LaunchDaemon, read-only quarantine state, deployed runtime files, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries. Use `--rdnn <value>` for your organization's deployments, `--watch <seconds>` for live refresh, and `--log-lines <n>` to adjust log tail depth.
 - **Baseline reminder schedule**: `DailyReminderTimes` controls local reminder slots in `HH:MM` CSV format. The default baseline is `08:00,12:00,16:00`.
 - **Final-minute threshold reminders**: `MinutesBeforeDeadlineReminderSchedule` controls discrete pre-deadline reminders, defaulting to `45,30,15,10,5`. These threshold reminders bypass quiet-period suppression and can refresh an already-open daemon-managed dialog when a later threshold becomes due.
 - **Pre-deadline copy and emphasis**: New `PreDeadlineThresholdTitle` / `PreDeadlineThresholdMessage` keys, localized variants, `{minutesBeforeDeadline}`, and `{preDeadlineThresholdEmphasisOpen}` / `{preDeadlineThresholdEmphasisClose}` placeholders support urgent threshold-specific dialog text and color-safe emphasis.
@@ -55,14 +67,34 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
+## Missing-DDM Emergency Fallback
+
+Use this opt-in path only when managed Macs remain reachable but temporarily lack their expected DDM software-update declaration. In Jamf Pro, set Parameter 5 to the required macOS version (`26.6`) and Parameter 6 to a timezone-bearing deadline (`2026-08-04T22:00:00Z` or an explicit offset such as `+05:30`).
+
+Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it and evaluates it only for resolver status `missing`. Evaluation is logged at `[NOTICE]`; `[WARNING]` activation is reserved for a fallback requirement that actually reaches reminder display. Resolver states `conflict`, `noMatch`, and `invalidVersion` remain fail-safe suppression states. A confirmed Apple DDM declaration supersedes persisted fallback automatically.
+
+Fallback is separate from managed/local preferences and `dor-state.plist`. Existing compliance checks, reminder windows, pre-deadline thresholds, restart workflow, aggressive mode, and starter-only scheduler ownership remain unchanged. Past fallback deadlines use their supplied timestamp directly because no Apple declaration exists to correlate with `setPastDuePaddedEnforcementDate`.
+
+See [Resources/README.md](Resources/README.md#missing-ddm-emergency-fallback) for schema, lifecycle, and deployment details.
+
+---
+
 ## Upgrading
 
 Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
+
+Controlled `All`, `Script`, and `Uninstall` deployments validate any active `dor.pid`, stop only the matching DDM OS Reminder runtime and its owned child processes, then replace or remove runtime assets. This prevents an open dialog from an earlier version surviving beside the replacement deployment; unrelated swiftDialog processes are not targeted.
 
 If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that exact suffix still import supported values, but continue to prompt for deployment mode.
 Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
+
+### macOS 27 LaunchDaemon quarantine enforcement
+
+macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
+
+Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) for a read-only quarantine and load-state check. For affected Macs, preferred remediation is controlled redeployment with `4.1.0`; detailed fleet-audit and targeted manual-remediation commands are in [Resources/README.md](Resources/README.md#61-macos-27-quarantine-audit-and-remediation).
 
 <details>
 <summary><code>zsh assemble.zsh drag-and-drop prior .plist</code></summary>
@@ -71,7 +103,7 @@ When prior-plist import and localization filtering are used together, `assemble.
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0)
+🧩 Assemble DDM OS Reminder (4.1.0)
 ===============================================================
 
 📍 Full Paths:

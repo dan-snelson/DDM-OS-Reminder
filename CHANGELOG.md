@@ -2,7 +2,18 @@
 
 ## Changelog
 
-### Version 4.1.0b1 (28-Jul-2026)
+### Version 4.1.0 (13-Aug-2026)
+- Fixed controlled `All`, `Script`, and `Uninstall` reset flows so a PID-validated active DDM OS Reminder runtime and its owned descendants receive a termination request before runtime assets are removed, preventing older reminder dialogs from surviving redeployment alongside the replacement version.
+- Added runtime termination traps and owned swiftDialog/threshold-monitor cleanup so current deployments exit cleanly when controlled redeployment stops an active run, without broadly terminating unrelated swiftDialog processes.
+- Added explicit normal-resolver status/source/reason logging before fallback evaluation, plus distinct fallback evaluation, update-required contribution, actual reminder activation, and Software Update handoff records.
+- Limited the decisive Missing-DDM fallback selection warning to actual reminder display; compliant Macs now log that fallback evaluation did not drive a reminder.
+- Added fallback version/deadline/source logging after deployment writes the validated plist, and classified swiftDialog exit code `15` as external termination rather than user interaction.
+- Documented collection of current and rotated `install.log` files for update-causality reviews and distinguished Apple declaration-selection `fallback` wording from DDM OS Reminder's Missing-DDM Emergency Fallback.
+- Added an opt-in Missing-DDM Emergency Fallback using Script Parameters 5 and 6, with strict fail-closed validation, atomic RDNN-scoped plist persistence, exact-`missing` resolver eligibility, confirmed-DDM precedence, and direct past-deadline evaluation. ([Issue #120](https://github.com/dan-snelson/DDM-OS-Reminder/issues/120))
+- Hardened LaunchDaemon installation for macOS 27 by validating a fresh adjacent temporary plist, atomically replacing the target, removing only `com.apple.quarantine`, and failing deployment when bootstrap or label-specific verification fails. ([Issue #117](https://github.com/dan-snelson/DDM-OS-Reminder/issues/117))
+- Added actionable runtime heartbeat recovery logging for missing, quarantined, or unloadable LaunchDaemon plists without changing trust metadata outside the controlled installer path.
+- Updated `Resources/monitorRemoteSession.zsh` to report LaunchDaemon quarantine state and documented fleet audit plus targeted remediation guidance.
+- Fixed interactive assembly so custom `InfoButtonText` values also update `InfoButtonTextLocalized_en`, preventing stale sample English text from overriding admin-entered button labels. ([Issue #118](https://github.com/dan-snelson/DDM-OS-Reminder/issues/118); thanks for the heads-up, @macpancakes!)
 - Added `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh` so Jamf Pro administrators can inventory the device-local `NextScheduledReminder` value as a Date Extension Attribute, with documented sentinel dates for non-date scheduler states.
 
 ### Version 4.0.0 (09-Jul-2026)

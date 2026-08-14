@@ -28,6 +28,7 @@
 #       /Library/Management/<reverseDomainNameNotation>/dor-starter.zsh
 #       /Library/Management/<reverseDomainNameNotation>/dor-state.plist
 #       /Library/Management/<reverseDomainNameNotation>/dor.pid
+#       /Library/Management/<reverseDomainNameNotation>/dor-fallback-declaration.plist (optional)
 #
 # http://snelson.us/ddm
 #
@@ -41,7 +42,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.0.0"
+scriptVersion="4.1.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1344,20 +1345,18 @@ lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"
 
 {
   inBlock=false
-  prevLine=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%%$'\r'}"
-    prevTrimmed="${prevLine//[[:space:]]/}"
 
     if [[ $line == "cat <<'ENDOFSCRIPT'"* ]]; then
-      echo "$line"
+      printf "%s\n" "$line"
       cat "${patchedMessage}"
       inBlock=true
       continue
     fi
 
     if [[ $inBlock == false ]]; then
-      echo "$line"
+      printf "%s\n" "$line"
     elif [[ $line == "ENDOFSCRIPT" ]]; then
       if [[ -n "$lastMessageTrimmed" ]]; then
         echo ""
@@ -1365,12 +1364,42 @@ lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"
       printf "%s\n" "$line"
       inBlock=false
     fi
-
-    prevLine="$line"
   done < "${baseScript}"
 } > "${tmpScript}"
 
-rm -f "${patchedMessage}"
+embeddedMessage=$(mktemp -t embeddedMessage)
+expectedEmbeddedMessage=$(mktemp -t expectedEmbeddedMessage)
+cp "${patchedMessage}" "${expectedEmbeddedMessage}"
+if [[ -n "${lastMessageTrimmed}" ]]; then
+  printf "\n" >> "${expectedEmbeddedMessage}"
+fi
+
+/usr/bin/awk '
+  $0 == "cat <<\047ENDOFSCRIPT\047" {
+    inBlock = 1
+    next
+  }
+  inBlock && $0 == "ENDOFSCRIPT" {
+    exit
+  }
+  inBlock {
+    print
+  }
+' "${tmpScript}" > "${embeddedMessage}"
+
+if ! cmp -s "${expectedEmbeddedMessage}" "${embeddedMessage}"; then
+  rm -f "${patchedMessage}" "${expectedEmbeddedMessage}" "${embeddedMessage}" "${tmpScript}"
+  echo "❌ Assembly failed — embedded reminder runtime differs from prepared source."
+  exit 1
+fi
+
+if ! zsh -n "${embeddedMessage}" >/dev/null 2>&1; then
+  rm -f "${patchedMessage}" "${expectedEmbeddedMessage}" "${embeddedMessage}" "${tmpScript}"
+  echo "❌ Assembly failed — embedded reminder runtime did not pass syntax validation."
+  exit 1
+fi
+
+rm -f "${patchedMessage}" "${expectedEmbeddedMessage}" "${embeddedMessage}"
 
 
 
@@ -1415,7 +1444,8 @@ echo "🔍 Performing syntax check on '${outputScript#$projectDir/}' …"
 if zsh -n "${outputScript}" >/dev/null 2>&1; then
   echo "    ✅ Syntax check passed."
 else
-  echo "    ⚠️  Warning: syntax check failed!"
+  echo "    ❌ Syntax check failed!"
+  exit 1
 fi
 
 
@@ -1489,6 +1519,7 @@ if [[ -f "${plistSample}" ]]; then
       /usr/bin/plutil -replace InfoButtonAction -string "${infoButtonAction}" "${plistOutput}"
       /usr/bin/plutil -replace SupportKBURL -string "${supportKBURL}" "${plistOutput}"
       /usr/bin/plutil -replace InfoButtonText -string "${infoButtonText}" "${plistOutput}"
+      /usr/bin/plutil -replace InfoButtonTextLocalized_en -string "${infoButtonText}" "${plistOutput}"
       /usr/bin/plutil -replace HideSupportAssistanceMessage -bool "${hideSupportAssistanceMessage}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURL -string "${organizationOverlayIconURL}" "${plistOutput}"
       /usr/bin/plutil -replace OrganizationOverlayIconURLdark -string "${organizationOverlayIconURLdark}" "${plistOutput}"
@@ -1723,6 +1754,7 @@ echo "        Assembled Script: ${newOutputScript#$projectDir/}"
 echo "    Organizational Plist: ${plistOutput#$projectDir/}"
 echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
 echo "  Deployed Runtime Assets: /Library/Management/<RDNN>/dor-starter.zsh, dor-state.plist, dor.pid"
+echo " Optional Fallback Config: /Library/Management/<RDNN>/dor-fallback-declaration.plist"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

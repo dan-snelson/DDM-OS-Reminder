@@ -7,6 +7,7 @@
 3. [Create `.plist`](#3-create-plist-optional)
 4. [Extension Attributes](#4-extension-attributes)
 5. [Using `reminderDialogPreferenceTest.zsh`](#5-using-reminderdialogpreferencetestzsh)
+6. [Using `monitorRemoteSession.zsh`](#6-using-monitorremotesessionzsh)
 
 ---
 
@@ -15,6 +16,8 @@
 The [`assemble.zsh`](../assemble.zsh) script creates **combined, deployable** artifacts of your customized scripts:
 - `reminderDialog.zsh`
 - `launchDaemonManagement.zsh`
+
+Assembly preserves source lines literally while embedding `reminderDialog.zsh`, compares the embedded payload with the prepared runtime, and runs `zsh -n` against both the extracted runtime and complete deployment script. Payload drift or syntax failure stops artifact generation.
 
 **1.1.** Execute the assembly script
 
@@ -41,7 +44,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.0.0)
+🧩 Assemble DDM OS Reminder (4.1.0)
 ===============================================================
 
 Full Paths:
@@ -162,6 +165,38 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 
 ---
 
+## Missing-DDM Emergency Fallback
+
+The assembled deployment script supports these Jamf Pro parameters:
+
+| Parameter | Label | Example |
+|---|---|---|
+| 4 | Reset Configuration | `All` |
+| 5 | Fallback Required macOS Version | `26.6` |
+| 6 | Fallback Enforcement Deadline | `2026-08-04T22:00:00Z` |
+
+Parameter 5 accepts `X.Y` or `X.Y.Z`, with one to three digits per component. Parameter 6 requires `YYYY-MM-DDTHH:MM:SSZ` or an explicit offset such as `2026-08-05T03:30:00+05:30`. Timezone-free timestamps are rejected.
+
+When both values are valid, deployment atomically creates or replaces `/Library/Management/<rdnn>/dor-fallback-declaration.plist` as `root:wheel` mode `0644` in the mode `0755` management directory:
+
+| Key | Type | Required value |
+|---|---|---|
+| `SchemaVersion` | Integer | `1` |
+| `VersionString` | String | Parameter 5 |
+| `BuildVersionString` | String | `(null)` |
+| `EnforcedInstallDate` | String | Parameter 6 |
+| `Source` | String | `JamfProScriptParameters` |
+
+Both blank removes any stale fallback and intentionally disables the feature. A partial or malformed pair is rejected and also removes stale fallback data. `Uninstall` ignores fallback input and removes the plist. `All` and `Script` remove old fallback before valid values recreate it; `LaunchDaemon` preserves scheduler state while valid, blank, or invalid fallback inputs are applied before daemon bootstrap.
+
+Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment validates `dor.pid` against the expected deployed `dor.zsh` command, requests termination of that runtime and its owned descendants, and waits briefly for shutdown. A missing, stale, malformed, or mismatched PID is logged without broadly terminating swiftDialog or unrelated processes.
+
+Normal DDM declaration resolution always runs first. Runtime selects fallback only for exact resolver status `missing`; `conflict`, `noMatch`, and `invalidVersion` remain suppressed. Confirmed DDM supersedes persisted fallback. Corrupt, incomplete, wrong-type, or invalid fallback plists fail closed and are never repaired by runtime.
+
+Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs exact-`missing` fallback evaluation at `[NOTICE]`, whether it changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
+
+---
+
 ### 2. Create Self-extracting Script
 
 With some MDMs, it's easier to deploy a **self-extracting script**. After [assembling the script](#1-assemble), run the provided [`createSelfExtracting.zsh`](createSelfExtracting.zsh) script to generate a self-extracting version.
@@ -186,13 +221,13 @@ zsh Resources/createSelfExtracting.zsh
 When run, it will extract to /var/tmp/ddm-os-reminder-us.snelson-2026-01-08-054323.zsh and execute automatically.
 ```
 
-**3.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
+**2.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
 
 ```
 Artifacts/ddm-os-reminder-RDNN-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMMSS.sh
 ```
 
-**3.3.** Deploy the assembled, self-extracting script
+**2.3.** Deploy the assembled, self-extracting script
 
 You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload to `/var/tmp` and executes it automatically.
 
@@ -280,7 +315,27 @@ Reports the date when the DDM-enforced macOS update was executed.
 Thu Nov 13 08:59:56 2025
 ```
 
-**4.5.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
+**4.5.** [`JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh`](JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh)
+
+Reports the device-local date and time stored in `NextScheduledReminder` within `/Library/Management/<rdnn>/dor-state.plist`.
+Configure this Extension Attribute in Jamf Pro with Input Type `Script` and Data Type `Date`.
+Before uploading the script, set `reverseDomainNameNotation` to the RDNN used to assemble DDM OS Reminder; for example, `org.churchofjesuschrist.ics`.
+Jamf Pro stores Date Extension Attribute values as static dates and does not convert them between time zones. The reported value updates during the Mac's next inventory collection.
+
+The EA converts the runtime format `YYYY-MM-DD:HH:MM:SS` to Jamf's `YYYY-MM-DD HH:MM:SS` format and returns these sentinel dates for non-date scheduler states:
+
+- `2000-01-01 00:00:00` = daemon-driven reminders disabled (`FALSE`)
+- `2000-01-01 00:00:01` = state plist missing or unreadable
+- `2000-01-01 00:00:02` = `NextScheduledReminder` unset or empty; the heartbeat may evaluate immediately
+- `2000-01-01 00:00:03` = corrupt plist or invalid timestamp
+
+The internal `reverseDomainNameNotationOverride` and `dorStatePlistPathOverride` hooks support local fixture testing only; they are not configuration-profile keys.
+
+```
+2026-07-28 12:00:00
+```
+
+**4.6.** [`JamfEA-SecureToken_Users.zsh`](JamfEA-SecureToken_Users.zsh)
 Reports all local users with SecureToken enabled (comma-separated).
 
 ```
@@ -293,7 +348,7 @@ On macOS earlier than 10.13, this EA reports:
 N/A (macOS X.Y.Z)
 ```
 
-**4.6.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
+**4.7.** [`JamfEA-Volume_Owners.zsh`](JamfEA-Volume_Owners.zsh)
 Reports local accounts that are APFS Volume Owners (comma-separated), based on `diskutil apfs listUsers /`.
 
 ```
@@ -390,7 +445,9 @@ Use this script for appearance and preference validation. Use `zsh reminderDialo
 
 ### 6. Using `monitorRemoteSession.zsh`
 
-Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
+Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, its read-only quarantine state, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
+
+For update-causality investigations, collect the current `/var/log/install.log` plus rotated `/var/log/install.log.*` files, including compressed `.gz` rotations. An update, authorization, reboot, or final version transition may have rotated out of the current file even while later DDM scheduling messages remain. Pair those Apple logs with the RDNN project log and MDM client/policy logs. Apple `softwareupdated` text such as `Falling back to default applicable declaration` describes Apple declaration selection and is not DDM OS Reminder's Missing-DDM Emergency Fallback.
 
 Examples:
 
@@ -408,3 +465,37 @@ The helper is intended for runtime monitoring, not deployment. It reads the curr
 - `/Library/Management/<rdnn>/dor.pid`
 - `/Library/Management/<rdnn>/dor-aggressive-kill`
 - `/var/log/<rdnn>.log`
+
+#### 6.1. macOS 27 quarantine audit and remediation
+
+macOS 27 refuses to load LaunchDaemon property lists carrying `com.apple.quarantine`. Version `4.1.0` protects controlled deployments by creating and validating a fresh plist, atomically replacing the target, removing only that quarantine attribute, and verifying `launchctl print system/<rdnn>.dor` before reporting completion. Earlier macOS releases retain the same RDNN paths, permissions, heartbeat cadence, and scheduler behavior.
+
+For a read-only fleet audit, replace `us.snelson` with the deployed RDNN:
+
+```zsh
+launchDaemonPath="/Library/LaunchDaemons/us.snelson.dor.plist"
+
+if /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}" >/dev/null 2>&1; then
+    echo "Quarantine: present"
+else
+    echo "Quarantine: absent"
+fi
+```
+
+`monitorRemoteSession.zsh --rdnn us.snelson` reports the same state without modifying the file. Preferred remediation for a quarantined DDM OS Reminder plist is controlled redeployment with `4.1.0`.
+
+When immediate manual remediation is required, first confirm the path belongs to the intended DDM OS Reminder deployment. Run targeted removal only when the audit reports `present`:
+
+```zsh
+launchDaemonLabel="us.snelson.dor"
+launchDaemonPath="/Library/LaunchDaemons/${launchDaemonLabel}.plist"
+
+sudo /usr/bin/plutil -lint "${launchDaemonPath}"
+sudo /usr/bin/xattr -p com.apple.quarantine "${launchDaemonPath}"
+sudo /usr/bin/xattr -d com.apple.quarantine "${launchDaemonPath}"
+sudo /bin/launchctl bootout "system/${launchDaemonLabel}" 2>/dev/null || true
+sudo /bin/launchctl bootstrap system "${launchDaemonPath}"
+sudo /bin/launchctl print "system/${launchDaemonLabel}"
+```
+
+Do not use `xattr -c`; it removes unrelated extended attributes. Runtime heartbeat recovery diagnoses quarantine and logs bootstrap failures, but intentionally does not change trust metadata.

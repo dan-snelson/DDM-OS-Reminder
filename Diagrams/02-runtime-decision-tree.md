@@ -33,7 +33,7 @@ flowchart TD
 
     ForceQuietBypass -->|Yes| ForceMeetingBypass
     ForceQuietBypass -->|No| CheckQuiet{Within quiet period?<br/>last interaction < QuietPeriodMinutes}
-    CheckQuiet -->|Yes| Exit5[Exit Silently<br/>Quiet period active]
+    CheckQuiet -->|Yes| Exit5[Exit Silently<br/>Quiet period active<br/>Schedule exact quiet expiry]
     CheckQuiet -->|No| ForceMeetingBypass{Force mode active?}
 
     ForceMeetingBypass -->|Yes| BuildDialog
@@ -204,7 +204,9 @@ flowchart TD
 
 ### 8. Quiet-Period Suppression
 - **Check**: Most recent interaction (`Return Code: 0|2|3|4|10`) is within `QuietPeriodMinutes`
+- **Scheduler side effect**: When a daemon-managed run exits here, `NextScheduledReminder` is set to the quiet-period expiry (`lastInteraction + QuietPeriodMinutes`) unless an earlier pre-deadline threshold is pending
 - **`Remind Me Later` behavior**: Return code `2` schedules an exact redisplay at `now + QuietPeriodMinutes`
+- **Button 1 caveat**: Return code `0` normally returns to the baseline cadence after the dialog display, but it still counts as an interaction; a later baseline run inside the quiet period can be suppressed and exact-scheduled to the quiet-period expiry
 - **Disable option**: `QuietPeriodMinutes = 0` disables quiet-period suppression
 - **Threshold precedence**: If an earlier pre-deadline threshold reminder is due, it overrides the quiet-period redisplay time
 - **Special handling**: Restart-related interactions are excluded from quiet-period suppression
@@ -306,6 +308,7 @@ This ensures:
 - launchd overhead stays minimal while exact reminder timing remains script-controlled
 - baseline reminder slots are admin-controlled in the deployed `.plist` / `.mobileconfig`
 - `Remind Me Later` quiet-period redisplay can use exact timestamps without another LaunchDaemon redesign
+- baseline runs that occur before quiet-period expiry can write an exact `NextScheduledReminder` for the quiet-period expiry
 - final-minute thresholds can schedule exact reminders through `NextScheduledReminder`
 
 **Re-execution**: Script exits after each run; `dor-state.plist`, `dor-starter.zsh`, and the LaunchDaemon heartbeat handle re-scheduling automatically. Threshold delivery state also lives in `dor-state.plist` so each configured threshold displays once per resolved deadline/version.

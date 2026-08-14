@@ -1345,10 +1345,8 @@ lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"
 
 {
   inBlock=false
-  prevLine=""
   while IFS= read -r line || [[ -n "$line" ]]; do
     line="${line%%$'\r'}"
-    prevTrimmed="${prevLine//[[:space:]]/}"
 
     if [[ $line == "cat <<'ENDOFSCRIPT'"* ]]; then
       printf "%s\n" "$line"
@@ -1366,8 +1364,6 @@ lastMessageTrimmed="${lastMessageLine//[[:space:]]/}"
       printf "%s\n" "$line"
       inBlock=false
     fi
-
-    prevLine="$line"
   done < "${baseScript}"
 } > "${tmpScript}"
 

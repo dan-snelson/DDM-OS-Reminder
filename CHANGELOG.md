@@ -2,6 +2,10 @@
 
 ## Changelog
 
+### Version 4.2.0b1 (04-Sep-2026)
+- Added an explicit macOS 27 icon ([Issue #127](https://github.com/dan-snelson/DDM-OS-Reminder/issues/127))
+- Updated the preference-test preview helper to use the same macOS 27 icon mapping as runtime dialog rendering.
+
 ### Version 4.1.0 (14-Aug-2026)
 - Fixed controlled `All`, `Script`, and `Uninstall` reset flows so a PID-validated active DDM OS Reminder runtime and its owned descendants receive a termination request before runtime assets are removed, preventing older reminder dialogs from surviving redeployment alongside the replacement version.
 - Added runtime termination traps and owned swiftDialog/threshold-monitor cleanup so current deployments exit cleanly when controlled redeployment stops an active run, without broadly terminating unrelated swiftDialog processes.

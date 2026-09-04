@@ -294,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0)
+🧩 Assemble DDM OS Reminder (4.2.0b1)
 ===============================================================
 
 Full Paths:

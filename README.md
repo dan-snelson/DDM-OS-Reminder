@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.1.0)
+# DDM OS Reminder (4.2.0b1)
 
 > A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring a new, opt-in missing-DDM Emergency Fallback option and a hardened LaunchDaemon installation for macOS 27.
 
@@ -42,7 +42,13 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 4.1.0 Highlights
+## :new: 4.2.0b1 Highlights
+
+- **Built-in macOS 27 icon mapping**: Runtime and preference-test previews now map DDM target versions beginning with `27.` to the maintainer-selected macOS 27 update icon instead of falling back to the generic macOS icon.
+
+---
+
+## 4.1.0 Highlights
 
 - **Missing-DDM Emergency Fallback**: Opt-in Jamf Pro Script Parameters 5 and 6 persist a validated emergency version and deadline requirement that runtime selects only when normal DDM resolution is exactly `missing`.
 - **Controlled runtime teardown**: `All`, `Script`, and `Uninstall` reset flows stop a PID-validated active runtime and its owned descendants before replacing or removing runtime assets.
@@ -103,7 +109,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.1.0)
+🧩 Assemble DDM OS Reminder (4.2.0b1)
 ===============================================================
 
 📍 Full Paths:

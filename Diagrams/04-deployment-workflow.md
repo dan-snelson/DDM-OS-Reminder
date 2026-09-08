@@ -294,7 +294,7 @@ zsh assemble.zsh /path/to/previous-config.plist
 5. **Processing Output**:
 ```
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0b1)
+🧩 Assemble DDM OS Reminder (4.2.0b2)
 ===============================================================
 
 Full Paths:
@@ -372,7 +372,7 @@ This removes comment, whitespace, and key-order noise and highlights only real p
    - Parameter 5 Label: "Fallback Required macOS Version" (optional; for example `26.6`)
    - Parameter 6 Label: "Fallback Enforcement Deadline" (optional; for example `2026-08-04T22:00:00Z`)
 
-Parameters 5 and 6 form one fail-closed pair. Both blank disables fallback and removes stale data; partial or malformed values are rejected and also remove stale data. A valid pair is persisted after reset cleanup and before LaunchDaemon bootstrap. Runtime still performs normal DDM resolution first and can select fallback only for exact `missing`.
+Parameters 5 and 6 form one fail-closed pair. Both blank disables fallback and removes stale data; partial or malformed values are rejected and also remove stale data. A valid pair is persisted after reset cleanup and before LaunchDaemon bootstrap. Runtime still performs normal DDM resolution first and can select fallback for `missing`, `conflict`, `noMatch`, or `invalidVersion`; confirmed DDM wins and unknown states fail closed.
 
 **Intune**:
 1. Devices → macOS → Shell scripts

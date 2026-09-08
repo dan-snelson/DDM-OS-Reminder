@@ -159,13 +159,15 @@ flowchart TD
 
 ### 4. DDM Enforcement Resolver + Version Comparison
 - **Check**: Can the script resolve one trustworthy DDM declaration from the recent `/var/log/install.log` window, and is update still required?
+- **Normal resolver outcomes**:
+  - `resolved`: use confirmed DDM; persisted fallback remains inactive
+  - `missing`, `conflict`, `noMatch`, or `invalidVersion`: evaluate validated DDM Emergency Fallback
+  - Missing or invalid fallback: preserve original suppression state
+  - Unknown resolver state: fail closed without fallback evaluation
 - **Exit if**:
-  - No DDM enforcement entry found
-  - Only invalid stale declarations remain after Apple explicitly rejects them as invalid
-  - Multiple conflicting declarations exist in the highest-priority source class
-  - The resolved declaration has an invalid version string
-  - The resolved declaration no longer maps to an available update (`MADownloadNoMatchFound` / `pallasNoPMVMatchFound`)
-  - Installed macOS is already compliant
+  - Recognized unresolved state has no valid fallback
+  - Resolver returns an unknown state
+  - Installed macOS is already compliant with the effective DDM or fallback requirement
 - **Resolver priority**:
   - `currentApplicableDeclaration`
   - `defaultApplicableDeclaration`
@@ -173,7 +175,7 @@ flowchart TD
   - lowest-priority generic `EnforcedInstallDate` fallback
 - **Conflict handling**:
   - Candidates rejected by `Failed to add declaration: ... Invalid declaration:` are ignored as stale invalid state
-  - If same surviving declaration persists after `No updates found for DDM to enforce`, resolver fails closed with conflict suppression
+  - If same surviving declaration persists after `No updates found for DDM to enforce`, normal resolver returns `conflict`; runtime then evaluates DDM Emergency Fallback before final suppression
 - **Compliance evaluation**:
   - A matching non-null `BuildVersionString` satisfies the declaration immediately
   - When Apple logs omit a usable build match (`BuildVersionString:(null)`), the script treats the Mac as compliant when the installed macOS product version matches or exceeds the resolved `VersionString`

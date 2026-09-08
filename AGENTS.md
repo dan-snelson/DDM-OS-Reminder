@@ -13,7 +13,7 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 - v4 scheduling uses a heartbeat `LaunchDaemon` which calls `dor-starter.zsh`; the starter consults `/Library/Management/<rdnn>/dor-state.plist` before deciding whether to launch `dor.zsh`.
 - `assemble.zsh` embeds `reminderDialog.zsh` into `launchDaemonManagement.zsh` via heredoc. Reminder logic changes are not deployment-ready until re-assembled.
 - Runtime reads `/var/log/install.log`, resolves trustworthy DDM enforcement state, then uses swiftDialog to present user-facing reminder messaging.
-- Optional emergency fallback lives at `/Library/Management/<rdnn>/dor-fallback-declaration.plist`; runtime may select it only after normal DDM resolution returns exact `missing`.
+- Optional emergency fallback lives at `/Library/Management/<rdnn>/dor-fallback-declaration.plist`; runtime may select it after normal DDM resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`.
 - Baseline reminder slots are admin-controlled through `DailyReminderTimes` in deployed preferences. Mutable scheduler state does not belong in managed/local preference payloads.
 - Past-deadline aggressive mode is default-on through `AggressiveModePastDeadlineHours` / `AggressiveModeFrequencyMinutes`; support suppression is runtime-only via `/Library/Management/<rdnn>/dor-aggressive-kill`.
 - Project does not perform OS updates, target non-macOS platforms, or act as general-purpose update/remediation framework.
@@ -134,8 +134,8 @@ Out of scope:
 - `Artifacts/`: generated build outputs that may be tracked; do not refresh casually
 
 ## Current Runtime Hotspots
-- Deadline resolution must fail safely when declaration state is missing, conflicting, invalid, or stale. Resolver conflicts suppress reminder dialog entirely.
-- Missing-DDM fallback is eligible only for exact resolver status `missing`; confirmed DDM always wins, while `conflict`, `noMatch`, and `invalidVersion` remain suppression states.
+- Deadline resolution must fail safely when declaration state is missing, conflicting, invalid, or stale. Recognized unresolved states suppress reminder dialog unless a validated DDM Emergency Fallback is selected.
+- DDM Emergency Fallback is eligible for resolver statuses `missing`, `conflict`, `noMatch`, and `invalidVersion`; confirmed DDM always wins, absent or invalid fallback preserves suppression, and unknown states fail closed.
 - Fallback configuration stays in `dor-fallback-declaration.plist`, never managed/local preferences or `dor-state.plist`. Past fallback deadlines use their supplied timestamp and never wait for `setPastDuePaddedEnforcementDate`.
 - Post-deadline restart workflow gates on effective post-deadline epoch when safely resolved, not raw `EnforcedInstallDate` alone.
 - Quiet period starts after user interaction, not when dialog first appears.

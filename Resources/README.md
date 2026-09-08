@@ -44,7 +44,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0b1)
+🧩 Assemble DDM OS Reminder (4.2.0b2)
 ===============================================================
 
 Full Paths:
@@ -165,7 +165,7 @@ This filters out comment, key-order, and whitespace churn so you can focus on ac
 
 ---
 
-## Missing-DDM Emergency Fallback
+## DDM Emergency Fallback
 
 The assembled deployment script supports these Jamf Pro parameters:
 
@@ -191,9 +191,11 @@ Both blank removes any stale fallback and intentionally disables the feature. A 
 
 Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment validates `dor.pid` against the expected deployed `dor.zsh` command, requests termination of that runtime and its owned descendants, and waits briefly for shutdown. A missing, stale, malformed, or mismatched PID is logged without broadly terminating swiftDialog or unrelated processes.
 
-Normal DDM declaration resolution always runs first. Runtime selects fallback only for exact resolver status `missing`; `conflict`, `noMatch`, and `invalidVersion` remain suppressed. Confirmed DDM supersedes persisted fallback. Corrupt, incomplete, wrong-type, or invalid fallback plists fail closed and are never repaired by runtime.
+Normal DDM declaration resolution always runs first. Runtime evaluates fallback when normal resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`. Confirmed DDM supersedes persisted fallback. Unknown resolver states never select fallback. Missing, corrupt, incomplete, wrong-type, or invalid fallback plists preserve the original suppression state and are never repaired by runtime.
 
-Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs exact-`missing` fallback evaluation at `[NOTICE]`, whether it changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
+Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs the original resolver status and fallback decision at `[NOTICE]`, whether fallback changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
+
+`JamfEA-Pending_OS_Update_Date.zsh` and `JamfEA-Pending_OS_Update_Version.zsh` continue reporting native Apple DDM resolver health, not the runtime's effective fallback requirement. A `conflict`, `noMatch`, `missing`, or `invalidVersion` EA result can therefore coexist with an active DDM Emergency Fallback reminder.
 
 ---
 
@@ -447,7 +449,7 @@ Use this script for appearance and preference validation. Use `zsh reminderDialo
 
 Use [`monitorRemoteSession.zsh`](monitorRemoteSession.zsh) during a remote Terminal session when you need one command that summarizes the heartbeat LaunchDaemon, its read-only quarantine state, `dor-state.plist`, `dor.pid`, matching processes, aggressive-mode kill switch, and recent project log entries.
 
-For update-causality investigations, collect the current `/var/log/install.log` plus rotated `/var/log/install.log.*` files, including compressed `.gz` rotations. An update, authorization, reboot, or final version transition may have rotated out of the current file even while later DDM scheduling messages remain. Pair those Apple logs with the RDNN project log and MDM client/policy logs. Apple `softwareupdated` text such as `Falling back to default applicable declaration` describes Apple declaration selection and is not DDM OS Reminder's Missing-DDM Emergency Fallback.
+For update-causality investigations, collect the current `/var/log/install.log` plus rotated `/var/log/install.log.*` files, including compressed `.gz` rotations. An update, authorization, reboot, or final version transition may have rotated out of the current file even while later DDM scheduling messages remain. Pair those Apple logs with the RDNN project log and MDM client/policy logs. Apple `softwareupdated` text such as `Falling back to default applicable declaration` describes Apple declaration selection and is not DDM OS Reminder's DDM Emergency Fallback.
 
 Examples:
 

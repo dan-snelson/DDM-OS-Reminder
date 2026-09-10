@@ -2,7 +2,11 @@
 
 ## Changelog
 
-### Version 4.2.0b1 (04-Sep-2026)
+### Version 4.2.0b3 (10-Sep-2026)
+- Clarified active DDM Emergency Fallback display logging so `[NOTICE]` records fallback selection and `[WARNING]` records fallback activation only when the selected fallback reaches reminder display.
+- Broadened DDM Emergency Fallback eligibility so a validated administrator requirement can cover normal resolver states `missing`, `conflict`, `noMatch`, and `invalidVersion`, while confirmed DDM still wins and unknown states fail closed. ([Issue #129](https://github.com/dan-snelson/DDM-OS-Reminder/issues/129))
+- Preserved original resolver status, source, and reason through fallback evaluation; removed premature resolver-level quit logging and added explicit fallback-decision records.
+- Renamed active operator guidance from “Missing-DDM Emergency Fallback” to “DDM Emergency Fallback” and documented that pending-update Extension Attributes continue reporting native DDM resolver health.
 - Added an explicit macOS 27 icon ([Issue #127](https://github.com/dan-snelson/DDM-OS-Reminder/issues/127))
 - Updated the preference-test preview helper to use the same macOS 27 icon mapping as runtime dialog rendering.
 

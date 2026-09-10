@@ -1,7 +1,7 @@
 #!/bin/zsh --no-rcs
 
 # EA: DDM OS Reminder Next Scheduled Reminder
-# Version: 4.2.0b1
+# Version: 4.2.0b3
 # Reports the local date and time stored in dor-state.plist for the next daemon reminder.
 
 # Safety: don't use -e or pipefail in Jamf EA context

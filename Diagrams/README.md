@@ -1,4 +1,4 @@
-# DDM OS Reminder (4.2.0b1) - Documentation Diagrams
+# DDM OS Reminder (4.2.0b3) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -515,5 +515,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 04-Sep-2026
-**DDM OS Reminder Version**: 4.2.0b1
+**Last Updated**: 10-Sep-2026
+**DDM OS Reminder Version**: 4.2.0b3

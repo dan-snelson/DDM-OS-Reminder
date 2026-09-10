@@ -168,7 +168,7 @@ graph TB
 1. **LaunchDaemon heartbeat triggers** at load and every 60 seconds; `dor-starter.zsh` launches `dor.zsh` only when `dor-state.plist` says a reminder is due, and exits quietly at boot when `NextScheduledReminder` is still future-dated or `FALSE`
 2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
 3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
-4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration
+4. **Resolver and deadline evaluation** read recent install.log state, use confirmed DDM when resolved, evaluate validated emergency fallback for recognized unresolved states, fail closed otherwise, and use a safe padded date only when it matches the resolved declaration
 5. **Version comparison** determines if update is required, treating a matching `BuildVersionString` as compliant and falling back to product-version comparison when Apple omits a usable build match
 6. **Reminder gating** applies display-window, periodic reminder, and quiet-period logic
 7. **Post-deadline mode evaluation** determines update-flow vs restart-only (Prompt/Force)

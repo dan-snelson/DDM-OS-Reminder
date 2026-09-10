@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.2.0b1)
+# DDM OS Reminder (4.2.0b3)
 
-> A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring a new, opt-in missing-DDM Emergency Fallback option and a hardened LaunchDaemon installation for macOS 27.
+> A minor upgrade to Mac Admins’ favorite “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines featuring an opt-in DDM Emergency Fallback and a hardened LaunchDaemon installation for macOS 27.
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -12,7 +12,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 <br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
-**DDM OS Reminder** intelligently resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity, while using a declaration-aware resolver which prioritizes applicable enforced-install signals. End-user reminders are suppressed when declaration state is missing, conflicting, or invalid, only honoring `setPastDuePaddedEnforcementDate` when it safely matches the resolved declaration. An optional MDM fallback requirement can cover the exact `missing` state without overriding conflicts, unavailable-update evidence, invalid versions, or a confirmed DDM declaration. Failed stale `SoftwareUpdateSubscriber` attempts are ignored, and enforcement timestamps with full timezone offsets such as `+05:30` are accepted before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
+**DDM OS Reminder** intelligently resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity, while using a declaration-aware resolver which prioritizes applicable enforced-install signals. Normal DDM resolution always runs first, and a confirmed declaration wins. When resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`, an optional validated MDM fallback requirement can keep reminder workflows active; absent or invalid fallback data preserves fail-safe suppression, and unknown resolver states always fail closed. Failed stale `SoftwareUpdateSubscriber` attempts are ignored, and enforcement timestamps with full timezone offsets such as `+05:30` are accepted before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
@@ -25,7 +25,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Easy Installation**: The [assemble.zsh](assemble.zsh) script makes it easy to deploy your reminder dialog and display frequency customizations via any MDM solution, enabling quick rollout of DDM OS Reminder organization-wide.
 - **Set-it-and-forget-it**: Once configured and installed, a heartbeat `LaunchDaemon` plus lightweight `dor-starter.zsh` honors your configured `DailyReminderTimes` baseline schedule and displays your customized reminder dialog only when a reminder is actually due.
 - **Deadline Awareness**: Whenever a DDM-enforced macOS version or its deadline is updated via your MDM solution, the reminder dialog dynamically updates the countdown to both the deadline and required macOS version to drive timely compliance.
-- **Missing-DDM Emergency Fallback**: Jamf Pro Script Parameters 5 and 6 can persist an emergency version/deadline requirement at `/Library/Management/<rdnn>/dor-fallback-declaration.plist`. Runtime selects it only when normal DDM resolution is exactly `missing`; confirmed DDM always wins.
+- **DDM Emergency Fallback**: Jamf Pro Script Parameters 5 and 6 can persist an emergency version/deadline requirement at `/Library/Management/<rdnn>/dor-fallback-declaration.plist`. Runtime can select it after recognized unresolved DDM states; confirmed DDM always wins.
 - **Intelligently Intrusive**: The reminder dialog is designed to be informative without being disruptive, first checking whether a user is in an online meeting — via an allowlist of approved apps — before displaying the dialog, so users can remain productive while still being reminded to update.
 - **Logging**: The script logs its actions to your specified log file, allowing Mac Admins to monitor its activity and troubleshoot as necessary.
 - **Demonstration Mode**: A built-in `demo` mode allows Mac Admins to test the appearance and functionality of the reminder dialog with ease: `zsh reminderDialog.zsh demo`.
@@ -42,7 +42,14 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 4.2.0b1 Highlights
+## :new: 4.2.0b3 Highlights
+
+- **Clearer fallback activation logging**: Runtime now distinguishes `[NOTICE]` fallback selection from `[WARNING]` fallback activation when a selected fallback actually reaches reminder display.
+- **Broader DDM Emergency Fallback eligibility**: A validated fallback can now cover `missing`, `conflict`, `noMatch`, or `invalidVersion` normal-resolver states while confirmed DDM remains authoritative and unknown states fail closed.
+
+---
+
+## 4.2.0b1 Highlights
 
 - **Built-in macOS 27 icon mapping**: Runtime and preference-test previews now map DDM target versions beginning with `27.` to the maintainer-selected macOS 27 update icon instead of falling back to the generic macOS icon.
 
@@ -73,15 +80,15 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## Missing-DDM Emergency Fallback
+## DDM Emergency Fallback
 
-Use this opt-in path only when managed Macs remain reachable but temporarily lack their expected DDM software-update declaration. In Jamf Pro, set Parameter 5 to the required macOS version (`26.6`) and Parameter 6 to a timezone-bearing deadline (`2026-08-04T22:00:00Z` or an explicit offset such as `+05:30`).
+Use this opt-in path when managed Macs remain reachable but normal DDM software-update resolution is unavailable or unreliable. In Jamf Pro, set Parameter 5 to the required macOS version (`26.6`) and Parameter 6 to a timezone-bearing deadline (`2026-08-04T22:00:00Z` or an explicit offset such as `+05:30`).
 
-Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it and evaluates it only for resolver status `missing`. Evaluation is logged at `[NOTICE]`; `[WARNING]` activation is reserved for a fallback requirement that actually reaches reminder display. Resolver states `conflict`, `noMatch`, and `invalidVersion` remain fail-safe suppression states. A confirmed Apple DDM declaration supersedes persisted fallback automatically.
+Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it and evaluates it for normal resolver states `missing`, `conflict`, `noMatch`, and `invalidVersion`. Evaluation is logged at `[NOTICE]`; `[WARNING]` activation is reserved for a fallback requirement that actually reaches reminder display. Missing or invalid fallback data preserves the original suppression state. A confirmed Apple DDM declaration supersedes persisted fallback automatically, and unknown resolver states fail closed without fallback evaluation.
 
 Fallback is separate from managed/local preferences and `dor-state.plist`. Existing compliance checks, reminder windows, pre-deadline thresholds, restart workflow, aggressive mode, and starter-only scheduler ownership remain unchanged. Past fallback deadlines use their supplied timestamp directly because no Apple declaration exists to correlate with `setPastDuePaddedEnforcementDate`.
 
-See [Resources/README.md](Resources/README.md#missing-ddm-emergency-fallback) for schema, lifecycle, and deployment details.
+See [Resources/README.md](Resources/README.md#ddm-emergency-fallback) for schema, lifecycle, and deployment details.
 
 ---
 
@@ -109,7 +116,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0b1)
+🧩 Assemble DDM OS Reminder (4.2.0b3)
 ===============================================================
 
 📍 Full Paths:

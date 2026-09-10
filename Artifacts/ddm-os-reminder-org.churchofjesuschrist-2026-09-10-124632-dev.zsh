@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.0b2"
+scriptVersion="4.2.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -610,7 +610,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.0b2"
+scriptVersion="4.2.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -4921,7 +4921,7 @@ function displayReminderDialog() {
     additionalDialogOptions=("$@")
 
     if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-        warning "Selected MDM fallback requirement after normal DDM declaration status '${normalDDMResolverStatus}'."
+        warning "Activated MDM fallback requirement for reminder display after normal DDM declaration status '${normalDDMResolverStatus}'."
         warning "MDM fallback contribution: updateRequired=YES; reminderDisplayed=YES; target=${ddmVersionString}; deadline=${ddmEnforcedInstallDate}"
     fi
 

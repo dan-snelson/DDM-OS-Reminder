@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.0b3"
+scriptVersion="4.2.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -3569,6 +3569,9 @@ function resolvePaddedEnforcementDateForCandidate() {
     local maxWaitSeconds=300
     local checkIntervalSeconds=10
     local elapsedSeconds=0
+    local waitStartEpoch=""
+    local waitDeadlineEpoch=""
+    local sleepSeconds=""
     local line=""
     local lineTimestamp=""
     local latestPaddedLine=""
@@ -3589,8 +3592,15 @@ function resolvePaddedEnforcementDateForCandidate() {
         return 1
     fi
     declarationEpoch="${parsedDDMLogTimestampEpoch}"
+    waitStartEpoch=$(date +%s)
+    waitDeadlineEpoch=$(( waitStartEpoch + maxWaitSeconds ))
 
-    while (( elapsedSeconds < maxWaitSeconds )); do
+    while true; do
+        nowEpoch=$(date +%s)
+        if (( nowEpoch >= waitDeadlineEpoch )); then
+            break
+        fi
+
         tailRecentInstallLogWindow
         latestPaddedLine=""
         latestPaddedDateRaw=""
@@ -3664,15 +3674,24 @@ function resolvePaddedEnforcementDateForCandidate() {
             fi
         fi
 
-        sleep "${checkIntervalSeconds}"
-        elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+        nowEpoch=$(date +%s)
+        sleepSeconds=$(( waitDeadlineEpoch - nowEpoch ))
+        if (( sleepSeconds <= 0 )); then
+            break
+        elif (( sleepSeconds > checkIntervalSeconds )); then
+            sleepSeconds="${checkIntervalSeconds}"
+        fi
+
+        sleep "${sleepSeconds}"
+        elapsedSeconds=$(( $(date +%s) - waitStartEpoch ))
 
         if (( elapsedSeconds < maxWaitSeconds )); then
             info "Retrying padded-date resolution (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
         fi
     done
 
-    warning "Timed out waiting for a safe setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+    elapsedSeconds=$(( $(date +%s) - waitStartEpoch ))
+    warning "Timed out waiting for a safe setPastDuePaddedEnforcementDate after ${elapsedSeconds} wall-clock seconds (configured maximum: ${maxWaitSeconds}s)"
     return 1
 }
 

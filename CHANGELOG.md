@@ -2,7 +2,8 @@
 
 ## Changelog
 
-### Version 4.2.0b4 (18-Sep-2026)
+### Version 4.2.0b5 (18-Sep-2026)
+- Updated URL for `organizationOverlayiconURL`
 - Bounded padded enforcement-date resolution by wall-clock time so endpoint sleep or process suspension cannot extend the configured five-minute wait.
 - Updated padded enforcement-date timeout logging to report actual wall-clock elapsed time and the configured maximum.
 - Clarified active DDM Emergency Fallback display logging so `[NOTICE]` records fallback selection and `[WARNING]` records fallback activation only when the selected fallback reaches reminder display.

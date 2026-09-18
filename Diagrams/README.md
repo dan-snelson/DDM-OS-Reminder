@@ -492,7 +492,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.14 | 18-Sep-2026 | Refreshed lifecycle, assembly, heartbeat, scheduler, MDM-agnostic deployment, configuration-boundary, and upgrade diagrams from the JNUC 2026 workflow; reconciled all content with `4.2.0b4` runtime truth |
+| 1.0.14 | 18-Sep-2026 | Refreshed lifecycle, assembly, heartbeat, scheduler, MDM-agnostic deployment, configuration-boundary, and upgrade diagrams from the JNUC 2026 workflow; reconciled all content with `4.2.0b5` runtime truth |
 | 1.0.13 | 30-Jul-2026 | Added macOS 27 LaunchDaemon quarantine audit, targeted remediation, and label-specific verification guidance |
 | 1.0.12 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` structure, `(null)` build semantics, effective-enforcement epoch, threshold delivery/skipped ledger resets, and runtime-only troubleshooting guidance |
 | 1.0.11 | 10-Jul-2026 | Clarified quiet-period scheduling when baseline daemon runs occur before `QuietPeriodMinutes` expires, including exact `NextScheduledReminder` behavior after prior Button 1 interaction |
@@ -518,4 +518,4 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 ---
 
 **Last Updated**: 18-Sep-2026
-**DDM OS Reminder Version**: 4.2.0b4
+**DDM OS Reminder Version**: 4.2.0b5

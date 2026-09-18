@@ -51,7 +51,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | disableButton2InsteadOfHide | DisableButton2InsteadOfHide | Boolean | YES | Timing |
-| organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
+| organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
 | swapOverlayAndLogo | SwapOverlayAndLogo | Boolean | NO | Branding |
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
@@ -908,7 +908,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### organizationOverlayiconURL
 **Plist Key**: `OrganizationOverlayIconURL`
 **Type**: String
-**Default**: `https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d`
+**Default**: `https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d`
 
 **Description**: URL to organization's icon/logo displayed in the dialog. Accepts HTTP/HTTPS URLs or local file paths.
 
@@ -925,7 +925,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Script Default**:
 ```bash
-["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
 ```
 
 **Configuration Profile**:
@@ -2031,7 +2031,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.2.0b4 |
+| `{scriptVersion}` | System | Script version | 4.2.0b5 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,7 +2546,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 4.2.0b4 | 18-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
+| 4.2.0b5 | 18-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
 | 4.2.0b3 | 10-Sep-2026 | Broadened DDM Emergency Fallback eligibility across recognized unresolved resolver states; no preference keys or preference precedence rules changed |
 | 4.2.0b1 | 04-Sep-2026 | Documented built-in macOS 27 icon mapping; no preference keys or precedence rules changed |
 | 4.1.0b3 | 30-Jul-2026 | Documented Missing-DDM Emergency Fallback schema, exact-`missing` precedence, lifecycle boundaries, and threshold signature behavior |
@@ -2574,4 +2574,4 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 ---
 
 **Last Updated**: 18-Sep-2026
-**DDM OS Reminder Version**: 4.2.0b4
+**DDM OS Reminder Version**: 4.2.0b5

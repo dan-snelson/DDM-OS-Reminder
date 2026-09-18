@@ -44,7 +44,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0b4)
+🧩 Assemble DDM OS Reminder (4.2.0b5)
 ===============================================================
 
 Full Paths:
@@ -83,7 +83,7 @@ Knowledge Base ('YES' to specify; 'NO' to hide) [YES] (or 'X' to exit):
 Support KB Title [Update macOS on Mac] (or 'X' to exit): KB8675309
 Info Button Action [https://support.snelson.us/KB8675309] (or 'X' to exit):
 Support KB Markdown Link [[KB8675309](https://support.snelson.us/KB8675309)] (or 'X' to exit):
-Overlay Icon URL (Light) [https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d] (or 'X' to exit):
+Overlay Icon URL (Light) [https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d] (or 'X' to exit):
 Overlay Icon URL (Dark) [https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39] (or 'X' to exit):
 Swap Overlay and Logo (YES/NO) [NO] (or 'X' to exit):
 Past-deadline Restart Behavior (Off / [P]rompt / [F]orce) [Off] (or 'X' to exit): Prompt

@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.0b4"
+scriptVersion="4.2.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -238,7 +238,7 @@ declare -A preferenceConfiguration=(
     ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
-    ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"

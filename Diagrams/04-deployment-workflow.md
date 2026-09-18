@@ -1,744 +1,326 @@
 # Deployment Workflow Diagram
 
-This diagram guides administrators through the complete deployment process for DDM OS Reminder.
+This guide presents an MDM-agnostic deployment path for DDM OS Reminder: validate Apple DDM first, preview locally, assemble organization-specific artifacts, deploy preferences and script, verify the client heartbeat, and then expand rollout.
 
 ```mermaid
 flowchart TD
-    Start([🚀 Start Deployment]) --> PreReq[📋 Prerequisites Check]
-    
-    PreReq --> CheckMDM{"MDM Solution<br>Available?"}
-    CheckMDM -->|No| StopMDM["❌ DDM OS Reminder<br>requires MDM"]
-    CheckMDM -->|Yes| CheckDDM{"Apple DDM<br>Configured?"}
-    
-    CheckDDM -->|No| ConfigDDM[📱 Configure DDM<br/>in your MDM]
-    CheckDDM -->|Yes| CheckGit{Have Git<br/>Repository?}
-    
-    ConfigDDM --> CheckGit
-    
-    CheckGit -->|No| Download[⬇️ Download Release<br/>from GitHub]
-    CheckGit -->|Yes| Clone[📦 Clone Repository<br/>git clone]
-    
-    Download --> CustomizePhase
-    Clone --> CustomizePhase[🎨 Customization Phase]
-    
-    CustomizePhase --> CustomizeReminder[Edit reminderDialog.zsh]
-    CustomizeReminder --> EditBranding[🏢 Organization Branding<br/>- reverseDomainNameNotation<br/>- Support team info<br/>- Icons/logos]
-    
-    EditBranding --> EditTiming[⏰ Timing Preferences<br/>- Days before deadline<br/>- Blurscreen threshold<br/>- Button hiding threshold]
-    
-    EditTiming --> EditMessages[💬 Message Content<br/>- Dialog text<br/>- Button labels<br/>- Help text]
-    
-    EditMessages --> CustomizeLaunchDaemon[Edit launchDaemonManagement.zsh]
-    CustomizeLaunchDaemon --> EditSchedule[📅 Schedule Configuration<br/>- `DailyReminderTimes` in prefs<br/>- `dor-starter` heartbeat]
-    
-    EditSchedule --> ReviewCustom{Review<br/>Customizations?}
-    ReviewCustom -->|Need Changes| CustomizeReminder
-    ReviewCustom -->|Ready| AssemblePhase[⚙️ Assembly Phase]
-    
-    AssemblePhase --> RunAssemble[▶️ Run Assembly Script<br/>zsh assemble.zsh --interactive<br/>or drag a prior .plist]
-    
-    RunAssemble --> PriorPlist{Earlier DOR .plist<br/>available?}
-    PriorPlist -->|Yes| ImportPrior[📥 Import Prior Plist<br/>- infer RDNN when possible<br/>- infer lane from filename when possible<br/>- skip branding prompts]
-    PriorPlist -->|No| PromptRDNN[💭 Prompt: Enter RDNN<br/>or accept default]
-    ImportPrior --> NeedRDNN{RDNN<br/>inferred?}
-    NeedRDNN -->|Yes| ProcessAssembly[🔧 Processing...<br/>- Harmonize RDNN<br/>- Embed reminderDialog<br/>- Remove demo mode<br/>- Validate syntax]
-    NeedRDNN -->|No| PromptRDNN
-    PromptRDNN --> ProcessAssembly
-    
-    ProcessAssembly --> GenerateArtifacts[📦 Generate Artifacts]
-    GenerateArtifacts --> Artifact1["✅ Assembled Script<br>ddm-os-reminder-(RDNN)-(timestamp)-(lane).zsh"]
-    GenerateArtifacts --> Artifact2["✅ Configuration Plist<br>(RDNN).dorm-(timestamp)-(lane).plist"]
-    GenerateArtifacts --> Artifact3["✅ Configuration Profile<br>(RDNN).dorm-(timestamp)-(lane)-unsigned.mobileconfig"]
-    
-    Artifact1 --> CheckArtifacts{Artifacts<br/>Generated?}
-    Artifact2 --> CheckArtifacts
-    Artifact3 --> CheckArtifacts
-    
-    CheckArtifacts -->|Errors| FixErrors[🔍 Review Errors<br/>Fix syntax issues]
-    FixErrors --> RunAssemble
-    CheckArtifacts -->|Success| TestPhase[🧪 Test Deployment Phase]
-    
-    TestPhase --> TestVM[💻 Deploy to Test Mac/VM]
-    TestVM --> UploadTestScript[⬆️ Upload Script to MDM<br/>as Policy/Package]
-    UploadTestScript --> DeployTestProfile[⬆️ Deploy Config Profile<br/>to Test Device/Group]
-    
-    DeployTestProfile --> RunTestScript[▶️ Execute Script<br/>on Test Mac]
-    RunTestScript --> VerifyTest[✅ Verify Installation<br/>- LaunchDaemon loaded?<br/>- Script in place?<br/>- Logs created?]
-    
-    VerifyTest --> TriggerTest["🎬 Trigger Test Display<br>Option 1: Wait for schedule<br>Option 2: zsh reminderDialog.zsh demo"]
-    
-    TriggerTest --> ReviewDialog{Dialog Displays<br/>Correctly?}
-    
-    ReviewDialog -->|No - Issues Found| DiagnoseIssues[🔍 Diagnose Issues<br/>- Check logs<br/>- Verify preferences<br/>- Test dialog binary]
-    DiagnoseIssues --> FixCustom{Issue Type?}
-    FixCustom -->|Configuration| AdjustPrefs[📝 Adjust Preferences<br/>in Configuration Profile]
-    FixCustom -->|Script Logic| CustomizeReminder
-    FixCustom -->|LaunchDaemon| CustomizeLaunchDaemon
-    
-    AdjustPrefs --> RunAssemble
-    
-    ReviewDialog -->|Yes - Looks Good| ProdPhase[🚀 Production Deployment Phase]
-    
-    ProdPhase --> ChooseMethod{Deployment<br/>Method?}
-    
-    ChooseMethod -->|Standard| StandardDeploy[📋 Standard Deployment]
-    ChooseMethod -->|Self-Extracting| SelfExtract[📦 Self-Extracting Package]
-    
-    StandardDeploy --> UploadProdScript[⬆️ Upload Assembled Script<br/>to MDM Production]
-    UploadProdScript --> CreatePolicy[📝 Create MDM Policy<br/>- Scope: Target computers<br/>- Frequency: Once per computer<br/>- Trigger: Recurring check-in]
-    
-    CreatePolicy --> DeployProdProfile[⬆️ Deploy Config Profile<br/>to Production Scope]
-    DeployProdProfile --> ProdComplete
-    
-    SelfExtract --> RunDeploy[▶️ Run Resources/createSelfExtracting.zsh<br/>Creates self-contained script]
-    RunDeploy --> UploadSelfExtract[⬆️ Upload Self-Extracting Script]
-    UploadSelfExtract --> CreateSEPolicy[📝 Create Policy for<br/>Self-Extracting Script]
-    CreateSEPolicy --> DeployProdProfile
-    
-    ProdComplete[✅ Production Deployment Complete] --> MonitorPhase[📊 Monitoring Phase]
-    
-    MonitorPhase --> MonitorLogs["📋 Monitor Logs<br>tail -f /var/log/(RDNN).log"]
-    MonitorLogs --> CheckEA[📊 Check Extension Attributes<br/>- DDM enforcement status<br/>- Days to deadline<br/>- Last dialog display]
-    
-    CheckEA --> MonitorIssues{Issues<br/>Reported?}
-    
-    MonitorIssues -->|Yes| Troubleshoot[🔧 Troubleshooting<br/>- Review client logs<br/>- Check preferences<br/>- Verify DDM enforcement<br/>- Test dialog display]
-    Troubleshoot --> ResolveIssue{Issue<br/>Resolved?}
-    ResolveIssue -->|No| EscalateIssue[🆘 Escalate to Support<br/>- GitHub Issues<br/>- Mac Admins Slack]
-    ResolveIssue -->|Yes| MonitorLogs
-    EscalateIssue --> MonitorLogs
-    
-    MonitorIssues -->|No| MaintainPhase[🔄 Maintenance Phase]
-    
-    MaintainPhase --> CheckUpdates[🔍 Check for Updates<br/>github.com/dan-snelson<br/>/DDM-OS-Reminder]
-    CheckUpdates --> UpdateAvail{New Version<br/>Available?}
-    
-    UpdateAvail -->|Yes| ReviewChangelog[📖 Review CHANGELOG.md]
-    ReviewChangelog --> UpgradeDecision{Deploy<br/>Update?}
-    UpgradeDecision -->|Yes| CustomizePhase
-    UpgradeDecision -->|No| CheckUpdates
-    
-    UpdateAvail -->|No| PolicyChanges{DDM Policy<br/>Changes?}
-    
-    PolicyChanges -->|Yes| AdjustThresholds[⚙️ Adjust Thresholds<br/>Modify Configuration Profile]
-    AdjustThresholds --> DeployUpdatedProfile[⬆️ Deploy Updated Profile]
-    DeployUpdatedProfile --> MonitorLogs
-    
-    PolicyChanges -->|No| PeriodicReview[📅 Periodic Review<br/>Quarterly assessment]
-    PeriodicReview --> Success[🎉 DDM OS Reminder<br/>Running Successfully]
-    
-    Success --> End([✅ End])
-    StopMDM --> End
-    
+    Start([Start]) --> Prerequisites["Validate prerequisites<br/>MDM, Apple DDM, swiftDialog access,<br/>non-production outdated Mac"]
+    Prerequisites --> DDMReady{"Test Mac has a pending<br/>DDM-enforced update?"}
+    DDMReady -->|No| FixDDM["Correct DDM declaration,<br/>scope, version, or deadline"]
+    FixDDM --> DDMReady
+    DDMReady -->|Yes| Preview["Local preview<br/>source demo and optional<br/>preference validation helper"]
+
+    Preview --> Assemble{"Prior DOR .plist<br/>from 2.2.0 or later?"}
+    Assemble -->|No| Interactive["zsh assemble.zsh --interactive<br/>answer organization prompts"]
+    Assemble -->|Yes| Import["zsh assemble.zsh /path/prior.plist<br/>import supported settings"]
+    Interactive --> Artifacts["Review three generated artifacts<br/>assembled script, .plist, .mobileconfig"]
+    Import --> Artifacts
+
+    Artifacts --> PreferenceMethod{"Choose one preference<br/>deployment method"}
+    PreferenceMethod -->|Upload .plist| ManagedPayload["Create managed-preference payload<br/>using exact &lt;rdnn&gt;.dorm domain"]
+    PreferenceMethod -->|Install .mobileconfig| Mobileconfig["Deploy unsigned .mobileconfig<br/>through MDM"]
+    ManagedPayload --> DeployScript
+    Mobileconfig --> DeployScript["Upload and execute assembled script once<br/>after preference deployment"]
+
+    DeployScript --> Verify["Verify LaunchDaemon, dor.zsh,<br/>dor-starter.zsh, managed preferences,<br/>dor-state.plist, and log"]
+    Verify --> Heartbeat{"Heartbeat state"}
+    Heartbeat -->|PID active or future/FALSE schedule| ExpectedNoop["Expected quiet no-op<br/>inspect state before troubleshooting"]
+    Heartbeat -->|Due| Runtime["dor.zsh resolves DDM,<br/>compliance, and reminder gates"]
+    ExpectedNoop --> ClientTest
+    Runtime --> ClientTest["Test source demo, manual runtime,<br/>scheduled run, and user actions"]
+
+    ClientTest --> Pass{"Validation passes?"}
+    Pass -->|No| Diagnose["Review RDNN, preference domain,<br/>DDM state, scheduler state, and logs"]
+    Diagnose --> Artifacts
+    Pass -->|Yes| Pilot["Pilot group rollout"]
+    Pilot --> Production["Phased production rollout"]
+    Production --> Monitor["Monitor logs, scheduler state,<br/>inventory, and support feedback"]
+
+    Monitor --> Upgrade{"New release?"}
+    Upgrade -->|No| Monitor
+    Upgrade -->|2.1.0 or earlier| Fresh["Uninstall old deployment<br/>and assemble fresh"]
+    Upgrade -->|2.2.0 or later| Reimport["Import prior .plist,<br/>review fresh artifacts"]
+    Fresh --> Artifacts
+    Reimport --> Artifacts
+
     style Start fill:#e3f2fd
-    style PreReq fill:#fff9c4
-    style CustomizePhase fill:#e1bee7
-    style AssemblePhase fill:#c5cae9
-    style TestPhase fill:#ffccbc
-    style ProdPhase fill:#c8e6c9
-    style MonitorPhase fill:#b2dfdb
-    style MaintainPhase fill:#f0f4c3
-    style Success fill:#a5d6a7
-    style End fill:#e0e0e0
-    style StopMDM fill:#ef5350
+    style Prerequisites fill:#fff9c4
+    style Preview fill:#fff9c4
+    style Interactive fill:#fff4e6
+    style Import fill:#fff4e6
+    style Artifacts fill:#c8e6c9
+    style DeployScript fill:#ffecb3
+    style Verify fill:#e1f5ff
+    style ExpectedNoop fill:#cfd8dc
+    style Runtime fill:#81c784
+    style Pilot fill:#c8e6c9
+    style Production fill:#a5d6a7
 ```
 
-## Detailed Step-by-Step Guide
+## 1. Validate Prerequisites
 
-### Phase 1: Prerequisites (📋)
+Use a non-production Mac that intentionally runs an older macOS version and is in scope for a real pending DDM-enforced update. Physical hardware is preferred when validating restart, installation, and enforcement behavior.
 
-#### 1.1 Verify Requirements
+Confirm:
 
-**MDM Solution**:
-- ✅ Jamf Pro
-- ✅ Microsoft Intune
-- ✅ Kandji
-- ✅ Mosyle
-- ✅ Any MDM supporting script execution and Configuration Profiles
+- An MDM can deploy a Configuration Profile or managed preference payload and execute a root-level Zsh script.
+- Apple DDM declares a required macOS version and timezone-bearing enforcement deadline for the test Mac.
+- The Mac has an interactive user session and network access to required update and branding resources.
+- Your deployment can install or update swiftDialog.
+- The expected DDM state appears in `/var/log/install.log` before troubleshooting reminder behavior.
 
-**Apple DDM Configuration**:
-```
-MDM → Declarative Device Management → Software Update Enforcement
-- Configure macOS version requirement
-- Set enforcement deadline
-- Enable enforcement
-```
+DDM OS Reminder is messaging and scheduling software. It does not create the Apple declaration, download macOS, or enforce the update.
 
-**Local Tools**:
-- macOS computer with zsh shell
-- Terminal access
-- Git (optional, for cloning repository)
-- Text editor (VS Code, BBEdit, nano, etc.)
+## 2. Preview Locally
 
-#### 1.2 Obtain DDM OS Reminder Files
+Run the source script's demo mode for the fastest reminder-dialog smoke test:
 
-**Option A: Clone Repository** (Recommended for version control)
-```bash
-cd ~/Documents/GitHub
-git clone https://github.com/dan-snelson/DDM-OS-Reminder.git
-cd DDM-OS-Reminder
+```zsh
+zsh reminderDialog.zsh demo
 ```
 
-**Option B: Download Release**
-```bash
-# Download latest release from GitHub
-# Extract to desired location
+Use the preference helper when validating an existing or generated preference file:
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh --help
 ```
 
----
+Demo and preview modes validate appearance, localization, placeholders, and actions. They do not prove DDM resolution, heartbeat scheduling, meeting deferral, or production restart behavior.
 
-### Phase 2: Customization (🎨)
+## 3. Assemble Organization-specific Artifacts
 
-#### 2.1 Edit reminderDialog.zsh
+### New deployment
 
-**Organization Variables** (Lines ~65-85):
-```bash
-# Organization's Script Human-readable Name
-humanReadableScriptName="DDM OS Reminder End-user Message"
-
-# Organization's Reverse Domain Name Notation
-reverseDomainNameNotation="org.churchofjesuschrist"
-
-# Organization's Script Name
-organizationScriptName="dorm"
-```
-
-**Timing Preferences** (Lines ~150-156):
-```bash
-["daysBeforeDeadlineDisplayReminder"]="numeric|60"
-["daysBeforeDeadlineBlurscreen"]="numeric|45"
-["daysBeforeDeadlineHidingButton2"]="numeric|21"
-["meetingDelay"]="numeric|75"
-```
-
-**Support Team Information** (Lines ~165-171):
-```bash
-["supportTeamName"]="string|IT Support"
-["supportTeamPhone"]="string|+1 (801) 555-1212"
-["supportTeamEmail"]="string|rescue@domain.org"
-["supportTeamWebsite"]="string|https://support.domain.org"
-```
-
-**Branding** (Lines ~162-163):
-```bash
-["organizationOverlayiconURL"]="string|https://your-icon-url.com/icon.png"
-["swapOverlayAndLogo"]="boolean|NO"
-```
-
-**Message Content** (Lines ~180-200):
-```bash
-["title"]="string|macOS {titleMessageUpdateOrUpgrade} Required"
-["message"]="string|**A required macOS update...**"
-["button1text"]="string|Open Software Update"
-["button2text"]="string|Remind Me Later"
-```
-
-#### 2.2 Edit launchDaemonManagement.zsh
-
-**RDNN Validation** (Lines ~65-70):
-```bash
-reverseDomainNameNotation="org.churchofjesuschrist"
-organizationScriptName="dor"
-```
-
-**LaunchDaemon Heartbeat** (Lines ~430-465):
-```xml
-<key>ProgramArguments</key>
-<array>
-    <string>/bin/zsh</string>
-    <string>/Library/Management/<RDNN>/dor-starter.zsh</string>
-</array>
-<key>RunAtLoad</key>
-<true/>
-<key>StartInterval</key>
-<integer>60</integer>
-```
-
-Actual baseline reminder times come from `DailyReminderTimes` in the deployed preference plist/profile.
-
----
-
-### Phase 3: Assembly (⚙️)
-
-#### 3.1 Run Assembly Script
-
-```bash
-cd /path/to/DDM-OS-Reminder
+```zsh
 zsh assemble.zsh --interactive
-# or upgrade from a prior configuration in one command
+```
+
+Interactive assembly can collect or confirm:
+
+- optional previous `.plist` import
+- RDNN
+- internal support contact information
+- info-button and knowledge-base behavior
+- support-assistance messaging
+- branding
+- post-deadline restart policy
+- aggressive-mode timing
+- localization scope
+- deployment lane (`dev`, `test`, or `prod`)
+
+### Upgrade-assisted deployment
+
+For a previous DDM OS Reminder `.plist` from version `2.2.0` or later:
+
+```zsh
 zsh assemble.zsh /path/to/previous-config.plist
 ```
 
-**Interactive Flow**:
-1. **Prior `.plist` Prompt** (when using `--interactive`):
-   - Drag-and-drop an earlier DOR `.plist`, press `Return` to skip, or press `X` to exit
-   - If supplied, `assemble.zsh` imports supported values, infers the RDNN when possible, and skips the IT support / branding / restart prompts
-   - If the filename ends with `-dev.plist`, `-test.plist`, or `-prod.plist`, deployment mode is inferred too
+Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist`.
 
-2. **RDNN Prompt** (only when RDNN was not provided or inferred):
-   - Example: `com.company.division`
-   - Default: Value from scripts (if matching)
-   - Press `X` to exit
+### Non-interactive options
 
-3. **IT Support & Branding Prompts** (when using `--interactive` without a prior plist):
-   - Support team name, phone, email, and website
-   - `Knowledge Base ('YES' to specify; 'NO' to hide)`
-   - If `YES`: prompts for `Support KB Title`, `Info Button Action`, and `Support KB Markdown Link`
-   - If `NO`: KB prompts are skipped and generated configs hide KB surfaces in the help dialog (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without KB row)
-
-4. **Deployment Mode Prompt**:
-   - Skipped when `--lane` is supplied
-   - Skipped when inferred from a prior plist filename
-   - Otherwise choose `dev`, `test`, or `prod`
-
-5. **Processing Output**:
-```
-===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0b4)
-===============================================================
-
-Full Paths:
-        Reminder Dialog: /path/to/reminderDialog.zsh
-LaunchDaemon Management: /path/to/launchDaemonManagement.zsh
-      Working Directory: /path/to/DDM-OS-Reminder
-    Resources Directory: /path/to/Resources
-
-📥 Prior plist provided via command-line argument: '/path/to/com.myorg.dorm-2026-03-28-132701-prod.plist'
-🔎 Inferred RDNN from prior plist: 'com.myorg'
-🔎 Inferred deployment mode from prior plist: 'prod'
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Using 'com.myorg' as the Reverse Domain Name Notation
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔧 Inserting reminderDialog.zsh into launchDaemonManagement.zsh …
-✅ Assembly complete [2026-01-19-143022]
-   → Artifacts/ddm-os-reminder-assembled-2026-01-19-143022.zsh
-
-🔍 Performing syntax check …
-    ✅ Syntax check passed.
-
-🗂  Generating LaunchDaemon plist …
-   → Artifacts/com.myorg.dorm-2026-01-19-143022-prod.plist
-
-🧩 Generating Configuration Profile (.mobileconfig) …
-   → Artifacts/com.myorg.dorm-2026-01-19-143022-prod-unsigned.mobileconfig
-
-🏁 Done.
-
-Deployment Artifacts:
-        Assembled Script: Artifacts/ddm-os-reminder-com.myorg-2026-01-19-143022-prod.zsh
-    Organizational Plist: Artifacts/com.myorg.dorm-2026-01-19-143022-prod.plist
-   Configuration Profile: Artifacts/com.myorg.dorm-2026-01-19-143022-prod-unsigned.mobileconfig
+```zsh
+zsh assemble.zsh example.org --lane test
+zsh assemble.zsh example.org --lane prod --minimal
+zsh assemble.zsh example.org --lane prod --languages en,fr
 ```
 
-**Upgrade Compatibility Note**:
-- The documented prior-plist upgrade-assist workflow is based on plists generated by DDM OS Reminder `2.2.0` or later.
-- Earlier DOR plists can still import on a best-effort basis, but `assemble.zsh` warns when compatibility metadata is missing or predates that baseline.
-- Older supported plists without a `-dev`, `-test`, or `-prod` filename suffix still import successfully, but deployment mode will continue to prompt.
+Review current options before automation:
 
-#### 3.2 Verify Artifacts
-
-```bash
-ls -lh Artifacts/
+```zsh
+zsh assemble.zsh --help
 ```
 
-Expected files:
-- `ddm-os-reminder-{RDNN}-{timestamp}-{lane}.zsh` - Executable script
-- `{RDNN}.dorm-{timestamp}-{lane}.plist` - Preferences file
-- `{RDNN}.dorm-{timestamp}-{lane}-unsigned.mobileconfig` - Configuration Profile
+## 4. Review Generated Artifacts
 
-If you are comparing a regenerated `.plist` to an earlier artifact, use a normalized plist diff before treating XML changes as meaningful:
+Assembly produces three lane-suffixed files under `Artifacts/`:
 
-```bash
-diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
+- `ddm-os-reminder-<rdnn>-<timestamp>-<lane>.zsh`
+- `<rdnn>.dorm-<timestamp>-<lane>.plist`
+- `<rdnn>.dorm-<timestamp>-<lane>-unsigned.mobileconfig`
+
+Review all three for the same RDNN and intended lane. Validate configuration syntax:
+
+```zsh
+/usr/bin/plutil -lint /path/to/generated.plist
+/usr/bin/plutil -lint /path/to/generated-unsigned.mobileconfig
 ```
 
-This removes comment, whitespace, and key-order noise and highlights only real preference-value differences.
+Use normalized output when comparing an imported configuration with a new artifact:
 
----
-
-### Phase 4: Test Deployment (🧪)
-
-#### 4.1 Upload to MDM (Test)
-
-**Jamf Pro**:
-1. Settings → Computer Management → Scripts
-2. Upload assembled .zsh file
-3. Set options:
-   - Priority: After
-   - Parameter 4 Label: "Reset Configuration"
-   - Parameter 4 Default: "All"
-   - Parameter 5 Label: "Fallback Required macOS Version" (optional; for example `26.6`)
-   - Parameter 6 Label: "Fallback Enforcement Deadline" (optional; for example `2026-08-04T22:00:00Z`)
-
-Parameters 5 and 6 form one fail-closed pair. Both blank disables fallback and removes stale data; partial or malformed values are rejected and also remove stale data. A valid pair is persisted after reset cleanup and before LaunchDaemon bootstrap. Runtime still performs normal DDM resolution first and can select fallback for `missing`, `conflict`, `noMatch`, or `invalidVersion`; confirmed DDM wins and unknown states fail closed.
-
-**Intune**:
-1. Devices → macOS → Shell scripts
-2. Upload assembled .zsh file
-3. Configure:
-   - Run script as: root
-   - Hide script notification: No
-
-#### 4.2 Deploy Configuration Profile
-
-**Jamf Pro**:
-1. Configuration Profiles → Upload
-2. Select .mobileconfig file
-3. Scope to test computer/group
-4. Deploy
-
-**Intune**:
-1. Devices → macOS → Configuration profiles
-2. Import .mobileconfig file
-3. Assign to test devices
-
-#### 4.3 Execute Test Script
-
-**Jamf Pro**:
-1. Create policy
-2. Add script
-3. Scope to test computer
-4. Trigger: Check-in
-5. Run policy on test Mac
-
-**Intune**:
-1. Script auto-deploys to assigned devices
-2. Wait for check-in or sync manually
-
-#### 4.4 Verify Installation
-
-```bash
-# Check LaunchDaemon
-sudo launchctl print system/org.churchofjesuschrist.dor
-
-# Read-only macOS 27 quarantine audit
-xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist \
-    >/dev/null 2>&1 && echo "Quarantine: present" || echo "Quarantine: absent"
-
-# Check deployed scripts and runtime state
-ls -lh /Library/Management/org.churchofjesuschrist/dor.zsh
-ls -lh /Library/Management/org.churchofjesuschrist/dor-starter.zsh
-ls -lh /Library/Management/org.churchofjesuschrist/dor-state.plist
-
-# Check managed preferences
-ls -lh /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
-
-# Check logs
-tail -50 /var/log/org.churchofjesuschrist.log
+```zsh
+diff -u <(/usr/bin/plutil -p OLD.plist) <(/usr/bin/plutil -p NEW.plist)
 ```
 
-Expected output:
+## 5. Deploy Preferences, Then Script
+
+Choose exactly one preference-delivery method:
+
+1. Upload the generated `.plist` through your MDM's managed-preference or custom-settings workflow, using the exact preference domain `<rdnn>.dorm`.
+2. Install the generated unsigned `.mobileconfig` through your MDM.
+
+Do not deploy both preference artifacts. They represent the same configuration surface.
+
+After managed preferences reach the test Mac, upload and execute the assembled script once as root. The deployment wrapper installs or refreshes:
+
+- `/Library/Management/<rdnn>/dor.zsh`
+- `/Library/Management/<rdnn>/dor-starter.zsh`
+- `/Library/LaunchDaemons/<rdnn>.dor.plist`
+- swiftDialog when required
+
+The wrapper also creates or validates scheduler assets, applies controlled reset behavior, hardens the generated LaunchDaemon plist, and verifies the loaded label before reporting completion.
+
+Provider-specific parameter mapping for reset and optional emergency fallback values is documented in [Resources/README.md](../Resources/README.md#ddm-emergency-fallback).
+
+## 6. Verify Client Installation
+
+Replace `example.org` with the deployed RDNN.
+
+```zsh
+sudo /bin/launchctl print system/example.org.dor
+
+ls -l /Library/LaunchDaemons/example.org.dor.plist
+ls -l /Library/Management/example.org/dor.zsh
+ls -l /Library/Management/example.org/dor-starter.zsh
+ls -l /Library/Management/example.org/dor-state.plist
+ls -l /Library/Managed\ Preferences/example.org.dorm.plist
+
+sudo tail -100 /var/log/example.org.log
 ```
-[PRE-FLIGHT]      DDM OS Reminder
-[PRE-FLIGHT]      Initiating …
-[NOTICE]          Reset All Configuration Files …
-[NOTICE]          Create 'DDM OS Reminder' script
-[NOTICE]          Create LaunchDaemon
+
+Use the bundled read-only monitor for one consolidated view:
+
+```zsh
+zsh Resources/monitorRemoteSession.zsh --rdnn example.org
+zsh Resources/monitorRemoteSession.zsh --rdnn example.org --watch 5
 ```
 
-#### 4.5 Test Dialog Display
+### Expected heartbeat behavior
 
-**Option 1: Wait for Due Reminder** (RunAtLoad or the next `DailyReminderTimes` slot)
+At load and approximately every 60 seconds, the LaunchDaemon runs `dor-starter.zsh`.
 
-**Option 2: Manual Trigger** (Immediate)
-```bash
+- Active matching `dor.pid`: starter exits to prevent overlap.
+- Stale PID: starter removes it and continues.
+- `NextScheduledReminder=FALSE`: starter exits quietly.
+- Future `NextScheduledReminder`: starter exits quietly.
+- Due, empty, or invalid schedule: starter records `DaemonLastTriggered` and launches `dor.zsh`.
+
+A quiet heartbeat is not evidence of failure. Inspect `dor-state.plist` before changing the LaunchDaemon or forcing another run.
+
+## 7. Test Reminder Behavior
+
+Use separate checks for separate layers:
+
+### Appearance test
+
+```zsh
 zsh reminderDialog.zsh demo
 ```
-Note: Demo mode is removed during `assemble.zsh`, so use the source script for demo.
 
-**Option 3: Force Run** (Respects all logic)
-```bash
-sudo launchctl kickstart -kp system/org.churchofjesuschrist.dor
+### Runtime logic test
+
+On an approved non-production Mac with a pending DDM requirement:
+
+```zsh
+sudo /Library/Management/example.org/dor.zsh
 ```
 
-#### 4.6 Troubleshooting Tests
+A direct manual run evaluates production logic but intentionally does not mutate daemon scheduler state or own `dor.pid`.
 
-**No dialog appears**:
-```bash
-# Check if user logged in
-who
+### Scheduler test
 
-# Check DDM resolver inputs
-grep -Ei "EnforcedInstallDate|setPastDuePaddedEnforcementDate|requestedPMV=|MADownloadNoMatchFound|pallasNoPMVMatchFound" /var/log/install.log | tail -20
+Wait for a configured `DailyReminderTimes` slot or an existing exact `NextScheduledReminder`, while monitoring:
 
-# Check script logs
-tail -100 /var/log/org.churchofjesuschrist.log
-
-# Check swiftDialog
-/usr/local/bin/dialog --version
+```zsh
+zsh Resources/monitorRemoteSession.zsh --rdnn example.org --watch 5
 ```
 
-**Dialog appears but incorrect branding**:
-- Check managed preferences deployed correctly
-- Verify RDNN matches between script and profile
-- Check icon URLs are accessible
+Validate:
 
-**LaunchDaemon not loading**:
-```bash
-# Check plist syntax
-plutil -lint /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+- `DaemonLastTriggered` changes when the starter launches the main script.
+- A future schedule remains intact across heartbeat cycles and reboot.
+- `Remind Me Later` starts the quiet period from interaction time.
+- A pending final-minute threshold can schedule earlier than quiet-period expiry.
+- Aggressive mode uses exact redisplay scheduling after its configured post-deadline threshold.
+- Manual and demo runs do not change `dor-state.plist` or `dor.pid`.
 
-# Check macOS 27 quarantine state without changing the file
-xattr -p com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+### User-action test
 
-# Preferred fix: redeploy with 4.1.0. For immediate targeted remediation
-# of a validated DDM OS Reminder plist which reports quarantine:
-sudo xattr -d com.apple.quarantine /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
+Confirm expected behavior for:
 
-# Load and verify by label
-sudo launchctl bootstrap system /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
-sudo launchctl print system/org.churchofjesuschrist.dor
-```
+- Open Software Update
+- Remind Me Later
+- info-button action
+- close or keyboard dismissal
+- Focus/DND return
+- optional restart Prompt or Force mode on dedicated test hardware
 
----
+## 8. Diagnose Failed Validation
 
-### Phase 5: Production Deployment (🚀)
+Work from state toward symptoms:
 
-#### 5.1 Standard Deployment Method
+1. Confirm RDNN matches assembled script, LaunchDaemon label, management directory, log, and preference domain.
+2. Confirm the MDM-delivered preference file exists and contains expected types and values.
+3. Inspect `dor-state.plist` for a disabled or future schedule.
+4. Inspect `dor.pid` and matching processes before treating an overlap exit as a failure.
+5. Review recent `/var/log/install.log` declaration state and the project log's resolver decision.
+6. Confirm the installed macOS version is still below the resolved requirement.
+7. Confirm the reminder is inside a display, periodic, threshold, or aggressive window.
+8. Confirm meeting, quiet-period, or support kill-switch suppression is expected.
 
-**Step 1: Upload Assembled Script to Production**
-```
-MDM → Scripts → Upload
-- Use same assembled .zsh file tested successfully
-- Configure same parameters as test
-```
+For macOS 27 LaunchDaemon failures, audit only the target plist's quarantine attribute and prefer controlled redeployment with version `4.1.0` or later. Do not use broad `xattr -c` remediation.
 
-**Step 2: Create Production Policy**
-```
-MDM → Policies → New
-- Name: "Deploy DDM OS Reminder"
-- Scope: Production computers or smart group
-- Frequency: Once per computer
-- Trigger: Recurring check-in
-- Execution frequency: Ongoing
-- Scripts: Select uploaded script
-- Parameter 4: "All" (reset and deploy fresh)
-- Parameter 5: Emergency fallback version, or blank to disable
-- Parameter 6: Timezone-bearing emergency fallback deadline, or blank to disable
-```
+## 9. Roll Out and Monitor
 
-**Step 3: Deploy Configuration Profile**
-```
-MDM → Configuration Profiles
-- Upload .mobileconfig
-- Scope: Same as script policy
-- Deploy
-```
+Promote the exact tested artifacts through pilot and production scopes. Keep preference deployment ahead of script execution so the first managed runtime has intended settings.
 
-**Step 4: Monitor Rollout**
-```bash
-# On client Macs (via SSH or remote management)
-tail -f /var/log/org.churchofjesuschrist.log
-```
+Monitor:
 
-#### 5.2 Self-Extracting Script Method
+- `/var/log/<rdnn>.log`
+- `dor-state.plist` and the Next Scheduled Reminder Extension Attribute when used
+- native DDM pending-date and pending-version inventory
+- support feedback about timing, branding, and actions
+- compliance in the MDM's Apple update declaration reporting
 
-**Step 1: Generate Self-Extracting Script**
-```bash
-cd /path/to/DDM-OS-Reminder
-zsh Resources/createSelfExtracting.zsh
-```
+Pending-update Extension Attributes intentionally report native DDM resolver health, not an effective emergency fallback requirement.
 
-**Step 2: Upload Self-Extracting Script**
-```
-MDM → Scripts → Upload self-extracting script
-```
+## 10. Upgrade
 
-**Step 3: Deploy**
-```
-- Scope to production
-- Single execution creates both script and LaunchDaemon
-- Preferences still deployed via separate Configuration Profile
-```
+### Version 2.1.0 or earlier
 
-**Benefits of Self-Extracting**:
-- Single script contains everything
-- Simpler deployment
-- Easier for organizations without package management
+Uninstall the old deployment and assemble a fresh current deployment. Do not rely on prior-plist import for these versions.
 
----
+### Version 2.2.0 or later
 
-### Phase 6: Monitoring (📊)
+Import the prior generated `.plist`, review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
 
-#### 6.1 Monitor Client Logs
+Do not assume every release changes the Configuration Profile. Compare normalized preference output and release notes before redeploying it.
 
-**View Live Logs**:
-```bash
-# SSH to client Mac
-ssh admin@client-mac.local
+## 11. Uninstall
 
-# Tail log file
-sudo tail -f /var/log/org.churchofjesuschrist.log
-```
-
-**Key Log Entries to Monitor**:
-```
-[NOTICE]          Reset All Configuration Files …
-[PRE-FLIGHT]      Initiating …
-[NOTICE]          LaunchDaemon Status
-[NOTICE]          Resolved DDM declaration source
-[WARNING]         Resolver suppression summary
-[NOTICE]          Display Reminder Dialog
-```
-
-#### 6.2 Extension Attributes (Jamf Pro)
-
-Recommended bundled EAs:
-- `Resources/JamfEA-Pending_OS_Update_Date.zsh`
-- `Resources/JamfEA-Pending_OS_Update_Version.zsh`
-- `Resources/JamfEA-DDM_Executed_OS_Update_Date.zsh`
-- `Resources/JamfEA-DDM-OS-Reminder-User-Clicks.zsh`
-- `Resources/JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh`
-
-The pending date/version EAs now fail closed and return `None` when recent `install.log` state is missing, conflicting, invalid, or no longer maps to an available update.
-
-As of `4.0.0`, those EAs also treat a matching or trailing current macOS `VersionString` as compliant when Apple omits a usable `BuildVersionString`, and expose internal `installLogPathOverride`, `currentVersionOverride`, and `currentBuildOverride` hooks for local trace replay during troubleshooting. These hooks are for manual validation only and are not configuration-profile keys.
-
-Configure the Next Scheduled Reminder EA with Jamf Pro Data Type `Date` and set its `reverseDomainNameNotation` to the deployed RDNN. It converts the device-local `NextScheduledReminder` scheduler value to Jamf's date format and uses documented sentinel dates for disabled, missing, unset, corrupt, or invalid state.
-
-#### 6.3 Common Issues and Solutions
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Dialog not appearing | No DDM enforcement date | Configure DDM policy in MDM |
-| Wrong branding | Preferences not deployed | Deploy Configuration Profile |
-| LaunchDaemon not running | Plist syntax error or macOS 27 quarantine enforcement | Validate with `plutil -lint`, audit `com.apple.quarantine`, then redeploy with `4.1.0` |
-| Script not found | Installation failed | Check MDM policy logs |
-| Old swiftDialog version | swiftDialog not updating | Run script manually to trigger update |
-
----
-
-### Phase 7: Maintenance (🔄)
-
-#### 7.1 Update Workflow
-
-**When New Version Released**:
-1. Review [CHANGELOG.md](../CHANGELOG.md)
-2. Note breaking changes or new features
-3. Pull latest changes: `git pull origin main`
-4. Re-customize scripts (compare with previous customizations)
-5. Re-run `zsh assemble.zsh`
-6. Test on pilot group
-7. Deploy to production
-
-#### 7.2 Configuration Updates
-
-**Adjust Timing Thresholds**:
-1. Edit Configuration Profile in MDM
-2. Change preference values:
-   - `DaysBeforeDeadlineDisplayReminder`
-   - `DaysBeforeDeadlineBlurscreen`
-   - `DaysBeforeDeadlineHidingButton2`
-3. Save and re-deploy
-4. Changes take effect at next script execution
-
-**Update Branding/Messages**:
-- Option A: Update Configuration Profile (for simple text changes)
-- Option B: Re-customize and re-assemble script (for structural changes)
-
-#### 7.3 Uninstall (If Needed)
-
-**Full Uninstall**:
-```bash
-# Run management script with Uninstall parameter
-sudo zsh /path/to/assembled-script.zsh Uninstall
-```
-
-**What Gets Removed**:
-- Current and stale DDM OS Reminder LaunchDaemons unloaded and deleted
-- PID-validated active DDM OS Reminder runtime and owned dialog processes stopped
-- Client-side script removed
-- Empty management directories removed
-- Preferences remain (manual removal if needed)
-
-**Manual Cleanup** (if script unavailable):
-```bash
-# Unload LaunchDaemon
-sudo launchctl bootout system /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
-
-# Remove files
-sudo rm /Library/LaunchDaemons/org.churchofjesuschrist.dor.plist
-sudo rm /Library/Management/org.churchofjesuschrist/dor.zsh
-sudo rm /Library/Management/org.churchofjesuschrist/dor-starter.zsh
-sudo rm /Library/Management/org.churchofjesuschrist/dor-state.plist
-sudo rm /Library/Management/org.churchofjesuschrist/dor.pid
-sudo rm -rf /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
-
-# Remove logs (optional)
-sudo rm /var/log/org.churchofjesuschrist.log
-```
-
----
+Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets, and leaves preference removal under administrator control.
 
 ## Deployment Checklist
 
-### Pre-Deployment
-- [ ] MDM solution confirmed and accessible
-- [ ] Apple DDM configured with enforcement deadline
-- [ ] DDM OS Reminder files downloaded/cloned
-- [ ] Text editor available for customization
+### Before assembly
 
-### Customization
-- [ ] RDNN updated in both scripts
-- [ ] Support team information customized
-- [ ] Organization branding configured (icons, logos)
-- [ ] Timing thresholds reviewed and adjusted
-- [ ] Message content reviewed and customized
-- [ ] Baseline reminder slots and heartbeat confirmed
+- [ ] Non-production outdated Mac is in scope for a pending DDM-enforced update.
+- [ ] Source demo and required localization/branding previews pass.
+- [ ] Organization RDNN and support details are approved.
 
-### Assembly
-- [ ] `assemble.zsh` executed successfully
-- [ ] Three artifacts generated in Artifacts/ directory
-- [ ] Syntax check passed
-- [ ] Artifacts reviewed for correctness
+### Before client deployment
 
-### Testing
-- [ ] Script uploaded to MDM (test)
-- [ ] Configuration Profile uploaded to MDM (test)
-- [ ] Policy created and scoped to test device
-- [ ] Script executed on test Mac
-- [ ] LaunchDaemon verified loaded
-- [ ] Script file verified in place
-- [ ] Managed preferences verified
-- [ ] Dialog manually triggered and reviewed
-- [ ] Branding, messaging, buttons validated
-- [ ] User interaction tested (both buttons)
-- [ ] Logs reviewed for errors
+- [ ] Generated script, `.plist`, and `.mobileconfig` share the intended RDNN and lane.
+- [ ] Exactly one preference artifact is selected.
+- [ ] Preference domain is exactly `<rdnn>.dorm`.
+- [ ] Preferences will deploy before the assembled script executes.
 
-### Production Deployment
-- [ ] Script uploaded to MDM (production)
-- [ ] Configuration Profile uploaded to MDM (production)
-- [ ] Policy created for production scope
-- [ ] Phased rollout planned (pilot → production)
-- [ ] Communication sent to IT staff
-- [ ] Communication sent to end users (optional)
+### Before production rollout
 
-### Monitoring
-- [ ] Client logs monitored
-- [ ] Extension Attributes configured (if applicable)
-- [ ] Support tickets reviewed for feedback
-- [ ] Adjustment thresholds documented
-
-### Ongoing Maintenance
-- [ ] GitHub repository watched for updates
-- [ ] Quarterly review scheduled
-- [ ] Update procedure documented
-- [ ] Backup of customizations maintained
-
----
-
-## Deployment Timeline Estimate
-
-| Phase | Time Required | Notes |
-|-------|---------------|-------|
-| Prerequisites | 30 minutes | Assuming DDM already configured |
-| Customization | 1-2 hours | First time; faster with template |
-| Assembly | 5 minutes | Automated process |
-| Test Deployment | 1-2 hours | Includes troubleshooting |
-| Production Deployment | 30 minutes | If testing successful |
-| Initial Monitoring | 1 week | Watch for issues |
-| **Total Initial Setup** | **4-6 hours** | Spread over 1-2 weeks |
-
-**Subsequent Updates**: 30-60 minutes (customization + assembly + testing)
+- [ ] LaunchDaemon label loads and verifies.
+- [ ] Starter, main script, state plist, preferences, and log exist at expected paths.
+- [ ] Future or disabled heartbeat no-op behavior is understood and observed.
+- [ ] Manual runtime and scheduled runtime tests pass.
+- [ ] Dialog actions, quiet period, thresholds, and optional post-deadline behavior pass.
+- [ ] Pilot rollout and rollback ownership are documented.

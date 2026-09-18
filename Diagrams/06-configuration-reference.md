@@ -46,6 +46,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | minutesBeforeDeadlineReminderSchedule | MinutesBeforeDeadlineReminderSchedule | String (minute CSV) | `45,30,15,10,5` | Timing |
 | aggressiveModePastDeadlineHours | AggressiveModePastDeadlineHours | Integer | 2 | Timing |
 | aggressiveModeFrequencyMinutes | AggressiveModeFrequencyMinutes | Integer | 20 | Timing |
+| aggressiveModeTitle | AggressiveModeTitle | String | `macOS {titleMessageUpdateOrUpgrade} Required Now` | Localization |
+| aggressiveModeMessage | AggressiveModeMessage | String | [Full aggressive update-focused body] | Localization |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | disableButton2InsteadOfHide | DisableButton2InsteadOfHide | Boolean | YES | Timing |
@@ -2558,7 +2560,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 4.0.0 | 08-Jul-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
 | 4.0.0 | 08-Jul-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
 | 4.0.0 | 08-Jul-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
- 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
+| 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
@@ -2571,5 +2573,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 10-Sep-2026
+**Last Updated**: 18-Sep-2026
 **DDM OS Reminder Version**: 4.2.0b4

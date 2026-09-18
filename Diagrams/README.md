@@ -1,4 +1,4 @@
-# DDM OS Reminder (4.2.0b4) - Documentation Diagrams
+# DDM OS Reminder (4.2.0) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -8,9 +8,9 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 **Purpose**: High-level lifecycle view for Mac Admins who need the big picture first
 
 **Shows**:
-- Build → Assemble → Deploy → Configure → Run → Enforce
-- Core puzzle pieces in each phase (scripts, artifacts, MDM, client, Apple systems)
-- End-to-end ownership flow without deep runtime branching
+- Assemble → MDM → client scheduler → reminder → Software Update → compliance
+- Quiet compliance exits and the next-declaration cycle
+- Administrator, reminder-runtime, and Apple update ownership boundaries
 
 **Best For**: Rapid orientation and stakeholder-friendly explanations
 
@@ -21,11 +21,10 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 
 **Shows**:
 - Development environment components
-- Assembly process workflow
-- Deployment via MDM
-- Client-side installation structure
-- Runtime execution flow
-- Apple DDM integration
+- Three assembly inputs and three deployable outputs
+- Either-or `.plist` / `.mobileconfig` preference deployment
+- Client heartbeat, starter, state, PID guard, fallback, and support suppression assets
+- Apple-owned update and enforcement path
 
 **Best For**: Understanding how all components fit together
 
@@ -35,26 +34,28 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 **Purpose**: Complete decision logic executed each time the heartbeat daemon and `dor-starter.zsh` decide a run is due
 
 **Shows**:
+- Starter PID and due-time checks
 - User validation checks
-- Trusted DDM resolver and effective deadline evaluation
+- Trusted DDM resolver, emergency fallback, and effective deadline evaluation
 - Version comparison logic
-- Context detection (Focus mode, meetings)
-- Deadline-based behavior branching
-- User interaction outcomes
+- Baseline, threshold, quiet-period, and aggressive scheduling
+- Dialog modes and user interaction outcomes
 
 **Best For**: Understanding script behavior and troubleshooting
 
 ---
 
 ### 4. [Deadline Timeline](03-deadline-timeline.md)
-**Purpose**: Visual representation of how user experience changes as deadline approaches
+**Purpose**: Visual representation of how user experience and scheduler behavior change as deadline approaches
 
 **Shows**:
-- Phase 1: Quiet period (no reminders)
+- Client-side coordination through `dor-state.plist`
+- Phase 1: Outside display window
 - Phase 2: Standard reminders (early warning)
 - Phase 3: Blurscreen warnings (escalating urgency)
-- Phase 4: Urgent/critical (deadline imminent)
-- Phase 5: Apple DDM enforcement
+- Phase 4: Urgent and final-minute reminders
+- Phase 5: Post-deadline aggressive/restart workflow
+- Phase 6: Apple DDM enforcement
 
 **Best For**: Understanding deadline-driven behavior changes
 
@@ -64,12 +65,12 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 **Purpose**: Step-by-step guide for administrators deploying DDM OS Reminder
 
 **Shows**:
-- Prerequisites verification
-- Customization process
-- Assembly execution
-- Test deployment
-- Production rollout
-- Monitoring and maintenance
+- DDM and non-production test prerequisites
+- Source demo and preference preview
+- Interactive or prior-plist assembly
+- Either-or preference artifact deployment followed by one-time script execution
+- Heartbeat verification and expected no-op behavior
+- Pilot, production, monitoring, and upgrade paths
 
 **Best For**: Implementation and deployment planning
 
@@ -79,17 +80,17 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 **Purpose**: 3-tier preference system showing precedence rules
 
 **Shows**:
-- Tier 1: Managed Preferences (MDM-deployed)
-- Tier 2: Local Preferences (manual configuration)
-- Tier 3: Script Defaults (built-in baseline)
-- Precedence rules and examples
+- Per-key `Managed → Local → Default` resolution
+- Localization fallback after preference loading
+- Separation of administrator preferences from scheduler state
+- Emergency fallback and aggressive kill-switch boundaries
 
 **Best For**: Understanding configuration management and customization
 
 ---
 
 ### 7. [Configuration Reference](06-configuration-reference.md)
-**Purpose**: Complete reference for all 73 configurable preferences
+**Purpose**: Complete reference for all 75 base configurable preferences and their localized families
 
 **Shows**:
 - Quick reference table (all variables at a glance)
@@ -491,6 +492,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.14 | 18-Sep-2026 | Refreshed lifecycle, assembly, heartbeat, scheduler, MDM-agnostic deployment, configuration-boundary, and upgrade diagrams from the JNUC 2026 workflow; reconciled all content with `4.2.0b4` runtime truth |
 | 1.0.13 | 30-Jul-2026 | Added macOS 27 LaunchDaemon quarantine audit, targeted remediation, and label-specific verification guidance |
 | 1.0.12 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` structure, `(null)` build semantics, effective-enforcement epoch, threshold delivery/skipped ledger resets, and runtime-only troubleshooting guidance |
 | 1.0.11 | 10-Jul-2026 | Clarified quiet-period scheduling when baseline daemon runs occur before `QuietPeriodMinutes` expires, including exact `NextScheduledReminder` behavior after prior Button 1 interaction |
@@ -515,5 +517,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 10-Sep-2026
+**Last Updated**: 18-Sep-2026
 **DDM OS Reminder Version**: 4.2.0b4

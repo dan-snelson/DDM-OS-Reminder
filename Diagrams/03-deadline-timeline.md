@@ -30,9 +30,50 @@ gantt
 
 **Note**: Dates above are illustrative only. Post-deadline behavior depends on `AggressiveModePastDeadlineHours`, `AggressiveModeFrequencyMinutes`, `PastDeadlineRestartBehavior`, `DaysPastDeadlineRestartWorkflow`, and uptime eligibility.
 
+## Scheduler Coordination
+
+The heartbeat cadence is constant, but reminder timing is client-side and exact. Four timing sources feed `dor-state.plist`; `dor-starter.zsh` launches the full runtime only when `NextScheduledReminder` is due.
+
+```mermaid
+flowchart LR
+    Baseline["Baseline reminders<br/><code>DailyReminderTimes</code><br/>08:00, 12:00, 16:00 local"]
+    Threshold["Deadline thresholds<br/><code>MinutesBeforeDeadlineReminderSchedule</code><br/>45, 30, 15, 10, 5 minutes"]
+    Quiet["Interaction quiet period<br/>last interaction +<br/><code>QuietPeriodMinutes</code>"]
+    Aggressive["Past-deadline cadence<br/>start after configured hours<br/>repeat every configured minutes"]
+    State["dor-state.plist<br/><code>NextScheduledReminder</code><br/><code>DaemonLastTriggered</code><br/>threshold delivery ledgers"]
+    Starter["dor-starter.zsh<br/>60-second due check"]
+    Runtime["dor.zsh<br/>evaluate and display"]
+
+    Baseline --> State
+    Threshold --> State
+    Quiet --> State
+    Aggressive --> State
+    State --> Starter
+    Starter -->|Future or FALSE| Noop["Expected quiet exit"]
+    Starter -->|Due| Runtime
+    Runtime -->|Starter-launched runs only| State
+
+    style Baseline fill:#c8e6c9
+    style Threshold fill:#c8e6c9
+    style Quiet fill:#c8e6c9
+    style Aggressive fill:#c8e6c9
+    style State fill:#ffccbc
+    style Starter fill:#e1f5ff
+    style Noop fill:#cfd8dc
+    style Runtime fill:#81c784
+```
+
+Scheduler rules:
+
+- Baseline slots remain administrator-controlled preferences.
+- Thresholds can preempt a later baseline or quiet-period time and are delivered once per declaration signature.
+- Quiet time begins after recorded user interaction, not when the dialog first appears.
+- Aggressive mode starts only after the effective deadline plus `AggressiveModePastDeadlineHours`, unless the support kill switch exists.
+- Mutable schedule values stay in `dor-state.plist`; they are never written into managed or local preferences.
+
 ## Timeline Phases
 
-### Phase 1: Quiet Period (Outside Reminder Window)
+### Phase 1: Outside Display Window
 **Timeline**: More than 60 days before deadline (configurable)
 
 **Behavior**:
@@ -41,7 +82,7 @@ gantt
 - DDM enforcement date exists but deadline is far away
 - ℹ️ A periodic reminder can still appear every 28 days if no recent interaction is found
 
-**Rationale**: Don't annoy users when deadline is distant
+**Rationale**: Avoid regular reminders when the deadline is distant while retaining the configured long-range periodic check.
 
 **Configuration**: `daysBeforeDeadlineDisplayReminder = 60`
 

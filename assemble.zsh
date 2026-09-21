@@ -42,7 +42,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.1.0"
+scriptVersion="4.2.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1077,7 +1077,7 @@ if [[ "${interactiveMode}" == true ]]; then
     defaultInfoButtonAction="${defaultSupportTeamWebsite}"
     defaultInfoButtonText="${defaultSupportKB}"
     defaultSupportKBURL="[Update macOS on Mac](${defaultInfoButtonAction})"
-    defaultOrganizationOverlayIconURL="https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    defaultOrganizationOverlayIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     defaultOrganizationOverlayIconURLdark="https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     defaultSwapOverlayAndLogo="NO"
     defaultPastDeadlineRestartBehavior="Off"

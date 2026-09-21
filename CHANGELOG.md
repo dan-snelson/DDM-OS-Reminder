@@ -2,6 +2,17 @@
 
 ## Changelog
 
+### Version 4.2.0 (21-Sep-2026)
+- Updated URL for `organizationOverlayiconURL`
+- Bounded padded enforcement-date resolution by wall-clock time so endpoint sleep or process suspension cannot extend the configured five-minute wait.
+- Updated padded enforcement-date timeout logging to report actual wall-clock elapsed time and the configured maximum.
+- Clarified active DDM Emergency Fallback display logging so `[NOTICE]` records fallback selection and `[WARNING]` records fallback activation only when the selected fallback reaches reminder display.
+- Broadened DDM Emergency Fallback eligibility so a validated administrator requirement can cover normal resolver states `missing`, `conflict`, `noMatch`, and `invalidVersion`, while confirmed DDM still wins and unknown states fail closed. ([Issue #129](https://github.com/dan-snelson/DDM-OS-Reminder/issues/129))
+- Preserved original resolver status, source, and reason through fallback evaluation; removed premature resolver-level quit logging and added explicit fallback-decision records.
+- Renamed active operator guidance from “Missing-DDM Emergency Fallback” to “DDM Emergency Fallback” and documented that pending-update Extension Attributes continue reporting native DDM resolver health.
+- Added an explicit macOS 27 icon ([Issue #127](https://github.com/dan-snelson/DDM-OS-Reminder/issues/127))
+- Updated the preference-test preview helper to use the same macOS 27 icon mapping as runtime dialog rendering.
+
 ### Version 4.1.0 (14-Aug-2026)
 - Fixed controlled `All`, `Script`, and `Uninstall` reset flows so a PID-validated active DDM OS Reminder runtime and its owned descendants receive a termination request before runtime assets are removed, preventing older reminder dialogs from surviving redeployment alongside the replacement version.
 - Added runtime termination traps and owned swiftDialog/threshold-monitor cleanup so current deployments exit cleanly when controlled redeployment stops an active run, without broadly terminating unrelated swiftDialog processes.

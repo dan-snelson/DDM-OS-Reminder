@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0"
+scriptVersion="4.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -610,7 +610,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.1.0"
+scriptVersion="4.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -828,7 +828,7 @@ declare -A preferenceConfiguration=(
     ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
-    ["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+    ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
     ["swapOverlayAndLogo"]="boolean|NO"
     ["dateFormatDeadlineHumanReadable"]="string|+%a, %d-%b-%Y, %-l:%M %p"
@@ -1053,16 +1053,22 @@ function isValidFallbackEnforcementDate() {
 }
 
 function selectMDMFallbackRequirement() {
+    local normalResolverStatus="${1:-${normalDDMResolverStatus:-unknown}}"
     local schemaVersion=""
     local fallbackVersion=""
     local fallbackBuild=""
     local fallbackDeadline=""
     local fallbackSource=""
 
-    [[ -f "${dorFallbackDeclarationPlistPath}" ]] || return 1
+    notice "Evaluating MDM fallback requirement because normal DDM declaration status is '${normalResolverStatus}'."
+
+    if [[ ! -f "${dorFallbackDeclarationPlistPath}" ]]; then
+        notice "MDM fallback requirement is not configured; preserving normal DDM resolver status '${normalResolverStatus}'."
+        return 1
+    fi
 
     if ! /usr/bin/plutil -lint "${dorFallbackDeclarationPlistPath}" >/dev/null 2>&1; then
-        warning "MDM fallback requirement plist is unreadable or corrupt; leaving resolver status missing."
+        warning "MDM fallback requirement plist is unreadable or corrupt; preserving normal DDM resolver status '${normalResolverStatus}'."
         return 1
     fi
 
@@ -1073,7 +1079,7 @@ function selectMDMFallbackRequirement() {
     fallbackSource="$(/usr/bin/plutil -extract Source raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackSource=""
 
     if [[ "${schemaVersion}" != "1" || "${fallbackBuild}" != "(null)" || "${fallbackSource}" != "JamfProScriptParameters" ]]; then
-        warning "MDM fallback requirement plist schema or constants are invalid; leaving resolver status missing."
+        warning "MDM fallback requirement plist schema or constants are invalid; preserving normal DDM resolver status '${normalResolverStatus}'."
         return 1
     fi
 
@@ -1090,14 +1096,14 @@ function selectMDMFallbackRequirement() {
     ddmResolverStatus="fallback"
     ddmResolverSource="mdmFallback"
     ddmResolverSuppressionType=""
-    ddmResolverReason="Normal DDM declaration resolution returned missing; MDM fallback requirement selected"
+    ddmResolverReason="Normal DDM declaration resolution returned ${normalResolverStatus}; MDM fallback requirement selected"
     ddmVersionString="${fallbackVersion}"
     ddmBuildVersionString="${fallbackBuild}"
     ddmEnforcedInstallDate="${fallbackDeadline}"
     ddmDeclarationLogTimestamp=""
     ddmDeclarationRawLine=""
 
-    notice "Evaluated MDM fallback requirement because normal DDM declaration status is exactly missing."
+    notice "Selected MDM fallback requirement after normal DDM declaration status '${normalResolverStatus}'."
     info "MDM fallback requirement version: ${ddmVersionString}"
     info "MDM fallback requirement enforcement date: ${ddmEnforcedInstallDate}"
     return 0
@@ -4104,7 +4110,6 @@ function resolveDDMEnforcementFromInstallLog() {
         ddmResolverSuppressionType="invalidVersion"
         ddmResolverReason="Invalid DDM version string detected in resolved declaration"
         warning "${ddmResolverReason}: ${ddmVersionString}"
-        quitOut "${ddmResolverReason}; exiting quietly."
         return 1
     fi
 
@@ -4154,6 +4159,9 @@ function resolvePaddedEnforcementDateForCandidate() {
     local maxWaitSeconds=300
     local checkIntervalSeconds=10
     local elapsedSeconds=0
+    local waitStartEpoch=""
+    local waitDeadlineEpoch=""
+    local sleepSeconds=""
     local line=""
     local lineTimestamp=""
     local latestPaddedLine=""
@@ -4174,8 +4182,15 @@ function resolvePaddedEnforcementDateForCandidate() {
         return 1
     fi
     declarationEpoch="${parsedDDMLogTimestampEpoch}"
+    waitStartEpoch=$(date +%s)
+    waitDeadlineEpoch=$(( waitStartEpoch + maxWaitSeconds ))
 
-    while (( elapsedSeconds < maxWaitSeconds )); do
+    while true; do
+        nowEpoch=$(date +%s)
+        if (( nowEpoch >= waitDeadlineEpoch )); then
+            break
+        fi
+
         tailRecentInstallLogWindow
         latestPaddedLine=""
         latestPaddedDateRaw=""
@@ -4249,15 +4264,24 @@ function resolvePaddedEnforcementDateForCandidate() {
             fi
         fi
 
-        sleep "${checkIntervalSeconds}"
-        elapsedSeconds=$(( elapsedSeconds + checkIntervalSeconds ))
+        nowEpoch=$(date +%s)
+        sleepSeconds=$(( waitDeadlineEpoch - nowEpoch ))
+        if (( sleepSeconds <= 0 )); then
+            break
+        elif (( sleepSeconds > checkIntervalSeconds )); then
+            sleepSeconds="${checkIntervalSeconds}"
+        fi
+
+        sleep "${sleepSeconds}"
+        elapsedSeconds=$(( $(date +%s) - waitStartEpoch ))
 
         if (( elapsedSeconds < maxWaitSeconds )); then
             info "Retrying padded-date resolution (elapsed: ${elapsedSeconds}s / ${maxWaitSeconds}s) …"
         fi
     done
 
-    warning "Timed out waiting for a safe setPastDuePaddedEnforcementDate after ${maxWaitSeconds} seconds"
+    elapsedSeconds=$(( $(date +%s) - waitStartEpoch ))
+    warning "Timed out waiting for a safe setPastDuePaddedEnforcementDate after ${elapsedSeconds} wall-clock seconds (configured maximum: ${maxWaitSeconds}s)"
     return 1
 }
 
@@ -4291,25 +4315,30 @@ installedOSvsDDMenforcedOS() {
     normalDDMResolverSource="${ddmResolverSource:-none}"
     normalDDMResolverReason="${ddmResolverReason:-none}"
     notice "Normal DDM resolver result: status=${normalDDMResolverStatus}; source=${normalDDMResolverSource}; reason=${normalDDMResolverReason}"
-    case "${ddmResolverStatus}" in
+    case "${normalDDMResolverStatus}" in
         resolved)
             if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
                 notice "Confirmed DDM declaration takes precedence over persisted MDM fallback requirement."
             fi
             ;;
-        missing)
-            if ! selectMDMFallbackRequirement; then
-                versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
+        missing|conflict|noMatch|invalidVersion)
+            if ! selectMDMFallbackRequirement "${normalDDMResolverStatus}"; then
+                if [[ "${normalDDMResolverStatus}" == "missing" ]]; then
+                    versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
+                    notice "Resolver suppression summary: ${normalDDMResolverStatus} | ${normalDDMResolverReason}"
+                else
+                    versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
+                    warning "Resolver suppression summary: ${normalDDMResolverStatus} | ${normalDDMResolverReason}"
+                    quitOut "${normalDDMResolverReason}; exiting quietly."
+                fi
                 return
             fi
             ;;
-        conflict|noMatch|invalidVersion)
-            if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
-                warning "MDM fallback requirement is ineligible while resolver status is '${ddmResolverStatus}'."
-            fi
-            versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
-            warning "Resolver suppression summary: ${ddmResolverSuppressionType:-${ddmResolverStatus:-unknown}} | ${ddmResolverReason}"
-            quitOut "${ddmResolverReason}; exiting quietly."
+        *)
+            versionComparisonResult="Unexpected DDM resolver state; suppressing reminder dialog."
+            warning "Unexpected normal DDM resolver status '${normalDDMResolverStatus}'; fallback is ineligible."
+            warning "Resolver suppression summary: ${normalDDMResolverStatus} | ${normalDDMResolverReason}"
+            quitOut "Unexpected DDM resolver state; exiting quietly."
             return
             ;;
     esac
@@ -4615,6 +4644,7 @@ function downloadBrandingAssets() {
         14) macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_eecee9688d1bc0426083d427d80c9ad48fa118b71d8d4962061d4de8d45747e7" ;;
         15) macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_0968afcd54ff99edd98ec6d9a418a5ab0c851576b687756dc3004ec52bac704e" ;;
         26) macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_7320c100c9ca155dc388e143dbc05620907e2d17d6bf74a8fb6d6278ece2c2b4" ;;
+        27) macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_4c0a23608740fba163bb2716f0d0b761f0ba57efd94b2de5e266fe7fca3b2c42" ;;
         *)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
     esac
     
@@ -4910,7 +4940,7 @@ function displayReminderDialog() {
     additionalDialogOptions=("$@")
 
     if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-        warning "Selected MDM fallback requirement because normal DDM declaration status is exactly missing."
+        warning "Activated MDM fallback requirement for reminder display after normal DDM declaration status '${normalDDMResolverStatus}'."
         warning "MDM fallback contribution: updateRequired=YES; reminderDisplayed=YES; target=${ddmVersionString}; deadline=${ddmEnforcedInstallDate}"
     fi
 

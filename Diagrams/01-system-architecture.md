@@ -1,199 +1,132 @@
 # System Architecture Diagram
 
-This diagram shows the complete DDM OS Reminder ecosystem from development through runtime execution.
+This diagram shows how source files become deployable artifacts, how MDM installs them, and how the client-side heartbeat decides when to run the reminder workflow.
 
 ```mermaid
-graph TB
-    subgraph Development["🛠️ Development Environment"]
-        RD["reminderDialog.zsh<br>End-user messaging logic"]
-        LD["launchDaemonManagement.zsh<br>Deployment orchestration"]
-        AS["assemble.zsh<br>Build script"]
-        SP["sample.plist<br>Configuration template"]
+flowchart TB
+    subgraph Source["Source and Assembly"]
+        RD["reminderDialog.zsh<br/>UI and runtime logic"]
+        LD["launchDaemonManagement.zsh<br/>Deployment wrapper"]
+        SP["Resources/sample.plist<br/>Preference template"]
+        AS["assemble.zsh<br/>RDNN, support, branding,<br/>policy, localization, lane"]
 
-        style RD fill:#e1f5ff
-        style LD fill:#e1f5ff
-        style AS fill:#fff4e6
-        style SP fill:#f3e5f5
+        RD --> AS
+        LD --> AS
+        SP --> AS
     end
 
-    subgraph Assembly["⚙️ Assembly Process"]
-        AS -->|1. Reads & harmonizes RDNN| RD
-        AS -->|2. Embeds dialog script| LD
-        AS -->|3. Generates config| SP
-        AS -->|4. Produces artifacts| ART
-
-        ART["Artifacts/<br>- Assembled script<br>- .plist<br>- .mobileconfig"]
-
-        style ART fill:#c8e6c9
+    subgraph Artifacts["Organization-specific Artifacts"]
+        SCRIPT["Assembled .zsh<br/>Deployable script"]
+        PLIST[".plist<br/>Preference payload"]
+        MOBILE[".mobileconfig<br/>Configuration Profile"]
     end
 
-    subgraph Deployment["📦 Deployment via MDM"]
-        MDM["MDM Server<br>Jamf Pro / Intune / etc."]
-        ART -->|Upload| MDM
+    AS --> SCRIPT
+    AS --> PLIST
+    AS --> MOBILE
 
-        MDM -->|Policy: Script| SCRIPT[Assembled Script]
-        MDM -->|Profile: Prefs| PROFILE[Configuration Profile]
-
-        style MDM fill:#ffecb3
-        style SCRIPT fill:#c8e6c9
-        style PROFILE fill:#f3e5f5
+    subgraph Deployment["MDM Deployment"]
+        MDM["MDM Server"]
     end
 
-    subgraph Client["💻 Client Mac"]
-        SCRIPT -->|Executes on client| INST[Installation Process]
-        PROFILE -->|Deploys preferences| MGDPREF
+    SCRIPT -->|Upload script| MDM
+    PLIST -->|Choose one: upload .plist| MDM
+    MOBILE -->|Choose one: install .mobileconfig| MDM
 
-        INST -->|Creates| CLISCRIPT["/Library/Management/<br>(RDNN)/dor.zsh"]
-        INST -->|Creates| STARTER["/Library/Management/<br>(RDNN)/dor-starter.zsh"]
-        INST -->|Creates| CLILD["/Library/LaunchDaemons/<br>(RDNN).dor.plist"]
-        INST -->|Installs if needed| SD["swiftDialog.app"]
-        STATE["/Library/Management/<br>(RDNN)/dor-state.plist"]
-
-        MGDPREF["/Library/Managed<br>Preferences/<br>(RDNN).dorm.plist"]
-        LOCALPREF["/Library/Preferences/<br>(RDNN).dorm.plist<br>(optional local overrides)"]
-
-        style INST fill:#fff4e6
-        style CLISCRIPT fill:#e1f5ff
-        style STARTER fill:#e1f5ff
-        style CLILD fill:#e1f5ff
-        style STATE fill:#e1f5ff
-        style SD fill:#e1f5ff
-        style MGDPREF fill:#f3e5f5
-        style LOCALPREF fill:#f3e5f5
+    subgraph Client["Client Mac"]
+        MANAGED["/Library/Managed Preferences/<br/>&lt;rdnn&gt;.dorm.plist"]
+        MAIN["/Library/Management/&lt;rdnn&gt;/dor.zsh"]
+        STARTER["/Library/Management/&lt;rdnn&gt;/dor-starter.zsh"]
+        STATE["dor-state.plist<br/>NextScheduledReminder<br/>DaemonLastTriggered<br/>threshold ledgers"]
+        PID["dor.pid<br/>active-run guard"]
+        FALLBACK["dor-fallback-declaration.plist<br/>optional deployment-owned<br/>emergency requirement"]
+        KILL["dor-aggressive-kill<br/>runtime support suppression"]
+        DAEMON["/Library/LaunchDaemons/<br/>&lt;rdnn&gt;.dor.plist<br/>RunAtLoad + 60 seconds"]
+        DIALOG["swiftDialog"]
+        LOG["/var/log/&lt;rdnn&gt;.log"]
     end
 
-    subgraph Runtime["▶️ Runtime Execution"]
-        CLILD -->|RunAtLoad + StartInterval 60s| STARTER
-        STATE -->|Read NextScheduledReminder<br/>FALSE / future-dated = exit| STARTER
-        STARTER -->|Launch only when due<br/>or schedule is invalid| CLISCRIPT
-        CLISCRIPT -->|Write NextScheduledReminder<br/>DaemonLastTriggered| STATE
+    MDM -->|Managed preferences| MANAGED
+    MDM -->|Execute once| INSTALL["Deployment installation"]
+    INSTALL --> MAIN
+    INSTALL --> STARTER
+    INSTALL --> DAEMON
+    INSTALL -.->|Optional validated input| FALLBACK
 
-        CLISCRIPT -->|1. Loads preferences| PREFLOAD["Preference Loader<br/>Managed → Local → Defaults"]
-        MGDPREF --> PREFLOAD
-        LOCALPREF --> PREFLOAD
+    DAEMON --> STARTER
+    PID -->|Active run: quiet exit<br/>Stale PID: remove| STARTER
+    STATE -->|FALSE or future: quiet exit<br/>Due or invalid: continue| STARTER
+    STARTER -->|Due: record trigger<br/>and launch| MAIN
 
-        PREFLOAD -->|2. Validates runtime| USER{"Logged-in User?<br/>Wait up to 120s"}
+    MANAGED --> PREFS["Preference Loader<br/>Managed, then Local, then Defaults"]
+    PREFS --> MAIN
+    FALLBACK -.->|Only after recognized<br/>unresolved DDM state| MAIN
+    KILL -.->|Suppress aggressive mode| MAIN
+    MAIN -->|Starter-launched runs only| STATE
+    MAIN -->|Own active run| PID
+    MAIN --> DIALOG
+    MAIN --> LOG
 
-        USER -->|No| EXIT1[FATAL ERROR<br/>No user session]
-        USER -->|Yes| INSTLOG["/var/log/install.log<br/>DDM enforcement data"]
+    subgraph Apple["Apple-owned Update Path"]
+        DDM["Apple DDM Declaration"]
+        INSTALLLOG["/var/log/install.log"]
+        SETTINGS["System Settings<br/>Software Update"]
+        UPDATE["Download, install,<br/>restart, enforce"]
 
-        INSTLOG --> DDMEVAL["DDM Resolver +<br/>Deadline Evaluation<br/>source-priority parsing +<br/>safe padded-date handling"]
-        DDMEVAL --> OSVER["macOS Version<br/>Check"]
-        OSVER -->|Up to Date| EXIT2[Exit Silently]
-        OSVER -->|Update Required| GATES["Reminder Gates<br/>Display window + periodic (28d)<br/>quiet period (76m)"]
-
-        GATES -->|Skip this run| EXIT3[Exit Silently]
-        GATES -->|Proceed| RESTARTCHK{"Post-deadline restart<br/>eligible?"}
-
-        RESTARTCHK -->|No| CONTEXT["Availability Checks<br/>Meeting deferral only when >24h<br/>and not Force mode"]
-        RESTARTCHK -->|Prompt / Force| RSMODE["Restart-only dialog mode<br/>Prompt or Force"]
-
-        CONTEXT -->|Assertions active| DELAY["5-minute checks up to<br/>meetingDelay, then proceed"]
-        CONTEXT -->|Proceed| DIALOG["swiftDialog UI"]
-        DELAY --> DIALOG
-        RSMODE --> DIALOG
-
-        DIALOG -->|"Update-flow Button 1"| SU["System Settings<br/>Software Update"]
-        DIALOG -->|"Restart action or<br/>Force timer expiry"| RESTARTCMD["Restart Command<br/>Issued"]
-        DIALOG -->|"Info button"| INFO["Open InfoButtonAction URL<br/>conditional redisplay near deadline"]
-        DIALOG -->|"Dismiss / DND / postpone"| LOG["Log Entry<br/>& Exit"]
-        INFO --> LOG
-
-        style USER fill:#ffccbc
-        style INSTLOG fill:#b2dfdb
-        style DDMEVAL fill:#b2dfdb
-        style OSVER fill:#b2dfdb
-        style GATES fill:#b2dfdb
-        style RESTARTCHK fill:#ffcc80
-        style CONTEXT fill:#b2dfdb
-        style RSMODE fill:#ffcc80
-        style DIALOG fill:#c8e6c9
-        style EXIT1 fill:#ef5350
-        style EXIT2 fill:#cfd8dc
-        style EXIT3 fill:#cfd8dc
-        style DELAY fill:#fff9c4
-        style SU fill:#c5e1a5
-        style RESTARTCMD fill:#ffcdd2
-        style INFO fill:#90caf9
-        style LOG fill:#cfd8dc
+        DDM --> INSTALLLOG
+        INSTALLLOG --> MAIN
+        DIALOG -->|Open Software Update| SETTINGS
+        SETTINGS --> UPDATE
+        DDM -->|Platform enforcement| UPDATE
     end
 
-    subgraph External["🍎 Apple Systems"]
-        DDM["Declarative Device<br>Management"]
-        DDM -->|Writes enforcement and padded-date entries| INSTLOG
-        DDM -->|Applies enforcement event| RESTART["Apple-managed Restart/Event"]
-
-        SU -->|Downloads & installs| MACOS[macOS Update]
-        RESTARTCMD -->|Restart initiated| MACOS
-        RESTART -->|Forced platform behavior| MACOS
-
-        style DDM fill:#e3f2fd
-        style RESTART fill:#ffcdd2
-        style MACOS fill:#c5e1a5
-    end
-
-    classDef default font-size:11px
+    style AS fill:#fff4e6
+    style SCRIPT fill:#c8e6c9
+    style PLIST fill:#c8e6c9
+    style MOBILE fill:#c8e6c9
+    style MDM fill:#ffecb3
+    style DAEMON fill:#e1f5ff
+    style STARTER fill:#e1f5ff
+    style MAIN fill:#e1f5ff
+    style STATE fill:#ffccbc
+    style PID fill:#ffccbc
+    style FALLBACK fill:#ffe0b2
+    style DIALOG fill:#c8e6c9
+    style UPDATE fill:#c5e1a5
 ```
 
-## Component Descriptions
+## Assembly Contract
 
-### Development Environment
-- **reminderDialog.zsh**: Core logic for end-user messaging, preference management, and dialog display
-- **launchDaemonManagement.zsh**: Handles deployment, LaunchDaemon creation, and swiftDialog installation
-- **assemble.zsh**: Combines the above scripts into a single deployable artifact
-- **sample.plist**: Template configuration file with all customizable preferences
+`assemble.zsh` has three primary inputs:
 
-### Assembly Process
-- Harmonizes Reverse Domain Name Notation (RDNN) across files
-- Embeds reminderDialog.zsh content into launchDaemonManagement.zsh
-- Removes demo mode code
-- Generates three deployment artifacts:
-  - Assembled .zsh script (ready to deploy)
-  - .plist configuration file
-  - .mobileconfig Configuration Profile
+- `reminderDialog.zsh`: end-user interface and reminder runtime
+- `launchDaemonManagement.zsh`: deployment, reset, LaunchDaemon, starter, and runtime asset management
+- `Resources/sample.plist`: canonical preference and localization surface
 
-### Deployment
-- Administrator uploads assembled script to MDM server
-- Script runs via MDM policy (one-time execution)
-- Configuration Profile deployed separately for preference management
-- Both components work together on client
+Assembly harmonizes RDNN values, embeds the reminder runtime in the deployment wrapper, applies interactive or prior-plist choices, validates syntax, and produces:
 
-### Client Installation
-- Script installs to `/Library/Management/{RDNN}/`
-- LaunchDaemon created and loaded at `/Library/LaunchDaemons/`
-- swiftDialog installed if not present (or updated if outdated)
-- Managed Preferences deployed via Configuration Profile
+- one assembled deployment script
+- one organizational `.plist`
+- one unsigned `.mobileconfig`
 
-### Runtime Execution
-1. **LaunchDaemon heartbeat triggers** at load and every 60 seconds; `dor-starter.zsh` launches `dor.zsh` only when `dor-state.plist` says a reminder is due, and exits quietly at boot when `NextScheduledReminder` is still future-dated or `FALSE`
-2. **Preference loading** from 3-tier hierarchy (Managed → Local → Defaults)
-3. **User validation** requires a non-loginwindow session (fatal after 120s without a user)
-4. **Resolver and deadline evaluation** read recent install.log state, fail closed on conflicting/invalid declarations, and use a safe padded date only when it matches the resolved declaration
-5. **Version comparison** determines if update is required, treating a matching `BuildVersionString` as compliant and falling back to product-version comparison when Apple omits a usable build match
-6. **Reminder gating** applies display-window, periodic reminder, and quiet-period logic
-7. **Post-deadline mode evaluation** determines update-flow vs restart-only (Prompt/Force)
-8. **Availability checks** apply meeting-delay only when >24h to deadline and not in Force mode
-9. **Dialog and actions** route to Software Update, restart action, info URL flow, or logged dismissal
+Deploy the script plus either the `.plist` or `.mobileconfig`; do not deploy both preference artifacts.
 
-### Apple Integration
-- **DDM** writes enforcement state into install.log and controls platform-level enforcement behavior
-- **Software Update** handles the actual macOS update process
-- **Apple enforcement event** may follow the original deadline using Apple's padded-date path logic
+## Client Runtime Contract
 
-## Data Flow
+1. The LaunchDaemon invokes `dor-starter.zsh` at load and approximately every 60 seconds.
+2. The starter checks `dor.pid` to prevent overlapping runs.
+3. The starter reads `NextScheduledReminder` from `dor-state.plist`.
+4. `FALSE` or a future timestamp is an expected quiet no-op. A due, missing, or invalid schedule launches `dor.zsh`.
+5. Only starter-launched runtime runs write mutable scheduler state or own `dor.pid`; manual and demo runs do not.
+6. `dor.zsh` resolves DDM state, compliance, timing, interaction, meeting, restart, and aggressive-mode gates before displaying swiftDialog.
 
-```
-Development → Assembly → MDM → Client Installation → Runtime Execution → User Interaction → macOS Update
-     ↑                                                        ↓
-     └────────────── Admin monitors logs & adjusts ─────-─────┘
-```
+## Configuration Boundaries
 
-## Key Benefits of Architecture
+- **Managed and local preferences**: administrator-controlled values with per-key precedence `Managed -> Local -> Defaults`.
+- **`dor-state.plist`**: mutable scheduler state written by the runtime, never by a Configuration Profile.
+- **`dor-fallback-declaration.plist`**: optional deployment-owned emergency metadata, separate from preferences and scheduler state.
+- **`dor-aggressive-kill`**: temporary support suppression for aggressive mode, not a preference.
 
-1. **Single deployment**: One assembled script contains all logic
-2. **Flexible configuration**: Preferences managed separately from code
-3. **Automated scheduling**: Heartbeat LaunchDaemon plus `dor-starter.zsh` honor `DailyReminderTimes` and exact-time runtime state
-4. **User-friendly**: swiftDialog provides polished UI
-5. **DDM-aware**: Reads Apple's enforcement data, no MDM API required
-6. **Context-aware**: Handles meetings, DND return codes, and deadline-proximity exceptions
-7. **Deadline-driven**: Behavior adapts before and after deadline, including optional restart workflow
+## Enforcement Boundary
+
+DDM OS Reminder displays messaging and opens Software Update. Apple DDM and Software Update remain responsible for downloading, installing, restarting, and enforcing macOS updates.

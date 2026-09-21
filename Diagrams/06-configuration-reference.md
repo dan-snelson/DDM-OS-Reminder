@@ -16,7 +16,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
   - [Warning Messages](#8-warning-messages)
   - [Dynamic Localization Primitives](#9-dynamic-localization-primitives)
 - [Placeholder Reference](#placeholder-reference)
-- [Missing-DDM Emergency Fallback](#missing-ddm-emergency-fallback)
+- [DDM Emergency Fallback](#ddm-emergency-fallback)
 - [Common Configuration Scenarios](#common-configuration-scenarios)
 - [Configuration Methods](#configuration-methods)
 - [Troubleshooting](#troubleshooting)
@@ -46,10 +46,12 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | minutesBeforeDeadlineReminderSchedule | MinutesBeforeDeadlineReminderSchedule | String (minute CSV) | `45,30,15,10,5` | Timing |
 | aggressiveModePastDeadlineHours | AggressiveModePastDeadlineHours | Integer | 2 | Timing |
 | aggressiveModeFrequencyMinutes | AggressiveModeFrequencyMinutes | Integer | 20 | Timing |
+| aggressiveModeTitle | AggressiveModeTitle | String | `macOS {titleMessageUpdateOrUpgrade} Required Now` | Localization |
+| aggressiveModeMessage | AggressiveModeMessage | String | [Full aggressive update-focused body] | Localization |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
 | disableButton2InsteadOfHide | DisableButton2InsteadOfHide | Boolean | YES | Timing |
-| organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
+| organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
 | swapOverlayAndLogo | SwapOverlayAndLogo | Boolean | NO | Branding |
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
@@ -228,13 +230,13 @@ The sample profile in `Resources/sample.plist` uses shorter timing values (for e
 Runtime-only scheduler keys such as `NextScheduledReminder` and `DaemonLastTriggered` are intentionally excluded from this table because they live in `/Library/Management/<rdnn>/dor-state.plist`, not in the managed/local preference payload.
 Pre-deadline threshold delivery keys are also runtime-only and must not be deployed through managed/local preferences.
 
-## Missing-DDM Emergency Fallback
+## DDM Emergency Fallback
 
 `/Library/Management/<rdnn>/dor-fallback-declaration.plist` is deployment-owned emergency configuration, not a preference payload and not scheduler state. Jamf Pro Script Parameter 5 supplies `VersionString`; Parameter 6 supplies timezone-bearing `EnforcedInstallDate`.
 
 Required schema: integer `SchemaVersion=1`; string `VersionString`; string `BuildVersionString=(null)`; string `EnforcedInstallDate`; string `Source=JamfProScriptParameters`.
 
-Runtime precedence is confirmed DDM declaration, then fallback only when resolver status is exactly `missing`. Resolver states `conflict`, `noMatch`, and `invalidVersion` remain ineligible and suppress reminders. Do not add these keys to managed/local preferences, `Resources/sample.plist`, or `dor-state.plist`.
+Runtime precedence is confirmed DDM declaration, then validated fallback when resolver status is `missing`, `conflict`, `noMatch`, or `invalidVersion`. Missing or invalid fallback preserves the original suppression state, and unknown resolver states fail closed. Pending-update Extension Attributes continue reporting native DDM resolver health rather than the effective fallback requirement. Do not add these keys to managed/local preferences, `Resources/sample.plist`, or `dor-state.plist`.
 
 Fallback uses the existing threshold signature `<version>|(null)|<effective-deadline-epoch>`, so changing its version or deadline resets threshold delivery state through existing scheduler behavior. Past fallback deadlines bypass Apple padded-date lookup and use the supplied timestamp directly.
 
@@ -906,7 +908,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### organizationOverlayiconURL
 **Plist Key**: `OrganizationOverlayIconURL`
 **Type**: String
-**Default**: `https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d`
+**Default**: `https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d`
 
 **Description**: URL to organization's icon/logo displayed in the dialog. Accepts HTTP/HTTPS URLs or local file paths.
 
@@ -923,7 +925,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Script Default**:
 ```bash
-["organizationOverlayiconURL"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
+["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
 ```
 
 **Configuration Profile**:
@@ -2029,7 +2031,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.1.0 |
+| `{scriptVersion}` | System | Script version | 4.2.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2544,6 +2546,9 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.2.0 | 21-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
+| 4.2.0b3 | 10-Sep-2026 | Broadened DDM Emergency Fallback eligibility across recognized unresolved resolver states; no preference keys or preference precedence rules changed |
+| 4.2.0b1 | 04-Sep-2026 | Documented built-in macOS 27 icon mapping; no preference keys or precedence rules changed |
 | 4.1.0b3 | 30-Jul-2026 | Documented Missing-DDM Emergency Fallback schema, exact-`missing` precedence, lifecycle boundaries, and threshold signature behavior |
 | 4.1.0b3 | 30-Jul-2026 | Updated current-version metadata for LaunchDaemon quarantine hardening; no preference keys or precedence rules changed |
 | 4.1.0 | 03-Aug-2026 | Documented active-runtime teardown during controlled redeployment, fallback decision/activation audit logging, and rotated `install.log` collection guidance; no preference keys or precedence rules changed |
@@ -2555,7 +2560,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 4.0.0 | 08-Jul-2026 | Updated `MinutesBeforeDeadlineReminderSchedule` source fallback, sample/profile default, and documentation to `45,30,15,10,5` |
 | 4.0.0 | 08-Jul-2026 | Added `MinutesBeforeDeadlineReminderSchedule`, pre-deadline threshold copy keys, `{minutesBeforeDeadline}`, and threshold runtime-state references |
 | 4.0.0 | 08-Jul-2026 | Added `DailyReminderTimes` reference coverage and clarified that runtime scheduler state (`NextScheduledReminder`, `DaemonLastTriggered`) lives in `/Library/Management/<rdnn>/dor-state.plist`, outside managed/local preference payloads |
- 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
+| 3.0.0 | 29-Mar-2026 | Clarified documentation alignment with the hardened DDM resolver, fail-closed EA behavior, and current beta-series runtime behavior |
 | 2.3.0 | 19-Jan-2026 | Initial configuration reference documentation |
 | 2.5.0 | 14-Feb-2026 | Updated staged-update criteria documentation to reflect proposed metadata validation and pending-download normalization behavior |
 | 2.6.0 | 01-Mar-2026 | Added `pastDeadlineRestartBehavior` and `daysPastDeadlineRestartWorkflow` documentation; clarified KB hide behavior and documented the 75-minute minimum uptime eligibility for restart workflow |
@@ -2568,5 +2573,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 03-Aug-2026
-**DDM OS Reminder Version**: 4.1.0
+**Last Updated**: 21-Sep-2026
+**DDM OS Reminder Version**: 4.2.0

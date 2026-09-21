@@ -47,7 +47,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Bounded Apple-state wait**: Padded enforcement-date resolution now measures its five-minute limit with wall-clock time, preventing sleep or process suspension from silently extending the wait.
 - **Accurate timeout diagnostics**: Timeout records now include actual wall-clock elapsed time and the configured maximum.
 - **Clearer fallback activation logging**: Runtime now distinguishes `[NOTICE]` fallback selection from `[WARNING]` fallback activation when a selected fallback actually reaches reminder display.
-- **Broader DDM Emergency Fallback eligibility**: A validated fallback can now cover `missing`, `conflict`, `noMatch`, or `invalidVersion` normal-resolver states while confirmed DDM remains authoritative and unknown states fail closed.
+- **Broader DDM Emergency Fallback eligibility**: A validated fallback can now cover `missing`, `conflict`, `noMatch`, or `invalidVersion` normal-resolver states while confirmed DDM remains authoritative and unknown states fail-closed.
 - **Built-in macOS 27 icon mapping**: Runtime and preference-test previews now map DDM target versions beginning with `27.` to macOS 27 update icon (instead of falling back to the generic macOS icon).
 
 ---

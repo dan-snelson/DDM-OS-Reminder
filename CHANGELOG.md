@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 4.2.0b5 (18-Sep-2026)
+### Version 4.2.0 (21-Sep-2026)
 - Updated URL for `organizationOverlayiconURL`
 - Bounded padded enforcement-date resolution by wall-clock time so endpoint sleep or process suspension cannot extend the configured five-minute wait.
 - Updated padded enforcement-date timeout logging to report actual wall-clock elapsed time and the configured maximum.

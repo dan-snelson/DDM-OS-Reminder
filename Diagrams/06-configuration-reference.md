@@ -2031,7 +2031,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.2.0b5 |
+| `{scriptVersion}` | System | Script version | 4.2.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,7 +2546,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 4.2.0b5 | 18-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
+| 4.2.0 | 21-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
 | 4.2.0b3 | 10-Sep-2026 | Broadened DDM Emergency Fallback eligibility across recognized unresolved resolver states; no preference keys or preference precedence rules changed |
 | 4.2.0b1 | 04-Sep-2026 | Documented built-in macOS 27 icon mapping; no preference keys or precedence rules changed |
 | 4.1.0b3 | 30-Jul-2026 | Documented Missing-DDM Emergency Fallback schema, exact-`missing` precedence, lifecycle boundaries, and threshold signature behavior |
@@ -2573,5 +2573,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 18-Sep-2026
-**DDM OS Reminder Version**: 4.2.0b5
+**Last Updated**: 21-Sep-2026
+**DDM OS Reminder Version**: 4.2.0

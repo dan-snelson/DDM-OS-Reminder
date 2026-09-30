@@ -2031,7 +2031,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.2.1 |
+| `{scriptVersion}` | System | Script version | 4.2.2 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,6 +2546,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.2.2 | 30-Sep-2026 | Resolver no longer holds `conflict` when a transient `No updates found for DDM to enforce` marker is followed by `Found product with requested PMV (<version>)` or a date-matched `Armed DDM activity scheduler ... YES` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134)); no preference keys or precedence rules changed |
 | 4.2.1 | 30-Sep-2026 | `HideSupportAssistanceMessage` is now the sole control for `{supportAssistanceMessage}`; `InfoButtonText=hide` no longer suppresses it ([Issue #132](https://github.com/dan-snelson/DDM-OS-Reminder/issues/132)); no preference keys or precedence rules changed |
 | 4.2.0 | 21-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
 | 4.2.0b3 | 10-Sep-2026 | Broadened DDM Emergency Fallback eligibility across recognized unresolved resolver states; no preference keys or preference precedence rules changed |
@@ -2575,4 +2576,4 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 ---
 
 **Last Updated**: 30-Sep-2026
-**DDM OS Reminder Version**: 4.2.1
+**DDM OS Reminder Version**: 4.2.2

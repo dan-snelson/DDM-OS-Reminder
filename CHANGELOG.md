@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 4.2.2 (30-Sep-2026)
+- Fixed the DDM resolver holding `conflict` after a transient `No updates found for DDM to enforce` marker, even when `softwareupdated` later recovered the same declaration; the marker is now superseded by a later `Found product with requested PMV (<candidate version>)` line or an `Armed DDM activity scheduler for <date>: YES` line whose date matches the candidate `EnforcedInstallDate` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134))
+    - Previously, suppression persisted until the marker aged out of the 4000-line `install.log` lookback window, so results depended on log volume.
+    - A marker with no later recovery, a relapse marker after recovery, an `Armed ... YES` line for a different deadline, or a PMV match for a different version still fails closed with `conflict`.
+- Added `[NOTICE]` logging when a `No updates found for DDM to enforce` marker is superseded, and `conflict` suppression caused by the marker now logs the marker line as `Resolver context:` instead of an unrelated `Removed 0 invalid declarations` line.
+- Aligned `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` with the updated resolver so inventory stops reporting `conflict` for recovered declarations.
+
 ### Version 4.2.1 (30-Sep-2026)
 - Fixed `InfoButtonText=hide` also suppressing `{supportAssistanceMessage}` when `HideSupportAssistanceMessage` was `false`; `HideSupportAssistanceMessage` is now the sole control for the `(?)` button guidance in both runtime and preference-test preview paths ([Issue #132](https://github.com/dan-snelson/DDM-OS-Reminder/issues/132); thanks for the heads-up, @shiftybird!)
     - **Upgrade note:** Deployments that relied on `InfoButtonText=hide` to hide the support assistance text should set `HideSupportAssistanceMessage=true`.

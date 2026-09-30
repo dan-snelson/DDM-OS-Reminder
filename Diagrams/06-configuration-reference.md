@@ -1292,7 +1292,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Special Value**: None for hide behavior
 
-**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button.
+**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button. `InfoButtonText=hide` does not affect `{supportAssistanceMessage}`; use `HideSupportAssistanceMessage` for that text.
 
 ---
 
@@ -1368,7 +1368,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: Boolean
 **Default**: `NO`
 
-**Description**: When `YES`, suppresses `{supportAssistanceMessage}` in the main dialog body while leaving `HelpMessage` and the info button unchanged.
+**Description**: When `YES`, suppresses `{supportAssistanceMessage}` in the main dialog body while leaving `HelpMessage` and the info button unchanged. This is the sole control for `{supportAssistanceMessage}`; `InfoButtonText=hide` does not suppress it (4.2.1+).
 
 **Configuration Profile**:
 ```xml
@@ -2031,7 +2031,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.2.0 |
+| `{scriptVersion}` | System | Script version | 4.2.1 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,6 +2546,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 4.2.1 | 30-Sep-2026 | `HideSupportAssistanceMessage` is now the sole control for `{supportAssistanceMessage}`; `InfoButtonText=hide` no longer suppresses it ([Issue #132](https://github.com/dan-snelson/DDM-OS-Reminder/issues/132)); no preference keys or precedence rules changed |
 | 4.2.0 | 21-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
 | 4.2.0b3 | 10-Sep-2026 | Broadened DDM Emergency Fallback eligibility across recognized unresolved resolver states; no preference keys or preference precedence rules changed |
 | 4.2.0b1 | 04-Sep-2026 | Documented built-in macOS 27 icon mapping; no preference keys or precedence rules changed |
@@ -2573,5 +2574,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 21-Sep-2026
-**DDM OS Reminder Version**: 4.2.0
+**Last Updated**: 30-Sep-2026
+**DDM OS Reminder Version**: 4.2.1

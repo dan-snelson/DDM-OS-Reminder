@@ -131,7 +131,7 @@ Deployment Artifacts:
 ===============================================================
 ```
 
-If you enter `NO` for `Knowledge Base ('YES' to specify; 'NO' to hide)`, `assemble.zsh` skips KB prompts and writes plist values to hide KB surfaces (`InfoButtonText=hide`, `HelpImage=hide`, and `HelpMessage` without the KB row).
+If you enter `NO` for `Info Button ('YES' to specify; 'NO' to hide)`, `assemble.zsh` skips info-button and KB prompts and writes plist values to hide those surfaces (`InfoButtonText=hide`, `HelpImage=hide`, and `HideSupportKB=true`). The `(?)` help message button remains, and the following `Hide Support Assistance Message` prompt defaults to `YES` so its `(?)` guidance stays hidden unless you answer `NO`. If you enter `YES`, the `Knowledge Base Row ('YES' to specify; 'NO' to hide)` prompt controls only the `HelpMessage` KB row.
 
 If you enter `Off` for `Past-deadline Restart Behavior`, `assemble.zsh` skips the `Days Past Deadline Before Restart Workflow` prompt and leaves `DaysPastDeadlineRestartWorkflow` unchanged from the sample/default value in generated artifacts.
 

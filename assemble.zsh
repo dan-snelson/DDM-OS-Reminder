@@ -42,7 +42,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="4.2.0"
+scriptVersion="4.2.1"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1147,8 +1147,9 @@ if [[ "${interactiveMode}" == true ]]; then
       infoButtonAction=""
       supportKBURL=""
       infoButtonText="hide"
+      defaultHideSupportAssistanceMessage="YES"
       echo ""
-      echo "ℹ️  Info button hidden; support help surface will not be shown."
+      echo "ℹ️  Info button and help image hidden; the (?) help message button remains."
       echo ""
     fi
 

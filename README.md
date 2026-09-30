@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.2.0)
+# DDM OS Reminder (4.2.1)
 
 > A reliability-focused upgrade to Mac Admins’ favorite “set-it-and-forget-it” DDM reminder, featuring bounded Apple-state waits, broader emergency fallback coverage, clearer diagnostics and built-in macOS 27 icon support.
 
@@ -113,7 +113,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0)
+🧩 Assemble DDM OS Reminder (4.2.1)
 ===============================================================
 
 📍 Full Paths:
@@ -269,7 +269,7 @@ Use `LanguageOverride` to force a locale, run the script, capture screenshots, t
 
 For custom text authoring, use base keys such as `Message` and `HelpMessage` when you want one shared string across every language. Add `MessageLocalized_<code>` or `HelpMessageLocalized_<code>` only for languages that truly need an override.
 
-Localization precedence stays deliberate: base keys provide shared/default copy, while matching `*Localized_<code>` keys provide locale-specific overrides. Base sentinel values such as `InfoButtonText=hide` still win over localized variants and continue to hide KB / info-button surfaces in both preview and runtime paths.
+Localization precedence stays deliberate: base keys provide shared/default copy, while matching `*Localized_<code>` keys provide locale-specific overrides. Base sentinel values such as `InfoButtonText=hide` still win over localized variants and continue to hide the info button in both preview and runtime paths. Starting with `4.2.1`, `InfoButtonText=hide` no longer suppresses `{supportAssistanceMessage}`; `HideSupportAssistanceMessage` is its sole control, so set `HideSupportAssistanceMessage=true` if you relied on the old behavior.
 
 Starting with `3.1.0`, `reminderDialog.zsh` only ships English built-in fallback strings. To display a non-English interface, provide localized preference keys such as `TitleLocalized_it`, `MessageLocalized_it`, and related `*Localized_<code>` entries in managed or local preferences.
 

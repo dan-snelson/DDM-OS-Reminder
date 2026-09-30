@@ -2,6 +2,11 @@
 
 ## Changelog
 
+### Version 4.2.1 (30-Sep-2026)
+- Fixed `InfoButtonText=hide` also suppressing `{supportAssistanceMessage}` when `HideSupportAssistanceMessage` was `false`; `HideSupportAssistanceMessage` is now the sole control for the `(?)` button guidance in both runtime and preference-test preview paths ([Issue #132](https://github.com/dan-snelson/DDM-OS-Reminder/issues/132); thanks for the heads-up, @shiftybird!)
+    - **Upgrade note:** Deployments that relied on `InfoButtonText=hide` to hide the support assistance text should set `HideSupportAssistanceMessage=true`.
+- Updated `assemble.zsh --interactive` so answering `NO` to the `Info Button` prompt defaults `Hide Support Assistance Message` to `YES`, preserving prior generated output, and clarified that the `(?)` help message button remains.
+
 ### Version 4.2.0 (21-Sep-2026)
 - Updated URL for `organizationOverlayiconURL`
 - Bounded padded enforcement-date resolution by wall-clock time so endpoint sleep or process suspension cannot extend the configured five-minute wait.

@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.0"
+scriptVersion="4.2.1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -2281,7 +2281,7 @@ function applySupportFieldVisibility() {
         allSupportRowsHidden="NO"
     fi
 
-    if [[ "${hideSupportAssistanceMessage}" == "YES" || "${infobuttontext}" == "hide" ]]; then
+    if [[ "${hideSupportAssistanceMessage}" == "YES" ]]; then
         supportAssistanceMessage=""
     fi
 

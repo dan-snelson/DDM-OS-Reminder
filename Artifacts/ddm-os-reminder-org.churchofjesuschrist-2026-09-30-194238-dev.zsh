@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.1"
+scriptVersion="4.2.2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -610,7 +610,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.1"
+scriptVersion="4.2.2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -634,6 +634,7 @@ ddmResolvedPaddedEpoch=""
 ddmResolvedPaddedRawLine=""
 ddmResolverFailureMarker=""
 ddmResolverConflictSummary=""
+ddmResolverConflictContext=""
 ddmResolverIgnoredInvalidSummary=""
 ddmResolverIgnoredInvalidContext=""
 ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}(:[0-9]{2})?$'
@@ -3865,13 +3866,21 @@ function candidateHasConflictingEvidence() {
     local lineEpoch=""
     local parsedSignature=""
     local noUpdatesEpoch=""
+    local noUpdatesTimestamp=""
+    local noUpdatesRawLine=""
+    local candidateEnforcedInstallDate="${candidateSignature%%|*}"
+    local recoveryMarker=""
+    local armedDateRaw=""
+    local armedDateNormalized=""
+    local pendingNoUpdatesConflictContext=""
 
     ddmResolverConflictSummary=""
+    ddmResolverConflictContext=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
 
-        if [[ "${currentLine}" != *"EnforcedInstallDate:"* && "${currentLine}" != *"PrimaryDescriptor:"* && "${currentLine}" != *"No updates found for DDM to enforce"* ]]; then
+        if [[ "${currentLine}" != *"EnforcedInstallDate:"* && "${currentLine}" != *"PrimaryDescriptor:"* && "${currentLine}" != *"No updates found for DDM to enforce"* && "${currentLine}" != *"Found product with requested PMV ("* && "${currentLine}" != *"Armed DDM activity scheduler for "* ]]; then
             continue
         fi
 
@@ -3889,6 +3898,32 @@ function candidateHasConflictingEvidence() {
             continue
         fi
 
+        # A transient "No updates found" marker is superseded when softwareupdated later
+        # matches the candidate version or re-arms the scheduler for the candidate deadline
+        if [[ "${currentLine}" == *"Found product with requested PMV ("* || "${currentLine}" == *"Armed DDM activity scheduler for "* ]]; then
+            if [[ -n "${noUpdatesEpoch}" ]] && (( lineEpoch >= noUpdatesEpoch )); then
+                recoveryMarker=""
+                if [[ "${currentLine}" == *"Found product with requested PMV (${candidateVersion})"* ]]; then
+                    recoveryMarker="Found product with requested PMV (${candidateVersion})"
+                elif [[ "${currentLine}" == *"Armed DDM activity scheduler for "*": YES"* ]]; then
+                    armedDateRaw="${${currentLine#*Armed DDM activity scheduler for }%%: YES*}"
+                    armedDateNormalized="$( date -j -f "%a %b %e %H:%M:%S %Y" "${armedDateRaw}" "+%Y-%m-%dT%H:%M:%S" 2>/dev/null )"
+                    if [[ -n "${armedDateNormalized}" && "${armedDateNormalized}" == "${candidateEnforcedInstallDate}" ]]; then
+                        recoveryMarker="Armed DDM activity scheduler for ${armedDateRaw}: YES"
+                    fi
+                fi
+
+                if [[ -n "${recoveryMarker}" ]]; then
+                    notice "Superseded 'No updates found for DDM to enforce' (${noUpdatesTimestamp}) with later recovery at ${lineTimestamp}: ${recoveryMarker}"
+                    noUpdatesEpoch=""
+                    noUpdatesTimestamp=""
+                    noUpdatesRawLine=""
+                    pendingNoUpdatesConflictContext=""
+                fi
+            fi
+            continue
+        fi
+
         if [[ "${currentLine}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${currentLine}"; then
             parsedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
 
@@ -3899,8 +3934,7 @@ function candidateHasConflictingEvidence() {
             if [[ -n "${noUpdatesEpoch}" ]]; then
                 if [[ "${parsedSignature}" == "${candidateSignature}" ]]; then
                     if (( lineEpoch >= noUpdatesEpoch )); then
-                        ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
-                        return 0
+                        pendingNoUpdatesConflictContext="${noUpdatesRawLine}"
                     fi
                 fi
             fi
@@ -3918,6 +3952,8 @@ function candidateHasConflictingEvidence() {
         if (( lineEpoch < declarationEpoch )); then
             if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
                 noUpdatesEpoch="${lineEpoch}"
+                noUpdatesTimestamp="${lineTimestamp}"
+                noUpdatesRawLine="${currentLine}"
             fi
             continue
         fi
@@ -3931,8 +3967,17 @@ function candidateHasConflictingEvidence() {
 
         if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
             noUpdatesEpoch="${lineEpoch}"
+            noUpdatesTimestamp="${lineTimestamp}"
+            noUpdatesRawLine="${currentLine}"
         fi
     done
+
+    # Persisted declaration after "No updates found" only conflicts when no later recovery superseded it
+    if [[ -n "${pendingNoUpdatesConflictContext}" ]]; then
+        ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
+        ddmResolverConflictContext="${pendingNoUpdatesConflictContext}"
+        return 0
+    fi
 
     return 1
 }
@@ -3972,6 +4017,7 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmBuildVersionString=""
     ddmResolverFailureMarker=""
     ddmResolverConflictSummary=""
+    ddmResolverConflictContext=""
     ddmResolverIgnoredInvalidSummary=""
     ddmResolverIgnoredInvalidContext=""
     ddmTimestampEpochCache=()
@@ -4119,7 +4165,9 @@ function resolveDDMEnforcementFromInstallLog() {
         ddmResolverReason="Conflicting DDM state detected in install.log"
         warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
 
-        if latestDDMResolverContextLine; then
+        if [[ -n "${ddmResolverConflictContext}" ]]; then
+            info "Resolver context: ${ddmResolverConflictContext}"
+        elif latestDDMResolverContextLine; then
             info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
         fi
 

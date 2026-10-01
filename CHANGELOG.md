@@ -2,6 +2,16 @@
 
 ## Changelog
 
+### Version 4.3.0b1 (30-Sep-2026)
+- Added same-day reminder suppression after the user schedules the required update with **Update Tonight**. Normal reminders stop until local midnight once `/var/log/install.log` confirms that macOS accepted the request ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)).
+    - Detection requires daemon-side success evidence: `SUOSUInstallTonightManager: Queued … macOS <version>` must exactly match the active DDM (or DDM Emergency Fallback) target version, and a following `SUOSUScheduler: ARMED (… simulated=NO)` line must appear. The `Clicked to queue available updates for later` button event and untimestamped continuation lines (for example `ScheduleUpdateForLater = 1;`) are ignored, because the user can still cancel the authentication prompt.
+    - Evidence must be from the current local day and newer than the last boot. Any later disarm, dequeue, `Updated install tonight state (enabled = false …)`, different-version queue, or unrecognized `SUOSUScheduler:` / `SUOSUInstallTonightManager:` line fails closed, and the invalidating line is logged at `[NOTICE]`.
+    - Pre-deadline threshold reminders, past-deadline aggressive mode, and Force mode bypass suppression. Suppression does not apply when the effective deadline is at or before local midnight, because DDM enforcement would come before the overnight installation window.
+    - Suppressed runs schedule the first `DailyReminderTimes` slot after midnight, or an earlier pending pre-deadline threshold. Expiration never forces an immediate dialog.
+    - Starter-launched runs record `UpdateTonightSuppressionUntil` in `dor-state.plist` and log `[NOTICE]` when suppression activates, expires, or is cleared. Manual and demo runs do not write scheduler state.
+    - No preference keys, defaults, or precedence rules changed.
+- Fixed baseline reminder-slot resolution skipping an entire day of `DailyReminderTimes` slots when a run occurred after 23:00 on the night before a spring-forward DST transition; next-day slots now resolve by calendar day instead of adding 86,400 seconds, which also covers Update Tonight suppression scheduling and preserves configured `00:00` slots ([PR #137](https://github.com/dan-snelson/DDM-OS-Reminder/pull/137) review; thanks, Copilot!)
+
 ### Version 4.2.2 (30-Sep-2026)
 - Fixed the DDM resolver holding `conflict` after a transient `No updates found for DDM to enforce` marker, even when `softwareupdated` later recovered the same declaration; the marker is now superseded by a later `Found product with requested PMV (<candidate version>)` line or an `Armed DDM activity scheduler for <date>: YES` line whose date matches the candidate `EnforcedInstallDate` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134))
     - Previously, suppression persisted until the marker aged out of the 4000-line `install.log` lookback window, so results depended on log volume.

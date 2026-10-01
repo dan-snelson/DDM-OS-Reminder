@@ -1040,7 +1040,7 @@ function resolveNextBaselineReminderEpoch() {
     fi
 
     while (( dayOffset <= 1 )); do
-        scheduleDate=$(date -r $(( nowEpoch + (dayOffset * 86400) )) "+%Y-%m-%d")
+        scheduleDate=$(date -v+${dayOffset}d -r "${nowEpoch}" "+%Y-%m-%d")
 
         for scheduleTime in "${dailyReminderTimesResolved[@]}"; do
             scheduleTimestamp="${scheduleDate}:${scheduleTime}:00"

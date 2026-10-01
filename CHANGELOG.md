@@ -10,6 +10,7 @@
     - Suppressed runs schedule the first `DailyReminderTimes` slot after midnight, or an earlier pending pre-deadline threshold. Expiration never forces an immediate dialog.
     - Starter-launched runs record `UpdateTonightSuppressionUntil` in `dor-state.plist` and log `[NOTICE]` when suppression activates, expires, or is cleared. Manual and demo runs do not write scheduler state.
     - No preference keys, defaults, or precedence rules changed.
+- Fixed baseline reminder-slot resolution skipping an entire day of `DailyReminderTimes` slots when a run occurred after 23:00 on the night before a spring-forward DST transition; next-day slots now resolve by calendar day instead of adding 86,400 seconds, which also covers Update Tonight suppression scheduling and preserves configured `00:00` slots ([PR #137](https://github.com/dan-snelson/DDM-OS-Reminder/pull/137) review; thanks, Copilot!)
 
 ### Version 4.2.2 (30-Sep-2026)
 - Fixed the DDM resolver holding `conflict` after a transient `No updates found for DDM to enforce` marker, even when `softwareupdated` later recovered the same declaration; the marker is now superseded by a later `Found product with requested PMV (<candidate version>)` line or an `Armed DDM activity scheduler for <date>: YES` line whose date matches the candidate `EnforcedInstallDate` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134))

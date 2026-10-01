@@ -44,8 +44,10 @@ flowchart TD
     ThresholdDue -->|No| Window{Inside display window?}
     Window -->|No| Periodic{Outside-window periodic<br/>reminder due?}
     Periodic -->|No| ScheduleBaseline[Schedule next baseline or threshold<br/>and exit]
-    Periodic -->|Yes| QuietBypass
-    Window -->|Yes| QuietBypass{Aggressive mode<br/>active?}
+    Periodic -->|Yes| UpdateTonight
+    Window -->|Yes| UpdateTonight{Update Tonight confirmed today<br/>for target version, aggressive inactive,<br/>and deadline after midnight?}
+    UpdateTonight -->|Yes| ScheduleTonight[Schedule first baseline slot<br/>after midnight or earlier threshold and exit]
+    UpdateTonight -->|No| QuietBypass{Aggressive mode<br/>active?}
     QuietBypass -->|Yes| Build
     QuietBypass -->|No| Quiet{Within interaction<br/>quiet period?}
     Quiet -->|Yes| ScheduleQuiet[Schedule exact quiet expiry<br/>or earlier threshold and exit]
@@ -133,6 +135,8 @@ Scheduling combines four sources:
 
 The earliest applicable exact time wins. Threshold reminders bypass quiet-period suppression. Force restart mode bypasses quiet-period and meeting checks.
 
+**Update Tonight suppression** is runtime-only and has no preference key. When `/var/log/install.log` shows that `softwareupdated` queued the required version (`SUOSUInstallTonightManager: Queued … macOS <version>`) and armed the scheduler (`SUOSUScheduler: ARMED (… simulated=NO)`), normal reminders stop until local midnight. The evidence must be from today, newer than the last boot, and not followed by a disarm, dequeue, or `enabled = false` line. The next run is scheduled for the first `DailyReminderTimes` slot after midnight, or for an earlier pending threshold. Threshold, aggressive, and Force reminders bypass this suppression, and it never applies when the effective deadline is at or before local midnight. Daemon runs record the expiry as `UpdateTonightSuppressionUntil` in `dor-state.plist` and log it as expired or cleared on the next run.
+
 ## Dialog Modes
 
 | Mode | Activation | Result |
@@ -147,4 +151,4 @@ The earliest applicable exact time wins. Threshold reminders bypass quiet-period
 
 ## Observable Exit Paths
 
-Every meaningful branch logs through the existing structured log format. Common quiet exits include active PID, future or disabled schedule, unresolved requirement without valid fallback, compliance, outside-window suppression, active quiet period, and DND/Focus return. Use `dor-state.plist` before treating a heartbeat no-op as failure.
+Every meaningful branch logs through the existing structured log format. Common quiet exits include active PID, future or disabled schedule, unresolved requirement without valid fallback, compliance, outside-window suppression, Update Tonight suppression, active quiet period, and DND/Focus return. Use `dor-state.plist` before treating a heartbeat no-op as failure.

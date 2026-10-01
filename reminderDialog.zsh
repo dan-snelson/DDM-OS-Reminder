@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.2.2"
+scriptVersion="4.3.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -2903,6 +2903,170 @@ function detectStagedUpdate() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Update Tonight Detection (i.e., user scheduled the required update for overnight installation)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function resolveLocalMidnightEpochs() {
+    local nowEpoch="${1:-$(date +%s)}"
+    local todayDate=""
+
+    updateTonightTodayMidnightEpoch=""
+    updateTonightNextMidnightEpoch=""
+
+    todayDate=$(date -r "${nowEpoch}" "+%Y-%m-%d" 2>/dev/null)
+    [[ -n "${todayDate}" ]] || return 1
+
+    # Resolve calendar midnights (not +86400) so DST transitions stay accurate
+    updateTonightTodayMidnightEpoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "${todayDate} 00:00:00" "+%s" 2>/dev/null)
+    updateTonightNextMidnightEpoch=$(date -j -v+1d -f "%Y-%m-%d %H:%M:%S" "${todayDate} 00:00:00" "+%s" 2>/dev/null)
+
+    [[ "${updateTonightTodayMidnightEpoch}" =~ ^[0-9]+$ && "${updateTonightNextMidnightEpoch}" =~ ^[0-9]+$ ]]
+}
+
+function detectUpdateTonightScheduled() {
+    local nowEpoch="${1:-$(date +%s)}"
+    local lowerBoundEpoch=""
+    local queuedVersionPattern=""
+    local logLine=""
+    local lineEpoch=""
+    local candidateEpoch=""
+    local candidateArmed="NO"
+    local candidateConfirmed="NO"
+    local invalidatingLine=""
+    local -a updateTonightLogLines=()
+
+    updateTonightEvidenceEpoch=""
+    updateTonightEvidenceLine=""
+    updateTonightSettingsConfirmed="NO"
+
+    isValidDDMVersionString "${ddmVersionString}" || return 1
+    [[ -r "${installLogPath}" ]] || return 1
+    resolveLocalMidnightEpochs "${nowEpoch}" || return 1
+
+    # Only same-day evidence recorded since the most recent boot is current
+    lowerBoundEpoch="${updateTonightTodayMidnightEpoch}"
+    if [[ "${lastBootTime}" =~ ^[0-9]+$ ]] && (( lastBootTime > lowerBoundEpoch )); then
+        lowerBoundEpoch="${lastBootTime}"
+    fi
+
+    queuedVersionPattern="macOS ${ddmVersionString//./\\.}[ )]"
+
+    # Scan the full log (not the resolver lookback window); continuation lines lack timestamps and are skipped
+    updateTonightLogLines=( ${(f)"$(grep -a -E 'SUOSUInstallTonightManager:|SUOSUScheduler:|Updated install tonight state' "${installLogPath}" 2>/dev/null)"} )
+
+    for logLine in "${updateTonightLogLines[@]}"; do
+        extractDDMLogTimestamp "${logLine}" || continue
+        ddmLogTimestampToEpoch "${parsedDDMLogTimestamp}" || continue
+        lineEpoch="${parsedDDMLogTimestampEpoch}"
+        (( lineEpoch >= lowerBoundEpoch && lineEpoch <= nowEpoch )) || continue
+
+        if [[ "${logLine}" == *"SUOSUInstallTonightManager: Queued"* && "${logLine}" =~ ${queuedVersionPattern} ]]; then
+            candidateEpoch="${lineEpoch}"
+            candidateArmed="NO"
+            candidateConfirmed="NO"
+            invalidatingLine=""
+            updateTonightEvidenceLine="${logLine}"
+        elif [[ "${logLine}" == *"SUOSUScheduler: ARMED"* && "${logLine}" == *"simulated=NO"* ]]; then
+            if [[ -n "${candidateEpoch}" ]] && (( lineEpoch - candidateEpoch <= 120 )); then
+                candidateArmed="YES"
+            fi
+        elif [[ "${logLine}" == *"Updated install tonight state (enabled = true"* ]]; then
+            [[ -n "${candidateEpoch}" ]] && candidateConfirmed="YES"
+        elif [[ "${logLine}" == *"SUOSUInstallTonightManager:"* || "${logLine}" == *"SUOSUScheduler:"* || "${logLine}" == *"Updated install tonight state"* ]]; then
+            # Fail closed: superseded, disarmed, canceled, or unrecognized scheduling state
+            if [[ -n "${candidateEpoch}" ]]; then
+                invalidatingLine="${logLine}"
+                candidateEpoch=""
+                candidateArmed="NO"
+                candidateConfirmed="NO"
+                updateTonightEvidenceLine=""
+            fi
+        fi
+    done
+
+    if [[ -n "${invalidatingLine}" ]]; then
+        notice "Update Tonight scheduling evidence for $(requirementLogLabel) version ${ddmVersionString} was superseded or canceled; not suppressing. Log entry: ${invalidatingLine}"
+        return 1
+    fi
+
+    [[ -n "${candidateEpoch}" ]] || return 1
+
+    if [[ "${candidateArmed}" != "YES" ]]; then
+        notice "Update Tonight queue evidence for $(requirementLogLabel) version ${ddmVersionString} lacks confirmed scheduler arming; not suppressing."
+        updateTonightEvidenceLine=""
+        return 1
+    fi
+
+    updateTonightEvidenceEpoch="${candidateEpoch}"
+    updateTonightSettingsConfirmed="${candidateConfirmed}"
+    return 0
+}
+
+function evaluateUpdateTonightSuppression() {
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local suppressionUntilTimestamp=""
+    local evidenceTimestamp=""
+
+    [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
+    [[ -n "${updateTonightEvidenceEpoch}" && -n "${updateTonightNextMidnightEpoch}" ]] || return 1
+
+    evidenceTimestamp=$(date -r "${updateTonightEvidenceEpoch}" "+%Y-%m-%d %H:%M:%S" 2>/dev/null)
+
+    # DDM enforces at the deadline, before the overnight installation window
+    if [[ ! "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || (( deadlineReferenceEpoch <= updateTonightNextMidnightEpoch )); then
+        notice "Update Tonight scheduled for $(requirementLogLabel) version ${ddmVersionString} at ${evidenceTimestamp}, but the effective deadline precedes local midnight; not suppressing reminders."
+        return 1
+    fi
+
+    suppressionUntilTimestamp="$(scheduleTimestampFromEpoch "${updateTonightNextMidnightEpoch}")"
+    notice "Update Tonight scheduled for $(requirementLogLabel) version ${ddmVersionString} at ${evidenceTimestamp} (System Settings confirmation: ${updateTonightSettingsConfirmed}); suppressing normal reminders until local midnight (${suppressionUntilTimestamp})."
+    info "Update Tonight evidence: ${updateTonightEvidenceLine}"
+
+    if shouldManageDaemonScheduling; then
+        writeReminderStateKey "UpdateTonightSuppressionUntil" "${suppressionUntilTimestamp}" || warning "Unable to record UpdateTonightSuppressionUntil in scheduler state."
+    fi
+
+    return 0
+}
+
+function clearUpdateTonightSuppressionState() {
+    local clearReason="${1:-cleared}"
+    local storedTimestamp=""
+
+    shouldManageDaemonScheduling || return 0
+
+    storedTimestamp="$(readReminderStateKey "UpdateTonightSuppressionUntil")"
+    [[ -n "${storedTimestamp}" ]] || return 0
+
+    notice "Update Tonight suppression (until ${storedTimestamp}) ${clearReason}; resuming normal reminder scheduling."
+    deleteReminderStateKey "UpdateTonightSuppressionUntil"
+}
+
+function reconcileUpdateTonightSuppressionState() {
+    local nowEpoch="$(date +%s)"
+    local storedTimestamp=""
+    local storedEpoch=""
+
+    shouldManageDaemonScheduling || return 0
+
+    storedTimestamp="$(readReminderStateKey "UpdateTonightSuppressionUntil")"
+    [[ -n "${storedTimestamp}" ]] || return 0
+
+    storedEpoch="$(epochFromScheduleTimestamp "${storedTimestamp}")"
+    if [[ ! "${storedEpoch}" =~ ^[0-9]+$ ]]; then
+        warning "Invalid UpdateTonightSuppressionUntil '${storedTimestamp}'; clearing."
+        deleteReminderStateKey "UpdateTonightSuppressionUntil"
+    elif (( nowEpoch >= storedEpoch )); then
+        notice "Update Tonight suppression expired at ${storedTimestamp}; resuming normal reminder scheduling."
+        deleteReminderStateKey "UpdateTonightSuppressionUntil"
+    elif [[ "${versionComparisonResult}" != "Update Required" ]]; then
+        clearUpdateTonightSuppressionState "cleared (${versionComparisonResult})"
+    fi
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Installed OS vs. DDM-enforced OS Comparison
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -4920,6 +5084,7 @@ installedOSvsDDMenforcedOS
 evaluatePastDeadlineState
 evaluateAggressiveModeState
 resolveDuePreDeadlineThresholdReminder || true
+reconcileUpdateTonightSuppressionState
 
 
 
@@ -5003,6 +5168,35 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         fi
     else
         notice "Within ${daysBeforeDeadlineDisplayReminder}-day reminder window; proceeding …"
+    fi
+
+    # -------------------------------------------------------------------------
+    # Update Tonight: suppress normal reminders through local midnight
+    # -------------------------------------------------------------------------
+
+    if detectUpdateTonightScheduled; then
+        if isPastDeadlineForceMode; then
+            notice "Past Deadline Force mode active; bypassing Update Tonight suppression."
+        elif isAggressiveModeActive; then
+            notice "Aggressive mode active; bypassing Update Tonight suppression."
+        elif isPreDeadlineThresholdReminderMode; then
+            notice "Pre-deadline threshold reminder active; bypassing Update Tonight suppression."
+        elif evaluateUpdateTonightSuppression; then
+            # Resume at the first baseline slot after midnight; expiration itself never forces a dialog
+            updateTonightNextReminderEpoch="$(resolveNextBaselineReminderEpoch "$(( updateTonightNextMidnightEpoch - 1 ))")"
+            if [[ -n "${updateTonightNextReminderEpoch}" ]]; then
+                setNextReminderScheduleForQuietOrThreshold "${updateTonightNextReminderEpoch}" "Update Tonight suppression through local midnight; next baseline reminder"
+            else
+                warning "Unable to resolve first baseline reminder after local midnight; falling back to baseline scheduling."
+                setNextReminderScheduleBaseline "Update Tonight suppression baseline fallback"
+            fi
+            quitOut "Update Tonight is scheduled for ${ddmVersionString}; exiting quietly."
+            quitScript "0"
+        else
+            clearUpdateTonightSuppressionState "cleared; suppression is not eligible"
+        fi
+    else
+        clearUpdateTonightSuppressionState "cleared; Update Tonight scheduling evidence is no longer current"
     fi
 
     # -------------------------------------------------------------------------

@@ -118,7 +118,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="4.3.0b1"
+scriptVersion="4.3.0b2"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -157,6 +157,8 @@ deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
 dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
 dailyReminderTimesResolvedCSV=""
 minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+normalizedDailyReminderTimesCSV=""
+normalizedMinuteThresholdScheduleCSV=""
 preDeadlineThresholdReminderMode="NO"
 preDeadlineThresholdMinutes="${cliPreDeadlineThresholdMinutes}"
 aggressiveModeActive="NO"
@@ -794,13 +796,15 @@ function validateReminderTimeEntry() {
 }
 
 function normalizeDailyReminderTimes() {
+    # Result is returned in normalizedDailyReminderTimesCSV (not stdout) so warnings reach the console
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
     local rawEntry=""
     local normalizedEntry=""
-    local normalizedCSV=""
     local -a rawEntries=()
     local -a validEntries=()
+
+    normalizedDailyReminderTimesCSV=""
 
     IFS=',' read -r -A rawEntries <<< "${rawValue}"
 
@@ -818,35 +822,34 @@ function normalizeDailyReminderTimes() {
     fi
 
     validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
-    normalizedCSV="${(j:,:)validEntries}"
-    echo "${normalizedCSV}"
+    normalizedDailyReminderTimesCSV="${(j:,:)validEntries}"
 }
 
 function parseDailyReminderTimes() {
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
-    local normalizedCSV=""
 
-    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+    normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}" || return 1
 
-    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    dailyReminderTimesResolvedCSV="${normalizedDailyReminderTimesCSV}"
     IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
     echo "${dailyReminderTimesResolvedCSV}"
 }
 
 function normalizeMinuteThresholdSchedule() {
+    # Result is returned in normalizedMinuteThresholdScheduleCSV (not stdout) so warnings reach the console
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
     local rawEntry=""
     local trimmedEntry=""
     local normalizedEntry=""
-    local normalizedCSV=""
     local -a rawEntries=()
     local -a validEntries=()
 
+    normalizedMinuteThresholdScheduleCSV=""
+
     rawValue="$(trimSurroundingWhitespace "${rawValue}")"
     if [[ -z "${rawValue}" ]]; then
-        echo ""
         return 0
     fi
 
@@ -871,18 +874,16 @@ function normalizeMinuteThresholdSchedule() {
     fi
 
     validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
-    normalizedCSV="${(j:,:)validEntries}"
-    echo "${normalizedCSV}"
+    normalizedMinuteThresholdScheduleCSV="${(j:,:)validEntries}"
 }
 
 function parseMinuteThresholdSchedule() {
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
-    local normalizedCSV=""
 
-    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+    normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}" || return 1
 
-    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedMinuteThresholdScheduleCSV}"
     minutesBeforeDeadlineReminderScheduleResolved=()
     if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
         IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
@@ -892,14 +893,13 @@ function parseMinuteThresholdSchedule() {
 
 function resolveMinuteThresholdSchedule() {
     local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
-    local normalizedMinuteThresholdSchedule=""
 
-    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+    normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES" || {
         warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
-        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+        normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}"
     }
 
-    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdScheduleCSV}"
     parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
 }
 
@@ -923,14 +923,13 @@ function resolveAggressiveModeThreshold() {
 
 function resolveDailyReminderTimes() {
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
-    local normalizedDailyReminderTimes=""
 
-    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+    normalizeDailyReminderTimes "${dailyReminderTimes}" "YES" || {
         warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
-        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+        normalizeDailyReminderTimes "${defaultDailyReminderTimes}"
     }
 
-    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    dailyReminderTimes="${normalizedDailyReminderTimesCSV}"
     parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
 }
 

@@ -2,6 +2,15 @@
 
 ## Changelog
 
+### Version 4.3.0b2 (02-Oct-2026)
+- Fixed `DailyReminderTimes` values that mix valid and invalid entries (for example, `8:00,17:00`) resolving to no baseline reminder slots. The invalid-entry warning text was captured into the resolved value instead of the log, so the valid `17:00` entry was dropped, the `08:00,12:00,16:00` default was not applied, and **Remind Me Later** fell through to the first pre-deadline threshold ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139); thanks, @TechTrekkie!)
+    - Invalid entries are now logged as `[WARNING] Ignoring invalid DailyReminderTimes entry '…'` and skipped, valid entries are kept, and a fully invalid value still falls back to the default with the existing `defaulting to '…'` warning.
+    - Affected standalone and deployed runs alike; deployed `dor.zsh` additionally lost the warning line entirely because it logs through the LaunchDaemon's standard output.
+    - `HH:MM` still requires zero-padded hours; `8:00` is rejected (and now logged), not normalized.
+- Applied the same fix to `MinutesBeforeDeadlineReminderSchedule`, where mixed input such as `45,abc` previously disabled all pre-deadline threshold reminders.
+- Applied the same fix to `Resources/reminderDialogPreferenceTest.zsh`.
+- No preference keys, defaults, or precedence rules changed.
+
 ### Version 4.3.0b1 (30-Sep-2026)
 - Added same-day reminder suppression after the user schedules the required update with **Update Tonight**. Normal reminders stop until local midnight once `/var/log/install.log` confirms that macOS accepted the request ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)).
     - Detection requires daemon-side success evidence: `SUOSUInstallTonightManager: Queued … macOS <version>` must exactly match the active DDM (or DDM Emergency Fallback) target version, and a following `SUOSUScheduler: ARMED (… simulated=NO)` line must appear. The `Clicked to queue available updates for later` button event and untimestamped continuation lines (for example `ScheduleUpdateForLater = 1;`) are ignored, because the user can still cancel the authentication prompt.

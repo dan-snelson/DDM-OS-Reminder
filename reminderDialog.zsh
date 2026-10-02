@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
 # Script Version
-scriptVersion="4.3.0b1"
+scriptVersion="4.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -96,6 +96,8 @@ nextReminderScheduleEpoch=""
 nextReminderScheduleReason="Baseline reminder schedule"
 dailyReminderTimesResolvedCSV=""
 minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+normalizedDailyReminderTimesCSV=""
+normalizedMinuteThresholdScheduleCSV=""
 preDeadlineThresholdReminderMode="NO"
 preDeadlineThresholdMinutes=""
 preDeadlineThresholdSignature=""
@@ -892,13 +894,15 @@ function validateReminderTimeEntry() {
 }
 
 function normalizeDailyReminderTimes() {
+    # Result is returned in normalizedDailyReminderTimesCSV (not stdout) so warnings reach the log
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
     local rawEntry=""
     local normalizedEntry=""
-    local normalizedCSV=""
     local -a rawEntries=()
     local -a validEntries=()
+
+    normalizedDailyReminderTimesCSV=""
 
     IFS=',' read -r -A rawEntries <<< "${rawValue}"
 
@@ -916,35 +920,34 @@ function normalizeDailyReminderTimes() {
     fi
 
     validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
-    normalizedCSV="${(j:,:)validEntries}"
-    echo "${normalizedCSV}"
+    normalizedDailyReminderTimesCSV="${(j:,:)validEntries}"
 }
 
 function parseDailyReminderTimes() {
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
-    local normalizedCSV=""
 
-    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+    normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}" || return 1
 
-    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    dailyReminderTimesResolvedCSV="${normalizedDailyReminderTimesCSV}"
     IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
     echo "${dailyReminderTimesResolvedCSV}"
 }
 
 function normalizeMinuteThresholdSchedule() {
+    # Result is returned in normalizedMinuteThresholdScheduleCSV (not stdout) so warnings reach the log
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
     local rawEntry=""
     local trimmedEntry=""
     local normalizedEntry=""
-    local normalizedCSV=""
     local -a rawEntries=()
     local -a validEntries=()
 
+    normalizedMinuteThresholdScheduleCSV=""
+
     rawValue="$(trimSurroundingWhitespace "${rawValue}")"
     if [[ -z "${rawValue}" ]]; then
-        echo ""
         return 0
     fi
 
@@ -969,18 +972,16 @@ function normalizeMinuteThresholdSchedule() {
     fi
 
     validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
-    normalizedCSV="${(j:,:)validEntries}"
-    echo "${normalizedCSV}"
+    normalizedMinuteThresholdScheduleCSV="${(j:,:)validEntries}"
 }
 
 function parseMinuteThresholdSchedule() {
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
-    local normalizedCSV=""
 
-    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+    normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}" || return 1
 
-    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedMinuteThresholdScheduleCSV}"
     minutesBeforeDeadlineReminderScheduleResolved=()
     if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
         IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
@@ -2075,8 +2076,6 @@ function validatePreferenceLoad() {
     local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
     local defaultPastDeadlineForceTimerSeconds="${preferenceConfiguration[pastDeadlineForceTimerSeconds]#*|}"
     local defaultPastDeadlineForceRedisplayDelaySeconds="${preferenceConfiguration[pastDeadlineForceRedisplayDelaySeconds]#*|}"
-    local normalizedDailyReminderTimes=""
-    local normalizedMinuteThresholdSchedule=""
     for var in "${criticalVars[@]}"; do
         if [[ -z "${(P)var}" ]]; then
             warning "Critical preference '${var}' is empty; using default"
@@ -2095,21 +2094,21 @@ function validatePreferenceLoad() {
             ;;
     esac
 
-    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+    normalizeDailyReminderTimes "${dailyReminderTimes}" "YES" || {
         warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
-        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+        normalizeDailyReminderTimes "${defaultDailyReminderTimes}"
     }
 
-    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    dailyReminderTimes="${normalizedDailyReminderTimesCSV}"
     parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
     notice "Resolved DailyReminderTimes: ${dailyReminderTimesResolvedCSV}"
 
-    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+    normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES" || {
         warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
-        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+        normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}"
     }
 
-    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdScheduleCSV}"
     parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
     if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
         notice "Resolved MinutesBeforeDeadlineReminderSchedule: ${minutesBeforeDeadlineReminderScheduleResolvedCSV}"

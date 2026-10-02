@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 4.3.0b2 (02-Oct-2026)
+### Version 5.0.0b1 (02-Oct-2026)
 - Fixed `DailyReminderTimes` values that mix valid and invalid entries (for example, `8:00,17:00`) resolving to no baseline reminder slots. The invalid-entry warning text was captured into the resolved value instead of the log, so the valid `17:00` entry was dropped, the `08:00,12:00,16:00` default was not applied, and **Remind Me Later** fell through to the first pre-deadline threshold ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139); thanks, @TechTrekkie!)
     - Invalid entries are now logged as `[WARNING] Ignoring invalid DailyReminderTimes entry '…'` and skipped, valid entries are kept, and a fully invalid value still falls back to the default with the existing `defaulting to '…'` warning.
     - Affected standalone and deployed runs alike; deployed `dor.zsh` additionally lost the warning line entirely because it logs through the LaunchDaemon's standard output.

@@ -115,7 +115,7 @@ flowchart TD
 
 ## DDM and Fallback Decisions
 
-Normal DDM resolution always runs first. When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, only `install.log` declarations matching one of its active declarations (`TargetOSVersion` and `TargetLocalDateTime`) are considered; the others are ignored and logged at `[WARNING]`. When the file is missing or unrecognized, resolution uses `install.log` alone and logs a `[NOTICE]`.
+Normal DDM resolution always runs first. When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, only `install.log` declarations matching one of its active declarations (`TargetOSVersion` and `TargetLocalDateTime`) are considered; the others are ignored and logged at `[WARNING]`. When the file is missing or unrecognized, resolution trusts uncorroborated `install.log` declarations for backward compatibility and logs a `[WARNING]`.
 
 - `resolved`: confirmed DDM wins and persisted fallback stays inactive.
 - `missing`, `conflict`, `noMatch`, or `invalidVersion`: runtime may select a valid emergency fallback.

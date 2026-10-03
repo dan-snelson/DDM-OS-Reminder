@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0b2"
+scriptVersion="5.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1139,7 +1139,7 @@ function dialogInstall() {
 
         # Display a so-called "simple" dialog in the console user's session if Team ID fails to validate
         consoleUser=$( stat -f%Su /dev/console 2>/dev/null )
-        if [[ -n "${consoleUser}" && "${consoleUser}" != "root" && "${consoleUser}" != "loginwindow" ]]; then
+        if [[ -n "${consoleUser}" && "${consoleUser}" != "root" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" ]]; then
             launchctl asuser "$( id -u "${consoleUser}" )" /usr/bin/sudo -u "${consoleUser}" /usr/bin/osascript -e 'display dialog "Please advise your Support Representative of the following error:\r\r• Dialog Team ID verification failed\r\r" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution giving up after 120' >/dev/null 2>&1
         fi
         fatal "swiftDialog Team ID verification failed; expected '${expectedDialogTeamID}', received '${teamID:-none}'."

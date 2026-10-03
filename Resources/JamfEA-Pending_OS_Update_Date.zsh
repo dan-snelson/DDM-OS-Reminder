@@ -1,6 +1,6 @@
 #!/bin/zsh --no-rcs
 # EA: DDM Pending OS Update Date
-# Version: 5.0.0b2
+# Version: 5.0.0b3
 # Reports a pending DDM-enforced macOS update date when install.log state is trustworthy.
 # Created by: @robjschroeder 10.10.2025
 # Hardened to fail closed on conflicting or invalid DDM declaration state
@@ -331,7 +331,8 @@ function ddmDeclarationIsCorroborated() {
     local declarationEnforcedInstallDate="${2}"
     local declarationSignature="${declarationVersion}|${declarationEnforcedInstallDate//[^0-9]/}"
 
-    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text
+    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text;
+    # when it is unavailable, uncorroborated trust is intentional backward compatibility
     [[ "${ddmStatePersistenceStatus}" == "available" ]] || return 0
     (( ${+ddmStatePersistenceSignatures[${declarationSignature}]} ))
 }

@@ -9,7 +9,7 @@ DDM OS Reminder is a macOS-only project commonly deployed through MDM, runs with
 The latest stable release and the current prerelease line are actively supported for security updates.
 
 - Current stable: **v4.2.0**
-- Current prerelease line: **v5.0.0b2**
+- Current prerelease line: **v5.0.0b3**
 - Older releases receive no security patches.
 
 If you are running an older release, upgrade before requesting security support.
@@ -41,6 +41,8 @@ You should receive an acknowledgment within **48 hours**. We will work with you 
 - Review organization-specific customizations before deployment, especially branding, support links, restart policy, and user-facing dialog text.
 - Validate managed preferences, local overrides, and **RDNN** consistency before production use.
 - Review generated LaunchDaemon, plist, and unsigned mobileconfig artifacts before promotion into production workflows.
+- Only import prior plists from trusted sources. `assemble.zsh` keeps an imported `ScriptLog` only when it is a plain absolute path ending in `<rdnn>.log`; any other value falls back to `/var/log/<rdnn>.log`.
+- **Accepted residual risk:** Local users can append to `/var/log/install.log`. When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is missing or unrecognized, the runtime and the Pending OS Update Extension Attributes trust uncorroborated `install.log` declarations for backward compatibility, and the runtime logs a `[WARNING]`. In that state, forged log text can cause false reminders or inaccurate inventory, but it cannot change Apple's DDM enforcement.
 
 ## Code Security Practices
 

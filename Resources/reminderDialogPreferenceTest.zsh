@@ -118,7 +118,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="5.0.0b2"
+scriptVersion="5.0.0b3"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -384,7 +384,7 @@ function resolveEffectiveUserContext() {
         notice "Running with sudo; resolving language and appearance for '${loggedInUser}'."
     elif [[ -n "${currentUser}" && "${currentUser}" != "root" ]]; then
         loggedInUser="${currentUser}"
-    elif [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "root" ]]; then
+    elif [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]; then
         loggedInUser="${consoleUser}"
     else
         fatal "Unable to determine a non-root user context for preview."

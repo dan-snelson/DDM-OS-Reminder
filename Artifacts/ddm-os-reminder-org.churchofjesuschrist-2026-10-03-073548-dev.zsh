@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0b2"
+scriptVersion="5.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -659,7 +659,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0b2"
+scriptVersion="5.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -3830,7 +3830,8 @@ function ddmDeclarationIsCorroborated() {
     local declarationEnforcedInstallDate="${2}"
     local declarationSignature="${declarationVersion}|${declarationEnforcedInstallDate//[^0-9]/}"
 
-    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text
+    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text;
+    # when it is unavailable, uncorroborated trust is intentional backward compatibility
     [[ "${ddmStatePersistenceStatus}" == "available" ]] || return 0
     (( ${+ddmStatePersistenceSignatures[${declarationSignature}]} ))
 }
@@ -4358,7 +4359,7 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmUncorroboratedCandidates=()
 
     if ! loadDDMStatePersistenceSignatures; then
-        notice "softwareupdate DDM state is ${ddmStatePersistenceStatus} at '${ddmStatePersistencePlistPath}'; install.log declarations cannot be corroborated."
+        warning "softwareupdate DDM state is ${ddmStatePersistenceStatus} at '${ddmStatePersistencePlistPath}'; trusting uncorroborated install.log declarations."
     fi
 
     if ! tailRecentInstallLogWindow; then
@@ -5689,7 +5690,7 @@ currentLoggedInUser
 
 maxWait=120  # 2 minutes
 counter=0
-until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]]; do
+until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" && "${loggedInUser}" != "_mbsetupuser" && "${loggedInUser}" != "root" ]]; do
     if [[ "${counter}" -ge "${maxWait}" ]]; then
         fatal "No valid user logged in after ${maxWait} seconds; exiting."
     fi
@@ -6461,7 +6462,7 @@ function dialogInstall() {
 
         # Display a so-called "simple" dialog in the console user's session if Team ID fails to validate
         consoleUser=$( stat -f%Su /dev/console 2>/dev/null )
-        if [[ -n "${consoleUser}" && "${consoleUser}" != "root" && "${consoleUser}" != "loginwindow" ]]; then
+        if [[ -n "${consoleUser}" && "${consoleUser}" != "root" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" ]]; then
             launchctl asuser "$( id -u "${consoleUser}" )" /usr/bin/sudo -u "${consoleUser}" /usr/bin/osascript -e 'display dialog "Please advise your Support Representative of the following error:\r\r• Dialog Team ID verification failed\r\r" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution giving up after 120' >/dev/null 2>&1
         fi
         fatal "swiftDialog Team ID verification failed; expected '${expectedDialogTeamID}', received '${teamID:-none}'."

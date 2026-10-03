@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0b2"
+scriptVersion="5.0.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -3191,7 +3191,8 @@ function ddmDeclarationIsCorroborated() {
     local declarationEnforcedInstallDate="${2}"
     local declarationSignature="${declarationVersion}|${declarationEnforcedInstallDate//[^0-9]/}"
 
-    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text
+    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text;
+    # when it is unavailable, uncorroborated trust is intentional backward compatibility
     [[ "${ddmStatePersistenceStatus}" == "available" ]] || return 0
     (( ${+ddmStatePersistenceSignatures[${declarationSignature}]} ))
 }
@@ -3719,7 +3720,7 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmUncorroboratedCandidates=()
 
     if ! loadDDMStatePersistenceSignatures; then
-        notice "softwareupdate DDM state is ${ddmStatePersistenceStatus} at '${ddmStatePersistencePlistPath}'; install.log declarations cannot be corroborated."
+        warning "softwareupdate DDM state is ${ddmStatePersistenceStatus} at '${ddmStatePersistencePlistPath}'; trusting uncorroborated install.log declarations."
     fi
 
     if ! tailRecentInstallLogWindow; then
@@ -5050,7 +5051,7 @@ currentLoggedInUser
 
 maxWait=120  # 2 minutes
 counter=0
-until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]]; do
+until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" && "${loggedInUser}" != "_mbsetupuser" && "${loggedInUser}" != "root" ]]; do
     if [[ "${counter}" -ge "${maxWait}" ]]; then
         fatal "No valid user logged in after ${maxWait} seconds; exiting."
     fi

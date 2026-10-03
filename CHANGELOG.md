@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 5.0.0b3 (03-Oct-2026)
+- Hardened prior-plist import in `assemble.zsh`. An imported `ScriptLog` is now kept only when it is a plain absolute path (letters, digits, `.`, `_`, `-`, and `/`; no `..`, `.`, or empty segments) with a `<rdnn>.log` basename. Any other value logs `⚠️  Imported ScriptLog '…' is not a safe absolute path` and falls back to `/var/log/<rdnn>.log`.
+    - Assembly refuses to write an unsafe `scriptLog` path into the generated script.
+    - The assembled script is checked again with `zsh -n` after the final `scriptLog` rewrite; previously the only syntax check ran before it.
+- When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is missing or unrecognized, the runtime now logs `[WARNING] softwareupdate DDM state is … ; trusting uncorroborated install.log declarations.` instead of a `[NOTICE]`. Resolution behavior and Extension Attribute output are unchanged; `SECURITY.md` documents this as an accepted residual risk.
+- The runtime now waits for a console user other than `loginwindow`, `_mbsetupuser`, or `root`, so a Mac still in Setup Assistant no longer resolves `_mbsetupuser` as the dialog target. The deployer's Team ID error dialog and `Resources/reminderDialogPreferenceTest.zsh` also skip `_mbsetupuser`.
+
 ### Version 5.0.0b2 (02-Oct-2026)
 - Fixed `DailyReminderTimes` values that mix valid and invalid entries (for example, `8:00,17:00`) resolving to no baseline reminder slots. The invalid-entry warning text was captured into the resolved value instead of the log, so the valid `17:00` entry was dropped, the `08:00,12:00,16:00` default was not applied, and **Remind Me Later** fell through to the first pre-deadline threshold ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139); thanks, @TechTrekkie!)
     - Invalid entries are now logged as `[WARNING] Ignoring invalid DailyReminderTimes entry '…'` and skipped, valid entries are kept, and a fully invalid value still falls back to the default with the existing `defaulting to '…'` warning.

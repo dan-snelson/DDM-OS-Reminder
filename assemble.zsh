@@ -42,7 +42,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.0.0b2"
+scriptVersion="5.0.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -60,6 +60,7 @@ currentOrgScriptName=""
 newRDNN=""
 newOrgScriptName=""
 resolvedScriptLogPath=""
+safeScriptLogPathRegex='^/[A-Za-z0-9._/-]+$'
 
 # Deployment mode (dev, test, prod)
 deploymentMode="prod"  # default to production mode
@@ -373,6 +374,14 @@ function validatePriorPlistPath() {
   fi
 
   echo "${candidatePath}"
+}
+
+function isSafeScriptLogPath() {
+  local candidatePath="${1}"
+
+  # ScriptLog is spliced into generated Zsh source; allow only plain absolute paths
+  [[ "${candidatePath}" =~ ${safeScriptLogPathRegex} ]] || return 1
+  [[ "${candidatePath}" != *'/../'* && "${candidatePath}" != *'/./'* && "${candidatePath}" != *'//'* ]]
 }
 
 function inferRDNNFromPriorPlist() {
@@ -985,9 +994,11 @@ function applyImportedPreferences() {
     )"
 
     if [[ "${importedKey}" == "ScriptLog" ]]; then
-      if [[ "${importedValue:t}" == "${newRDNN}.log" ]]; then
+      if [[ "${importedValue:t}" == "${newRDNN}.log" ]] && isSafeScriptLogPath "${importedValue}"; then
         resolvedScriptLogPath="${importedValue}"
         echo "    ℹ️  Preserving imported ScriptLog: ${resolvedScriptLogPath}"
+      elif [[ "${importedValue:t}" == "${newRDNN}.log" ]]; then
+        echo "    ⚠️  Imported ScriptLog '${importedValue}' is not a safe absolute path; using ${resolvedScriptLogPath}"
       else
         echo "    ⚠️  Imported ScriptLog basename '${importedValue:t}' does not match '${newRDNN}.log'; using ${resolvedScriptLogPath}"
       fi
@@ -1709,6 +1720,11 @@ outputScript="${newOutputScript}"
 echo
 echo "🔁 Updating scriptLog path based on RDNN …"
 
+if ! isSafeScriptLogPath "${resolvedScriptLogPath}"; then
+  echo "❌ Refusing to write unsafe scriptLog path into assembled script: ${resolvedScriptLogPath}"
+  exit 1
+fi
+
 # Update outer deployment script plus embedded reminder script, but leave the
 # dor-starter template placeholder untouched for runtime substitution.
 scriptLogUpdateTmp="${outputScript}.scriptlog.tmp"
@@ -1743,6 +1759,11 @@ mv "${scriptLogUpdateTmp}" "${outputScript}" || {
   rm -f "${scriptLogUpdateTmp}" 2>/dev/null || true
   exit 1
 }
+
+if ! zsh -n "${outputScript}" >/dev/null 2>&1; then
+  echo "❌ Syntax check failed after scriptLog update!"
+  exit 1
+fi
 
 chmod +x "${outputScript}" || {
   echo "❌ Failed to restore execute permission on assembled script."

@@ -2031,7 +2031,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 5.0.0b2 |
+| `{scriptVersion}` | System | Script version | 5.0.0b3 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,6 +2546,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 5.0.0b3 | 03-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) now logs `[WARNING]` instead of `[NOTICE]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
 | 5.0.0b2 | 02-Oct-2026 | `DailyReminderTimes` and `MinutesBeforeDeadlineReminderSchedule` values mixing valid and invalid entries (for example `8:00,17:00` or `45,abc`) now keep the valid entries and log each invalid entry at `[WARNING]`; previously the warning text was captured into the resolved value, leaving no baseline slots or thresholds ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139)); `HH:MM` still requires zero-padded hours; no preference keys, defaults, or precedence rules changed |
 | 4.3.0b1 | 30-Sep-2026 | Runtime-only Update Tonight suppression: confirmed same-day `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version pauses normal reminders until local midnight; thresholds, aggressive, and Force bypass; scheduler state key `UpdateTonightSuppressionUntil` ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)); no preference keys or precedence rules changed |
 | 4.2.2 | 30-Sep-2026 | Resolver no longer holds `conflict` when a transient `No updates found for DDM to enforce` marker is followed by `Found product with requested PMV (<version>)` or a date-matched `Armed DDM activity scheduler ... YES` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134)); no preference keys or precedence rules changed |
@@ -2578,4 +2579,4 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 ---
 
 **Last Updated**: 02-Oct-2026
-**DDM OS Reminder Version**: 5.0.0b2
+**DDM OS Reminder Version**: 5.0.0b3

@@ -9,6 +9,9 @@
     - `HH:MM` still requires zero-padded hours; `8:00` is rejected (and now logged), not normalized.
 - Applied the same fix to `MinutesBeforeDeadlineReminderSchedule`, where mixed input such as `45,abc` previously disabled all pre-deadline threshold reminders.
 - Applied the same fix to `Resources/reminderDialogPreferenceTest.zsh`.
+- Hardened language-code handling for localized dialog text and deadline date formats. Unrecognized language values now fall back to English and the global `DateFormatDeadlineHumanReadable`, and log a `[WARNING]`.
+- Validated localized preference key names before applying them; keys with an unrecognized language code are skipped and logged at `[WARNING]`.
+- Applied the same hardening to `Resources/reminderDialogPreferenceTest.zsh`.
 - No preference keys, defaults, or precedence rules changed.
 
 ### Version 4.3.0b1 (30-Sep-2026)

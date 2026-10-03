@@ -126,6 +126,7 @@ autoload -Uz is-at-least
 
 typeset -ga temporaryFiles=()
 declare -A preferenceExplicitlySet=()
+declare -A dateFormatDeadlineHumanReadableLocalized=()
 
 foundManagedPreferences="false"
 foundLocalPreferences="false"
@@ -421,6 +422,7 @@ function loadDefaultPreferences() {
     local prefKey=""
 
     preferenceExplicitlySet=()
+    dateFormatDeadlineHumanReadableLocalized=()
 
     for prefKey in "${(@k)preferenceConfiguration}"; do
         local prefConfig="${preferenceConfiguration[$prefKey]}"
@@ -525,6 +527,9 @@ function sanitizeLanguageCode() {
         languageCode="${languageCode%_}"
     done
 
+    local languageCodeRegex='^[a-z]{2,3}(_[a-z0-9]{2,8})*$'
+    [[ "${languageCode}" =~ ${languageCodeRegex} ]] || languageCode=""
+
     echo "${languageCode}"
 }
 
@@ -535,23 +540,19 @@ function baseLanguageCodeForCode() {
     echo "${languageCode%%_*}"
 }
 
-function requestedDialogLanguageCode() {
-    local requestedLanguageCode=""
-
+function requestedDialogLanguageValue() {
     if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
-        requestedLanguageCode="${languageOverride}"
+        printf '%s\n' "${languageOverride}"
     else
-        requestedLanguageCode="$(detectLoggedInUserLanguageCode)"
+        detectLoggedInUserLanguageCode
     fi
-
-    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageCode}")"
-    echo "${requestedLanguageCode}"
 }
 
 function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     local plistPath="${1}"
     local rawKey=""
     local -a plistKeys=()
+    local variableNameRegex='^[A-Za-z][A-Za-z0-9_]*$'
 
     while IFS= read -r rawKey; do
         [[ -n "${rawKey}" ]] && plistKeys+=("${rawKey}")
@@ -567,6 +568,7 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     for rawKey in "${plistKeys[@]}"; do
         local baseRaw="${rawKey%%Localized_*}"
         local codePart="${rawKey##*Localized_}"
+        local languageCode=""
         local internalBase=""
         local internalSuffix=""
         local internalKey=""
@@ -574,14 +576,30 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
 
         [[ -z "${baseRaw}" || -z "${codePart}" ]] && continue
 
+        languageCode="$(sanitizeLanguageCode "${codePart}")"
+        if [[ -z "${languageCode}" ]]; then
+            warning "Ignoring localized preference key ${(q)rawKey}; language code is not recognized."
+            continue
+        fi
+
         if internalBase="$(internalPreferenceKeyForPlistKey "${baseRaw}")"; then
             :
         else
             internalBase="${baseRaw:0:1:l}${baseRaw:1}"
         fi
 
-        internalSuffix="$(languageSuffixForCode "${codePart}")"
+        if [[ "${internalBase}" == "dateFormatDeadlineHumanReadable" ]]; then
+            dateFormatDeadlineHumanReadableLocalized[${languageCode}]="$(readPlistValue "${plistPath}" "${rawKey}")"
+            continue
+        fi
+
+        internalSuffix="$(languageSuffixForCode "${languageCode}")"
         internalKey="${internalBase}Localized${internalSuffix}"
+        if [[ ! "${internalKey}" =~ ${variableNameRegex} ]]; then
+            warning "Ignoring localized preference key ${(q)rawKey}; preference name is not recognized."
+            continue
+        fi
+
         dynamicValue="$(readPlistValue "${plistPath}" "${rawKey}")"
 
         printf -v "${internalKey}" '%s' "${dynamicValue}"
@@ -1040,7 +1058,7 @@ function normalizeDialogLanguageCode() {
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
-    [[ "${languageCode}" == "en" ]] && echo "en" && return
+    [[ -z "${languageCode}" || "${languageCode}" == "en" ]] && echo "en" && return
 
     sentinelKey="TitleLocalized_${languageCode}"
     if [[ "${foundManagedPreferences}" == "true" ]] && /usr/libexec/PlistBuddy -c "Print :${sentinelKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
@@ -1057,17 +1075,20 @@ function normalizeDialogLanguageCode() {
 }
 
 function resolveDateFormatDeadlineHumanReadable() {
+    local requestedLanguageValue=""
     local requestedLanguageCode=""
     local baseLanguageCode=""
     local resolvedDialogLanguage=""
-    local exactVariableName=""
-    local baseVariableName=""
     local exactValue=""
     local baseValue=""
     local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
     local resolvedDateFormatSource="built-in default"
 
-    requestedLanguageCode="$(requestedDialogLanguageCode)"
+    requestedLanguageValue="$(requestedDialogLanguageValue)"
+    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageValue}")"
+    if [[ -n "${requestedLanguageValue}" && -z "${requestedLanguageCode}" ]]; then
+        warning "Requested language (${#requestedLanguageValue} characters) is not a recognized language code; ignoring localized deadline date formats."
+    fi
     baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
     resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
 
@@ -1076,26 +1097,18 @@ function resolveDateFormatDeadlineHumanReadable() {
         resolvedDateFormatSource="global preference"
     fi
 
-    if [[ -n "${requestedLanguageCode}" ]]; then
-        exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
-        exactValue="${(P)exactVariableName}"
-
-        if [[ "${preferenceExplicitlySet["${exactVariableName}"]}" == "true" || -n "${exactValue}" ]]; then
-            exactValue="$(trimSurroundingWhitespace "${exactValue}")"
-            if [[ -n "${exactValue}" ]]; then
-                dateFormatDeadlineHumanReadable="${exactValue}"
-                deadlineFormatLanguageCode="${requestedLanguageCode}"
-                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
-            fi
+    if [[ -n "${requestedLanguageCode}" ]] && (( ${+dateFormatDeadlineHumanReadableLocalized[${requestedLanguageCode}]} )); then
+        exactValue="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadableLocalized[${requestedLanguageCode}]}")"
+        if [[ -n "${exactValue}" ]]; then
+            dateFormatDeadlineHumanReadable="${exactValue}"
+            deadlineFormatLanguageCode="${requestedLanguageCode}"
+            resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
         fi
     fi
 
     if [[ "${deadlineFormatLanguageCode}" == "${resolvedDialogLanguage:-en}" && -n "${baseLanguageCode}" && "${baseLanguageCode}" != "${requestedLanguageCode}" ]]; then
-        baseVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${baseLanguageCode}")"
-        baseValue="${(P)baseVariableName}"
-
-        if [[ "${preferenceExplicitlySet["${baseVariableName}"]}" == "true" || -n "${baseValue}" ]]; then
-            baseValue="$(trimSurroundingWhitespace "${baseValue}")"
+        if (( ${+dateFormatDeadlineHumanReadableLocalized[${baseLanguageCode}]} )); then
+            baseValue="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadableLocalized[${baseLanguageCode}]}")"
             if [[ -n "${baseValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${baseValue}"
                 deadlineFormatLanguageCode="${baseLanguageCode}"
@@ -1272,6 +1285,11 @@ function resolveDialogLanguage() {
     local detectedLanguage=""
 
     if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
+        if [[ -z "$(sanitizeLanguageCode "${languageOverride}")" ]]; then
+            dialogLanguage="en"
+            warning "LanguageOverride is not a recognized language code; using '${dialogLanguage}'"
+            return
+        fi
         normalizedOverride="$(normalizeDialogLanguageCode "${languageOverride}")"
         dialogLanguage="${normalizedOverride}"
         notice "LanguageOverride is '${languageOverride}'; using '${dialogLanguage}'"
@@ -1282,6 +1300,12 @@ function resolveDialogLanguage() {
     if [[ -z "${detectedLanguage}" ]]; then
         dialogLanguage="en"
         notice "Could not detect logged-in user language; defaulting to '${dialogLanguage}'"
+        return
+    fi
+
+    if [[ -z "$(sanitizeLanguageCode "${detectedLanguage}")" ]]; then
+        dialogLanguage="en"
+        warning "Logged-in user language (${#detectedLanguage} characters) is not a recognized language code; defaulting to '${dialogLanguage}'"
         return
     fi
 
@@ -1296,9 +1320,12 @@ function applyLocalizedFieldValue() {
     local localizedVariable=""
     local localizedValue=""
     local baseValue=""
+    local variableNameRegex='^[A-Za-z][A-Za-z0-9_]*$'
 
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
+    [[ -z "${localizedSuffix}" ]] && return 0
     localizedVariable="${baseVariable}Localized${localizedSuffix}"
+    [[ "${localizedVariable}" =~ ${variableNameRegex} ]] || return 0
     localizedValue="${(P)localizedVariable}"
     baseValue="${(P)baseVariable}"
 

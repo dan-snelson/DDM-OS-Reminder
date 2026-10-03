@@ -116,7 +116,7 @@ fi
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 scriptVersion="5.0.0b2"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
@@ -1679,7 +1679,7 @@ function computeDeadlineEnforcementMessage() {
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
 
-    dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
+    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
 
     if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
         dialogSupportsMarkdownColor="YES"
@@ -1905,7 +1905,7 @@ function applyAggressiveModeDialogOverrides() {
 }
 
 function updateRequiredVariables() {
-    dialogBinary="/usr/local/bin/dialog"
+    dialogBinary="/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli"
     [[ ! -x "${dialogBinary}" ]] && fatal "swiftDialog not found at '${dialogBinary}'."
 
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"

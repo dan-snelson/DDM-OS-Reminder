@@ -189,13 +189,15 @@ When both values are valid, deployment atomically creates or replaces `/Library/
 
 Both blank removes any stale fallback and intentionally disables the feature. A partial or malformed pair is rejected and also removes stale fallback data. `Uninstall` ignores fallback input and removes the plist. `All` and `Script` remove old fallback before valid values recreate it; `LaunchDaemon` preserves scheduler state while valid, blank, or invalid fallback inputs are applied before daemon bootstrap.
 
+A blank Parameter 4 means `All`. `All` and `Script` keep the aggressive-mode support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill` (and log a `[NOTICE]`), so redeployment does not silently resume aggressive mode that support paused; only `Uninstall` removes it.
+
 Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment validates `dor.pid` against the expected deployed `dor.zsh` command, requests termination of that runtime and its owned descendants, and waits briefly for shutdown. A missing, stale, malformed, or mismatched PID is logged without broadly terminating swiftDialog or unrelated processes.
 
 Normal DDM declaration resolution always runs first. Runtime evaluates fallback when normal resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`. Confirmed DDM supersedes persisted fallback. Unknown resolver states never select fallback. Missing, corrupt, incomplete, wrong-type, or invalid fallback plists preserve the original suppression state and are never repaired by runtime.
 
 Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs the original resolver status and fallback decision at `[NOTICE]`, whether fallback changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
 
-`JamfEA-Pending_OS_Update_Date.zsh` and `JamfEA-Pending_OS_Update_Version.zsh` continue reporting native Apple DDM resolver health, not the runtime's effective fallback requirement. A `conflict`, `noMatch`, `missing`, or `invalidVersion` EA result can therefore coexist with an active DDM Emergency Fallback reminder.
+`JamfEA-Pending_OS_Update_Date.zsh` and `JamfEA-Pending_OS_Update_Version.zsh` continue reporting native Apple DDM resolver health, not the runtime's effective fallback requirement. A `conflict`, `noMatch`, `missing`, or `invalidVersion` EA result can therefore coexist with an active DDM Emergency Fallback reminder. Like the runtime, they only trust `install.log` declarations that match an active declaration in the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` when that file is readable; when it is not, they keep the previous `install.log`-only behavior.
 
 ---
 
@@ -220,7 +222,7 @@ zsh Resources/createSelfExtracting.zsh
 ✅ Self-extracting script created successfully!
    ~/DDM-OS-Reminder/Artifacts/ddm-os-reminder-us.snelson-2026-01-08-054323_self-extracting-2026-01-08-054810.sh
 
-When run, it will extract to /var/tmp/ddm-os-reminder-us.snelson-2026-01-08-054323.zsh and execute automatically.
+When run, it will extract to a private /var/tmp/ddm-os-reminder.XXXXXX directory, execute ddm-os-reminder-us.snelson-2026-01-08-054323.zsh with the MDM script parameters, and remove it.
 ```
 
 **2.2.** The resulting self-extracting script will be created in the `Artifacts/` folder as:
@@ -231,7 +233,7 @@ Artifacts/ddm-os-reminder-RDNN-YYYY-MM-DD-HHMMSS_self-extracting-YYYY-MM-DD-HHMM
 
 **2.3.** Deploy the assembled, self-extracting script
 
-You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload to `/var/tmp` and executes it automatically.
+You can deploy the assembled, self-extracting script to your Macs using your MDM of choice. When executed, it extracts the assembled payload into a private, root-only `mktemp -d` directory under `/var/tmp`, runs it with all script parameters (so Parameters 4–6 reach the deployer exactly as with the assembled script), and removes the extracted payload on exit.
 
 ---
 
@@ -371,7 +373,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
 
 **5.1.** Prerequisites
 
-- `swiftDialog` must be installed at `/usr/local/bin/dialog`
+- `swiftDialog` 3.1 or later must be installed at `/Library/Application Support/Dialog/Dialog.app` (the helper runs `Contents/MacOS/dialogcli` directly)
 - Your target preference domain should exist as either:
    - `/Library/Managed Preferences/<rdnn>.dorm.plist`
    - `/Library/Preferences/<rdnn>.dorm.plist`

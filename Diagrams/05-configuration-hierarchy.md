@@ -160,7 +160,7 @@ Confirmed DDM always wins. Invalid or absent fallback data preserves suppression
 
 ### Aggressive-mode kill switch
 
-`/Library/Management/<rdnn>/dor-aggressive-kill` temporarily suppresses aggressive mode for support operations. It does not change configured values or restart policy semantics.
+`/Library/Management/<rdnn>/dor-aggressive-kill` temporarily suppresses aggressive mode for support operations. It does not change configured values or restart policy semantics. `All` and `Script` redeployments keep it; only `Uninstall` removes it.
 
 ## Correct Precedence Examples
 

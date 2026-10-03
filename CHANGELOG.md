@@ -12,6 +12,35 @@
 - Hardened language-code handling for localized dialog text and deadline date formats. Unrecognized language values now fall back to English and the global `DateFormatDeadlineHumanReadable`, and log a `[WARNING]`.
 - Validated localized preference key names before applying them; keys with an unrecognized language code are skipped and logged at `[WARNING]`.
 - Applied the same hardening to `Resources/reminderDialogPreferenceTest.zsh`.
+- Hardened runtime temporary-file handling. Each reminder run now creates a private, root-owned `/var/tmp/dorm.XXXXXX` directory (named after the runtime's `organizationScriptName`), mode `0755` so swiftDialog can read it as the console user. Downloaded icons, the swiftDialog command file (passed with `--commandfile`), and the threshold-refresh marker live in that directory, and quitting removes it.
+    - The runtime no longer writes fixed names such as `/var/tmp/icon.png`, `/var/tmp/overlayicon.png`, or `/var/tmp/dialog.log`.
+    - The runtime no longer deletes the default swiftDialog command file used by other swiftDialog workflows.
+    - Concurrent root runs no longer share icon or command files.
+- swiftDialog now runs from its root-owned app bundle (`/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`) instead of `/usr/local/bin/dialog`. `/usr/local` and `/usr/local/bin` were removed from the `PATH` of the runtime, the deployer, `dor-starter.zsh`, and the LaunchDaemon.
+- Hardened DDM declaration trust. When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match a persisted active declaration's `TargetOSVersion` and `TargetLocalDateTime`.
+    - Declarations that do not match are ignored and logged as `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state`.
+    - When no corroborated candidate remains, the resolver reports `missing`, which stays eligible for DDM Emergency Fallback.
+    - When the plist is missing or has an unrecognized structure, a `[NOTICE]` is logged and resolution works as before.
+    - `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` apply the same corroboration.
+- **Update Tonight** suppression now accepts only `SUOSUInstallTonightManager: Queued` and `SUOSUScheduler: ARMED` evidence logged by `softwareupdated`. Evidence from other senders is skipped and logged at `[NOTICE]`, and invalidating lines from any sender still fail closed.
+- Bounded the wait for System Settings after **Open Software Update** to 30 seconds, so a blocked or crashed System Settings can no longer hold `dor.pid` and stop all later reminders until reboot. Added a 10-second `--max-time` to the macOS icon download.
+- Opened the **Info** button URL and the System Settings activation in the console user's session with `launchctl asuser`, instead of `su -` with an interpolated shell command.
+- Deployment writes `dor.zsh` and `dor-starter.zsh` to adjacent temporary files, validates them with `zsh -n`, and moves them into place atomically, so the heartbeat can never launch a partially written script.
+- Deployment now changes ownership only of the organization directory and DDM OS Reminder's own runtime assets, instead of recursively running `chown` across `/Library/Management/<rdnn>`.
+- swiftDialog validation now reinstalls when the installed version cannot be read, instead of treating an empty version as current.
+- A swiftDialog Team ID verification failure is now logged as `[FATAL ERROR]` with the expected and received Team IDs, and the error dialog appears in the console user's session.
+- **Upgrade note:** `All` and `Script` redeployments now keep the aggressive-mode support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill` and log a `[NOTICE]`; only `Uninstall` removes it. Script Parameter 4 still defaults to `All` when blank; the in-script comment now says so.
+- `Resources/createSelfExtracting.zsh` (`2.4.0`) generated wrappers have three changes:
+    - They extract into a private `mktemp -d` directory.
+    - They forward all MDM script parameters, so Parameters 4–6 now reach the deployer: reset mode, DDM Emergency Fallback, and `Uninstall`.
+    - They remove the extracted payload on exit.
+- `Resources/Jamf-getDDMstatusFromCSV.zsh` (`1.4.0`) has four changes:
+    - API credentials and bearer tokens reach `curl` through stdin configuration instead of process arguments.
+    - Debug logs no longer include token responses.
+    - Entered passwords are no longer stripped of quote characters.
+    - Supplying the password as a positional argument now prints a warning.
+- `assemble.zsh` now re-prompts on an invalid deployment-mode selection instead of defaulting to production, and exits when no selection can be read.
+- `Resources/monitorRemoteSession.zsh` (`1.1.1`) also recognizes swiftDialog processes launched from the app bundle path.
 - No preference keys, defaults, or precedence rules changed.
 
 ### Version 4.3.0b1 (30-Sep-2026)

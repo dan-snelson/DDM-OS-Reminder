@@ -20,7 +20,7 @@ flowchart TD
     User -->|No| FatalUser[Fatal error]
     User -->|Yes| Preferences[Load each preference<br/>Managed, then Local, then Default]
 
-    Preferences --> Resolve[Resolve recent trusted DDM state<br/>from /var/log/install.log]
+    Preferences --> Resolve[Resolve recent trusted DDM state<br/>from /var/log/install.log,<br/>corroborated by softwareupdate state]
     Resolve --> Status{Resolver status}
     Status -->|resolved| Requirement[Use confirmed DDM requirement]
     Status -->|missing, conflict,<br/>noMatch, invalidVersion| ReadFallback{Validated emergency<br/>fallback available?}
@@ -115,7 +115,7 @@ flowchart TD
 
 ## DDM and Fallback Decisions
 
-Normal DDM resolution always runs first:
+Normal DDM resolution always runs first. When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, only `install.log` declarations matching one of its active declarations (`TargetOSVersion` and `TargetLocalDateTime`) are considered; the others are ignored and logged at `[WARNING]`. When the file is missing or unrecognized, resolution uses `install.log` alone and logs a `[NOTICE]`.
 
 - `resolved`: confirmed DDM wins and persisted fallback stays inactive.
 - `missing`, `conflict`, `noMatch`, or `invalidVersion`: runtime may select a valid emergency fallback.
@@ -135,7 +135,7 @@ Scheduling combines four sources:
 
 The earliest applicable exact time wins. Threshold reminders bypass quiet-period suppression. Force restart mode bypasses quiet-period and meeting checks.
 
-**Update Tonight suppression** is runtime-only and has no preference key. When `/var/log/install.log` shows that `softwareupdated` queued the required version (`SUOSUInstallTonightManager: Queued … macOS <version>`) and armed the scheduler (`SUOSUScheduler: ARMED (… simulated=NO)`), normal reminders stop until local midnight. The evidence must be from today, newer than the last boot, and not followed by a disarm, dequeue, or `enabled = false` line. The next run is scheduled for the first `DailyReminderTimes` slot after midnight, or for an earlier pending threshold. Threshold, aggressive, and Force reminders bypass this suppression, and it never applies when the effective deadline is at or before local midnight. Daemon runs record the expiry as `UpdateTonightSuppressionUntil` in `dor-state.plist` and log it as expired or cleared on the next run.
+**Update Tonight suppression** is runtime-only and has no preference key. When `/var/log/install.log` shows lines logged by `softwareupdated` itself confirming that it queued the required version (`SUOSUInstallTonightManager: Queued … macOS <version>`) and armed the scheduler (`SUOSUScheduler: ARMED (… simulated=NO)`), normal reminders stop until local midnight. The evidence must be from today, newer than the last boot, and not followed by a disarm, dequeue, or `enabled = false` line. The next run is scheduled for the first `DailyReminderTimes` slot after midnight, or for an earlier pending threshold. Threshold, aggressive, and Force reminders bypass this suppression, and it never applies when the effective deadline is at or before local midnight. Daemon runs record the expiry as `UpdateTonightSuppressionUntil` in `dor-state.plist` and log it as expired or cleared on the next run.
 
 ## Dialog Modes
 

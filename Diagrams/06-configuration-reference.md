@@ -689,7 +689,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Do **not** deploy runtime scheduler state through preference payloads
 - Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
 - Runtime-only keys currently include `NextScheduledReminder` and `DaemonLastTriggered`
-- The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`
+- The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`; `All` and `Script` redeployments keep it, and only `Uninstall` removes it
 - Direct/manual/demo runs do not mutate this daemon scheduler state
 
 **Script Default**:

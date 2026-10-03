@@ -1246,23 +1246,31 @@ if [[ "${skipModePrompt}" == false ]]; then
   echo
   echo "  [Press ‘X’ to exit ❎]"
   echo
-  read -r "?Enter mode [1/2/3]: " modeChoice
+  while true; do
+    if ! read -r "?Enter mode [1/2/3]: " modeChoice; then
+      echo
+      echo "❌ No deployment mode entered; re-run with --lane <dev|test|prod>."
+      exit 1
+    fi
 
-  case "${modeChoice}" in
-    1) deploymentMode="dev" ;;
-    2) deploymentMode="test" ;;
-    3)
-      deploymentMode="prod"
-      ;;
-    [Xx])
-      echo "❎ Exiting at user request."
-      exit 0
-      ;;
-    *)
-      echo "⚠️  Invalid selection. Defaulting to 'production' mode."
-      deploymentMode="prod"
-      ;;
-  esac
+    case "${modeChoice}" in
+      1) deploymentMode="dev" ;;
+      2) deploymentMode="test" ;;
+      3)
+        deploymentMode="prod"
+        ;;
+      [Xx])
+        echo "❎ Exiting at user request."
+        exit 0
+        ;;
+      *)
+        # Never fall through to production artifacts on a mistyped selection
+        echo "⚠️  Invalid selection '${modeChoice}'. Enter 1, 2, 3, or X."
+        continue
+        ;;
+    esac
+    break
+  done
 fi
 
 echo

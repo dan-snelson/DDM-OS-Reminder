@@ -27,7 +27,7 @@
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
 scriptVersion="5.0.0b2"
@@ -38,6 +38,9 @@ scriptLog="/var/log/org.churchofjesuschrist.log"
 # Minimum Required Version of swiftDialog
 swiftDialogMinimumRequiredVersion="3.1.0.4994"
 
+# swiftDialog CLI (root-owned app bundle path; independent of /usr/local ownership)
+dialogBinary="/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli"
+
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
 
@@ -47,7 +50,7 @@ autoload -Uz is-at-least
 # MDM Script Parameters
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Parameter 4: Configuration Files to Reset (i.e., None (blank) | All | LaunchDaemon | Script | Uninstall )
+# Parameter 4: Configuration Files to Reset (i.e., All (default when blank) | LaunchDaemon | Script | Uninstall ); any other value resets nothing
 resetConfiguration="${4:-"All"}"
 
 # Parameter 5: Fallback Required macOS Version (i.e., 26.6)
@@ -117,15 +120,24 @@ function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 function removeDeployedRuntimeAssets() {
+    local removalMode="${1:-}"
     local runtimeAssetPath=""
     local runtimeAssetPaths=(
         "${dormScriptPath}"
         "${dorStarterPath}"
         "${dorStatePlistPath}"
         "${dorPidFilePath}"
-        "${dorAggressiveKillSwitchPath}"
         "${dorFallbackDeclarationPlistPath}"
     )
+
+    # Support suppression survives redeployment; only Uninstall removes it
+    if [[ "${removalMode}" == "preserveAggressiveKillSwitch" ]]; then
+        if [[ -e "${dorAggressiveKillSwitchPath}" ]]; then
+            notice "Preserving aggressive-mode support kill switch '${dorAggressiveKillSwitchPath}'; aggressive mode stays suppressed until support removes it."
+        fi
+    else
+        runtimeAssetPaths+=( "${dorAggressiveKillSwitchPath}" )
+    fi
 
     stopActiveReminderRuntime
 
@@ -497,13 +509,19 @@ function resetLaunchDaemons() {
 
 function resetConfiguration() {
 
+    local ownedAssetPath=""
+
     notice "Reset Configuration: ${1}"
 
     # Ensure the directory exists
     mkdir -p "${organizationDirectory}"
 
-    # Secure ownership
-    chown -R root:wheel "${organizationDirectory}"
+    # Secure ownership of this project's assets only; other tools may share the organization directory
+    chown root:wheel "${organizationDirectory}"
+    [[ -d "${organizationDirectory}/${reverseDomainNameNotation}" ]] && chown root:wheel "${organizationDirectory}/${reverseDomainNameNotation}"
+    for ownedAssetPath in "${dormScriptPath}" "${dorStarterPath}" "${dorStatePlistPath}" "${dorPidFilePath}" "${dorAggressiveKillSwitchPath}" "${dorFallbackDeclarationPlistPath}"; do
+        [[ -e "${ownedAssetPath}" || -L "${ownedAssetPath}" ]] && chown -h root:wheel "${ownedAssetPath}"
+    done
 
     # Secure directory permissions (no world-writable bits)
     [[ -d "${organizationDirectory}" ]] && chmod 755 "${organizationDirectory}"
@@ -520,7 +538,7 @@ function resetConfiguration() {
 
             # Reset Script
             info "Reset Script … "
-            removeDeployedRuntimeAssets
+            removeDeployedRuntimeAssets "preserveAggressiveKillSwitch"
             ;;
 
         "LaunchDaemon" )
@@ -531,7 +549,7 @@ function resetConfiguration() {
         "Script" )
 
             info "Reset Script … "
-            removeDeployedRuntimeAssets
+            removeDeployedRuntimeAssets "preserveAggressiveKillSwitch"
             ;;
 
         "Uninstall" )
@@ -582,9 +600,40 @@ function resetConfiguration() {
 
 }
 
+function installRuntimeScriptAtomically() {
+    local temporaryPath="${1}"
+    local targetPath="${2}"
+    local syntaxOutput=""
+
+    logComment "Setting permissions …"
+    if ! chown root:wheel "${temporaryPath}" || ! chmod 755 "${temporaryPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to set root:wheel 0755 on '${temporaryPath}'."
+    fi
+
+    if ! syntaxOutput="$(/bin/zsh -n "${temporaryPath}" 2>&1)"; then
+        syntaxOutput="${syntaxOutput//$'\n'/; }"
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Generated script failed syntax validation for '${targetPath}': ${syntaxOutput:-no zsh output}"
+    fi
+
+    # Atomic replacement keeps a running heartbeat from launching a partially written script
+    if ! mv -f "${temporaryPath}" "${targetPath}"; then
+        rm -f "${temporaryPath}" 2>/dev/null || true
+        fatal "Unable to atomically replace '${targetPath}'."
+    fi
+}
+
 function createDDMOSReminderScript() {
 
+    local dormTemporaryPath=""
+
     notice "Create '${humanReadableScriptName}' script: ${dormScriptPath}"
+
+    dormTemporaryPath="$(/usr/bin/mktemp "${dormScriptPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${dormTemporaryPath}" || ! -f "${dormTemporaryPath}" ]]; then
+        fatal "Unable to create temporary script beside '${dormScriptPath}'."
+    fi
 
 (
 cat <<'ENDOFSCRIPT'
@@ -607,14 +656,11 @@ cat <<'ENDOFSCRIPT'
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ENDOFSCRIPT
-) > "${dormScriptPath}"
+) > "${dormTemporaryPath}"
+
+    installRuntimeScriptAtomically "${dormTemporaryPath}" "${dormScriptPath}"
 
     logComment "${humanReadableScriptName} script created"
-
-    logComment "Setting permissions …"
-    chown root:wheel "${dormScriptPath}"
-    chmod 755 "${dormScriptPath}"
-    chmod +x "${dormScriptPath}"
 
 }
 
@@ -635,14 +681,20 @@ function createDorStarterScript() {
     local escapedMainScriptPath="$(escapeSedReplacement "${dormScriptPath}")"
     local escapedStatePlistPath="$(escapeSedReplacement "${dorStatePlistPath}")"
     local escapedPidFilePath="$(escapeSedReplacement "${dorPidFilePath}")"
+    local dorStarterTemporaryPath=""
 
     notice "Create 'dor-starter' script: ${dorStarterPath}"
+
+    dorStarterTemporaryPath="$(/usr/bin/mktemp "${dorStarterPath}.tmp.XXXXXX" 2>/dev/null)"
+    if [[ -z "${dorStarterTemporaryPath}" || ! -f "${dorStarterTemporaryPath}" ]]; then
+        fatal "Unable to create temporary starter beside '${dorStarterPath}'."
+    fi
 
 (
 cat <<'ENDOFSTARTER'
 #!/bin/zsh --no-rcs
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 scriptVersion="__SCRIPT_VERSION__"
 scriptLog="__SCRIPT_LOG__"
@@ -810,14 +862,11 @@ ENDOFSTARTER
     -e "s|__MAIN_SCRIPT_PATH__|${escapedMainScriptPath}|g" \
     -e "s|__STATE_PLIST_PATH__|${escapedStatePlistPath}|g" \
     -e "s|__PID_FILE_PATH__|${escapedPidFilePath}|g" \
-    > "${dorStarterPath}"
+    > "${dorStarterTemporaryPath}"
+
+    installRuntimeScriptAtomically "${dorStarterTemporaryPath}" "${dorStarterPath}"
 
     logComment "dor-starter script created"
-
-    logComment "Setting permissions …"
-    chown root:wheel "${dorStarterPath}"
-    chmod 755 "${dorStarterPath}"
-    chmod +x "${dorStarterPath}"
 
 }
 
@@ -877,7 +926,7 @@ function createLaunchDaemon() {
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin</string>
+        <string>/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>StartInterval</key>
     <integer>60</integer>
@@ -1081,14 +1130,19 @@ function dialogInstall() {
 
         installer -pkg "$tempDirectory/Dialog.pkg" -target /
         sleep 2
-        dialogVersion=$( /usr/local/bin/dialog --version )
+        dialogVersion=$( "${dialogBinary}" --version 2>/dev/null )
         preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
 
     else
 
-        # Display a so-called "simple" dialog if Team ID fails to validate
-        osascript -e 'display dialog "Please advise your Support Representative of the following error:\r\r• Dialog Team ID verification failed\r\r" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution'
-        exit "1"
+        rm -Rf "$tempDirectory"
+
+        # Display a so-called "simple" dialog in the console user's session if Team ID fails to validate
+        consoleUser=$( stat -f%Su /dev/console 2>/dev/null )
+        if [[ -n "${consoleUser}" && "${consoleUser}" != "root" && "${consoleUser}" != "loginwindow" ]]; then
+            launchctl asuser "$( id -u "${consoleUser}" )" /usr/bin/sudo -u "${consoleUser}" /usr/bin/osascript -e 'display dialog "Please advise your Support Representative of the following error:\r\r• Dialog Team ID verification failed\r\r" with title "DDM OS Reminder Error" buttons {"Close"} with icon caution giving up after 120' >/dev/null 2>&1
+        fi
+        fatal "swiftDialog Team ID verification failed; expected '${expectedDialogTeamID}', received '${teamID:-none}'."
 
     fi
 
@@ -1102,22 +1156,22 @@ function dialogInstall() {
 function dialogCheck() {
 
     # Check for Dialog and install if not found
-    if [[ ! -x "/Library/Application Support/Dialog/Dialog.app" ]]; then
+    if [[ ! -x "${dialogBinary}" ]]; then
 
         preFlight "swiftDialog not found; installing …"
         dialogInstall
-        if [[ ! -x "/usr/local/bin/dialog" ]]; then
+        if [[ ! -x "${dialogBinary}" ]]; then
             fatal "swiftDialog still not found; are downloads from GitHub blocked on this Mac?"
         fi
 
     else
 
-        dialogVersion=$(/usr/local/bin/dialog --version)
-        if ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
+        dialogVersion=$( "${dialogBinary}" --version 2>/dev/null )
+        if [[ -z "${dialogVersion}" ]] || ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
             
-            preFlight "swiftDialog version ${dialogVersion} found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating …"
+            preFlight "swiftDialog version '${dialogVersion:-unknown}' found but swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required; updating …"
             dialogInstall
-            if [[ ! -x "/usr/local/bin/dialog" ]]; then
+            if [[ ! -x "${dialogBinary}" ]]; then
                 fatal "Unable to update swiftDialog; are downloads from GitHub blocked on this Mac?"
             fi
 

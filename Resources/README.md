@@ -44,7 +44,7 @@ The artifacts will be saved as shown below:
 ❯ zsh assemble.zsh us.snelson --lane prod --interactive
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0)
+🧩 Assemble DDM OS Reminder (5.0.0)
 ===============================================================
 
 Full Paths:
@@ -149,7 +149,7 @@ The `assemble.zsh` script creates **all three files you need for deployment**:
 All artifacts are saved to the `Artifacts/` folder and include the lane suffix:
 `-dev`, `-test`, or `-prod`.
 
-After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [3. Create Self-extracting Script](#3-create-self-extracting-script) below.
+After carefully reviewing and customizing either the `.plist` or `.mobileconfig`, you can deploy the appropriate artifacts directly to your Macs using your MDM, or proceed to [2. Create Self-extracting Script](#2-create-self-extracting-script) below.
 
 When comparing a newly generated `.plist` to an older one, prefer a normalized diff instead of a raw XML comparison:
 
@@ -159,7 +159,7 @@ diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
 
 This filters out comment, key-order, and whitespace churn so you can focus on actual preference-value changes.
 
-> **Note:** The [Create `.plist`](#4-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
+> **Note:** The [Create `.plist`](#3-create-plist-optional) step is now **optional** since `assemble.zsh` already generates both `.plist` and `.mobileconfig` files. Use it only if you need to regenerate configuration files from an already-assembled script.
 
 > **Localization (optional):** Configure `LanguageOverride` as `auto` or any language code that has a matching `TitleLocalized_<code>` key, and add the corresponding `*_Localized_<code>` families in `Resources/sample.plist` for dialog text, warnings, staging text, support-assistance messaging, infobox labels, deadline messaging, past-deadline restart copy, and aggressive-mode copy. `assemble.zsh` and `Resources/createPlist.zsh` both preserve additional language families present in `sample.plist`, and can now emit either the full localization surface, a minimal English-focused artifact (`--minimal`), or a selected language subset (`--languages <csv>`).
 

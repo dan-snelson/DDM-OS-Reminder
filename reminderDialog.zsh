@@ -1534,7 +1534,8 @@ function applyScheduledExitAction() {
     esac
 }
 
-trap removeDorPidFile EXIT
+# Fatal and direct exits must also remove this run's private /var/tmp directory
+trap cleanupDialogRuntimeArtifacts EXIT
 
 function formatDeadlineFromISO8601() {
     local sourceTimestamp="${1}"
@@ -2693,11 +2694,12 @@ function applyLocalizedInfoboxLabels() {
 }
 
 function updateRequiredVariables() {
-    downloadBrandingAssets
+    # Check swiftDialog before creating the runtime directory or downloading icons
     dialogBinary="/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli"
     if [[ ! -x "${dialogBinary}" ]]; then
         fatal "swiftDialog not found at '${dialogBinary}'; are downloads from GitHub blocked on this Mac?"
     fi
+    downloadBrandingAssets
 
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"
     applyLocalizedDialogText

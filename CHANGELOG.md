@@ -9,7 +9,7 @@
 - Hardened DDM declaration trust. When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match a persisted active declaration's `TargetOSVersion` and `TargetLocalDateTime`.
     - Declarations that do not match are ignored and logged as `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state`.
     - When no corroborated candidate remains, the resolver reports `missing`, which stays eligible for DDM Emergency Fallback.
-    - When the plist is missing or has an unrecognized structure, resolution works as before and the runtime logs `[WARNING] softwareupdate DDM state is … ; trusting uncorroborated install.log declarations.`; `SECURITY.md` documents this as an accepted residual risk.
+    - When the plist is missing or has an unrecognized structure, resolution works as before and the runtime logs `[WARNING] softwareupdate DDM state is <unavailable|unrecognized> at '…'; trusting uncorroborated install.log declarations.`; `SECURITY.md` documents this as an accepted residual risk.
     - `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` apply the same corroboration.
 - Added same-day reminder suppression after the user schedules the required update with **Update Tonight**. Normal reminders stop until local midnight once `/var/log/install.log` confirms that macOS accepted the request ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)).
     - Detection requires daemon-side success evidence: `SUOSUInstallTonightManager: Queued … macOS <version>` must exactly match the active DDM (or DDM Emergency Fallback) target version, and a following `SUOSUScheduler: ARMED (… simulated=NO)` line must appear. The `Clicked to queue available updates for later` button event and untimestamped continuation lines (for example `ScheduleUpdateForLater = 1;`) are ignored, because the user can still cancel the authentication prompt.
@@ -21,7 +21,7 @@
 - swiftDialog now runs from its root-owned app bundle (`/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`) instead of `/usr/local/bin/dialog`. `/usr/local` and `/usr/local/bin` were removed from the `PATH` of the runtime, the deployer, `dor-starter.zsh`, and the LaunchDaemon.
     - swiftDialog validation now reinstalls when the installed version cannot be read, instead of treating an empty version as current.
     - A swiftDialog Team ID verification failure is now logged as `[FATAL ERROR]` with the expected and received Team IDs, and the error dialog appears in the console user's session.
-- Hardened runtime temporary-file handling. Each reminder run now creates a private, root-owned `/var/tmp/dorm.XXXXXX` directory (named after the runtime's `organizationScriptName`), mode `0755` so swiftDialog can read it as the console user. Downloaded icons, the swiftDialog command file (passed with `--commandfile`), and the threshold-refresh marker live in that directory, and quitting removes it.
+- Hardened runtime temporary-file handling. Each reminder run now creates a per-run, root-owned `/var/tmp/dorm.XXXXXX` directory (named after the runtime's `organizationScriptName`), mode `0755` so swiftDialog can read it as the console user. Downloaded icons, the swiftDialog command file (passed with `--commandfile`), and the threshold-refresh marker live in that directory, and every exit path, including fatal errors, removes it. A missing `dialogcli` is detected before the directory is created or icons are downloaded.
     - The runtime no longer writes fixed names such as `/var/tmp/icon.png`, `/var/tmp/overlayicon.png`, or `/var/tmp/dialog.log`.
     - The runtime no longer deletes the default swiftDialog command file used by other swiftDialog workflows.
     - Concurrent root runs no longer share icon or command files.
@@ -45,11 +45,11 @@
     - `dor.zsh` and `dor-starter.zsh` are written to adjacent temporary files, validated with `zsh -n`, and moved into place atomically, so the heartbeat can never launch a partially written script.
     - Deployment now changes ownership only of the organization directory and DDM OS Reminder's own runtime assets, instead of recursively running `chown` across `/Library/Management/<rdnn>`.
 - **Upgrade note:** `All` and `Script` redeployments now keep the aggressive-mode support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill` and log a `[NOTICE]`; only `Uninstall` removes it. Script Parameter 4 still defaults to `All` when blank; the in-script comment now says so.
-- Hardened prior-plist import in `assemble.zsh`. An imported `ScriptLog` is now kept only when it is a plain absolute path (letters, digits, `.`, `_`, `-`, and `/`; no `..`, `.`, or empty segments) with a `<rdnn>.log` basename. Any other value logs `⚠️  Imported ScriptLog '…' is not a safe absolute path` and falls back to `/var/log/<rdnn>.log`.
+- Hardened prior-plist import in `assemble.zsh`. An imported `ScriptLog` is now kept only when it is a plain absolute path (letters, digits, `.`, `_`, `-`, and `/`; no `..`, `.`, or empty segments) with a `<rdnn>.log` basename. An unsafe path logs `⚠️  Imported ScriptLog '…' is not a safe absolute path`, a mismatched basename logs `⚠️  Imported ScriptLog basename '…' does not match '<rdnn>.log'`, and both fall back to `/var/log/<rdnn>.log`.
     - Assembly refuses to write an unsafe `scriptLog` path into the generated script.
     - The assembled script is checked again with `zsh -n` after the final `scriptLog` rewrite; previously the only syntax check ran before it.
     - `assemble.zsh` now re-prompts on an invalid deployment-mode selection instead of defaulting to production, and exits when no selection can be read.
-- `Resources/createSelfExtracting.zsh` (`2.4.0`) generated wrappers have three changes:
+- `Resources/createSelfExtracting.zsh` (`2.4.0`) generated wrappers have these changes:
     - They extract into a private `mktemp -d` directory.
     - They forward all MDM script parameters, so Parameters 4–6 now reach the deployer: reset mode, DDM Emergency Fallback, and `Uninstall`.
     - They remove the extracted payload on exit.

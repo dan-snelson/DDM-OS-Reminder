@@ -659,7 +659,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <integer>75</integer>
 ```
 
-**Related Logic**: See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+**Related Logic**: See [Runtime Decision Tree - Reminder Timing Decisions](02-runtime-decision-tree.md#reminder-timing-decisions)
 
 ---
 
@@ -688,7 +688,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Deploy and manage `DailyReminderTimes` through managed preferences or local preferences
 - Do **not** deploy runtime scheduler state through preference payloads
 - Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
-- Runtime-only keys currently include `NextScheduledReminder` and `DaemonLastTriggered`
+- Runtime-only keys currently include `NextScheduledReminder`, `DaemonLastTriggered`, and `UpdateTonightSuppressionUntil`
 - The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`; `All` and `Script` redeployments keep it, and only `Uninstall` removes it
 - Direct/manual/demo runs do not mutate this daemon scheduler state
 
@@ -863,7 +863,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Related Logic**:
-- See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+- See [Runtime Decision Tree - Reminder Timing Decisions](02-runtime-decision-tree.md#reminder-timing-decisions)
 - Works in conjunction with `meetingDelay` preference
 - Feature Request: Issue #67
 
@@ -2547,7 +2547,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 5.0.0 | 03-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) now logs `[WARNING]` instead of `[NOTICE]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
+| 5.0.0 | 04-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) logs `[WARNING]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
 | 5.0.0b2 | 02-Oct-2026 | `DailyReminderTimes` and `MinutesBeforeDeadlineReminderSchedule` values mixing valid and invalid entries (for example `8:00,17:00` or `45,abc`) now keep the valid entries and log each invalid entry at `[WARNING]`; previously the warning text was captured into the resolved value, leaving no baseline slots or thresholds ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139)); `HH:MM` still requires zero-padded hours; unrecognized `LanguageOverride` or user language values fall back to English and the global `DateFormatDeadlineHumanReadable` with a `[WARNING]`, and localized keys with an unrecognized `<code>` suffix are skipped; no preference keys, defaults, or precedence rules changed |
 | 4.3.0b1 | 30-Sep-2026 | Runtime-only Update Tonight suppression: confirmed same-day `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version pauses normal reminders until local midnight; thresholds, aggressive, and Force bypass; scheduler state key `UpdateTonightSuppressionUntil` ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)); no preference keys or precedence rules changed |
 | 4.2.2 | 30-Sep-2026 | Resolver no longer holds `conflict` when a transient `No updates found for DDM to enforce` marker is followed by `Found product with requested PMV (<version>)` or a date-matched `Armed DDM activity scheduler ... YES` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134)); no preference keys or precedence rules changed |

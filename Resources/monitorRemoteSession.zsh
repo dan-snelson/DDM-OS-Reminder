@@ -110,7 +110,7 @@ done
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
 
-scriptVersion="1.1.0"
+scriptVersion="1.1.1"
 reverseDomainNameNotation="${cliReverseDomainNameNotation:-org.churchofjesuschrist}"
 organizationScriptName="dor"
 organizationDirectory="/Library/Management/${reverseDomainNameNotation}"
@@ -268,7 +268,7 @@ function renderMatchingProcesses() {
             next
         }
 
-        index($0, rdnn) || index($0, "dor-starter.zsh") || index($0, "/Library/Management/") || index($0, "/usr/local/bin/dialog") || index($0, "swiftDialog") {
+        index($0, rdnn) || index($0, "dor-starter.zsh") || index($0, "/Library/Management/") || index($0, "/usr/local/bin/dialog") || index($0, "Dialog.app/Contents/MacOS") || index($0, "swiftDialog") {
             print
             found = 1
         }

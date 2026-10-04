@@ -526,7 +526,7 @@ A: User can postpone during early/medium phases. Within 24 hours of deadline, me
 A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least `PastDeadlineRestartMinimumUptimeMinutes`.
 
 **Q: How can support temporarily suppress aggressive mode?**
-A: Create `/Library/Management/<rdnn>/dor-aggressive-kill` on the Mac. Remove that file when support work is complete so aggressive mode can resume if the Mac is still past deadline and below the required macOS version.
+A: Create `/Library/Management/<rdnn>/dor-aggressive-kill` on the Mac. Remove that file when support work is complete so aggressive mode can resume if the Mac is still past deadline and below the required macOS version. Redeploying with Parameter 4 `All` or `Script` keeps the file; only `Uninstall` removes it.
 
 **Q: How does this interact with Apple's own notifications?**
 A: DDM OS Reminder supplements (not replaces) Apple's notifications. Apple's notification appears but is subtle. This provides prominent, configurable reminders with better visibility.

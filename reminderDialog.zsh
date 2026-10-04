@@ -17,10 +17,10 @@
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="4.3.0b2"
+scriptVersion="5.0.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -29,6 +29,10 @@ scriptLog="/var/log/org.churchofjesuschrist.log"
 # `installLogPathOverride` is an internal fixture-testing hook for local validation only.
 # It is not a supported admin preference or deployment setting.
 installLogPath="${installLogPathOverride:-/var/log/install.log}"
+# `ddmStatePersistencePlistPathOverride` is an internal fixture-testing hook for local validation only.
+# It is not a supported admin preference or deployment setting.
+ddmStatePersistencePlistPath="${ddmStatePersistencePlistPathOverride:-/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist}"
+ddmStatePersistenceStatus=""
 ddmResolverLookbackLines=4000
 ddmResolverStatus=""
 ddmResolverReason=""
@@ -47,10 +51,14 @@ ddmResolverConflictSummary=""
 ddmResolverConflictContext=""
 ddmResolverIgnoredInvalidSummary=""
 ddmResolverIgnoredInvalidContext=""
+ddmResolverUncorroboratedSummary=""
 ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{2}(:[0-9]{2})?$'
 typeset -ga ddmRecentInstallLogWindow=()
 typeset -gA ddmTimestampEpochCache=()
 typeset -gA ddmInvalidCandidateContexts=()
+typeset -gA ddmStatePersistenceSignatures=()
+typeset -gA ddmUncorroboratedCandidates=()
+ddmSoftwareUpdatedSenderRegex='^[^ ]+ [^ ]+ [^ ]+ softwareupdated\[[0-9]+\]: '
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -90,6 +98,7 @@ schedulerEnabledForCurrentRun="NO"
 [[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
 activeDialogPid=""
 activeDialogMonitorPid=""
+dialogRuntimeDirectory=""
 runtimeTerminationInProgress="NO"
 nextReminderScheduleMode="baseline"
 nextReminderScheduleEpoch=""
@@ -122,6 +131,7 @@ dialogLanguage="en"
 deadlineFormatLanguageCode="en"
 relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
 declare -A preferenceExplicitlySet=()
+declare -A dateFormatDeadlineHumanReadableLocalized=()
 
 
 
@@ -558,6 +568,9 @@ function sanitizeLanguageCode() {
         languageCode="${languageCode%_}"
     done
 
+    local languageCodeRegex='^[a-z]{2,3}(_[a-z0-9]{2,8})*$'
+    [[ "${languageCode}" =~ ${languageCodeRegex} ]] || languageCode=""
+
     echo "${languageCode}"
 }
 
@@ -568,17 +581,12 @@ function baseLanguageCodeForCode() {
     echo "${languageCode%%_*}"
 }
 
-function requestedDialogLanguageCode() {
-    local requestedLanguageCode=""
-
+function requestedDialogLanguageValue() {
     if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
-        requestedLanguageCode="${languageOverride}"
+        printf '%s\n' "${languageOverride}"
     else
-        requestedLanguageCode="$(detectLoggedInUserLanguageCode)"
+        detectLoggedInUserLanguageCode
     fi
-
-    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageCode}")"
-    echo "${requestedLanguageCode}"
 }
 
 function localeForDialogLanguageCode() {
@@ -1889,6 +1897,7 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     local plistPath="${1}"
     local rawKey=""
     local plistKeys=()
+    local variableNameRegex='^[A-Za-z][A-Za-z0-9_]*$'
 
     while IFS= read -r rawKey; do
         [[ -n "${rawKey}" ]] && plistKeys+=("${rawKey}")
@@ -1904,6 +1913,7 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     for rawKey in "${plistKeys[@]}"; do
         local baseRaw="${rawKey%%Localized_*}"
         local codePart="${rawKey##*Localized_}"
+        local languageCode=""
         local internalBase=""
         local internalSuffix=""
         local internalKey=""
@@ -1915,13 +1925,30 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
             continue
         fi
 
+        languageCode="$(sanitizeLanguageCode "${codePart}")"
+        if [[ -z "${languageCode}" ]]; then
+            warning "Ignoring localized preference key ${(q)rawKey}; language code is not recognized."
+            continue
+        fi
+
         if internalBase="$(internalPreferenceKeyForPlistKey "${baseRaw}")"; then
             :
         else
             internalBase="${baseRaw:0:1:l}${baseRaw:1}"
         fi
-        internalSuffix="$(languageSuffixForCode "${codePart}")"
+
+        if [[ "${internalBase}" == "dateFormatDeadlineHumanReadable" ]]; then
+            dateFormatDeadlineHumanReadableLocalized[${languageCode}]=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
+            continue
+        fi
+
+        internalSuffix="$(languageSuffixForCode "${languageCode}")"
         internalKey="${internalBase}Localized${internalSuffix}"
+        if [[ ! "${internalKey}" =~ ${variableNameRegex} ]]; then
+            warning "Ignoring localized preference key ${(q)rawKey}; preference name is not recognized."
+            continue
+        fi
+
         dynamicValue=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
 
         printf -v "${internalKey}" '%s' "${dynamicValue}"
@@ -1931,6 +1958,7 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
 
 function loadPreferenceOverrides() {
     preferenceExplicitlySet=()
+    dateFormatDeadlineHumanReadableLocalized=()
     
     # Check if managed preferences exist
     local hasManagedPrefs=false
@@ -2012,17 +2040,20 @@ function loadPreferenceOverrides() {
 }
 
 function resolveDateFormatDeadlineHumanReadable() {
+    local requestedLanguageValue=""
     local requestedLanguageCode=""
     local baseLanguageCode=""
     local resolvedDialogLanguage=""
-    local exactVariableName=""
-    local baseVariableName=""
     local exactValue=""
     local baseValue=""
     local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
     local resolvedDateFormatSource="built-in default"
 
-    requestedLanguageCode="$(requestedDialogLanguageCode)"
+    requestedLanguageValue="$(requestedDialogLanguageValue)"
+    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageValue}")"
+    if [[ -n "${requestedLanguageValue}" && -z "${requestedLanguageCode}" ]]; then
+        warning "Requested language (${#requestedLanguageValue} characters) is not a recognized language code; ignoring localized deadline date formats."
+    fi
     baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
     resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
 
@@ -2031,26 +2062,18 @@ function resolveDateFormatDeadlineHumanReadable() {
         resolvedDateFormatSource="global preference"
     fi
 
-    if [[ -n "${requestedLanguageCode}" ]]; then
-        exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
-        exactValue="${(P)exactVariableName}"
-
-        if [[ "${preferenceExplicitlySet["${exactVariableName}"]}" == "true" || -n "${exactValue}" ]]; then
-            exactValue="$(trimSurroundingWhitespace "${exactValue}")"
-            if [[ -n "${exactValue}" ]]; then
-                dateFormatDeadlineHumanReadable="${exactValue}"
-                deadlineFormatLanguageCode="${requestedLanguageCode}"
-                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
-            fi
+    if [[ -n "${requestedLanguageCode}" ]] && (( ${+dateFormatDeadlineHumanReadableLocalized[${requestedLanguageCode}]} )); then
+        exactValue="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadableLocalized[${requestedLanguageCode}]}")"
+        if [[ -n "${exactValue}" ]]; then
+            dateFormatDeadlineHumanReadable="${exactValue}"
+            deadlineFormatLanguageCode="${requestedLanguageCode}"
+            resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
         fi
     fi
 
     if [[ "${deadlineFormatLanguageCode}" == "${resolvedDialogLanguage:-en}" && -n "${baseLanguageCode}" && "${baseLanguageCode}" != "${requestedLanguageCode}" ]]; then
-        baseVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${baseLanguageCode}")"
-        baseValue="${(P)baseVariableName}"
-
-        if [[ "${preferenceExplicitlySet["${baseVariableName}"]}" == "true" || -n "${baseValue}" ]]; then
-            baseValue="$(trimSurroundingWhitespace "${baseValue}")"
+        if (( ${+dateFormatDeadlineHumanReadableLocalized[${baseLanguageCode}]} )); then
+            baseValue="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadableLocalized[${baseLanguageCode}]}")"
             if [[ -n "${baseValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${baseValue}"
                 deadlineFormatLanguageCode="${baseLanguageCode}"
@@ -2342,7 +2365,7 @@ function normalizeDialogLanguageCode() {
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
-    [[ "${languageCode}" == "en" ]] && echo "en" && return
+    [[ -z "${languageCode}" || "${languageCode}" == "en" ]] && echo "en" && return
 
     sentinelKey="TitleLocalized_${languageCode}"
     if [[ -f "${managedPreferencesPlist}.plist" ]]; then
@@ -2562,6 +2585,11 @@ function resolveDialogLanguage() {
     local detectedLanguage=""
 
     if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
+        if [[ -z "$(sanitizeLanguageCode "${languageOverride}")" ]]; then
+            dialogLanguage="en"
+            warning "LanguageOverride is not a recognized language code; using '${dialogLanguage}'"
+            return
+        fi
         normalizedOverride="$(normalizeDialogLanguageCode "${languageOverride}")"
         dialogLanguage="${normalizedOverride}"
         notice "LanguageOverride is '${languageOverride}'; using '${dialogLanguage}'"
@@ -2572,6 +2600,12 @@ function resolveDialogLanguage() {
     if [[ -z "${detectedLanguage}" ]]; then
         dialogLanguage="en"
         notice "Could not detect logged-in user language; defaulting to '${dialogLanguage}'"
+        return
+    fi
+
+    if [[ -z "$(sanitizeLanguageCode "${detectedLanguage}")" ]]; then
+        dialogLanguage="en"
+        warning "Logged-in user language (${#detectedLanguage} characters) is not a recognized language code; defaulting to '${dialogLanguage}'"
         return
     fi
 
@@ -2591,9 +2625,12 @@ function initializeLocalizedRuntimeFields() {
 function applyLocalizedFieldValue() {
     local baseVariable="${1}"
     local languageCode="${2}"
+    local variableNameRegex='^[A-Za-z][A-Za-z0-9_]*$'
     local localizedSuffix
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
+    [[ -z "${localizedSuffix}" ]] && return 0
     local localizedVariable="${baseVariable}Localized${localizedSuffix}"
+    [[ "${localizedVariable}" =~ ${variableNameRegex} ]] || return 0
     local localizedValue="${(P)localizedVariable}"
     local baseValue="${(P)baseVariable}"
 
@@ -2657,7 +2694,7 @@ function applyLocalizedInfoboxLabels() {
 
 function updateRequiredVariables() {
     downloadBrandingAssets
-    dialogBinary="/usr/local/bin/dialog"
+    dialogBinary="/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli"
     if [[ ! -x "${dialogBinary}" ]]; then
         fatal "swiftDialog not found at '${dialogBinary}'; are downloads from GitHub blocked on this Mac?"
     fi
@@ -2932,6 +2969,7 @@ function detectUpdateTonightScheduled() {
     local candidateArmed="NO"
     local candidateConfirmed="NO"
     local invalidatingLine=""
+    local untrustedEvidenceLine=""
     local -a updateTonightLogLines=()
 
     updateTonightEvidenceEpoch=""
@@ -2959,6 +2997,12 @@ function detectUpdateTonightScheduled() {
         lineEpoch="${parsedDDMLogTimestampEpoch}"
         (( lineEpoch >= lowerBoundEpoch && lineEpoch <= nowEpoch )) || continue
 
+        # Only softwareupdated may supply suppression evidence; invalidating lines from any sender still fail closed
+        if [[ "${logLine}" == *"SUOSUInstallTonightManager: Queued"* || "${logLine}" == *"SUOSUScheduler: ARMED"* ]] && [[ ! "${logLine}" =~ ${ddmSoftwareUpdatedSenderRegex} ]]; then
+            untrustedEvidenceLine="${logLine}"
+            continue
+        fi
+
         if [[ "${logLine}" == *"SUOSUInstallTonightManager: Queued"* && "${logLine}" =~ ${queuedVersionPattern} ]]; then
             candidateEpoch="${lineEpoch}"
             candidateArmed="NO"
@@ -2982,6 +3026,10 @@ function detectUpdateTonightScheduled() {
             fi
         fi
     done
+
+    if [[ -n "${untrustedEvidenceLine}" ]]; then
+        notice "Ignored Update Tonight evidence not logged by softwareupdated: ${untrustedEvidenceLine}"
+    fi
 
     if [[ -n "${invalidatingLine}" ]]; then
         notice "Update Tonight scheduling evidence for $(requirementLogLabel) version ${ddmVersionString} was superseded or canceled; not suppressing. Log entry: ${invalidatingLine}"
@@ -3082,6 +3130,71 @@ function tailRecentInstallLogWindow() {
     fi
 
     return 0
+}
+
+function loadDDMStatePersistenceSignatures() {
+    local persistenceOutput=""
+    local persistenceLine=""
+    local trimmedLine=""
+    local dictionaryDepth=0
+    local targetOSVersion=""
+    local targetLocalDateTime=""
+    local declarationSignature=""
+
+    ddmStatePersistenceStatus="unavailable"
+    ddmStatePersistenceSignatures=()
+
+    [[ -r "${ddmStatePersistencePlistPath}" ]] || return 1
+
+    if ! /usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields" "${ddmStatePersistencePlistPath}" >/dev/null 2>&1; then
+        ddmStatePersistenceStatus="unrecognized"
+        return 1
+    fi
+
+    ddmStatePersistenceStatus="available"
+
+    # A missing Declarations dictionary means softwareupdated persists no active declarations
+    persistenceOutput="$(/usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields:Declarations" "${ddmStatePersistencePlistPath}" 2>/dev/null)" || return 0
+
+    for persistenceLine in "${(@f)persistenceOutput}"; do
+        trimmedLine="${persistenceLine#"${persistenceLine%%[![:space:]]*}"}"
+
+        case "${trimmedLine}" in
+            *"Dict {"|*"Array {")
+                dictionaryDepth=$(( dictionaryDepth + 1 ))
+                if (( dictionaryDepth == 2 )); then
+                    targetOSVersion=""
+                    targetLocalDateTime=""
+                fi
+                ;;
+            "}")
+                if (( dictionaryDepth == 2 )) && [[ -n "${targetOSVersion}" && -n "${targetLocalDateTime}" ]]; then
+                    declarationSignature="${targetOSVersion}|${targetLocalDateTime//[^0-9]/}"
+                    ddmStatePersistenceSignatures[${declarationSignature}]="1"
+                fi
+                dictionaryDepth=$(( dictionaryDepth - 1 ))
+                ;;
+            "TargetOSVersion = "*)
+                (( dictionaryDepth == 2 )) && targetOSVersion="${trimmedLine#TargetOSVersion = }"
+                ;;
+            "TargetLocalDateTime = "*)
+                (( dictionaryDepth == 2 )) && targetLocalDateTime="${trimmedLine#TargetLocalDateTime = }"
+                ;;
+        esac
+    done
+
+    return 0
+}
+
+function ddmDeclarationIsCorroborated() {
+    local declarationVersion="${1}"
+    local declarationEnforcedInstallDate="${2}"
+    local declarationSignature="${declarationVersion}|${declarationEnforcedInstallDate//[^0-9]/}"
+
+    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text;
+    # when it is unavailable, uncorroborated trust is intentional backward compatibility
+    [[ "${ddmStatePersistenceStatus}" == "available" ]] || return 0
+    (( ${+ddmStatePersistenceSignatures[${declarationSignature}]} ))
 }
 
 function extractDDMLogTimestamp() {
@@ -3224,6 +3337,7 @@ function parseDDMDeclarationFieldsFromText() {
 
 function parseDDMDeclarationFromLine() {
     local logLine="${1}"
+    local uncorroboratedSignature=""
 
     parsedDDMSourceType=""
     parsedDDMLogTimestamp=""
@@ -3249,6 +3363,13 @@ function parseDDMDeclarationFromLine() {
     fi
 
     if ! parseDDMDeclarationFieldsFromText "${logLine}"; then
+        return 1
+    fi
+
+    if ! ddmDeclarationIsCorroborated "${parsedDDMVersionString}" "${parsedDDMEnforcedInstallDate}"; then
+        uncorroboratedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
+        ddmUncorroboratedCandidates[${uncorroboratedSignature}]="${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | ${parsedDDMSourceType} | ${parsedDDMLogTimestamp}"
+        ddmResolverUncorroboratedSummary="${ddmUncorroboratedCandidates[${uncorroboratedSignature}]}"
         return 1
     fi
 
@@ -3593,8 +3714,14 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmResolverConflictContext=""
     ddmResolverIgnoredInvalidSummary=""
     ddmResolverIgnoredInvalidContext=""
+    ddmResolverUncorroboratedSummary=""
     ddmTimestampEpochCache=()
     ddmInvalidCandidateContexts=()
+    ddmUncorroboratedCandidates=()
+
+    if ! loadDDMStatePersistenceSignatures; then
+        warning "softwareupdate DDM state is ${ddmStatePersistenceStatus} at '${ddmStatePersistencePlistPath}'; trusting uncorroborated install.log declarations."
+    fi
 
     if ! tailRecentInstallLogWindow; then
         ddmResolverStatus="missing"
@@ -3648,6 +3775,10 @@ function resolveDDMEnforcementFromInstallLog() {
         seenCandidateIndexes[${candidateKey}]="${#candidateSourceTypes[@]}"
     done
 
+    if (( ${#ddmUncorroboratedCandidates[@]} > 0 )); then
+        warning "Ignoring ${#ddmUncorroboratedCandidates[@]} install.log DDM declaration(s) absent from softwareupdate DDM state; latest: ${ddmResolverUncorroboratedSummary}"
+    fi
+
     if [[ ${#candidateSourceTypes[@]} -eq 0 ]]; then
         ddmResolverStatus="missing"
         ddmResolverSuppressionType="missing"
@@ -3657,6 +3788,8 @@ function resolveDDMEnforcementFromInstallLog() {
             if [[ -n "${ddmResolverIgnoredInvalidContext}" ]] || latestDDMResolverContextLine; then
                 info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
             fi
+        elif (( ${#ddmUncorroboratedCandidates[@]} > 0 )); then
+            ddmResolverReason="No install.log DDM declaration candidates corroborated by softwareupdate DDM state"
         else
             ddmResolverReason="No DDM declaration candidates found in install.log"
         fi
@@ -4206,7 +4339,27 @@ function detectDarkMode() {
     fi
 }
 
+function ensureDialogRuntimeDirectory() {
+    [[ -n "${dialogRuntimeDirectory}" && -d "${dialogRuntimeDirectory}" ]] && return 0
+
+    # swiftDialog renders as the console user, so the root-owned directory must stay traversable
+    dialogRuntimeDirectory="$(/usr/bin/mktemp -d "/var/tmp/${organizationScriptName}.XXXXXX" 2>/dev/null)"
+    if [[ -z "${dialogRuntimeDirectory}" || ! -d "${dialogRuntimeDirectory}" ]]; then
+        dialogRuntimeDirectory=""
+        fatal "Unable to create private dialog runtime directory in /var/tmp"
+    fi
+
+    if ! chmod 755 "${dialogRuntimeDirectory}" || ! : > "${dialogRuntimeDirectory}/dialog.log" || ! chown root:wheel "${dialogRuntimeDirectory}/dialog.log" || ! chmod 644 "${dialogRuntimeDirectory}/dialog.log"; then
+        rm -rf "${dialogRuntimeDirectory}"
+        fatal "Unable to prepare dialog runtime directory '${dialogRuntimeDirectory}'"
+    fi
+
+    info "Using private dialog runtime directory '${dialogRuntimeDirectory}'"
+}
+
 function downloadBrandingAssets() {
+    ensureDialogRuntimeDirectory
+
     # Detect dark mode and choose appropriate icon URL
     local appearanceMode=$(detectDarkMode)
     local overlayIconURL="${organizationOverlayiconURL}"
@@ -4247,8 +4400,8 @@ function downloadBrandingAssets() {
         # Assume it's a remote URL
         else
             info "Overlay icon appears to be a remote URL; downloading with curl"
-            if curl -o "/var/tmp/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
-                overlayicon="/var/tmp/overlayicon.png"
+            if curl -o "${dialogRuntimeDirectory}/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
+                overlayicon="${dialogRuntimeDirectory}/overlayicon.png"
                 info "Successfully downloaded overlay icon"
             else
                 error "Failed to download overlay icon from '${overlayIconURL}'"
@@ -4269,8 +4422,8 @@ function downloadBrandingAssets() {
         *)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
     esac
     
-    if curl -o "/var/tmp/icon.png" "${macOSIconURL}" --silent --show-error --fail; then
-        icon="/var/tmp/icon.png"
+    if curl -o "${dialogRuntimeDirectory}/icon.png" "${macOSIconURL}" --silent --show-error --fail --max-time 10; then
+        icon="${dialogRuntimeDirectory}/icon.png"
     else
         error "Failed to download icon from '${macOSIconURL}'"
         icon="/System/Library/CoreServices/Finder.app"
@@ -4346,7 +4499,7 @@ function computeDeadlineEnforcementMessage() {
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
 
-    dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
+    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
 
     if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
         dialogSupportsMarkdownColor="YES"
@@ -4559,6 +4712,7 @@ function displayReminderDialog() {
     local dialogPid=""
 
     additionalDialogOptions=("$@")
+    ensureDialogRuntimeDirectory
 
     if [[ "${ddmResolverStatus}" == "fallback" ]]; then
         warning "Activated MDM fallback requirement for reminder display after normal DDM declaration status '${normalDDMResolverStatus}'."
@@ -4579,6 +4733,7 @@ function displayReminderDialog() {
         --quitkey "k"
         --width 800
         --height 650
+        --commandfile "${dialogRuntimeDirectory}/dialog.log"
         "${blurscreen}"
         "${additionalDialogOptions[@]}"
     )
@@ -4589,13 +4744,12 @@ function displayReminderDialog() {
     [[ -n "${helpmessage}" ]] && dialogArgs+=(--helpmessage "${helpmessage}")
     [[ -n "${helpimage}" ]] && dialogArgs+=(--helpimage "${helpimage}")
 
-    dialogAutoRefreshMarkerPath="$(mktemp "/var/tmp/${organizationScriptName}-threshold-refresh.XXXXXX" 2>/dev/null || true)"
+    dialogAutoRefreshMarkerPath="$(/usr/bin/mktemp "${dialogRuntimeDirectory}/threshold-refresh.XXXXXX" 2>/dev/null || true)"
     if [[ -z "${dialogAutoRefreshMarkerPath}" ]]; then
-        dialogAutoRefreshMarkerPath="/var/tmp/${organizationScriptName}-threshold-refresh.$$"
-        rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
+        fatal "Unable to create threshold refresh marker in '${dialogRuntimeDirectory}'"
     fi
 
-    ${dialogBinary} "${dialogArgs[@]}" &
+    "${dialogBinary}" "${dialogArgs[@]}" &
     dialogPid=$!
     activeDialogPid="${dialogPid}"
 
@@ -4670,7 +4824,7 @@ function displayReminderDialog() {
             esac
 
             sleep "${pastDeadlineForceRedisplayDelaySeconds}"
-            ${dialogBinary} "${dialogArgs[@]}"
+            "${dialogBinary}" "${dialogArgs[@]}"
             returncode=$?
             info "Return Code: ${returncode}"
         done
@@ -4692,12 +4846,17 @@ function displayReminderDialog() {
                 notice "Software Update handoff: requirementSource=${ddmResolverSource:-unknown}; normalResolverStatus=${normalDDMResolverStatus:-unknown}; target=${ddmVersionString:-unknown}; deadline=${ddmEnforcedInstallDate:-unknown}; action=${action}"
                 launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
+                local settingsLaunchWaitCount=0
                 until osascript -e 'application "System Settings" is running' >/dev/null 2>&1; do
+                    if (( ++settingsLaunchWaitCount > 60 )); then
+                        warning "System Settings did not report running within 30 seconds; continuing without waiting."
+                        break
+                    fi
                     info "Pending System Settings launch …"
                     sleep 0.5
                 done
-                info "System Settings is open; Telling System Settings to make a guest appearance …"
-                su - "$(stat -f%Su /dev/console)" -c '
+                info "Telling System Settings to make a guest appearance …"
+                launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /bin/zsh --no-rcs -c '
                 timeout=10
                 while ((timeout > 0)); do
                     if osascript -e "application \"System Settings\" is running" >/dev/null 2>&1; then
@@ -4726,9 +4885,9 @@ function displayReminderDialog() {
         3)  ## Process exit code 3 scenario here
             notice "${loggedInUser} clicked ${infobuttontext}"
             info "Disabling blurscreen, hiding dialog and opening KB article: ${infobuttontext}"
-            echo "blurscreen: disable" >> /var/tmp/dialog.log
-            echo "hide:" >> /var/tmp/dialog.log
-            su \- "$(stat -f%Su /dev/console)" -c "open '${infobuttonaction}'"
+            echo "blurscreen: disable" >> "${dialogRuntimeDirectory}/dialog.log"
+            echo "hide:" >> "${dialogRuntimeDirectory}/dialog.log"
+            launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${infobuttonaction}"
 
             # Only re-display the reminder dialog when we are within the "hide secondary button" window (i.e., close to the deadline)
             case "${hideSecondaryButton}" in
@@ -4797,15 +4956,11 @@ function displayReminderDialogForMode() {
 function cleanupDialogRuntimeArtifacts() {
     terminateOwnedDialogProcesses
 
-    # Remove downloaded icons (only those created in /var/tmp, not original paths)
-    for img in "${icon}" "${overlayicon}"; do
-        if [[ "${img}" == /var/tmp/* ]] && [[ -e "${img}" ]]; then
-            rm -rf "${img}"
-        fi
-    done
-
-    # Remove default dialog.log
-    rm -f /var/tmp/dialog.log
+    # Remove this run's private icons, command file, and markers
+    if [[ "${dialogRuntimeDirectory}" == /var/tmp/${organizationScriptName}.* && -d "${dialogRuntimeDirectory}" ]]; then
+        rm -rf "${dialogRuntimeDirectory}"
+    fi
+    dialogRuntimeDirectory=""
     removeDorPidFile
 }
 
@@ -4896,7 +5051,7 @@ currentLoggedInUser
 
 maxWait=120  # 2 minutes
 counter=0
-until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" ]]; do
+until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" && "${loggedInUser}" != "_mbsetupuser" && "${loggedInUser}" != "root" ]]; do
     if [[ "${counter}" -ge "${maxWait}" ]]; then
         fatal "No valid user logged in after ${maxWait} seconds; exiting."
     fi

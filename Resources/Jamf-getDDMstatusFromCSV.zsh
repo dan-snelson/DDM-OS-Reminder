@@ -20,6 +20,12 @@
 #
 # HISTORY
 #
+# Version 1.4.0, 02-Oct-2026, Dan K. Snelson (@dan-snelson)
+# - Passed API credentials and bearer tokens to curl through stdin configuration instead of process arguments.
+# - Stopped logging token responses in debug mode; only response sizes are logged.
+# - Stopped stripping quote characters from entered passwords (credentials are now escaped for curl).
+# - Added a warning when the API password (or client secret) is supplied as a positional argument.
+#
 # Version 1.3.0, 19-Feb-2026, Dan K. Snelson (@dan-snelson)
 # - Removed unused optional EA name fallback variables (secureTokenUsersEaName, volumeOwnerUsersEaName).
 # - Removed unused optional MDM Profile Identifier and MDM Profile Topic EA variables (IDs and names).
@@ -56,7 +62,7 @@ export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 [[ -o interactive ]] && setopt monitor
 
 # Script Identity
-scriptVersion="1.3.0"
+scriptVersion="1.4.0"
 scriptDisplayName="Jamf Pro: Get DDM Status from CSV"
 organizationScriptName="DDM-CSV"
 scriptName=$(basename "${0}")
@@ -533,9 +539,6 @@ function promptAPIpassword() {
             read -s apiPassword
             printf "\n"
             if [[ -n "${apiPassword}" ]]; then
-                # Remove quotes if user added them
-                apiPassword="${apiPassword//\"/}"
-                apiPassword="${apiPassword//\'/}"
                 info "User entered API Password (or Client Secret)"
                 printf "${green}✓${resetColor} API Password (or Client Secret) set\n"
             fi
@@ -637,6 +640,21 @@ function jamfCurl() {
     fi
 }
 
+# Escape a value for a double-quoted curl config (-K) parameter
+function curlConfigEscape() {
+    local configValue="${1}"
+
+    configValue="${configValue//\\/\\\\}"
+    configValue="${configValue//\"/\\\"}"
+
+    print -r -- "${configValue}"
+}
+
+# Authenticated Jamf Pro API request; the bearer token travels over stdin, not argv
+function jamfApiCurl() {
+    print -r -- "header = \"Authorization: Bearer $(curlConfigEscape "${apiBearerToken}")\"" | jamfCurl --config - "$@"
+}
+
 function createSecureTempFile() {
     local template="${1}"
     local tempPath=""
@@ -688,11 +706,11 @@ function getBearerToken() {
         fi
         
         # OAuth token request
-        tokenJson=$(jamfCurl -X POST --silent \
+        tokenJson=$(print -r -- "data-urlencode = \"client_secret=$(curlConfigEscape "${apiPassword}")\"" | jamfCurl -X POST --silent \
+            --config - \
             --url "${apiUrl}/api/oauth/token" \
             --header 'Content-Type: application/x-www-form-urlencoded' \
             --data-urlencode "client_id=${apiUser}" \
-            --data-urlencode "client_secret=${apiPassword}" \
             --data-urlencode 'grant_type=client_credentials')
     else
         info "Using basic authentication …"
@@ -702,7 +720,7 @@ function getBearerToken() {
         fi
         
         # Basic authentication token request
-        tokenJson=$(jamfCurl -X POST --silent -u "${apiUser}:${apiPassword}" "${apiUrl}/api/v1/auth/token")
+        tokenJson=$(print -r -- "user = \"$(curlConfigEscape "${apiUser}:${apiPassword}")\"" | jamfCurl -X POST --silent --config - "${apiUrl}/api/v1/auth/token")
     fi
 
     # Basic sanity check on JSON
@@ -716,7 +734,7 @@ function getBearerToken() {
     fi
 
     if [[ "${debugMode}" == "true" ]]; then
-        debug "Token response: ${tokenJson}"
+        debug "Token response received (${#tokenJson} bytes)"
     fi
     
     # Check for error in response
@@ -738,7 +756,7 @@ function getBearerToken() {
     if [[ -z "${apiBearerToken}" ]]; then
         error "Failed to extract bearer token from response"
         if [[ "${debugMode}" == "true" ]]; then
-            debug "Token extraction failed. Response was: ${tokenJson}"
+            debug "Token extraction failed. Response size: ${#tokenJson} bytes"
         fi
         printf "\n${red}ERROR:${resetColor} Unable to extract bearer token from response.\n"
         printf "This could indicate:"
@@ -773,8 +791,7 @@ function refreshBearerToken() {
     fi
 
     local refreshJson
-    refreshJson=$(jamfCurl --silent -X POST \
-        -H "Authorization: Bearer ${apiBearerToken}" \
+    refreshJson=$(jamfApiCurl --silent -X POST \
         "${apiUrl}/api/v1/auth/keep-alive")
 
     if [[ -z "${refreshJson}" ]] || [[ "${refreshJson}" == *"error"* ]]; then
@@ -864,8 +881,7 @@ function invalidateBearerToken() {
     if [[ "${debugMode}" == "true" ]]; then
         debug "Calling invalidation endpoint: ${apiUrl}/api/v1/auth/invalidate-token"
     fi
-    jamfCurl --silent -X POST \
-        -H "Authorization: Bearer ${apiBearerToken}" \
+    jamfApiCurl --silent -X POST \
         "${apiUrl}/api/v1/auth/invalidate-token" >/dev/null 2>&1
     apiBearerToken=""
     if [[ "${debugMode}" == "true" ]]; then
@@ -1367,8 +1383,7 @@ function getEaFallbackValuesByComputerId() {
         checkAndRefreshToken
 
         responseWithCode=$(
-            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
-                 -H "Accept: application/json" \
+            jamfApiCurl -H "Accept: application/json" \
                  --max-time 30 \
                  -sf -w "%{http_code}" \
                  "${endpoint}" \
@@ -1587,8 +1602,7 @@ function getComputerById() {
         checkAndRefreshToken
         
         responseWithCode=$(
-            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
-                 -H "Accept: application/json" \
+            jamfApiCurl -H "Accept: application/json" \
                  --max-time 30 \
                  -sf -w "%{http_code}" \
                  "${computerDetailEndpoint}" \
@@ -1950,8 +1964,7 @@ function getComputerIdBySerialNumber() {
         
         # Use Modern API with filter to find computer by serial number
         responseWithCode=$(
-            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
-                 -H "Accept: application/json" \
+            jamfApiCurl -H "Accept: application/json" \
                  --max-time 30 \
                  -sf -w "%{http_code}" \
                  "${apiUrl}/api/v1/computers-inventory?section=GENERAL&page=0&page-size=1&filter=hardware.serialNumber%3D%3D%22${serialNumber}%22" \
@@ -2090,8 +2103,7 @@ function getDdmStatusItems() {
         checkAndRefreshToken
         
         ddmStatusAndCode=$(
-            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
-                 -H "Accept: application/json" \
+            jamfApiCurl -H "Accept: application/json" \
                  --max-time 30 \
                  -sf -w "%{http_code}" \
                  "${apiUrl}/api/v1/ddm/${managementId}/status-items" \
@@ -2189,8 +2201,7 @@ function getMdmCommandSummaryByManagementId() {
         checkAndRefreshToken
 
         commandResponseAndCode=$(
-            jamfCurl -H "Authorization: Bearer ${apiBearerToken}" \
-                 -H "Accept: application/json" \
+            jamfApiCurl -H "Accept: application/json" \
                  --max-time 30 \
                  -sf -w "%{http_code}" \
                  "${endpoint}" \
@@ -2905,6 +2916,7 @@ if [[ ${#positionalArgs[@]} -ge 2 ]]; then
 fi
 if [[ ${#positionalArgs[@]} -ge 3 ]]; then
     apiPassword="${positionalArgs[3]}"
+    printf "${yellow}WARNING:${resetColor} Supplying the API Password (or Client Secret) as an argument exposes it in shell history and process listings; omit it to be prompted securely.\n" >&2
 fi
 if [[ ${#positionalArgs[@]} -ge 4 ]]; then
     filename="${positionalArgs[4]}"

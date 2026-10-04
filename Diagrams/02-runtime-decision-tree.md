@@ -16,7 +16,7 @@ flowchart TD
 
     Trigger --> Root{Running as root?}
     Root -->|No| FatalRoot[Fatal error]
-    Root -->|Yes| User{Non-loginwindow user?<br/>wait up to 120 seconds}
+    Root -->|Yes| User{Console user other than<br/>loginwindow, _mbsetupuser, or root?<br/>wait up to 120 seconds}
     User -->|No| FatalUser[Fatal error]
     User -->|Yes| Preferences[Load each preference<br/>Managed, then Local, then Default]
 
@@ -74,10 +74,10 @@ flowchart TD
     ForceRedisplay --> Display
 
     ForceReturn -->|No| Return{Dialog return}
-    Return -->|Open Software Update| SoftwareUpdate[Open System Settings]
+    Return -->|Open Software Update| SoftwareUpdate[Open System Settings as console user<br/>wait up to 30 seconds for launch]
     Return -->|Restart Now| Restart
     Return -->|Remind Me Later| Postpone[Record interaction]
-    Return -->|Info| Info[Open support action]
+    Return -->|Info| Info[Open support action<br/>as console user]
     Return -->|Dismiss, DND, timeout,<br/>keyboard quit, other| Dismiss[Record result]
 
     SoftwareUpdate --> NextSchedule

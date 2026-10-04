@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 5.0.0b3 (03-Oct-2026)
+### Version 5.0.0 (03-Oct-2026)
 - Hardened prior-plist import in `assemble.zsh`. An imported `ScriptLog` is now kept only when it is a plain absolute path (letters, digits, `.`, `_`, `-`, and `/`; no `..`, `.`, or empty segments) with a `<rdnn>.log` basename. Any other value logs `⚠️  Imported ScriptLog '…' is not a safe absolute path` and falls back to `/var/log/<rdnn>.log`.
     - Assembly refuses to write an unsafe `scriptLog` path into the generated script.
     - The assembled script is checked again with `zsh -n` after the final `scriptLog` rewrite; previously the only syntax check ran before it.
@@ -27,7 +27,7 @@
 - Hardened DDM declaration trust. When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match a persisted active declaration's `TargetOSVersion` and `TargetLocalDateTime`.
     - Declarations that do not match are ignored and logged as `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state`.
     - When no corroborated candidate remains, the resolver reports `missing`, which stays eligible for DDM Emergency Fallback.
-    - When the plist is missing or has an unrecognized structure, a `[NOTICE]` is logged and resolution works as before.
+    - When the plist is missing or has an unrecognized structure, a `[NOTICE]` is logged (raised to `[WARNING]` in 5.0.0) and resolution works as before.
     - `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` apply the same corroboration.
 - **Update Tonight** suppression now accepts only `SUOSUInstallTonightManager: Queued` and `SUOSUScheduler: ARMED` evidence logged by `softwareupdated`. Evidence from other senders is skipped and logged at `[NOTICE]`, and invalidating lines from any sender still fail closed.
 - Bounded the wait for System Settings after **Open Software Update** to 30 seconds, so a blocked or crashed System Settings can no longer hold `dor.pid` and stop all later reminders until reboot. Added a 10-second `--max-time` to the macOS icon download.

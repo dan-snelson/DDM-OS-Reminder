@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.0.0b3)
+# DDM OS Reminder (5.0.0)
 
-> A reliability-focused upgrade to Mac Admins’ favorite “set-it-and-forget-it” DDM reminder, featuring bounded Apple-state waits, broader emergency fallback coverage, clearer diagnostics and built-in macOS 27 icon support.
+> A security-hardened upgrade to Mac Admins’ favorite “set-it-and-forget-it” macOS update reminder, featuring corroborated DDM declaration trust and "Update Tonight" awareness
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -43,7 +43,23 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 4.2.0 Highlights
+## :new: 5.0.0 Highlights
+
+- **Corroborated DDM declarations**: When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match an active `softwareupdated` declaration (`TargetOSVersion` + `TargetLocalDateTime`); unmatched candidates are ignored and logged at `[WARNING]`. Runtime and both Pending OS Update Extension Attributes share this rule; a missing or unrecognized plist keeps `install.log`-only behavior and logs a `[WARNING]` (see [SECURITY.md](SECURITY.md)).
+- **Update Tonight awareness**: Confirmed same-day **Update Tonight** scheduling for the target version pauses normal reminders until local midnight. Evidence must be logged by `softwareupdated`; pre-deadline thresholds, aggressive mode, and Force mode still apply.
+- **Private runtime files and atomic deployment**: Each run keeps downloaded icons, the swiftDialog command file, and threshold markers in its own `mktemp -d` directory under `/var/tmp`, removed on exit. `dor.zsh` and `dor-starter.zsh` are syntax-checked before atomic replacement, so the heartbeat never launches a partially written script.
+- **App-bundle swiftDialog**: swiftDialog runs from `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`, and `/usr/local` is no longer in the root `PATH`.
+- **Safer user-session actions**: **Info** button URLs and System Settings activation open in the console user's session through `launchctl asuser`, the System Settings wait is capped at 30 seconds, and Setup Assistant (`_mbsetupuser`) is never targeted.
+- **Support kill switch persists**: `All` and `Script` redeployments keep `/Library/Management/<rdnn>/dor-aggressive-kill`; only `Uninstall` removes it.
+- **Resilient preference parsing**: Mixed valid and invalid `DailyReminderTimes` or `MinutesBeforeDeadlineReminderSchedule` entries keep the valid values and log each skipped entry; unrecognized language codes fall back to English.
+- **Hardened tooling**: `assemble.zsh` rejects unsafe imported `ScriptLog` paths and re-prompts on an invalid deployment mode, self-extracting wrappers forward MDM Parameters 4–6, and `Resources/Jamf-getDDMstatusFromCSV.zsh` keeps API credentials out of process arguments.
+- **Includes 4.2.1 and 4.2.2 fixes**: `HideSupportAssistanceMessage` alone controls the support assistance text (set it to `true` if you relied on `InfoButtonText=hide`), and recovered DDM declarations no longer remain stuck in `conflict`.
+
+Review the [5.0.0 upgrade notes](#500-upgrade-notes) before rollout.
+
+---
+
+## 4.2.0 Highlights
 
 - **Bounded Apple-state wait**: Padded enforcement-date resolution now measures its five-minute limit with wall-clock time, preventing sleep or process suspension from silently extending the wait.
 - **Accurate timeout diagnostics**: Timeout records now include actual wall-clock elapsed time and the configured maximum.
@@ -101,6 +117,12 @@ Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now pri
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
 
+### 5.0.0 upgrade notes
+
+- **Self-extracting wrapper now forwards MDM script parameters.** Wrappers generated by `Resources/createSelfExtracting.zsh` (`2.4.0`) pass Parameters 4–6 to the deployer. Values previously ignored on wrapper-based policies (reset mode, `Uninstall`, DDM Emergency Fallback) now take effect, so audit those policy parameters before rollout.
+- **swiftDialog path.** The runtime, deployer, and `dor-starter.zsh` invoke `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli` and no longer include `/usr/local` or `/usr/local/bin` in `PATH`.
+- **Aggressive-mode kill switch survives redeployment.** `All` and `Script` keep `/Library/Management/<rdnn>/dor-aggressive-kill`; only `Uninstall` removes it.
+
 ### macOS 27 LaunchDaemon quarantine enforcement
 
 macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
@@ -114,7 +136,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (5.0.0b3)
+🧩 Assemble DDM OS Reminder (5.0.0)
 ===============================================================
 
 📍 Full Paths:

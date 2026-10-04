@@ -136,6 +136,7 @@ After base preference loading:
 2. Otherwise runtime reads the logged-in user's preferred language.
 3. Localized values resolve from exact locale to base language to scalar/base key.
 4. `DateFormatDeadlineHumanReadableLocalized_<code>` follows exact locale, base language, global date format, then built-in default.
+5. An unrecognized `LanguageOverride` or user language value falls back to English and the global date format and logs a `[WARNING]`; localized keys with an unrecognized language code are skipped and logged.
 
 Managed localized keys retain per-key priority over matching local localized keys.
 

@@ -2,6 +2,77 @@
 
 ## Changelog
 
+### Version 5.0.0 (04-Oct-2026)
+
+> No preference keys, defaults, or precedence rules changed.
+
+- Hardened DDM declaration trust. When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match a persisted active declaration's `TargetOSVersion` and `TargetLocalDateTime`.
+    - Declarations that do not match are ignored and logged as `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state`.
+    - When no corroborated candidate remains, the resolver reports `missing`, which stays eligible for DDM Emergency Fallback.
+    - When the plist is missing or has an unrecognized structure, resolution works as before and the runtime logs `[WARNING] softwareupdate DDM state is <unavailable|unrecognized> at '…'; trusting uncorroborated install.log declarations.`; `SECURITY.md` documents this as an accepted residual risk.
+    - `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` apply the same corroboration.
+- Added same-day reminder suppression after the user schedules the required update with **Update Tonight**. Normal reminders stop until local midnight once `/var/log/install.log` confirms that macOS accepted the request ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)).
+    - Detection requires daemon-side success evidence: `SUOSUInstallTonightManager: Queued … macOS <version>` must exactly match the active DDM (or DDM Emergency Fallback) target version, and a following `SUOSUScheduler: ARMED (… simulated=NO)` line must appear. The `Clicked to queue available updates for later` button event and untimestamped continuation lines (for example `ScheduleUpdateForLater = 1;`) are ignored, because the user can still cancel the authentication prompt.
+    - Only `Queued` and `ARMED` evidence logged by `softwareupdated` is accepted. Evidence from other senders is skipped and logged at `[NOTICE]`, and invalidating lines from any sender still fail closed.
+    - Evidence must be from the current local day and newer than the last boot. Any later disarm, dequeue, `Updated install tonight state (enabled = false …)`, different-version queue, or unrecognized `SUOSUScheduler:` / `SUOSUInstallTonightManager:` line fails closed, and the invalidating line is logged at `[NOTICE]`.
+    - Pre-deadline threshold reminders, past-deadline aggressive mode, and Force mode bypass suppression. Suppression does not apply when the effective deadline is at or before local midnight, because DDM enforcement would come before the overnight installation window.
+    - Suppressed runs schedule the first `DailyReminderTimes` slot after midnight, or an earlier pending pre-deadline threshold. Expiration never forces an immediate dialog.
+    - Starter-launched runs record `UpdateTonightSuppressionUntil` in `dor-state.plist` and log `[NOTICE]` when suppression activates, expires, or is cleared. Manual and demo runs do not write scheduler state.
+- swiftDialog now runs from its root-owned app bundle (`/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`) instead of `/usr/local/bin/dialog`. `/usr/local` and `/usr/local/bin` were removed from the `PATH` of the runtime, the deployer, `dor-starter.zsh`, and the LaunchDaemon.
+    - swiftDialog validation now reinstalls when the installed version cannot be read, instead of treating an empty version as current.
+    - A swiftDialog Team ID verification failure is now logged as `[FATAL ERROR]` with the expected and received Team IDs, and the error dialog appears in the console user's session.
+- Hardened runtime temporary-file handling. Each reminder run now creates a per-run, root-owned `/var/tmp/dorm.XXXXXX` directory (named after the runtime's `organizationScriptName`), mode `0755` so swiftDialog can read it as the console user. Downloaded icons, the swiftDialog command file (passed with `--commandfile`), and the threshold-refresh marker live in that directory, and every exit path, including fatal errors, removes it. A missing `dialogcli` is detected before the directory is created or icons are downloaded.
+    - The runtime no longer writes fixed names such as `/var/tmp/icon.png`, `/var/tmp/overlayicon.png`, or `/var/tmp/dialog.log`.
+    - The runtime no longer deletes the default swiftDialog command file used by other swiftDialog workflows.
+    - Concurrent root runs no longer share icon or command files.
+- Hardened console-user handling.
+    - The runtime now waits for a console user other than `loginwindow`, `_mbsetupuser`, or `root`, so a Mac still in Setup Assistant no longer resolves `_mbsetupuser` as the dialog target. The deployer's Team ID error dialog and `Resources/reminderDialogPreferenceTest.zsh` also skip `_mbsetupuser`.
+    - The **Info** button URL and the System Settings activation now open in the console user's session with `launchctl asuser`, instead of `su -` with an interpolated shell command.
+    - The wait for System Settings after **Open Software Update** is bounded to 30 seconds, so a blocked or crashed System Settings can no longer hold `dor.pid` and stop all later reminders until reboot.
+    - The macOS icon download now has a 10-second `--max-time`.
+- Fixed `DailyReminderTimes` values that mix valid and invalid entries (for example, `8:00,17:00`) resolving to no baseline reminder slots. The invalid-entry warning text was captured into the resolved value instead of the log, so the valid `17:00` entry was dropped, the `08:00,12:00,16:00` default was not applied, and **Remind Me Later** fell through to the first pre-deadline threshold ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139); thanks, @TechTrekkie!)
+    - Invalid entries are now logged as `[WARNING] Ignoring invalid DailyReminderTimes entry '…'` and skipped, valid entries are kept, and a fully invalid value still falls back to the default with the existing `defaulting to '…'` warning.
+    - Affected standalone and deployed runs alike; deployed `dor.zsh` additionally lost the warning line entirely because it logs through the LaunchDaemon's standard output.
+    - `HH:MM` still requires zero-padded hours; `8:00` is rejected (and now logged), not normalized.
+    - Applied the same fix to `MinutesBeforeDeadlineReminderSchedule`, where mixed input such as `45,abc` previously disabled all pre-deadline threshold reminders.
+    - Applied the same fix to `Resources/reminderDialogPreferenceTest.zsh`.
+- Fixed baseline reminder-slot resolution skipping an entire day of `DailyReminderTimes` slots when a run occurred after 23:00 on the night before a spring-forward DST transition; next-day slots now resolve by calendar day instead of adding 86,400 seconds, which also covers Update Tonight suppression scheduling and preserves configured `00:00` slots ([PR #137](https://github.com/dan-snelson/DDM-OS-Reminder/pull/137) review; thanks, Copilot!)
+- Hardened language-code handling for localized dialog text and deadline date formats.
+    - Unrecognized language values now fall back to English and the global `DateFormatDeadlineHumanReadable`, and log a `[WARNING]`.
+    - Localized preference key names are validated before they are applied; keys with an unrecognized language code are skipped and logged at `[WARNING]`.
+    - Applied the same hardening to `Resources/reminderDialogPreferenceTest.zsh`.
+- Hardened deployment.
+    - `dor.zsh` and `dor-starter.zsh` are written to adjacent temporary files, validated with `zsh -n`, and moved into place atomically, so the heartbeat can never launch a partially written script.
+    - Deployment now changes ownership only of the organization directory and DDM OS Reminder's own runtime assets, instead of recursively running `chown` across `/Library/Management/<rdnn>`.
+- **Upgrade note:** `All` and `Script` redeployments now keep the aggressive-mode support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill` and log a `[NOTICE]`; only `Uninstall` removes it. Script Parameter 4 still defaults to `All` when blank; the in-script comment now says so.
+- Hardened prior-plist import in `assemble.zsh`. An imported `ScriptLog` is now kept only when it is a plain absolute path (letters, digits, `.`, `_`, `-`, and `/`; no `..`, `.`, or empty segments) with a `<rdnn>.log` basename. An unsafe path logs `⚠️  Imported ScriptLog '…' is not a safe absolute path`, a mismatched basename logs `⚠️  Imported ScriptLog basename '…' does not match '<rdnn>.log'`, and both fall back to `/var/log/<rdnn>.log`.
+    - Assembly refuses to write an unsafe `scriptLog` path into the generated script.
+    - The assembled script is checked again with `zsh -n` after the final `scriptLog` rewrite; previously the only syntax check ran before it.
+    - `assemble.zsh` now re-prompts on an invalid deployment-mode selection instead of defaulting to production, and exits when no selection can be read.
+- `Resources/createSelfExtracting.zsh` (`2.4.0`) generated wrappers have these changes:
+    - They extract into a private `mktemp -d` directory.
+    - They forward all MDM script parameters, so Parameters 4–6 now reach the deployer: reset mode, DDM Emergency Fallback, and `Uninstall`.
+    - They remove the extracted payload on exit.
+    - **Upgrade note:** Parameter values that earlier wrappers ignored now take effect; review wrapper-based policy parameters before rollout.
+- `Resources/Jamf-getDDMstatusFromCSV.zsh` (`1.4.0`) has four changes:
+    - API credentials and bearer tokens reach `curl` through stdin configuration instead of process arguments.
+    - Debug logs no longer include token responses.
+    - Entered passwords are no longer stripped of quote characters.
+    - Supplying the password as a positional argument now prints a warning.
+- `Resources/monitorRemoteSession.zsh` (`1.1.1`) also recognizes swiftDialog processes launched from the app bundle path.
+
+### Version 4.2.2 (30-Sep-2026)
+- Fixed the DDM resolver holding `conflict` after a transient `No updates found for DDM to enforce` marker, even when `softwareupdated` later recovered the same declaration; the marker is now superseded by a later `Found product with requested PMV (<candidate version>)` line or an `Armed DDM activity scheduler for <date>: YES` line whose date matches the candidate `EnforcedInstallDate` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134))
+    - Previously, suppression persisted until the marker aged out of the 4000-line `install.log` lookback window, so results depended on log volume.
+    - A marker with no later recovery, a relapse marker after recovery, an `Armed ... YES` line for a different deadline, or a PMV match for a different version still fails closed with `conflict`.
+- Added `[NOTICE]` logging when a `No updates found for DDM to enforce` marker is superseded, and `conflict` suppression caused by the marker now logs the marker line as `Resolver context:` instead of an unrelated `Removed 0 invalid declarations` line.
+- Aligned `Resources/JamfEA-Pending_OS_Update_Date.zsh` and `Resources/JamfEA-Pending_OS_Update_Version.zsh` with the updated resolver so inventory stops reporting `conflict` for recovered declarations.
+
+### Version 4.2.1 (30-Sep-2026)
+- Fixed `InfoButtonText=hide` also suppressing `{supportAssistanceMessage}` when `HideSupportAssistanceMessage` was `false`; `HideSupportAssistanceMessage` is now the sole control for the `(?)` button guidance in both runtime and preference-test preview paths ([Issue #132](https://github.com/dan-snelson/DDM-OS-Reminder/issues/132); thanks for the heads-up, @shiftybird!)
+    - **Upgrade note:** Deployments that relied on `InfoButtonText=hide` to hide the support assistance text should set `HideSupportAssistanceMessage=true`.
+- Updated `assemble.zsh --interactive` so answering `NO` to the `Info Button` prompt defaults `Hide Support Assistance Message` to `YES`, preserving prior generated output, and clarified that the `(?)` help message button remains.
+
 ### Version 4.2.0 (21-Sep-2026)
 - Updated URL for `organizationOverlayiconURL`
 - Bounded padded enforcement-date resolution by wall-clock time so endpoint sleep or process suspension cannot extend the configured five-minute wait.

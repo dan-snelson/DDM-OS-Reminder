@@ -6,8 +6,8 @@
 #
 # Updated by: Dan K. Snelson
 # For DDM OS Reminder v2.0.0+
-# Version: 2.3.0
-# Date: 19-Jan-2026
+# Version: 2.4.0
+# Date: 02-Oct-2026
 #
 # Creates a self-extracting, base64-encoded shell script from
 # the newest "ddm-os-reminder-*.zsh" file found in the
@@ -46,19 +46,23 @@ base64_string=$(base64 -i "${latest_file}")
 cat <<EOF > "${output_file}"
 #!/bin/sh
 # Auto-generated self-extracting script created on ${datestamp}
-# Extracts to /var/tmp and executes the assembled DDM OS Reminder payload
+# Extracts to a private /var/tmp directory, executes the assembled DDM OS Reminder payload
+# with the original MDM script parameters, and removes the payload on exit
 
 base64_string='${base64_string}'
-target_path="/var/tmp/${latest_filename}"
+target_dir=\$(/usr/bin/mktemp -d "/var/tmp/ddm-os-reminder.XXXXXX") || exit 1
+trap 'rm -rf "\${target_dir}"' EXIT
+target_path="\${target_dir}/${latest_filename}"
 
 echo "📦 Extracting to \${target_path}..."
-echo "\$base64_string" | base64 -d > "\${target_path}"
+echo "\$base64_string" | base64 -d > "\${target_path}" || exit 1
 
 echo "🛠️  Setting executable permissions..."
-chmod u+x "\${target_path}"
+chmod 700 "\${target_path}" || exit 1
 
 echo "🚀 Executing DDM OS Reminder..."
-zsh "\${target_path}"
+zsh "\${target_path}" "\$@"
+exit \$?
 EOF
 
 chmod u+x "${output_file}"
@@ -67,4 +71,4 @@ echo ""
 echo "✅ Self-extracting script created successfully!"
 echo "   ${output_file}"
 echo ""
-echo "When run, it will extract to /var/tmp/${latest_filename} and execute automatically."
+echo "When run, it will extract to a private /var/tmp/ddm-os-reminder.XXXXXX directory, execute ${latest_filename} with the MDM script parameters, and remove it."

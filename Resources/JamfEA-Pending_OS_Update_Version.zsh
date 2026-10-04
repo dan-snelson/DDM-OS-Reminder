@@ -1,6 +1,6 @@
 #!/bin/zsh --no-rcs
 # EA: DDM Pending OS Update Version
-# Version: 4.2.0
+# Version: 5.0.0
 # Reports a pending DDM-enforced macOS update version when install.log state is trustworthy.
 # Created by: @robjschroeder 10.10.2025
 # Hardened to fail closed on conflicting or invalid DDM declaration state
@@ -11,6 +11,7 @@ set -u
 # Internal fixture-testing hooks for local validation only.
 # These are not supported admin-facing settings.
 installLogPath="${installLogPathOverride:-/var/log/install.log}"
+ddmStatePersistencePlistPath="${ddmStatePersistencePlistPathOverride:-/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist}"
 ddmResolverLookbackLines="${ddmResolverLookbackLinesOverride:-4000}"
 currentVersion="${currentVersionOverride:-$(/usr/bin/sw_vers -productVersion 2>/dev/null || true)}"
 currentBuild="${currentBuildOverride:-$(/usr/bin/sw_vers -buildVersion 2>/dev/null || true)}"
@@ -27,6 +28,8 @@ ddmLogTimestampRegex='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-]
 typeset -ga ddmRecentInstallLogWindow=()
 typeset -gA ddmTimestampEpochCache=()
 typeset -gA ddmInvalidCandidateContexts=()
+typeset -gA ddmStatePersistenceSignatures=()
+ddmStatePersistenceStatus=""
 
 # Load is-at-least for version comparison
 autoload -Uz is-at-least
@@ -230,6 +233,71 @@ function parseDDMDeclarationFieldsFromText() {
     return 0
 }
 
+function loadDDMStatePersistenceSignatures() {
+    local persistenceOutput=""
+    local persistenceLine=""
+    local trimmedLine=""
+    local dictionaryDepth=0
+    local targetOSVersion=""
+    local targetLocalDateTime=""
+    local declarationSignature=""
+
+    ddmStatePersistenceStatus="unavailable"
+    ddmStatePersistenceSignatures=()
+
+    [[ -r "${ddmStatePersistencePlistPath}" ]] || return 1
+
+    if ! /usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields" "${ddmStatePersistencePlistPath}" >/dev/null 2>&1; then
+        ddmStatePersistenceStatus="unrecognized"
+        return 1
+    fi
+
+    ddmStatePersistenceStatus="available"
+
+    # A missing Declarations dictionary means softwareupdated persists no active declarations
+    persistenceOutput="$(/usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields:Declarations" "${ddmStatePersistencePlistPath}" 2>/dev/null)" || return 0
+
+    for persistenceLine in "${(@f)persistenceOutput}"; do
+        trimmedLine="${persistenceLine#"${persistenceLine%%[![:space:]]*}"}"
+
+        case "${trimmedLine}" in
+            *"Dict {"|*"Array {")
+                dictionaryDepth=$(( dictionaryDepth + 1 ))
+                if (( dictionaryDepth == 2 )); then
+                    targetOSVersion=""
+                    targetLocalDateTime=""
+                fi
+                ;;
+            "}")
+                if (( dictionaryDepth == 2 )) && [[ -n "${targetOSVersion}" && -n "${targetLocalDateTime}" ]]; then
+                    declarationSignature="${targetOSVersion}|${targetLocalDateTime//[^0-9]/}"
+                    ddmStatePersistenceSignatures[${declarationSignature}]="1"
+                fi
+                dictionaryDepth=$(( dictionaryDepth - 1 ))
+                ;;
+            "TargetOSVersion = "*)
+                (( dictionaryDepth == 2 )) && targetOSVersion="${trimmedLine#TargetOSVersion = }"
+                ;;
+            "TargetLocalDateTime = "*)
+                (( dictionaryDepth == 2 )) && targetLocalDateTime="${trimmedLine#TargetLocalDateTime = }"
+                ;;
+        esac
+    done
+
+    return 0
+}
+
+function ddmDeclarationIsCorroborated() {
+    local declarationVersion="${1}"
+    local declarationEnforcedInstallDate="${2}"
+    local declarationSignature="${declarationVersion}|${declarationEnforcedInstallDate//[^0-9]/}"
+
+    # Only the root-owned softwareupdate state can corroborate user-appendable install.log text;
+    # when it is unavailable, uncorroborated trust is intentional backward compatibility
+    [[ "${ddmStatePersistenceStatus}" == "available" ]] || return 0
+    (( ${+ddmStatePersistenceSignatures[${declarationSignature}]} ))
+}
+
 function parseDDMDeclarationFromLine() {
     local logLine="${1}"
 
@@ -257,6 +325,10 @@ function parseDDMDeclarationFromLine() {
     fi
 
     if ! parseDDMDeclarationFieldsFromText "${logLine}"; then
+        return 1
+    fi
+
+    if ! ddmDeclarationIsCorroborated "${parsedDDMVersionString}" "${parsedDDMEnforcedInstallDate}"; then
         return 1
     fi
 
@@ -425,13 +497,21 @@ function candidateHasConflictingEvidence() {
     local lineEpoch=""
     local parsedSignature=""
     local noUpdatesEpoch=""
+    local noUpdatesTimestamp=""
+    local noUpdatesRawLine=""
+    local candidateEnforcedInstallDate="${candidateSignature%%|*}"
+    local recoveryMarker=""
+    local armedDateRaw=""
+    local armedDateNormalized=""
+    local pendingNoUpdatesConflictContext=""
 
     ddmResolverConflictSummary=""
+    ddmResolverConflictContext=""
 
     for (( lineIndex = 1; lineIndex <= ${#ddmRecentInstallLogWindow[@]}; lineIndex++ )); do
         currentLine="${ddmRecentInstallLogWindow[$lineIndex]}"
 
-        if [[ "${currentLine}" != *"EnforcedInstallDate:"* && "${currentLine}" != *"PrimaryDescriptor:"* && "${currentLine}" != *"No updates found for DDM to enforce"* ]]; then
+        if [[ "${currentLine}" != *"EnforcedInstallDate:"* && "${currentLine}" != *"PrimaryDescriptor:"* && "${currentLine}" != *"No updates found for DDM to enforce"* && "${currentLine}" != *"Found product with requested PMV ("* && "${currentLine}" != *"Armed DDM activity scheduler for "* ]]; then
             continue
         fi
 
@@ -449,6 +529,31 @@ function candidateHasConflictingEvidence() {
             continue
         fi
 
+        # A transient "No updates found" marker is superseded when softwareupdated later
+        # matches the candidate version or re-arms the scheduler for the candidate deadline
+        if [[ "${currentLine}" == *"Found product with requested PMV ("* || "${currentLine}" == *"Armed DDM activity scheduler for "* ]]; then
+            if [[ -n "${noUpdatesEpoch}" ]] && (( lineEpoch >= noUpdatesEpoch )); then
+                recoveryMarker=""
+                if [[ "${currentLine}" == *"Found product with requested PMV (${candidateVersion})"* ]]; then
+                    recoveryMarker="Found product with requested PMV (${candidateVersion})"
+                elif [[ "${currentLine}" == *"Armed DDM activity scheduler for "*": YES"* ]]; then
+                    armedDateRaw="${${currentLine#*Armed DDM activity scheduler for }%%: YES*}"
+                    armedDateNormalized="$( date -j -f "%a %b %e %H:%M:%S %Y" "${armedDateRaw}" "+%Y-%m-%dT%H:%M:%S" 2>/dev/null )"
+                    if [[ -n "${armedDateNormalized}" && "${armedDateNormalized}" == "${candidateEnforcedInstallDate}" ]]; then
+                        recoveryMarker="Armed DDM activity scheduler for ${armedDateRaw}: YES"
+                    fi
+                fi
+
+                if [[ -n "${recoveryMarker}" ]]; then
+                    noUpdatesEpoch=""
+                    noUpdatesTimestamp=""
+                    noUpdatesRawLine=""
+                    pendingNoUpdatesConflictContext=""
+                fi
+            fi
+            continue
+        fi
+
         if [[ "${currentLine}" == *"EnforcedInstallDate:"* ]] && parseDDMDeclarationFromLine "${currentLine}"; then
             parsedSignature="${parsedDDMEnforcedInstallDate}|${parsedDDMVersionString}|${parsedDDMBuildVersionString}"
 
@@ -459,8 +564,7 @@ function candidateHasConflictingEvidence() {
             if [[ -n "${noUpdatesEpoch}" ]]; then
                 if [[ "${parsedSignature}" == "${candidateSignature}" ]]; then
                     if (( lineEpoch >= noUpdatesEpoch )); then
-                        ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
-                        return 0
+                        pendingNoUpdatesConflictContext="${noUpdatesRawLine}"
                     fi
                 fi
             fi
@@ -478,6 +582,8 @@ function candidateHasConflictingEvidence() {
         if (( lineEpoch < declarationEpoch )); then
             if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
                 noUpdatesEpoch="${lineEpoch}"
+                noUpdatesTimestamp="${lineTimestamp}"
+                noUpdatesRawLine="${currentLine}"
             fi
             continue
         fi
@@ -491,8 +597,17 @@ function candidateHasConflictingEvidence() {
 
         if [[ "${currentLine}" == *"No updates found for DDM to enforce"* ]]; then
             noUpdatesEpoch="${lineEpoch}"
+            noUpdatesTimestamp="${lineTimestamp}"
+            noUpdatesRawLine="${currentLine}"
         fi
     done
+
+    # Persisted declaration after "No updates found" only conflicts when no later recovery superseded it
+    if [[ -n "${pendingNoUpdatesConflictContext}" ]]; then
+        ddmResolverConflictSummary="Declaration persisted after 'No updates found for DDM to enforce'"
+        ddmResolverConflictContext="${pendingNoUpdatesConflictContext}"
+        return 0
+    fi
 
     return 1
 }
@@ -532,6 +647,8 @@ function resolveDDMEnforcementFromInstallLog() {
     ddmBuildVersionString=""
     ddmTimestampEpochCache=()
     ddmInvalidCandidateContexts=()
+
+    loadDDMStatePersistenceSignatures
 
     if ! tailRecentInstallLogWindow; then
         ddmResolverStatus="missing"

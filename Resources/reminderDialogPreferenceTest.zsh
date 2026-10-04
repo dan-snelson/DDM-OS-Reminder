@@ -116,9 +116,9 @@ fi
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="4.2.0"
+scriptVersion="5.0.0"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -126,6 +126,7 @@ autoload -Uz is-at-least
 
 typeset -ga temporaryFiles=()
 declare -A preferenceExplicitlySet=()
+declare -A dateFormatDeadlineHumanReadableLocalized=()
 
 foundManagedPreferences="false"
 foundLocalPreferences="false"
@@ -157,6 +158,8 @@ deploymentScriptDirectory="/Library/Management/${reverseDomainNameNotation}"
 dorStatePlistPath="${deploymentScriptDirectory}/dor-state.plist"
 dailyReminderTimesResolvedCSV=""
 minutesBeforeDeadlineReminderScheduleResolvedCSV=""
+normalizedDailyReminderTimesCSV=""
+normalizedMinuteThresholdScheduleCSV=""
 preDeadlineThresholdReminderMode="NO"
 preDeadlineThresholdMinutes="${cliPreDeadlineThresholdMinutes}"
 aggressiveModeActive="NO"
@@ -381,7 +384,7 @@ function resolveEffectiveUserContext() {
         notice "Running with sudo; resolving language and appearance for '${loggedInUser}'."
     elif [[ -n "${currentUser}" && "${currentUser}" != "root" ]]; then
         loggedInUser="${currentUser}"
-    elif [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "root" ]]; then
+    elif [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]; then
         loggedInUser="${consoleUser}"
     else
         fatal "Unable to determine a non-root user context for preview."
@@ -419,6 +422,7 @@ function loadDefaultPreferences() {
     local prefKey=""
 
     preferenceExplicitlySet=()
+    dateFormatDeadlineHumanReadableLocalized=()
 
     for prefKey in "${(@k)preferenceConfiguration}"; do
         local prefConfig="${preferenceConfiguration[$prefKey]}"
@@ -523,6 +527,9 @@ function sanitizeLanguageCode() {
         languageCode="${languageCode%_}"
     done
 
+    local languageCodeRegex='^[a-z]{2,3}(_[a-z0-9]{2,8})*$'
+    [[ "${languageCode}" =~ ${languageCodeRegex} ]] || languageCode=""
+
     echo "${languageCode}"
 }
 
@@ -533,23 +540,19 @@ function baseLanguageCodeForCode() {
     echo "${languageCode%%_*}"
 }
 
-function requestedDialogLanguageCode() {
-    local requestedLanguageCode=""
-
+function requestedDialogLanguageValue() {
     if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
-        requestedLanguageCode="${languageOverride}"
+        printf '%s\n' "${languageOverride}"
     else
-        requestedLanguageCode="$(detectLoggedInUserLanguageCode)"
+        detectLoggedInUserLanguageCode
     fi
-
-    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageCode}")"
-    echo "${requestedLanguageCode}"
 }
 
 function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     local plistPath="${1}"
     local rawKey=""
     local -a plistKeys=()
+    local variableNameRegex='^[A-Za-z][A-Za-z0-9_]*$'
 
     while IFS= read -r rawKey; do
         [[ -n "${rawKey}" ]] && plistKeys+=("${rawKey}")
@@ -565,6 +568,7 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
     for rawKey in "${plistKeys[@]}"; do
         local baseRaw="${rawKey%%Localized_*}"
         local codePart="${rawKey##*Localized_}"
+        local languageCode=""
         local internalBase=""
         local internalSuffix=""
         local internalKey=""
@@ -572,14 +576,30 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
 
         [[ -z "${baseRaw}" || -z "${codePart}" ]] && continue
 
+        languageCode="$(sanitizeLanguageCode "${codePart}")"
+        if [[ -z "${languageCode}" ]]; then
+            warning "Ignoring localized preference key ${(q)rawKey}; language code is not recognized."
+            continue
+        fi
+
         if internalBase="$(internalPreferenceKeyForPlistKey "${baseRaw}")"; then
             :
         else
             internalBase="${baseRaw:0:1:l}${baseRaw:1}"
         fi
 
-        internalSuffix="$(languageSuffixForCode "${codePart}")"
+        if [[ "${internalBase}" == "dateFormatDeadlineHumanReadable" ]]; then
+            dateFormatDeadlineHumanReadableLocalized[${languageCode}]="$(readPlistValue "${plistPath}" "${rawKey}")"
+            continue
+        fi
+
+        internalSuffix="$(languageSuffixForCode "${languageCode}")"
         internalKey="${internalBase}Localized${internalSuffix}"
+        if [[ ! "${internalKey}" =~ ${variableNameRegex} ]]; then
+            warning "Ignoring localized preference key ${(q)rawKey}; preference name is not recognized."
+            continue
+        fi
+
         dynamicValue="$(readPlistValue "${plistPath}" "${rawKey}")"
 
         printf -v "${internalKey}" '%s' "${dynamicValue}"
@@ -794,13 +814,15 @@ function validateReminderTimeEntry() {
 }
 
 function normalizeDailyReminderTimes() {
+    # Result is returned in normalizedDailyReminderTimesCSV (not stdout) so warnings reach the console
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
     local rawEntry=""
     local normalizedEntry=""
-    local normalizedCSV=""
     local -a rawEntries=()
     local -a validEntries=()
+
+    normalizedDailyReminderTimesCSV=""
 
     IFS=',' read -r -A rawEntries <<< "${rawValue}"
 
@@ -818,35 +840,34 @@ function normalizeDailyReminderTimes() {
     fi
 
     validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -u))
-    normalizedCSV="${(j:,:)validEntries}"
-    echo "${normalizedCSV}"
+    normalizedDailyReminderTimesCSV="${(j:,:)validEntries}"
 }
 
 function parseDailyReminderTimes() {
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
-    local normalizedCSV=""
 
-    normalizedCSV="$(normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}")" || return 1
+    normalizeDailyReminderTimes "${rawValue}" "${warnOnInvalid}" || return 1
 
-    dailyReminderTimesResolvedCSV="${normalizedCSV}"
+    dailyReminderTimesResolvedCSV="${normalizedDailyReminderTimesCSV}"
     IFS=',' read -r -A dailyReminderTimesResolved <<< "${dailyReminderTimesResolvedCSV}"
     echo "${dailyReminderTimesResolvedCSV}"
 }
 
 function normalizeMinuteThresholdSchedule() {
+    # Result is returned in normalizedMinuteThresholdScheduleCSV (not stdout) so warnings reach the console
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
     local rawEntry=""
     local trimmedEntry=""
     local normalizedEntry=""
-    local normalizedCSV=""
     local -a rawEntries=()
     local -a validEntries=()
 
+    normalizedMinuteThresholdScheduleCSV=""
+
     rawValue="$(trimSurroundingWhitespace "${rawValue}")"
     if [[ -z "${rawValue}" ]]; then
-        echo ""
         return 0
     fi
 
@@ -871,18 +892,16 @@ function normalizeMinuteThresholdSchedule() {
     fi
 
     validEntries=($(printf "%s\n" "${validEntries[@]}" | LC_ALL=C sort -nr -u))
-    normalizedCSV="${(j:,:)validEntries}"
-    echo "${normalizedCSV}"
+    normalizedMinuteThresholdScheduleCSV="${(j:,:)validEntries}"
 }
 
 function parseMinuteThresholdSchedule() {
     local rawValue="${1}"
     local warnOnInvalid="${2:-NO}"
-    local normalizedCSV=""
 
-    normalizedCSV="$(normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}")" || return 1
+    normalizeMinuteThresholdSchedule "${rawValue}" "${warnOnInvalid}" || return 1
 
-    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedCSV}"
+    minutesBeforeDeadlineReminderScheduleResolvedCSV="${normalizedMinuteThresholdScheduleCSV}"
     minutesBeforeDeadlineReminderScheduleResolved=()
     if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
         IFS=',' read -r -A minutesBeforeDeadlineReminderScheduleResolved <<< "${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
@@ -892,14 +911,13 @@ function parseMinuteThresholdSchedule() {
 
 function resolveMinuteThresholdSchedule() {
     local defaultMinuteThresholdSchedule="${preferenceConfiguration[minutesBeforeDeadlineReminderSchedule]#*|}"
-    local normalizedMinuteThresholdSchedule=""
 
-    normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES")" || {
+    normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES" || {
         warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
-        normalizedMinuteThresholdSchedule="$(normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}")"
+        normalizeMinuteThresholdSchedule "${defaultMinuteThresholdSchedule}"
     }
 
-    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdSchedule}"
+    minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdScheduleCSV}"
     parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
 }
 
@@ -923,14 +941,13 @@ function resolveAggressiveModeThreshold() {
 
 function resolveDailyReminderTimes() {
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
-    local normalizedDailyReminderTimes=""
 
-    normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${dailyReminderTimes}" "YES")" || {
+    normalizeDailyReminderTimes "${dailyReminderTimes}" "YES" || {
         warning "DailyReminderTimes value '${dailyReminderTimes}' is invalid; defaulting to '${defaultDailyReminderTimes}'."
-        normalizedDailyReminderTimes="$(normalizeDailyReminderTimes "${defaultDailyReminderTimes}")"
+        normalizeDailyReminderTimes "${defaultDailyReminderTimes}"
     }
 
-    dailyReminderTimes="${normalizedDailyReminderTimes}"
+    dailyReminderTimes="${normalizedDailyReminderTimesCSV}"
     parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
 }
 
@@ -1041,7 +1058,7 @@ function normalizeDialogLanguageCode() {
     languageCode="${languageCode%%-*}"
     languageCode="${languageCode%%_*}"
 
-    [[ "${languageCode}" == "en" ]] && echo "en" && return
+    [[ -z "${languageCode}" || "${languageCode}" == "en" ]] && echo "en" && return
 
     sentinelKey="TitleLocalized_${languageCode}"
     if [[ "${foundManagedPreferences}" == "true" ]] && /usr/libexec/PlistBuddy -c "Print :${sentinelKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
@@ -1058,17 +1075,20 @@ function normalizeDialogLanguageCode() {
 }
 
 function resolveDateFormatDeadlineHumanReadable() {
+    local requestedLanguageValue=""
     local requestedLanguageCode=""
     local baseLanguageCode=""
     local resolvedDialogLanguage=""
-    local exactVariableName=""
-    local baseVariableName=""
     local exactValue=""
     local baseValue=""
     local defaultFormat="+%a, %d-%b-%Y, %-l:%M %p"
     local resolvedDateFormatSource="built-in default"
 
-    requestedLanguageCode="$(requestedDialogLanguageCode)"
+    requestedLanguageValue="$(requestedDialogLanguageValue)"
+    requestedLanguageCode="$(sanitizeLanguageCode "${requestedLanguageValue}")"
+    if [[ -n "${requestedLanguageValue}" && -z "${requestedLanguageCode}" ]]; then
+        warning "Requested language (${#requestedLanguageValue} characters) is not a recognized language code; ignoring localized deadline date formats."
+    fi
     baseLanguageCode="$(baseLanguageCodeForCode "${requestedLanguageCode}")"
     resolvedDialogLanguage="$(normalizeDialogLanguageCode "${requestedLanguageCode}")"
 
@@ -1077,26 +1097,18 @@ function resolveDateFormatDeadlineHumanReadable() {
         resolvedDateFormatSource="global preference"
     fi
 
-    if [[ -n "${requestedLanguageCode}" ]]; then
-        exactVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${requestedLanguageCode}")"
-        exactValue="${(P)exactVariableName}"
-
-        if [[ "${preferenceExplicitlySet["${exactVariableName}"]}" == "true" || -n "${exactValue}" ]]; then
-            exactValue="$(trimSurroundingWhitespace "${exactValue}")"
-            if [[ -n "${exactValue}" ]]; then
-                dateFormatDeadlineHumanReadable="${exactValue}"
-                deadlineFormatLanguageCode="${requestedLanguageCode}"
-                resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
-            fi
+    if [[ -n "${requestedLanguageCode}" ]] && (( ${+dateFormatDeadlineHumanReadableLocalized[${requestedLanguageCode}]} )); then
+        exactValue="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadableLocalized[${requestedLanguageCode}]}")"
+        if [[ -n "${exactValue}" ]]; then
+            dateFormatDeadlineHumanReadable="${exactValue}"
+            deadlineFormatLanguageCode="${requestedLanguageCode}"
+            resolvedDateFormatSource="exact locale preference (${requestedLanguageCode})"
         fi
     fi
 
     if [[ "${deadlineFormatLanguageCode}" == "${resolvedDialogLanguage:-en}" && -n "${baseLanguageCode}" && "${baseLanguageCode}" != "${requestedLanguageCode}" ]]; then
-        baseVariableName="dateFormatDeadlineHumanReadableLocalized$(languageSuffixForCode "${baseLanguageCode}")"
-        baseValue="${(P)baseVariableName}"
-
-        if [[ "${preferenceExplicitlySet["${baseVariableName}"]}" == "true" || -n "${baseValue}" ]]; then
-            baseValue="$(trimSurroundingWhitespace "${baseValue}")"
+        if (( ${+dateFormatDeadlineHumanReadableLocalized[${baseLanguageCode}]} )); then
+            baseValue="$(trimSurroundingWhitespace "${dateFormatDeadlineHumanReadableLocalized[${baseLanguageCode}]}")"
             if [[ -n "${baseValue}" ]]; then
                 dateFormatDeadlineHumanReadable="${baseValue}"
                 deadlineFormatLanguageCode="${baseLanguageCode}"
@@ -1273,6 +1285,11 @@ function resolveDialogLanguage() {
     local detectedLanguage=""
 
     if [[ -n "${languageOverride}" && "${languageOverride:l}" != "auto" ]]; then
+        if [[ -z "$(sanitizeLanguageCode "${languageOverride}")" ]]; then
+            dialogLanguage="en"
+            warning "LanguageOverride is not a recognized language code; using '${dialogLanguage}'"
+            return
+        fi
         normalizedOverride="$(normalizeDialogLanguageCode "${languageOverride}")"
         dialogLanguage="${normalizedOverride}"
         notice "LanguageOverride is '${languageOverride}'; using '${dialogLanguage}'"
@@ -1283,6 +1300,12 @@ function resolveDialogLanguage() {
     if [[ -z "${detectedLanguage}" ]]; then
         dialogLanguage="en"
         notice "Could not detect logged-in user language; defaulting to '${dialogLanguage}'"
+        return
+    fi
+
+    if [[ -z "$(sanitizeLanguageCode "${detectedLanguage}")" ]]; then
+        dialogLanguage="en"
+        warning "Logged-in user language (${#detectedLanguage} characters) is not a recognized language code; defaulting to '${dialogLanguage}'"
         return
     fi
 
@@ -1297,9 +1320,12 @@ function applyLocalizedFieldValue() {
     local localizedVariable=""
     local localizedValue=""
     local baseValue=""
+    local variableNameRegex='^[A-Za-z][A-Za-z0-9_]*$'
 
     localizedSuffix="$(languageSuffixForCode "${languageCode}")"
+    [[ -z "${localizedSuffix}" ]] && return 0
     localizedVariable="${baseVariable}Localized${localizedSuffix}"
+    [[ "${localizedVariable}" =~ ${variableNameRegex} ]] || return 0
     localizedValue="${(P)localizedVariable}"
     baseValue="${(P)baseVariable}"
 
@@ -1653,7 +1679,7 @@ function computeDeadlineEnforcementMessage() {
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
 
-    dialogVersion="$(${dialogBinary} -v 2>/dev/null)"
+    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
 
     if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
         dialogSupportsMarkdownColor="YES"
@@ -1826,7 +1852,7 @@ function applySupportFieldVisibility() {
         allSupportRowsHidden="NO"
     fi
 
-    if [[ "${hideSupportAssistanceMessage}" == "YES" || "${infobuttontext}" == "hide" ]]; then
+    if [[ "${hideSupportAssistanceMessage}" == "YES" ]]; then
         supportAssistanceMessage=""
     fi
 
@@ -1879,7 +1905,7 @@ function applyAggressiveModeDialogOverrides() {
 }
 
 function updateRequiredVariables() {
-    dialogBinary="/usr/local/bin/dialog"
+    dialogBinary="/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli"
     [[ ! -x "${dialogBinary}" ]] && fatal "swiftDialog not found at '${dialogBinary}'."
 
     action="x-apple.systempreferences:com.apple.preferences.softwareupdate"

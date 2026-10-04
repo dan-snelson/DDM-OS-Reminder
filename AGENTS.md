@@ -142,9 +142,16 @@ Out of scope:
 - Baseline reminder slots resolve from `DailyReminderTimes` in deployed preferences. Default sample values (`08:00,12:00,16:00`) are fallback defaults, not runtime hardcodes.
 - Pre-deadline minute thresholds resolve from `MinutesBeforeDeadlineReminderSchedule` (`45,30,15,10,5` by default). Per-threshold delivery state stays in `dor-state.plist`.
 - Past-deadline aggressive cadence resolves from `AggressiveModePastDeadlineHours` (`2` by default) and `AggressiveModeFrequencyMinutes` (`20` by default). Mac Admins can effectively suppress it with a high hour value such as `720`; support can temporarily suppress it with `/Library/Management/<rdnn>/dor-aggressive-kill`.
+- Update Tonight suppression is runtime-only (no preference key). Same-day, post-boot `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version suppresses normal reminders until local midnight. Threshold, aggressive, and Force bypass it, and it never applies when the effective deadline is at or before midnight. `UpdateTonightSuppressionUntil` lives only in `dor-state.plist`.
 - `dor-starter.zsh` is expected to exit quietly when `NextScheduledReminder` is `FALSE` or future-dated. Check `dor-state.plist` before treating a no-op heartbeat as failure.
 - Only starter-launched runs should mutate `dor-state.plist` or `dor.pid`; direct/manual/demo runs bypass daemon scheduler writes.
 - Once aggressive mode is active, `Open Software Update` and dismissal paths should keep exact-time redisplay scheduling; non-aggressive update flows still return to the next baseline reminder slot unless a configured pre-deadline minute threshold is earlier.
+- When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match one of its active `Declarations` (`TargetOSVersion` + `TargetLocalDateTime`); runtime and both Pending-OS EAs share this rule. Missing or unrecognized plist keeps `install.log`-only behavior with runtime `[WARNING]` (accepted residual risk documented in `SECURITY.md`). Update Tonight positive evidence must come from `softwareupdated[pid]`.
+- `assemble.zsh` splices `ScriptLog` into generated Zsh; imported values must pass `isSafeScriptLogPath` (plain absolute path, `<rdnn>.log` basename) and the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite.
+- Console-user resolution rejects `loginwindow`, `_mbsetupuser`, and `root` before building per-user dialog context.
+- Root runtime temp files (icons, swiftDialog `--commandfile`, threshold marker) live only in per-run `mktemp -d` `/var/tmp/<organizationScriptName>.XXXXXX` (root `0755`, files `0644`; swiftDialog 3 reads them as console user). Never write fixed `/var/tmp` names as root.
+- swiftDialog runs from `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`; root `PATH` excludes `/usr/local`.
+- `All`/`Script` redeploys preserve `dor-aggressive-kill`; only `Uninstall` removes it. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until `zsh assemble.zsh` runs.
 
 ## Repository Rules

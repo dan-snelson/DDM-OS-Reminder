@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (4.2.0)
+# DDM OS Reminder (5.0.0)
 
-> A reliability-focused upgrade to Mac Admins’ favorite “set-it-and-forget-it” DDM reminder, featuring bounded Apple-state waits, broader emergency fallback coverage, clearer diagnostics and built-in macOS 27 icon support.
+> A security-hardened upgrade to Mac Admins’ favorite “set-it-and-forget-it” macOS update reminder, featuring corroborated DDM declaration trust and "Update Tonight" awareness
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -12,7 +12,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 <br/>
 <img src="images/before.jpg" alt="macOS built-in Notification" width="400" /> <img src="images/after.jpg" alt="DDM OS Reminder" width="400" />
 
-**DDM OS Reminder** intelligently resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity, while using a declaration-aware resolver which prioritizes applicable enforced-install signals. Normal DDM resolution always runs first, and a confirmed declaration wins. When resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`, an optional validated MDM fallback requirement can keep reminder workflows active; absent or invalid fallback data preserves fail-safe suppression, and unknown resolver states always fail closed. Failed stale `SoftwareUpdateSubscriber` attempts are ignored, and enforcement timestamps with full timezone offsets such as `+05:30` are accepted before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
+**DDM OS Reminder** intelligently resolves DDM-enforced macOS update deadlines from recent `/var/log/install.log` activity, while using a declaration-aware resolver which prioritizes applicable enforced-install signals. Normal DDM resolution always runs first, and a confirmed declaration wins; when the root-owned `SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declarations must also match an active declaration persisted by `softwareupdated`. When resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`, an optional validated MDM fallback requirement can keep reminder workflows active; absent or invalid fallback data preserves fail-safe suppression, and unknown resolver states always fail closed. Failed stale `SoftwareUpdateSubscriber` attempts are ignored, and enforcement timestamps with full timezone offsets such as `+05:30` are accepted before using a [swiftDialog](https://swiftdialog.app)-enabled script and `LaunchDaemon` to deliver a more prominent end-user reminder dialog.
 
 <img src="images/ddmOSReminder_swiftDialog_1.png" alt="DDM OS Reminder evaluates recent DDM declaration state in `/var/log/install.log`" width="800"/>
 <img src="images/ddmOSReminder_swiftDialog_2.png" alt="IT Support information is just a click away …" width="800"/>
@@ -32,6 +32,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Configurable Post-Deadline Restart Policy**: Choose whether past-deadline devices are left alone, prompted to restart, or forced to restart (`Off`, `Prompt`, `Force`) after your defined grace period, balancing user flexibility with reliable compliance.
 - **Configurable reminder cadence controls**: Use `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, and post-deadline restart timing keys to tune reminder suppression, long-range periodic reminders, secondary-button behavior, and Force-mode restart cadence from deployed preferences.
 - **Default-on Past-Deadline Aggressive Mode**: Macs past the effective DDM deadline and still below the required macOS version switch to an urgent cadence after `AggressiveModePastDeadlineHours` (default `2`) and redisplay every `AggressiveModeFrequencyMinutes` (default `20`) until the Mac updates, restarts, or support temporarily suppresses the cadence with `/Library/Management/<rdnn>/dor-aggressive-kill` — including after the user clicks **Open Software Update**.
+- **Update Tonight awareness**: When a user schedules the required macOS update with **Update Tonight** and `install.log` confirms that `softwareupdated` queued the target version and armed the overnight scheduler, normal reminders pause until local midnight. Pre-deadline thresholds, aggressive mode, and Force mode still apply, and suppression never applies on deadline day.
 - **Final-minute deadline reminders**: Use `MinutesBeforeDeadlineReminderSchedule` to display discrete reminders at configured minute thresholds before the effective DDM enforcement deadline; default thresholds are `45,30,15,10,5`, and any open daemon-managed reminder refreshes when the next threshold becomes due.
 - **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist`, infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
 - **Full Multi-language Experience**: Beginning with version `3.1.0`, English dialog defaults are provided in-script, with `.plist` support for: German, French, Spanish, Italian, Dutch, Portuguese, and Japanese. Additional languages through localized `*Localized_<code>` preference keys, with locale-aware dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that match the resolved language.
@@ -42,7 +43,23 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 4.2.0 Highlights
+## :new: 5.0.0 Highlights
+
+- **Corroborated DDM declarations**: When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match an active `softwareupdated` declaration (`TargetOSVersion` + `TargetLocalDateTime`); unmatched candidates are ignored and logged at `[WARNING]`. Runtime and both Pending OS Update Extension Attributes share this rule; a missing or unrecognized plist keeps `install.log`-only behavior and logs a `[WARNING]` (see [SECURITY.md](SECURITY.md)).
+- **Update Tonight awareness**: Confirmed same-day **Update Tonight** scheduling for the target version pauses normal reminders until local midnight. Evidence must be logged by `softwareupdated`; pre-deadline thresholds, aggressive mode, and Force mode still apply.
+- **Private runtime files and atomic deployment**: Each run keeps downloaded icons, the swiftDialog command file, and threshold markers in its own `mktemp -d` directory under `/var/tmp`, removed on exit. `dor.zsh` and `dor-starter.zsh` are syntax-checked before atomic replacement, so the heartbeat never launches a partially written script.
+- **App-bundle swiftDialog**: swiftDialog runs from `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`, and `/usr/local` is no longer in the root `PATH`.
+- **Safer user-session actions**: **Info** button URLs and System Settings activation open in the console user's session through `launchctl asuser`, the System Settings wait is capped at 30 seconds, and Setup Assistant (`_mbsetupuser`) is never targeted.
+- **Support kill switch persists**: `All` and `Script` redeployments keep `/Library/Management/<rdnn>/dor-aggressive-kill`; only `Uninstall` removes it.
+- **Resilient preference parsing**: Mixed valid and invalid `DailyReminderTimes` or `MinutesBeforeDeadlineReminderSchedule` entries keep the valid values and log each skipped entry; unrecognized language codes fall back to English.
+- **Hardened tooling**: `assemble.zsh` rejects unsafe imported `ScriptLog` paths and re-prompts on an invalid deployment mode, self-extracting wrappers forward MDM Parameters 4–6, and `Resources/Jamf-getDDMstatusFromCSV.zsh` keeps API credentials out of process arguments.
+- **Includes 4.2.1 and 4.2.2 fixes**: `HideSupportAssistanceMessage` alone controls the support assistance text (set it to `true` if you relied on `InfoButtonText=hide`), and recovered DDM declarations no longer remain stuck in `conflict`.
+
+Review the [5.0.0 upgrade notes](#500-upgrade-notes) before rollout.
+
+---
+
+## 4.2.0 Highlights
 
 - **Bounded Apple-state wait**: Padded enforcement-date resolution now measures its five-minute limit with wall-clock time, preventing sleep or process suspension from silently extending the wait.
 - **Accurate timeout diagnostics**: Timeout records now include actual wall-clock elapsed time and the configured maximum.
@@ -100,6 +117,13 @@ Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now pri
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
 
+### 5.0.0 upgrade notes
+
+- **Self-extracting wrapper now forwards MDM script parameters.** Wrappers generated by `Resources/createSelfExtracting.zsh` (`2.4.0`) pass Parameters 4–6 to the deployer. Values previously ignored on wrapper-based policies (reset mode, `Uninstall`, DDM Emergency Fallback) now take effect, so audit those policy parameters before rollout.
+- **swiftDialog path.** The runtime and deployer invoke `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`; the runtime, deployer, `dor-starter.zsh`, and LaunchDaemon no longer include `/usr/local` or `/usr/local/bin` in `PATH`.
+- **Aggressive-mode kill switch survives redeployment.** `All` and `Script` keep `/Library/Management/<rdnn>/dor-aggressive-kill`; only `Uninstall` removes it.
+- **Support assistance text (from 4.2.1).** `InfoButtonText=hide` no longer hides `{supportAssistanceMessage}`; set `HideSupportAssistanceMessage=true` if you relied on the old behavior. 5.0.0 is the first stable release with this change.
+
 ### macOS 27 LaunchDaemon quarantine enforcement
 
 macOS 27 no longer loads LaunchDaemon property lists carrying `com.apple.quarantine`. DDM OS Reminder `4.1.0` creates and validates a fresh adjacent plist, atomically replaces `/Library/LaunchDaemons/<rdnn>.dor.plist`, removes only that quarantine attribute in the controlled installer path, and verifies the label before reporting completion.
@@ -113,7 +137,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-2.2.0/Artifacts/us.snelson.dorm-2026-01-06-073608.plist'
 
 ===============================================================
-🧩 Assemble DDM OS Reminder (4.2.0)
+🧩 Assemble DDM OS Reminder (5.0.0)
 ===============================================================
 
 📍 Full Paths:
@@ -269,7 +293,7 @@ Use `LanguageOverride` to force a locale, run the script, capture screenshots, t
 
 For custom text authoring, use base keys such as `Message` and `HelpMessage` when you want one shared string across every language. Add `MessageLocalized_<code>` or `HelpMessageLocalized_<code>` only for languages that truly need an override.
 
-Localization precedence stays deliberate: base keys provide shared/default copy, while matching `*Localized_<code>` keys provide locale-specific overrides. Base sentinel values such as `InfoButtonText=hide` still win over localized variants and continue to hide KB / info-button surfaces in both preview and runtime paths.
+Localization precedence stays deliberate: base keys provide shared/default copy, while matching `*Localized_<code>` keys provide locale-specific overrides. Base sentinel values such as `InfoButtonText=hide` still win over localized variants and continue to hide the info button in both preview and runtime paths. Starting with `4.2.1`, `InfoButtonText=hide` no longer suppresses `{supportAssistanceMessage}`; `HideSupportAssistanceMessage` is its sole control, so set `HideSupportAssistanceMessage=true` if you relied on the old behavior.
 
 Starting with `3.1.0`, `reminderDialog.zsh` only ships English built-in fallback strings. To display a non-English interface, provide localized preference keys such as `TitleLocalized_it`, `MessageLocalized_it`, and related `*Localized_<code>` entries in managed or local preferences.
 

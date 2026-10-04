@@ -66,7 +66,7 @@ Confirm:
 - An MDM can deploy a Configuration Profile or managed preference payload and execute a root-level Zsh script.
 - Apple DDM declares a required macOS version and timezone-bearing enforcement deadline for the test Mac.
 - The Mac has an interactive user session and network access to required update and branding resources.
-- Your deployment can install or update swiftDialog.
+- Your deployment can install or update swiftDialog `3.1.0.4994` or later at `/Library/Application Support/Dialog/Dialog.app`; runtime invokes `Contents/MacOS/dialogcli` directly and does not use `/usr/local/bin/dialog`.
 - The expected DDM state appears in `/var/log/install.log` before troubleshooting reminder behavior.
 
 DDM OS Reminder is messaging and scheduling software. It does not create the Apple declaration, download macOS, or enforce the update.
@@ -169,9 +169,11 @@ After managed preferences reach the test Mac, upload and execute the assembled s
 - `/Library/LaunchDaemons/<rdnn>.dor.plist`
 - swiftDialog when required
 
-The wrapper also creates or validates scheduler assets, applies controlled reset behavior, hardens the generated LaunchDaemon plist, and verifies the loaded label before reporting completion.
+The wrapper also creates or validates scheduler assets, applies controlled reset behavior, hardens the generated LaunchDaemon plist, and verifies the loaded label before reporting completion. `dor.zsh` and `dor-starter.zsh` are written to adjacent temporary files, validated with `zsh -n`, and moved into place atomically, so the heartbeat never launches a partially written script.
 
 Provider-specific parameter mapping for reset and optional emergency fallback values is documented in [Resources/README.md](../Resources/README.md#ddm-emergency-fallback).
+
+When deploying a self-extracting wrapper from `Resources/createSelfExtracting.zsh` (`2.4.0` or later), the wrapper forwards all MDM script parameters, so Parameters 4–6 reach the deployer exactly as they do with the assembled script. Review those policy values before rollout; earlier wrappers ignored them.
 
 ## 6. Verify Client Installation
 
@@ -264,7 +266,7 @@ Work from state toward symptoms:
 2. Confirm the MDM-delivered preference file exists and contains expected types and values.
 3. Inspect `dor-state.plist` for a disabled or future schedule.
 4. Inspect `dor.pid` and matching processes before treating an overlap exit as a failure.
-5. Review recent `/var/log/install.log` declaration state and the project log's resolver decision.
+5. Review recent `/var/log/install.log` declaration state and the project log's resolver decision. `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state` means candidates did not match `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`.
 6. Confirm the installed macOS version is still below the resolved requirement.
 7. Confirm the reminder is inside a display, periodic, threshold, or aggressive window.
 8. Confirm meeting, quiet-period, or support kill-switch suppression is expected.
@@ -297,9 +299,13 @@ Import the prior generated `.plist`, review every fresh artifact, update the dep
 
 Do not assume every release changes the Configuration Profile. Compare normalized preference output and release notes before redeploying it.
 
+### Version 5.0.0
+
+Review the [5.0.0 upgrade notes](../README.md#500-upgrade-notes): self-extracting wrappers now forward Parameters 4–6, swiftDialog runs from its app bundle, and `All` / `Script` redeployments keep `/Library/Management/<rdnn>/dor-aggressive-kill`.
+
 ## 11. Uninstall
 
-Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets, and leaves preference removal under administrator control.
+Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets (including `dor-aggressive-kill`, which `All` and `Script` keep), and leaves preference removal under administrator control.
 
 ## Deployment Checklist
 

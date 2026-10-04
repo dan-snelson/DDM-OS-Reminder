@@ -659,7 +659,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 <integer>75</integer>
 ```
 
-**Related Logic**: See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+**Related Logic**: See [Runtime Decision Tree - Reminder Timing Decisions](02-runtime-decision-tree.md#reminder-timing-decisions)
 
 ---
 
@@ -667,7 +667,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Plist Key**: `DailyReminderTimes`
 **Type**: String
 **Default**: `08:00,12:00,16:00`
-**Valid Format**: `HH:MM,HH:MM,HH:MM` (24-hour local time CSV)
+**Valid Format**: `HH:MM,HH:MM,HH:MM` (24-hour local time CSV; hours must be zero-padded, for example `08:00`, not `8:00`)
 
 **Description**: Admin-controlled baseline reminder slots used by the heartbeat `LaunchDaemon` and `dor-starter.zsh` to decide when a normal reminder is due.
 
@@ -688,8 +688,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Deploy and manage `DailyReminderTimes` through managed preferences or local preferences
 - Do **not** deploy runtime scheduler state through preference payloads
 - Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
-- Runtime-only keys currently include `NextScheduledReminder` and `DaemonLastTriggered`
-- The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`
+- Runtime-only keys currently include `NextScheduledReminder`, `DaemonLastTriggered`, and `UpdateTonightSuppressionUntil`
+- The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`; `All` and `Script` redeployments keep it, and only `Uninstall` removes it
 - Direct/manual/demo runs do not mutate this daemon scheduler state
 
 **Script Default**:
@@ -863,7 +863,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 ```
 
 **Related Logic**:
-- See [Runtime Decision Tree - Meeting Detection](02-runtime-decision-tree.md#8-meeting-detection)
+- See [Runtime Decision Tree - Reminder Timing Decisions](02-runtime-decision-tree.md#reminder-timing-decisions)
 - Works in conjunction with `meetingDelay` preference
 - Feature Request: Issue #67
 
@@ -1292,7 +1292,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Special Value**: None for hide behavior
 
-**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button.
+**Important**: An empty `InfoButtonAction` value does not hide the info button. Use `InfoButtonText=hide` to hide the info button. `InfoButtonText=hide` does not affect `{supportAssistanceMessage}`; use `HideSupportAssistanceMessage` for that text.
 
 ---
 
@@ -1368,7 +1368,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: Boolean
 **Default**: `NO`
 
-**Description**: When `YES`, suppresses `{supportAssistanceMessage}` in the main dialog body while leaving `HelpMessage` and the info button unchanged.
+**Description**: When `YES`, suppresses `{supportAssistanceMessage}` in the main dialog body while leaving `HelpMessage` and the info button unchanged. This is the sole control for `{supportAssistanceMessage}`; `InfoButtonText=hide` does not suppress it (4.2.1+).
 
 **Configuration Profile**:
 ```xml
@@ -1388,6 +1388,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Description**: Selects the localization family used for dialog content.
 When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value, normalizes the built-in supported locales, and can honor additional languages when matching `*Localized_<code>` keys are present in managed or local preferences.
+Values that are not recognizable language codes (2–3 letters, optionally followed by `_`/`-` region or script subtags) fall back to `en` and log `[WARNING] LanguageOverride is not a recognized language code`. Localized preference keys whose `<code>` suffix is unrecognized are skipped with a `[WARNING]`.
 
 **Fallback Chain**:
 1. Selected localized key (for example, `MessageLocalized_nl`)
@@ -2030,8 +2031,8 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button1text}` | Config | Primary button | Open Software Update |
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
-| `{dialogVersion}` | System | swiftDialog version | 2.5.6 |
-| `{scriptVersion}` | System | Script version | 4.2.0 |
+| `{dialogVersion}` | System | swiftDialog version | 3.1.1.4997 |
+| `{scriptVersion}` | System | Script version | 5.0.0 |
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2546,6 +2547,11 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 5.0.0 | 04-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) logs `[WARNING]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
+| 5.0.0b2 | 02-Oct-2026 | `DailyReminderTimes` and `MinutesBeforeDeadlineReminderSchedule` values mixing valid and invalid entries (for example `8:00,17:00` or `45,abc`) now keep the valid entries and log each invalid entry at `[WARNING]`; previously the warning text was captured into the resolved value, leaving no baseline slots or thresholds ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139)); `HH:MM` still requires zero-padded hours; unrecognized `LanguageOverride` or user language values fall back to English and the global `DateFormatDeadlineHumanReadable` with a `[WARNING]`, and localized keys with an unrecognized `<code>` suffix are skipped; no preference keys, defaults, or precedence rules changed |
+| 4.3.0b1 | 30-Sep-2026 | Runtime-only Update Tonight suppression: confirmed same-day `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version pauses normal reminders until local midnight; thresholds, aggressive, and Force bypass; scheduler state key `UpdateTonightSuppressionUntil` ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)); no preference keys or precedence rules changed |
+| 4.2.2 | 30-Sep-2026 | Resolver no longer holds `conflict` when a transient `No updates found for DDM to enforce` marker is followed by `Found product with requested PMV (<version>)` or a date-matched `Armed DDM activity scheduler ... YES` ([Issue #134](https://github.com/dan-snelson/DDM-OS-Reminder/issues/134)); no preference keys or precedence rules changed |
+| 4.2.1 | 30-Sep-2026 | `HideSupportAssistanceMessage` is now the sole control for `{supportAssistanceMessage}`; `InfoButtonText=hide` no longer suppresses it ([Issue #132](https://github.com/dan-snelson/DDM-OS-Reminder/issues/132)); no preference keys or precedence rules changed |
 | 4.2.0 | 21-Sep-2026 | Bounded padded enforcement-date resolution by wall-clock time; no preference keys or preference precedence rules changed |
 | 4.2.0b3 | 10-Sep-2026 | Broadened DDM Emergency Fallback eligibility across recognized unresolved resolver states; no preference keys or preference precedence rules changed |
 | 4.2.0b1 | 04-Sep-2026 | Documented built-in macOS 27 icon mapping; no preference keys or precedence rules changed |
@@ -2573,5 +2579,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 21-Sep-2026
-**DDM OS Reminder Version**: 4.2.0
+**Last Updated**: 04-Oct-2026
+**DDM OS Reminder Version**: 5.0.0

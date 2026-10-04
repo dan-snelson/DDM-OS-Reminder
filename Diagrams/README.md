@@ -1,4 +1,4 @@
-# DDM OS Reminder (4.2.0) - Documentation Diagrams
+# DDM OS Reminder (5.0.0) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -24,6 +24,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 - Three assembly inputs and three deployable outputs
 - Either-or `.plist` / `.mobileconfig` preference deployment
 - Client heartbeat, starter, state, PID guard, fallback, and support suppression assets
+- Private per-run swiftDialog files and softwareupdate DDM state corroboration
 - Apple-owned update and enforcement path
 
 **Best For**: Understanding how all components fit together
@@ -204,7 +205,7 @@ Examples:
 03-deadline-timeline.md
 ```
 
-PNG exports mirror the `.md` base name (for example, `01-system-architecture.png`).
+PNG and SVG exports mirror the `.md` base name (for example, `01-system-architecture.png` and `01-system-architecture.svg`). Files with more than one Mermaid block add a numeric suffix from the second block onward (for example, `03-deadline-timeline-2.png`).
 
 ### Markdown Structure
 ```markdown
@@ -492,6 +493,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.15 | 04-Oct-2026 | Reconciled diagrams with `5.0.0` runtime truth: softwareupdate DDM state corroboration, private per-run `/var/tmp` files, app-bundle `dialogcli`, console-user exclusions (`_mbsetupuser`, `root`), bounded System Settings wait, atomic script deployment, self-extracting parameter forwarding, kill-switch preservation on `All` / `Script`, and language-code hardening; restored PNG and SVG exports for `00`–`05` (rendered with `mmdc` 12.0.0, including the second `03` timeline diagram) |
 | 1.0.14 | 21-Sep-2026 | Refreshed lifecycle, assembly, heartbeat, scheduler, MDM-agnostic deployment, configuration-boundary, and upgrade diagrams from the JNUC 2026 workflow; reconciled all content with `4.2.0` runtime truth |
 | 1.0.13 | 30-Jul-2026 | Added macOS 27 LaunchDaemon quarantine audit, targeted remediation, and label-specific verification guidance |
 | 1.0.12 | 28-Jul-2026 | Documented `PreDeadlineThresholdSignature` structure, `(null)` build semantics, effective-enforcement epoch, threshold delivery/skipped ledger resets, and runtime-only troubleshooting guidance |
@@ -517,5 +519,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 21-Sep-2026
-**DDM OS Reminder Version**: 4.2.0
+**Last Updated**: 04-Oct-2026
+**DDM OS Reminder Version**: 5.0.0

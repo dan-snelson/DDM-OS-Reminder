@@ -42,12 +42,13 @@ flowchart TB
         FALLBACK["dor-fallback-declaration.plist<br/>optional deployment-owned<br/>emergency requirement"]
         KILL["dor-aggressive-kill<br/>runtime support suppression"]
         DAEMON["/Library/LaunchDaemons/<br/>&lt;rdnn&gt;.dor.plist<br/>RunAtLoad + 60 seconds"]
-        DIALOG["swiftDialog"]
+        DIALOG["swiftDialog<br/>Dialog.app/Contents/MacOS/dialogcli"]
+        RUNDIR["/var/tmp/&lt;organizationScriptName&gt;.XXXXXX<br/>private per-run icons,<br/>command file, markers"]
         LOG["/var/log/&lt;rdnn&gt;.log"]
     end
 
     MDM -->|Managed preferences| MANAGED
-    MDM -->|Execute once| INSTALL["Deployment installation"]
+    MDM -->|Execute once| INSTALL["Deployment installation<br/>syntax-checked, atomic<br/>script replacement"]
     INSTALL --> MAIN
     INSTALL --> STARTER
     INSTALL --> DAEMON
@@ -65,16 +66,21 @@ flowchart TB
     MAIN -->|Starter-launched runs only| STATE
     MAIN -->|Own active run| PID
     MAIN --> DIALOG
+    MAIN -->|Per-run files| RUNDIR
+    RUNDIR -.->|Read as console user| DIALOG
     MAIN --> LOG
 
     subgraph Apple["Apple-owned Update Path"]
         DDM["Apple DDM Declaration"]
         INSTALLLOG["/var/log/install.log"]
+        SUSTATE["/var/db/softwareupdate/<br/>SoftwareUpdateDDMStatePersistence.plist<br/>root-owned active declarations"]
         SETTINGS["System Settings<br/>Software Update"]
         UPDATE["Download, install,<br/>restart, enforce"]
 
         DDM --> INSTALLLOG
+        DDM --> SUSTATE
         INSTALLLOG --> MAIN
+        SUSTATE -.->|Corroborate install.log<br/>declarations when readable| MAIN
         DIALOG -->|Open Software Update| SETTINGS
         SETTINGS --> UPDATE
         DDM -->|Platform enforcement| UPDATE
@@ -119,6 +125,9 @@ Deploy the script plus either the `.plist` or `.mobileconfig`; do not deploy bot
 4. `FALSE` or a future timestamp is an expected quiet no-op. A due, missing, or invalid schedule launches `dor.zsh`.
 5. Only starter-launched runtime runs write mutable scheduler state or own `dor.pid`; manual and demo runs do not.
 6. `dor.zsh` resolves DDM state, compliance, timing, interaction, meeting, restart, and aggressive-mode gates before displaying swiftDialog.
+7. When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declarations must match one of its active declarations; otherwise runtime trusts `install.log` alone and logs a `[WARNING]`.
+8. Each displaying run keeps downloaded icons, the swiftDialog command file, and threshold markers in a private `/var/tmp/<organizationScriptName>.XXXXXX` directory and removes it on exit.
+9. Deployment writes `dor.zsh` and `dor-starter.zsh` to adjacent temporary files, validates them with `zsh -n`, and moves them into place atomically.
 
 ## Configuration Boundaries
 

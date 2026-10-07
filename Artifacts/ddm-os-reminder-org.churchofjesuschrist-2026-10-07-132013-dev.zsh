@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0"
+scriptVersion="5.1.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -659,7 +659,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0"
+scriptVersion="5.1.0b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -5165,12 +5165,19 @@ function computeInfoboxHighlights() {
         return
     fi
 
+    local isDeadlineHighlighted="NO"
+
     if [[ -n "${infoboxDeadlineEpoch}" && "${infoboxDeadlineEpoch}" =~ ^[0-9]+$ ]] && (( infoboxDeadlineEpoch <= $(date +%s) )); then
-        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
+        isDeadlineHighlighted="YES"
     fi
 
     if [[ "${infoboxDaysRemainingDisplay}" =~ ^-?[0-9]+$ ]] && (( infoboxDaysRemainingDisplay <= 0 )); then
         infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
+        isDeadlineHighlighted="YES"
+    fi
+
+    if [[ "${isDeadlineHighlighted}" == "YES" ]]; then
+        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
     fi
 
     if [[ "${pastDeadlineRestartSuppressedForUptime}" != "YES" ]] && (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then

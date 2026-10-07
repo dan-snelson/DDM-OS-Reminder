@@ -2,6 +2,9 @@
 
 ## Changelog
 
+### Version 5.1.0b1 (07-Oct-2026)
+- Infobox **Deadline** now renders in red whenever **Day(s) Remaining** does, including the final ~12 hours before the effective deadline when **Day(s) Remaining** rounds to `0` (requires swiftDialog markdown-color support) ([Issue #143](https://github.com/dan-snelson/DDM-OS-Reminder/issues/143))
+
 ### Version 5.0.0 (04-Oct-2026)
 
 > No preference keys, defaults, or precedence rules changed.

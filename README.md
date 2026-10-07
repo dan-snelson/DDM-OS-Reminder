@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.0.0)
+# DDM OS Reminder (5.1.0b1)
 
 > A security-hardened upgrade to Mac Admins’ favorite “set-it-and-forget-it” macOS update reminder, featuring corroborated DDM declaration trust and "Update Tonight" awareness
 
@@ -53,7 +53,7 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Support kill switch persists**: `All` and `Script` redeployments keep `/Library/Management/<rdnn>/dor-aggressive-kill`; only `Uninstall` removes it.
 - **Resilient preference parsing**: Mixed valid and invalid `DailyReminderTimes` or `MinutesBeforeDeadlineReminderSchedule` entries keep the valid values and log each skipped entry; unrecognized language codes fall back to English.
 - **Hardened tooling**: `assemble.zsh` rejects unsafe imported `ScriptLog` paths and re-prompts on an invalid deployment mode, self-extracting wrappers forward MDM Parameters 4–6, and `Resources/Jamf-getDDMstatusFromCSV.zsh` keeps API credentials out of process arguments.
-- **Includes 4.2.1 and 4.2.2 fixes**: `HideSupportAssistanceMessage` alone controls the support assistance text (set it to `true` if you relied on `InfoButtonText=hide`), and recovered DDM declarations no longer remain stuck in `conflict`.
+- **Includes 4.2.1 and 4.2.2 fixes**: `HideSupportAssistanceMessage` _alone_ controls the support assistance text, while `InfoButtonText=hide` now hides _only_ the info button (if you relied on `InfoButtonText=hide` to **also** hide the support assistance text, set `HideSupportAssistanceMessage` to `true`), and recovered DDM declarations no longer remain stuck in `conflict`.
 
 Review the [5.0.0 upgrade notes](#500-upgrade-notes) before rollout.
 

@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.1.0b3"
+scriptVersion="5.1.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

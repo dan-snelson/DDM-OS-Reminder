@@ -118,7 +118,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="5.1.0b3"
+scriptVersion="5.1.0b4"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 

@@ -305,7 +305,7 @@ Review the [5.0.0 upgrade notes](../README.md#500-upgrade-notes): self-extractin
 
 ## 11. Uninstall
 
-Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets (including `dor-aggressive-kill`, which `All` and `Script` keep), and leaves preference removal under administrator control.
+Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets (including `dor-aggressive-kill` and `dor-state.plist`, which `All` and `Script` keep), and leaves preference removal under administrator control.
 
 ## Deployment Checklist
 

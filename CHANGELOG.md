@@ -2,7 +2,12 @@
 
 ## Changelog
 
-### Version 5.1.0b3 (12-Oct-2026)
+### Version 5.1.0b4 (12-Oct-2026)
+- `All` and `Script` redeployments now keep `/Library/Management/<rdnn>/dor-state.plist`, so redeploying inside a `MinutesBeforeDeadlineReminderSchedule` window no longer shows an already-delivered pre-deadline threshold reminder again ([Issue #149](https://github.com/dan-snelson/DDM-OS-Reminder/issues/149))
+    - Pre-deadline threshold delivery records and `UpdateTonightSuppressionUntil` carry across the redeploy; threshold records still reset automatically when the deadline/version signature changes.
+    - Only `NextScheduledReminder` is cleared, so the refreshed heartbeat still evaluates reminders right after deployment (and a stale `FALSE` value cannot silence the Mac).
+    - Deployment logs `[NOTICE]` when scheduler state is preserved and when `NextScheduledReminder` is cleared. An unreadable state file is left for the starter and runtime to quarantine.
+    - **Upgrade note:** Only `Uninstall` removes `dor-state.plist`, matching the aggressive-mode kill switch `dor-aggressive-kill`.
 - Replaced the percentage-based low-disk-space warning with a fixed GB threshold, so large disks no longer warn with hundreds of GB free and small disks no longer under-warn ([Issue #146](https://github.com/dan-snelson/DDM-OS-Reminder/issues/146); idea credit: @zte303, [DDM-Notify-Basic](https://github.com/zte303/DDM-Notify-Basic))
     - New `MinimumDiskFreeGB` preference (`Resources/sample.plist` default `26`, matching Apple's last published macOS upgrade requirement (Monterey: 26 GB); `0` disables) is compared against the existing Finder-aligned available-capacity value (`diskutil` fallback) in decimal GB, matching the displayed value.
     - `{diskSpaceHumanReadable}` and the infobox **Free Disk Space** line are unchanged.

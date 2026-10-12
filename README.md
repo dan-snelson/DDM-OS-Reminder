@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.1.0b3)
+# DDM OS Reminder (5.1.0b4)
 
 > A welcome racing-stripe to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a low-disk-space warning sized to real update needs (instead of disk percentages) and a red infobox Deadline that matches Day(s) Remaining as time runs out.
 
@@ -119,6 +119,7 @@ When prior-plist import and localization filtering are used together, `assemble.
 
 ### 5.1.0 upgrade notes
 
+- **Scheduler state survives redeployment.** `All` and `Script` keep `/Library/Management/<rdnn>/dor-state.plist`, so already-delivered pre-deadline threshold reminders and same-day **Update Tonight** suppression are not repeated after a redeploy. Only `NextScheduledReminder` is cleared, so the refreshed heartbeat still runs promptly; only `Uninstall` removes the file.
 - **Low-disk-space warning now uses a fixed GB threshold.** `MinimumDiskFreeGB` (sample default `26`, matching Apple's last published macOS upgrade requirement; `0` disables) replaces `MinimumDiskFreePercentage`. The warning appears when available space (the same Finder-aligned value shown in the infobox) is below that many GB, regardless of disk size.
 - **`MinimumDiskFreePercentage` is deprecated.** When `MinimumDiskFreeGB` is not set, an existing `MinimumDiskFreePercentage` value is still honored and logged at `[WARNING]`; when both are set, `MinimumDiskFreeGB` wins. Support for `MinimumDiskFreePercentage` will be removed in `6.0.0`. Re-run `assemble.zsh` with your prior `.plist` to generate configuration with `MinimumDiskFreeGB`; the import reports the replacement (for example, `Replaced deprecated MinimumDiskFreePercentage (10%) with MinimumDiskFreeGB (26 GB, sample default)`) and lists `MinimumDiskFreeGB` under **Recommended review items**.
 

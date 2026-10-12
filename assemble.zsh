@@ -1801,11 +1801,11 @@ echo
 echo "🏁 Done."
 echo
 echo "📦 Deployment Artifacts:"
-echo "        Assembled Script: ${newOutputScript#$projectDir/}"
-echo "    Organizational Plist: ${plistOutput#$projectDir/}"
-echo "   Configuration Profile: ${mobileconfigOutput#$projectDir/}"
-echo "  Deployed Runtime Assets: /Library/Management/<RDNN>/dor-starter.zsh, dor-state.plist, dor.pid"
-echo " Optional Fallback Config: /Library/Management/<RDNN>/dor-fallback-declaration.plist"
+echo "         Assembled Script: ${newOutputScript#$projectDir/}"
+echo "     Organizational Plist: ${plistOutput#$projectDir/}"
+echo "    Configuration Profile: ${mobileconfigOutput#$projectDir/}"
+echo "  Deployed Runtime Assets: /Library/Management/${newRDNN}/dor-starter.zsh, dor-state.plist, dor.pid"
+echo " Optional Fallback Config: /Library/Management/${newRDNN}/dor-fallback-declaration.plist"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

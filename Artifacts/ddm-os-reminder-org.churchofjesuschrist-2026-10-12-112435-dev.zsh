@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.1.0b2"
+scriptVersion="5.1.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -659,7 +659,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.1.0b2"
+scriptVersion="5.1.0b3"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"

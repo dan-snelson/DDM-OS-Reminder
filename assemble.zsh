@@ -42,7 +42,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.1.0b2"
+scriptVersion="5.1.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -69,6 +69,7 @@ interactiveMode=false
 priorPlistPath=""
 priorPlistImported=false
 priorPlistPrompted=false
+importedLegacyMinimumDiskFreePercentage=""
 rdnnInferredFromPriorPlist=false
 modeInferredFromPriorPlist=false
 validLaneArgumentProvided=false
@@ -929,6 +930,7 @@ function applyImportedPreferences() {
   local -a unsupportedImportedKeys
   local -A skippedLocalizedImportedKeySet
   local -a skippedLocalizedImportedKeys
+  local resolvedMinimumDiskFreeGB=""
 
   if ! emittedPreferenceTypes="$(emitSupportedPlistPreferenceTypes)"; then
     echo "    ❌ Failed to determine supported preference types; aborting preference import."
@@ -955,6 +957,13 @@ function applyImportedPreferences() {
     [[ -z "${importedKey}" ]] && continue
     if isLocalizedPlistKey "${importedKey}" && ! shouldKeepLocalizedPlistKey "${importedKey}"; then
       skippedLocalizedImportedKeySet["${importedKey}"]=1
+      continue
+    fi
+    # Deprecated in 5.1.0; reported separately with its MinimumDiskFreeGB replacement
+    if [[ "${importedKey}" == "MinimumDiskFreePercentage" ]]; then
+      importedLegacyMinimumDiskFreePercentage="$(
+        /usr/libexec/PlistBuddy -c "Print :MinimumDiskFreePercentage" "${sourcePlist}" 2>/dev/null
+      )"
       continue
     fi
     if ! preferenceType="$(preferenceTypeForPlistKey "${importedKey}" "${supportedPreferenceLines[@]}")"; then
@@ -1007,6 +1016,18 @@ function applyImportedPreferences() {
 
     writePreferenceOverride "${targetPlist}" "${importedKey}" "${preferenceType}" "${importedValue}"
   done
+
+  if [[ -n "${importedLegacyMinimumDiskFreePercentage}" ]]; then
+    resolvedMinimumDiskFreeGB="$(
+      /usr/libexec/PlistBuddy -c "Print :MinimumDiskFreeGB" "${targetPlist}" 2>/dev/null || true
+    )"
+    if /usr/libexec/PlistBuddy -c "Print :MinimumDiskFreeGB" "${sourcePlist}" >/dev/null 2>&1; then
+      echo "    ⚠️  Dropping deprecated MinimumDiskFreePercentage (${importedLegacyMinimumDiskFreePercentage}%); keeping imported MinimumDiskFreeGB (${resolvedMinimumDiskFreeGB} GB)"
+    else
+      echo "    ⚠️  Replaced deprecated MinimumDiskFreePercentage (${importedLegacyMinimumDiskFreePercentage}%) with MinimumDiskFreeGB (${resolvedMinimumDiskFreeGB:-unset} GB, sample default)"
+      echo "        Low-disk-space warning now uses fixed GB free, not a percentage of disk size; review before deployment"
+    fi
+  fi
 
   /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${targetPlist}"
 }
@@ -1839,6 +1860,9 @@ case "${deploymentMode}" in
     echo "    - Support team name, phone, email, website"
     echo "    - DailyReminderTimes baseline schedule"
     echo "    - AggressiveModePastDeadlineHours and AggressiveModeFrequencyMinutes"
+    if [[ -n "${importedLegacyMinimumDiskFreePercentage}" ]]; then
+      echo "    - MinimumDiskFreeGB (replaces imported MinimumDiskFreePercentage ${importedLegacyMinimumDiskFreePercentage}%)"
+    fi
     echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"

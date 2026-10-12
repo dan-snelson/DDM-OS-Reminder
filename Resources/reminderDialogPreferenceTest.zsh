@@ -1709,6 +1709,15 @@ function computeUpdateStagingMessage() {
     esac
 }
 
+function markdownColorSafeText() {
+    local text="${1}"
+
+    # A literal bracket would end swiftDialog's :color[…] span early
+    text="${text//\[/(}"
+    text="${text//\]/)}"
+    print -r -- "${text}"
+}
+
 function computeDeadlineEnforcementMessage() {
     local markdownColorMinimumVersion="3.0.0.4928"
     local deadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
@@ -1721,18 +1730,23 @@ function computeDeadlineEnforcementMessage() {
         deadlineTemplateVariable="deadlineEnforcementMessageRelative"
     fi
 
+    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
+
+    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
+        dialogSupportsMarkdownColor="YES"
+        deadlineDisplay="$(markdownColorSafeText "${deadlineDisplay}")"
+    else
+        dialogSupportsMarkdownColor="NO"
+    fi
+
     baseDeadlineEnforcementMessage="${(P)deadlineTemplateVariable}"
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{deadlineDisplay\}/${deadlineDisplay}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
 
-    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
-
-    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
-        dialogSupportsMarkdownColor="YES"
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
         deadlineEnforcementMessage=":red[${baseDeadlineEnforcementMessage}]"
     else
-        dialogSupportsMarkdownColor="NO"
         deadlineEnforcementMessage="${baseDeadlineEnforcementMessage}"
     fi
 }
@@ -1761,7 +1775,7 @@ function computeInfoboxHighlights() {
     fi
 
     if [[ "${isDeadlineHighlighted}" == "YES" ]]; then
-        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
+        infoboxDeadlineDisplay=":red[$(markdownColorSafeText "${infoboxDeadlineDisplay}")]"
     fi
 
     if (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then

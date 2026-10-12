@@ -152,7 +152,7 @@ function removeDeployedRuntimeAssets() {
                 fi
             fi
         else
-            logComment "Scheduler state '${dorStatePlistPath}' is unreadable; leaving it for runtime quarantine."
+            warning "Scheduler state '${dorStatePlistPath}' is unreadable; leaving it for runtime quarantine."
         fi
     fi
 
@@ -5186,6 +5186,15 @@ function computeUpdateStagingMessage() {
     esac
 }
 
+function markdownColorSafeText() {
+    local text="${1}"
+
+    # A literal bracket would end swiftDialog's :color[…] span early
+    text="${text//\[/(}"
+    text="${text//\]/)}"
+    print -r -- "${text}"
+}
+
 function computeDeadlineEnforcementMessage() {
     local markdownColorMinimumVersion="3.0.0.4928"
     local deadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
@@ -5197,6 +5206,15 @@ function computeDeadlineEnforcementMessage() {
         deadlineTemplateVariable="deadlineEnforcementMessageRelative"
     fi
 
+    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
+
+    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
+        dialogSupportsMarkdownColor="YES"
+        deadlineDisplay="$(markdownColorSafeText "${deadlineDisplay}")"
+    else
+        dialogSupportsMarkdownColor="NO"
+    fi
+
     baseDeadlineEnforcementMessage="${(P)deadlineTemplateVariable}"
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{deadlineDisplay\}/${deadlineDisplay}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\$\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
@@ -5204,14 +5222,10 @@ function computeDeadlineEnforcementMessage() {
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
 
-    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
-
-    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
-        dialogSupportsMarkdownColor="YES"
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
         deadlineEnforcementMessage=":red[${baseDeadlineEnforcementMessage}]"
         info "swiftDialog ${dialogVersion} supports markdown color; rendering enforcement sentence in red."
     else
-        dialogSupportsMarkdownColor="NO"
         deadlineEnforcementMessage="${baseDeadlineEnforcementMessage}"
         info "swiftDialog ${dialogVersion:-Unknown} does not support markdown color; rendering enforcement sentence without color."
     fi
@@ -5241,7 +5255,7 @@ function computeInfoboxHighlights() {
     fi
 
     if [[ "${isDeadlineHighlighted}" == "YES" ]]; then
-        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
+        infoboxDeadlineDisplay=":red[$(markdownColorSafeText "${infoboxDeadlineDisplay}")]"
     fi
 
     if [[ "${pastDeadlineRestartSuppressedForUptime}" != "YES" ]] && (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then

@@ -152,7 +152,7 @@ function removeDeployedRuntimeAssets() {
                 fi
             fi
         else
-            logComment "Scheduler state '${dorStatePlistPath}' is unreadable; leaving it for runtime quarantine."
+            warning "Scheduler state '${dorStatePlistPath}' is unreadable; leaving it for runtime quarantine."
         fi
     fi
 

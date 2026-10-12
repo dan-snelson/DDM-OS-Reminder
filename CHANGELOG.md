@@ -6,7 +6,7 @@
 - `All` and `Script` redeployments now keep `/Library/Management/<rdnn>/dor-state.plist`, so redeploying inside a `MinutesBeforeDeadlineReminderSchedule` window no longer shows an already-delivered pre-deadline threshold reminder again ([Issue #149](https://github.com/dan-snelson/DDM-OS-Reminder/issues/149))
     - Pre-deadline threshold delivery records and `UpdateTonightSuppressionUntil` carry across the redeploy; threshold records still reset automatically when the deadline/version signature changes.
     - Only `NextScheduledReminder` is cleared, so the refreshed heartbeat still evaluates reminders right after deployment (and a stale `FALSE` value cannot silence the Mac).
-    - Deployment logs `[NOTICE]` when scheduler state is preserved and when `NextScheduledReminder` is cleared. An unreadable state file is left for the starter and runtime to quarantine.
+    - Deployment logs `[NOTICE]` when scheduler state is preserved and when `NextScheduledReminder` is cleared. An unreadable state file is logged at `[WARNING]` and left for the starter and runtime to quarantine.
     - `Script` now unloads and removes the current heartbeat LaunchDaemon before stopping the active runtime and clearing `NextScheduledReminder` (as `All` already did), so a heartbeat firing mid-redeploy can no longer relaunch the previous `dor.zsh` beside the replacement or overwrite the cleared schedule. The LaunchDaemon is recreated and loaded at the end of deployment as before.
     - **Upgrade note:** Only `Uninstall` removes `dor-state.plist`, matching the aggressive-mode kill switch `dor-aggressive-kill`.
 - Replaced the percentage-based low-disk-space warning with a fixed GB threshold, so large disks no longer warn with hundreds of GB free and small disks no longer under-warn ([Issue #146](https://github.com/dan-snelson/DDM-OS-Reminder/issues/146); idea credit: @zte303, [DDM-Notify-Basic](https://github.com/zte303/DDM-Notify-Basic))
@@ -19,6 +19,7 @@
 - Prior-plist import in `assemble.zsh` now skips numeric values outside `0`–`999` (keeping the sample default and printing `⚠️  Skipping invalid integer value … (expected 0-999)`), matching the runtime, which already ignored them.
 - Infobox **Deadline** now renders in red whenever **Day(s) Remaining** does, including the final ~12 hours before the effective deadline when **Day(s) Remaining** rounds to `0` (requires swiftDialog markdown-color support) ([Issue #143](https://github.com/dan-snelson/DDM-OS-Reminder/issues/143))
     - `Resources/reminderDialogPreferenceTest.zsh` applies the same highlighting, so `--pre-deadline-threshold` and `--aggressive` previews show **Deadline** and **Day(s) Remaining** in red.
+    - Square brackets in a red-highlighted deadline (for example, from a custom `DateFormatDeadlineHumanReadable`) render as parentheses in the infobox **Deadline** and the red deadline enforcement sentence, so a literal `]` no longer ends swiftDialog's `:red[…]` markup early. Uncolored output is unchanged.
 
 ### Version 5.0.0 (04-Oct-2026)
 

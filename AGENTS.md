@@ -151,7 +151,7 @@ Out of scope:
 - Console-user resolution rejects `loginwindow`, `_mbsetupuser`, and `root` before building per-user dialog context.
 - Root runtime temp files (icons, swiftDialog `--commandfile`, threshold marker) live only in per-run `mktemp -d` `/var/tmp/<organizationScriptName>.XXXXXX` (root `0755`, files `0644`; swiftDialog 3 reads them as console user). Never write fixed `/var/tmp` names as root.
 - swiftDialog runs from `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`; root `PATH` excludes `/usr/local`.
-- `All`/`Script` redeploys preserve `dor-aggressive-kill`; only `Uninstall` removes it. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
+- `All`/`Script` redeploys preserve `dor-aggressive-kill` and `dor-state.plist` (clearing only `NextScheduledReminder`); only `Uninstall` removes them. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until `zsh assemble.zsh` runs.
 
 ## Repository Rules

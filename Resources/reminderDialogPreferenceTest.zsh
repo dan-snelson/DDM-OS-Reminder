@@ -1741,11 +1741,27 @@ function computeInfoboxHighlights() {
     infoboxDeadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable:-${ddmVersionStringDeadlineHumanReadable}}}"
     infoboxDaysRemainingDisplay="${ddmVersionStringDaysRemaining}"
     infoboxLastRestartDisplay="${uptimeHumanReadable}"
+    local infoboxDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
 
     infoboxDeadlineDisplay="$(trimSurroundingWhitespace "${infoboxDeadlineDisplay}")"
 
     if [[ "${dialogSupportsMarkdownColor}" != "YES" ]]; then
         return
+    fi
+
+    local isDeadlineHighlighted="NO"
+
+    if [[ -n "${infoboxDeadlineEpoch}" && "${infoboxDeadlineEpoch}" =~ ^[0-9]+$ ]] && (( infoboxDeadlineEpoch <= $(date +%s) )); then
+        isDeadlineHighlighted="YES"
+    fi
+
+    if [[ "${infoboxDaysRemainingDisplay}" =~ ^-?[0-9]+$ ]] && (( infoboxDaysRemainingDisplay <= 0 )); then
+        infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
+        isDeadlineHighlighted="YES"
+    fi
+
+    if [[ "${isDeadlineHighlighted}" == "YES" ]]; then
+        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
     fi
 
     if (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then

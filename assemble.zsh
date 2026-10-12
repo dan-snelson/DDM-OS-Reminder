@@ -874,10 +874,11 @@ function writePreferenceOverride() {
 
   case "${preferenceType}" in
     numeric)
-      if [[ "${preferenceValue}" == <-> ]]; then
+      # Match runtime setNumericPreferenceValue, which ignores values outside 0-999
+      if [[ "${preferenceValue}" == <-> ]] && (( preferenceValue >= 0 && preferenceValue <= 999 )); then
         /usr/bin/plutil -replace "${plistKey}" -integer "${preferenceValue}" "${plistPath}"
       else
-        echo "    ⚠️  Skipping invalid integer value '${preferenceValue}' for ${plistKey}"
+        echo "    ⚠️  Skipping invalid integer value '${preferenceValue}' for ${plistKey} (expected 0-999); keeping sample default"
       fi
       ;;
     boolean)
@@ -931,6 +932,7 @@ function applyImportedPreferences() {
   local -A skippedLocalizedImportedKeySet
   local -a skippedLocalizedImportedKeys
   local resolvedMinimumDiskFreeGB=""
+  local importedMinimumDiskFreeGB=""
 
   if ! emittedPreferenceTypes="$(emitSupportedPlistPreferenceTypes)"; then
     echo "    ❌ Failed to determine supported preference types; aborting preference import."
@@ -1022,7 +1024,15 @@ function applyImportedPreferences() {
       /usr/libexec/PlistBuddy -c "Print :MinimumDiskFreeGB" "${targetPlist}" 2>/dev/null || true
     )"
     if /usr/libexec/PlistBuddy -c "Print :MinimumDiskFreeGB" "${sourcePlist}" >/dev/null 2>&1; then
-      echo "    ⚠️  Dropping deprecated MinimumDiskFreePercentage (${importedLegacyMinimumDiskFreePercentage}%); keeping imported MinimumDiskFreeGB (${resolvedMinimumDiskFreeGB} GB)"
+      importedMinimumDiskFreeGB="$(
+        /usr/libexec/PlistBuddy -c "Print :MinimumDiskFreeGB" "${sourcePlist}" 2>/dev/null || true
+      )"
+      if [[ "${importedMinimumDiskFreeGB}" == "${resolvedMinimumDiskFreeGB}" ]]; then
+        echo "    ⚠️  Dropping deprecated MinimumDiskFreePercentage (${importedLegacyMinimumDiskFreePercentage}%); keeping imported MinimumDiskFreeGB (${resolvedMinimumDiskFreeGB} GB)"
+      else
+        echo "    ⚠️  Dropping deprecated MinimumDiskFreePercentage (${importedLegacyMinimumDiskFreePercentage}%); imported MinimumDiskFreeGB '${importedMinimumDiskFreeGB}' was invalid, using MinimumDiskFreeGB (${resolvedMinimumDiskFreeGB:-unset} GB, sample default)"
+        echo "        Low-disk-space warning now uses fixed GB free, not a percentage of disk size; review before deployment"
+      fi
     else
       echo "    ⚠️  Replaced deprecated MinimumDiskFreePercentage (${importedLegacyMinimumDiskFreePercentage}%) with MinimumDiskFreeGB (${resolvedMinimumDiskFreeGB:-unset} GB, sample default)"
       echo "        Low-disk-space warning now uses fixed GB free, not a percentage of disk size; review before deployment"

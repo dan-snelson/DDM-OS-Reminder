@@ -120,7 +120,7 @@ See [Resources/README.md](Resources/README.md#ddm-emergency-fallback) for schema
 
 Mac Admins using version `2.2.0` (or later) can import their prior `.plist` via drag-and-drop to `assemble.zsh`.
 
-Controlled `All`, `Script`, and `Uninstall` deployments validate any active `dor.pid`, stop only the matching DDM OS Reminder runtime and its owned child processes, then replace or remove runtime assets. This prevents an open dialog from an earlier version surviving beside the replacement deployment; unrelated swiftDialog processes are not targeted.
+Controlled `All`, `Script`, and `Uninstall` deployments unload the heartbeat LaunchDaemon, validate any active `dor.pid`, stop only the matching DDM OS Reminder runtime and its owned child processes, then replace or remove runtime assets. This prevents an open dialog from an earlier version surviving beside the replacement deployment; unrelated swiftDialog processes are not targeted.
 
 If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist`, `assemble.zsh` infers the deployment lane automatically. Older plists without that exact suffix still import supported values, but continue to prompt for deployment mode.
 Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.

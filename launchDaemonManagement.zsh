@@ -563,6 +563,10 @@ function resetConfiguration() {
 
         "Script" )
 
+            # Unload heartbeat first so it cannot relaunch the old runtime after scheduler state is cleared
+            info "Unload LaunchDaemon … "
+            unloadAndRemoveLaunchDaemon "${launchDaemonPath}"
+
             info "Reset Script … "
             removeDeployedRuntimeAssets "redeploy"
             ;;

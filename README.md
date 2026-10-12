@@ -43,7 +43,17 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 5.0.0 Highlights
+## :new: 5.1.0 Highlights
+
+- **Scheduler state survives redeployment**: `All` and `Script` redeployments keep `/Library/Management/<rdnn>/dor-state.plist`, so already-delivered pre-deadline threshold reminders and same-day **Update Tonight** suppression are not repeated. Only `NextScheduledReminder` is cleared, so the refreshed heartbeat still evaluates reminders right after deployment; only `Uninstall` removes the file.
+- **Fixed-GB low-disk-space warning**: New `MinimumDiskFreeGB` (sample default `26`; `0` disables) replaces percentage-based `MinimumDiskFreePercentage`, so large disks no longer warn with hundreds of GB free and small disks no longer under-warn. `MinimumDiskFreePercentage` is deprecated, still honored when `MinimumDiskFreeGB` is unset, and will be removed in `6.0.0`.
+- **Red infobox Deadline**: The infobox **Deadline** now renders in red whenever **Day(s) Remaining** does, including the final ~12 hours when **Day(s) Remaining** rounds to `0`.
+
+Review the [5.1.0 upgrade notes](#510-upgrade-notes) before rollout.
+
+---
+
+## 5.0.0 Highlights
 
 - **Corroborated DDM declarations**: When the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match an active `softwareupdated` declaration (`TargetOSVersion` + `TargetLocalDateTime`); unmatched candidates are ignored and logged at `[WARNING]`. Runtime and both Pending OS Update Extension Attributes share this rule; a missing or unrecognized plist keeps `install.log`-only behavior and logs a `[WARNING]` (see [SECURITY.md](SECURITY.md)).
 - **Update Tonight awareness**: Confirmed same-day **Update Tonight** scheduling for the target version pauses normal reminders until local midnight. Evidence must be logged by `softwareupdated`; pre-deadline thresholds, aggressive mode, and Force mode still apply.

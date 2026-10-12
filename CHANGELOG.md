@@ -2,7 +2,13 @@
 
 ## Changelog
 
-### Version 5.1.0b1 (07-Oct-2026)
+### Version 5.1.0b2 (12-Oct-2026)
+- Replaced the percentage-based low-disk-space warning with a fixed GB threshold, so large disks no longer warn with hundreds of GB free and small disks no longer under-warn ([Issue #146](https://github.com/dan-snelson/DDM-OS-Reminder/issues/146); idea credit: @zte303, [DDM-Notify-Basic](https://github.com/zte303/DDM-Notify-Basic))
+    - New `MinimumDiskFreeGB` preference (`Resources/sample.plist` default `26`, matching Apple's last published macOS upgrade requirement (Monterey: 26 GB); `0` disables) is compared against the existing Finder-aligned available-capacity value (`diskutil` fallback) in decimal GB, matching the displayed value.
+    - `{diskSpaceHumanReadable}` and the infobox **Free Disk Space** line are unchanged.
+    - Each evaluation logs `[INFO] Disk space: … free; MinimumDiskFreeGB threshold … GB; warning shown|suppressed`.
+    - Applied the same change to `Resources/reminderDialogPreferenceTest.zsh` and `Resources/createPlist.zsh`.
+    - **Upgrade note:** `MinimumDiskFreePercentage` is deprecated. When `MinimumDiskFreeGB` is not set, an existing `MinimumDiskFreePercentage` value is still honored and logged at `[WARNING]`; when both are set, `MinimumDiskFreeGB` wins and the legacy key is logged as ignored. Support will be removed in `6.0.0`. Prior-plist import in `assemble.zsh` reports `MinimumDiskFreePercentage` as unsupported, so regenerated configuration carries only `MinimumDiskFreeGB`.
 - Infobox **Deadline** now renders in red whenever **Day(s) Remaining** does, including the final ~12 hours before the effective deadline when **Day(s) Remaining** rounds to `0` (requires swiftDialog markdown-color support) ([Issue #143](https://github.com/dan-snelson/DDM-OS-Reminder/issues/143))
 
 ### Version 5.0.0 (04-Oct-2026)

@@ -232,7 +232,7 @@ The system uses a hierarchical preference system with the following priority:
 | `DaysBeforeDeadlineBlurscreen` | Integer | 3 | Days before deadline to enable blurred background |
 | `DaysBeforeDeadlineHidingButton2` | Integer | 1 | Days before deadline to hide/disable "Remind Me Later" button |
 | `DaysOfExcessiveUptimeWarning` | Integer | 7 | Days of uptime before showing warning message |
-| `MinimumDiskFreePercentage` | Integer | 10 | Minimum free disk space percentage before warning |
+| `MinimumDiskFreeGB` | Integer | 26 | Minimum free disk space (GB) before warning; `0` disables |
 | `MeetingDelay` | Integer | 75 | Minutes to delay reminder if user is in a meeting |
 | `OrganizationOverlayIconURL` | String | URL | Organization logo overlay on dialog |
 | `SwapOverlayAndLogo` | Boolean | false | Swap positions of overlay icon and main logo |

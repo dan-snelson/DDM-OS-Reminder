@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-scriptVersion="5.0.0"
+scriptVersion="5.1.0b2"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SOURCE_SCRIPT="${SCRIPT_DIR}/../reminderDialog.zsh"
 SAMPLE_PLIST="${SCRIPT_DIR}/sample.plist"
@@ -329,7 +329,7 @@ hideSupportTeamEmail_raw=$(extract_from_preference_map hideSupportTeamEmail)
 hideSupportTeamWebsite_raw=$(extract_from_preference_map hideSupportTeamWebsite)
 hideSupportKB_raw=$(extract_from_preference_map hideSupportKB)
 hideSupportAssistanceMessage_raw=$(extract_from_preference_map hideSupportAssistanceMessage)
-minimumDiskFreePercentage=$(extract_from_preference_map minimumDiskFreePercentage)
+minimumDiskFreeGB=$(extract_from_preference_map minimumDiskFreeGB)
 languageOverride=$(extract_from_preference_map languageOverride)
 
 case "${swapOverlayAndLogo_raw:u}" in
@@ -1115,8 +1115,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${minutesBeforeDeadlineReminderSchedule_xml}</string>
     <key>AcceptableAssertionApplicationNames</key>
     <string>${acceptableAssertionApplicationNames_xml}</string>
-    <key>MinimumDiskFreePercentage</key>
-    <integer>${minimumDiskFreePercentage}</integer>
+    <key>MinimumDiskFreeGB</key>
+    <integer>${minimumDiskFreeGB}</integer>
     <key>DisableButton2InsteadOfHide</key>
     ${disableButton2InsteadOfHide_xml}
 
@@ -1883,8 +1883,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${minutesBeforeDeadlineReminderSchedule_xml}</string>
                                 <key>AcceptableAssertionApplicationNames</key>
                                 <string>${acceptableAssertionApplicationNames_xml}</string>
-                                <key>MinimumDiskFreePercentage</key>
-                                <integer>${minimumDiskFreePercentage}</integer>
+                                <key>MinimumDiskFreeGB</key>
+                                <integer>${minimumDiskFreeGB}</integer>
                                 <key>DisableButton2InsteadOfHide</key>
                                 ${disableButton2InsteadOfHide_xml}
                                 <key>OrganizationOverlayIconURL</key>

@@ -485,7 +485,7 @@ If Mac hasn't restarted recently (configurable threshold):
 - Suppressed in restart-only mode and in specific low-uptime suppression paths
 
 ### Low Disk Space Warning
-If free disk space below threshold:
+If free disk space below `MinimumDiskFreeGB` (fixed GB, not percentage):
 - Dialog adds warning: "Only X GB available, may prevent update"
 - User directed to free space before updating
 - Applies to all phases where dialog displays

@@ -372,8 +372,8 @@
                                 <string>Assembled **Een vereiste macOS {titleMessageUpdateOrUpgradeLower} is nu beschikbaar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Voer de macOS {titleMessageUpdateOrUpgradeLower} naar macOS **{ddmVersionString}** uit om ervoor te zorgen dat uw Mac veilig blijft en voldoet aan de beleidsregels van de organisatie.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Om de {titleMessageUpdateOrUpgradeLower} nu uit te voeren, klikt u op **{button1text}**, volgt u de instructies op het scherm en klikt u vervolgens op **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Als u deze {titleMessageUpdateOrUpgradeLower} nu niet kunt uitvoeren, klikt u op **{button2text}** om later opnieuw te worden herinnerd (deze optie is niet beschikbaar wanneer de deadline nadert).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
                                 <key>MessageLocalized_pt</key>
                                 <string>Assembled **Já está disponível uma {titleMessageUpdateOrUpgradeLower} obrigatória do macOS**&lt;br&gt;&lt;br&gt;Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Efetue a {titleMessageUpdateOrUpgradeLower} para o macOS **{ddmVersionString}** para manter o seu Mac seguro e em conformidade com as políticas da organização.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para efetuar a {titleMessageUpdateOrUpgradeLower} agora, clique em **{button1text}**, siga as instruções no ecrã e depois clique em **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Se não puder efetuar esta {titleMessageUpdateOrUpgradeLower} agora, clique em **{button2text}** para receber outro lembrete mais tarde (esta opção fica desativada quando o prazo se aproxima).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
-                                <key>MinimumDiskFreePercentage</key>
-                                <integer>10</integer>
+                                <key>MinimumDiskFreeGB</key>
+                                <integer>26</integer>
                                 <key>MinutesBeforeDeadlineReminderSchedule</key>
                                 <string>45,30,15,10,5</string>
                                 <key>OrganizationOverlayIconURL</key>
@@ -740,26 +740,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>8CAAA906-740D-4E37-9AFA-087545E3BABC</string>
+            <string>0BA5F69B-340B-4F82-91E5-C4F78FCA93E6</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>8CAAA906-740D-4E37-9AFA-087545E3BABC</string>
+            <string>0BA5F69B-340B-4F82-91E5-C4F78FCA93E6</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (5.1.0b1) to org.churchofjesuschrist standards. Created: 2026-10-07-132013</string>
+    <string>Configures DDM OS Reminder (5.1.0b2) to org.churchofjesuschrist standards. Created: 2026-10-12-103721</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>AEE0A3B9-F577-406E-A031-BF361DBE3B69</string>
+    <string>BF7B8FF3-7CDD-4888-A49B-7C8070DA460E</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -769,7 +769,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>AEE0A3B9-F577-406E-A031-BF361DBE3B69</string>
+    <string>BF7B8FF3-7CDD-4888-A49B-7C8070DA460E</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

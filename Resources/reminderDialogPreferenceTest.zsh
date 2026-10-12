@@ -118,7 +118,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="5.0.0"
+scriptVersion="5.1.0b2"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -184,7 +184,7 @@ declare -A preferenceConfiguration=(
     ["pastDeadlineRestartMinimumUptimeMinutes"]="numeric|75"
     ["pastDeadlineForceTimerSeconds"]="numeric|60"
     ["pastDeadlineForceRedisplayDelaySeconds"]="numeric|5"
-    ["minimumDiskFreePercentage"]="numeric|99"
+    ["minimumDiskFreeGB"]="numeric|999"
     ["disableButton2InsteadOfHide"]="boolean|YES"
     ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
@@ -250,7 +250,7 @@ declare -A plistKeyMap=(
     ["pastDeadlineRestartMinimumUptimeMinutes"]="PastDeadlineRestartMinimumUptimeMinutes"
     ["pastDeadlineForceTimerSeconds"]="PastDeadlineForceTimerSeconds"
     ["pastDeadlineForceRedisplayDelaySeconds"]="PastDeadlineForceRedisplayDelaySeconds"
-    ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["minimumDiskFreeGB"]="MinimumDiskFreeGB"
     ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
@@ -670,6 +670,7 @@ function loadPreferenceOverrides() {
     fi
 
     resolveDateFormatDeadlineHumanReadable
+    resolveDiskSpaceWarningThreshold
 
     preFlight "Preferences loaded"
     return 0
@@ -1437,8 +1438,9 @@ function collectUptimeFacts() {
 
 function collectDiskFacts() {
     local diskRawValues=""
-    local freeBytes=""
     local diskBytes=""
+
+    freeBytes=""
 
     diskRawValues=$(osascript -l JavaScript -e "ObjC.import('Foundation'); var url = \$.NSURL.fileURLWithPath('/'); var result = url.resourceValuesForKeysError(['NSURLVolumeAvailableCapacityForImportantUsageKey','NSURLVolumeTotalCapacityKey'], null); [result.valueForKey('NSURLVolumeAvailableCapacityForImportantUsageKey').js, result.valueForKey('NSURLVolumeTotalCapacityKey').js].join(' ');" 2>/dev/null)
     read freeBytes diskBytes <<< "${diskRawValues}"
@@ -1626,18 +1628,63 @@ function downloadBrandingAssets() {
 function computeDynamicWarnings() {
     local allowedUptimeMinutes=$(( daysOfExcessiveUptimeWarning * 1440 ))
     local belowThreshold=""
+    local diskSpaceWarningState=""
 
     if (( upTimeMin < allowedUptimeMinutes )); then
         excessiveUptimeWarningMessage=""
     fi
 
-    if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-        belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
-        [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
+    if [[ "${diskSpaceWarningThresholdMode}" == "percentage" ]]; then
+        if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            belowThreshold=$(echo "${freePercentage} < ${legacyMinimumDiskFreePercentage}" | bc)
+            [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
+            diskSpaceWarningState="${diskSpaceWarningMessage:+shown}"
+            info "Disk space: ${freeSpace} free (${freePercentage}%); deprecated MinimumDiskFreePercentage threshold ${legacyMinimumDiskFreePercentage}%; warning ${diskSpaceWarningState:-suppressed}"
+        else
+            warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning."
+            diskSpaceWarningMessage=""
+        fi
+    elif [[ "${freeBytes}" == <-> && "${freeSpace}" != "Unknown" ]]; then
+        (( freeBytes >= minimumDiskFreeGB * 1000000000 )) && diskSpaceWarningMessage=""
+        diskSpaceWarningState="${diskSpaceWarningMessage:+shown}"
+        info "Disk space: ${freeSpace} free; MinimumDiskFreeGB threshold ${minimumDiskFreeGB} GB; warning ${diskSpaceWarningState:-suppressed}"
     else
-        warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning."
+        warning "freeBytes '${freeBytes}' is not numeric; suppressing disk-space warning."
         diskSpaceWarningMessage=""
     fi
+}
+
+function resolveDiskSpaceWarningThreshold() {
+    local legacyPlistKey="MinimumDiskFreePercentage"
+    local legacyValue=""
+    local legacySource=""
+    local candidatePlist=""
+
+    diskSpaceWarningThresholdMode="gb"
+    legacyMinimumDiskFreePercentage=""
+
+    # Deprecated in 5.1.0: honored only when MinimumDiskFreeGB is not set; remove in 6.0.0
+    for candidatePlist in "${managedPreferencesPlist}.plist" "${localPreferencesPlist}.plist"; do
+        plistFileIsReadable "${candidatePlist}" || continue
+        if legacyValue=$(/usr/libexec/PlistBuddy -c "Print :${legacyPlistKey}" "${candidatePlist}" 2>/dev/null); then
+            legacySource="${candidatePlist}"
+            break
+        fi
+    done
+
+    [[ -z "${legacySource}" ]] && return 0
+
+    if [[ "${preferenceExplicitlySet["minimumDiskFreeGB"]}" == "true" ]]; then
+        warning "${legacyPlistKey} in '${legacySource}' is deprecated and ignored because MinimumDiskFreeGB is set."
+    elif [[ "${legacyValue}" =~ ^[0-9]+$ ]] && (( legacyValue <= 100 )); then
+        diskSpaceWarningThresholdMode="percentage"
+        legacyMinimumDiskFreePercentage="${legacyValue}"
+        warning "${legacyPlistKey} (${legacyValue}%) in '${legacySource}' is deprecated; honoring it because MinimumDiskFreeGB is not set. Replace it with MinimumDiskFreeGB before 6.0.0."
+    else
+        warning "Ignoring invalid deprecated ${legacyPlistKey} value '${legacyValue}' in '${legacySource}'; using MinimumDiskFreeGB threshold ${minimumDiskFreeGB} GB."
+    fi
+
+    return 0
 }
 
 function computeUpdateStagingMessage() {

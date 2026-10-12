@@ -360,8 +360,8 @@
 	<string>Assembled **Een vereiste macOS {titleMessageUpdateOrUpgradeLower} is nu beschikbaar**&lt;br&gt;&lt;br&gt;Hallo, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Voer de macOS {titleMessageUpdateOrUpgradeLower} naar macOS **{ddmVersionString}** uit om ervoor te zorgen dat uw Mac veilig blijft en voldoet aan de beleidsregels van de organisatie.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Om de {titleMessageUpdateOrUpgradeLower} nu uit te voeren, klikt u op **{button1text}**, volgt u de instructies op het scherm en klikt u vervolgens op **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Als u deze {titleMessageUpdateOrUpgradeLower} nu niet kunt uitvoeren, klikt u op **{button2text}** om later opnieuw te worden herinnerd (deze optie is niet beschikbaar wanneer de deadline nadert).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
 	<key>MessageLocalized_pt</key>
 	<string>Assembled **Já está disponível uma {titleMessageUpdateOrUpgradeLower} obrigatória do macOS**&lt;br&gt;&lt;br&gt;Feliz {weekday}, {loggedInUserFirstname}!&lt;br&gt;&lt;br&gt;Efetue a {titleMessageUpdateOrUpgradeLower} para o macOS **{ddmVersionString}** para manter o seu Mac seguro e em conformidade com as políticas da organização.{updateReadyMessage}&lt;br&gt;&lt;br&gt;Para efetuar a {titleMessageUpdateOrUpgradeLower} agora, clique em **{button1text}**, siga as instruções no ecrã e depois clique em **{softwareUpdateButtonText}**.&lt;br&gt;&lt;br&gt;Se não puder efetuar esta {titleMessageUpdateOrUpgradeLower} agora, clique em **{button2text}** para receber outro lembrete mais tarde (esta opção fica desativada quando o prazo se aproxima).&lt;br&gt;&lt;br&gt;{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}</string>
-	<key>MinimumDiskFreePercentage</key>
-	<integer>10</integer>
+	<key>MinimumDiskFreeGB</key>
+	<integer>26</integer>
 	<key>MinutesBeforeDeadlineReminderSchedule</key>
 	<string>45,30,15,10,5</string>
 	<key>OrganizationOverlayIconURL</key>

@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.1.0b1)
+# DDM OS Reminder (5.1.0b2)
 
 > A security-hardened upgrade to Mac Admins’ favorite “set-it-and-forget-it” macOS update reminder, featuring corroborated DDM declaration trust and "Update Tonight" awareness
 
@@ -116,6 +116,11 @@ If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-
 Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
+
+### 5.1.0 upgrade notes
+
+- **Low-disk-space warning now uses a fixed GB threshold.** `MinimumDiskFreeGB` (sample default `26`, matching Apple's last published macOS upgrade requirement; `0` disables) replaces `MinimumDiskFreePercentage`. The warning appears when available space (the same Finder-aligned value shown in the infobox) is below that many GB, regardless of disk size.
+- **`MinimumDiskFreePercentage` is deprecated.** When `MinimumDiskFreeGB` is not set, an existing `MinimumDiskFreePercentage` value is still honored and logged at `[WARNING]`; when both are set, `MinimumDiskFreeGB` wins. Support for `MinimumDiskFreePercentage` will be removed in `6.0.0`. Re-run `assemble.zsh` with your prior `.plist` to generate configuration with `MinimumDiskFreeGB`; the import reports `MinimumDiskFreePercentage` as unsupported.
 
 ### 5.0.0 upgrade notes
 

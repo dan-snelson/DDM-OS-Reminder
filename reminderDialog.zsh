@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.1.0b1"
+scriptVersion="5.1.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -247,7 +247,7 @@ declare -A preferenceConfiguration=(
     ["aggressiveModePastDeadlineHours"]="numeric|2"
     ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
-    ["minimumDiskFreePercentage"]="numeric|99"
+    ["minimumDiskFreeGB"]="numeric|999"
     ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
@@ -340,7 +340,7 @@ declare -A plistKeyMap=(
     ["aggressiveModePastDeadlineHours"]="AggressiveModePastDeadlineHours"
     ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
-    ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["minimumDiskFreeGB"]="MinimumDiskFreeGB"
     ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
@@ -1978,6 +1978,7 @@ function loadPreferenceOverrides() {
     if [[ "${hasManagedPrefs}" == "false" && "${hasLocalPrefs}" == "false" ]]; then
         preFlight "No client-side preferences found; using script-defined defaults"
         loadDefaultPreferences
+        resolveDiskSpaceWarningThreshold
         return
     fi
     
@@ -2035,6 +2036,7 @@ function loadPreferenceOverrides() {
     fi
 
     resolveDateFormatDeadlineHumanReadable
+    resolveDiskSpaceWarningThreshold
 
     preFlight "Preferences loaded"
 
@@ -4452,12 +4454,55 @@ function computeDynamicWarnings() {
     fi
     
     # Disk Space Warning
-    if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-        local belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
-        [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
+    local diskSpaceWarningState=""
+    if [[ "${diskSpaceWarningThresholdMode}" == "percentage" ]]; then
+        if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            local belowThreshold=$(echo "${freePercentage} < ${legacyMinimumDiskFreePercentage}" | bc)
+            [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
+            diskSpaceWarningState="${diskSpaceWarningMessage:+shown}"
+            info "Disk space: ${freeSpace} free (${freePercentage}%); deprecated MinimumDiskFreePercentage threshold ${legacyMinimumDiskFreePercentage}%; warning ${diskSpaceWarningState:-suppressed}"
+        else
+            warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning logic."
+            diskSpaceWarningMessage=""
+        fi
+    elif [[ "${freeBytes}" == <-> && "${freeSpace}" != "Unknown" ]]; then
+        (( freeBytes >= minimumDiskFreeGB * 1000000000 )) && diskSpaceWarningMessage=""
+        diskSpaceWarningState="${diskSpaceWarningMessage:+shown}"
+        info "Disk space: ${freeSpace} free; MinimumDiskFreeGB threshold ${minimumDiskFreeGB} GB; warning ${diskSpaceWarningState:-suppressed}"
     else
-        warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning logic."
+        warning "freeBytes '${freeBytes}' is not numeric; suppressing disk-space warning logic."
         diskSpaceWarningMessage=""
+    fi
+}
+
+function resolveDiskSpaceWarningThreshold() {
+    local legacyPlistKey="MinimumDiskFreePercentage"
+    local legacyValue=""
+    local legacySource=""
+    local candidatePlist=""
+
+    diskSpaceWarningThresholdMode="gb"
+    legacyMinimumDiskFreePercentage=""
+
+    # Deprecated in 5.1.0: honored only when MinimumDiskFreeGB is not set; remove in 6.0.0
+    for candidatePlist in "${managedPreferencesPlist}.plist" "${localPreferencesPlist}.plist"; do
+        [[ -f "${candidatePlist}" ]] || continue
+        if legacyValue=$(/usr/libexec/PlistBuddy -c "Print :${legacyPlistKey}" "${candidatePlist}" 2>/dev/null); then
+            legacySource="${candidatePlist}"
+            break
+        fi
+    done
+
+    [[ -z "${legacySource}" ]] && return
+
+    if [[ "${preferenceExplicitlySet["minimumDiskFreeGB"]}" == "true" ]]; then
+        warning "${legacyPlistKey} in '${legacySource}' is deprecated and ignored because MinimumDiskFreeGB is set."
+    elif [[ "${legacyValue}" =~ ^[0-9]+$ ]] && (( legacyValue <= 100 )); then
+        diskSpaceWarningThresholdMode="percentage"
+        legacyMinimumDiskFreePercentage="${legacyValue}"
+        warning "${legacyPlistKey} (${legacyValue}%) in '${legacySource}' is deprecated; honoring it because MinimumDiskFreeGB is not set. Replace it with MinimumDiskFreeGB before 6.0.0."
+    else
+        warning "Ignoring invalid deprecated ${legacyPlistKey} value '${legacyValue}' in '${legacySource}'; using MinimumDiskFreeGB threshold ${minimumDiskFreeGB} GB."
     fi
 }
 

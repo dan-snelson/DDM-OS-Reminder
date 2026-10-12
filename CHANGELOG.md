@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 5.1.0b4 (12-Oct-2026)
+### Version 5.1.0 (12-Oct-2026)
 - `All` and `Script` redeployments now keep `/Library/Management/<rdnn>/dor-state.plist`, so redeploying inside a `MinutesBeforeDeadlineReminderSchedule` window no longer shows an already-delivered pre-deadline threshold reminder again ([Issue #149](https://github.com/dan-snelson/DDM-OS-Reminder/issues/149))
     - Pre-deadline threshold delivery records and `UpdateTonightSuppressionUntil` carry across the redeploy; threshold records still reset automatically when the deadline/version signature changes.
     - Only `NextScheduledReminder` is cleared, so the refreshed heartbeat still evaluates reminders right after deployment (and a stale `FALSE` value cannot silence the Mac).

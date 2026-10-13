@@ -10,7 +10,7 @@ description: >
 
 # Diagnose DDM OS Reminder client state
 
-Read-only. Do not write preferences, scheduler state, LaunchDaemons, or logs.
+Read-only against the affected Mac. Do not write preferences, scheduler state, LaunchDaemons, or logs. The only file this skill may write is the redacted findings Markdown, and only after the user confirms a path.
 
 Mac Admins upload files from the affected Mac. Do not assume live access to that Mac.
 
@@ -80,3 +80,5 @@ Write Markdown in this order:
 7. Whether the log and `install.log` agree.
 8. Likely cause and operator next steps.
 9. A line that the report is redacted and that raw uploads should stay out of a public issue.
+
+After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest `ddm-os-reminder-<rdnn>-<YYYY-MM-DD>.md` next to the uploads, outside this repository. Save only the redacted report. Do not save the raw uploads or the helper fact sheet.

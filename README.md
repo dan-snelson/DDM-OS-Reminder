@@ -2,7 +2,7 @@
 
 # DDM OS Reminder (5.1.0)
 
-> A welcome racing-stripe to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a low-disk-space warning sized to real update needs (instead of disk percentages) and a red infobox Deadline that matches Day(s) Remaining as time runs out.
+> A welcome racing-stripe to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a low-disk-space warning sized to real update needs (instead of disk percentages) and a consistent deadline display
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 

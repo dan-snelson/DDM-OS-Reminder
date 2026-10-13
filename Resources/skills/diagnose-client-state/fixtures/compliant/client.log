@@ -1,0 +1,8 @@
+dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Version: 15.7.1
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Build: 24G90
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Normal DDM resolver result: status=resolved; source=currentApplicableDeclaration; reason=none
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Resolved DDM declaration source: currentApplicableDeclaration
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Resolved DDM declaration version: 15.7.1
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Resolved DDM declaration enforcement date: 2026-10-20T09:00:00
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Installed macOS already satisfies DDM declaration 15.7.1.

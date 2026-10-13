@@ -1,0 +1,7 @@
+dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
+dorm (5.1.0): 2026-10-12 10:15:21 - [WARNING]         Ignoring invalid DailyReminderTimes entry '25:00'. Expected HH:MM in 24-hour time.
+dorm (5.1.0): 2026-10-12 10:15:21 - [WARNING]         Ignoring invalid DailyReminderTimes entry 'noon'. Expected HH:MM in 24-hour time.
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Resolved DailyReminderTimes: 08:00
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Version: 15.6.1
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Build: 24G84
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Normal DDM resolver result: status=missing; source=none; reason=No DDM declaration candidates found in install.log

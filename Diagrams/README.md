@@ -261,6 +261,7 @@ PNG and SVG exports mirror the `.md` base name (for example, `01-system-architec
 6. **Troubleshooting Section**: Use [Runtime Decision Tree](02-runtime-decision-tree.md)
    - Shows all decision points and exit conditions
    - Helps diagnose why script may/may not display dialog
+   - Uploaded client logs, `install.log`, and preference plists: [Diagnose client state](../Resources/README.md#7-diagnose-client-state)
 
 ### For README.md
 

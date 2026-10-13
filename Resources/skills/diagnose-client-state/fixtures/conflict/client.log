@@ -1,0 +1,7 @@
+dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Version: 15.6.1
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Build: 24G84
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Normal DDM resolver result: status=conflict; source=none; reason=Conflicting DDM declarations detected in install.log
+dorm (5.1.0): 2026-10-12 10:15:22 - [WARNING]         Conflicting DDM declarations detected in install.log
+dorm (5.1.0): 2026-10-12 10:15:22 - [WARNING]         Resolver suppression summary: conflict | Conflicting DDM declarations detected in install.log
+dorm (5.1.0): 2026-10-12 10:15:22 - [QUIT]            Conflicting DDM declarations detected in install.log; exiting quietly.

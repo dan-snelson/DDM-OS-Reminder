@@ -8,6 +8,7 @@
 4. [Extension Attributes](#4-extension-attributes)
 5. [Using `reminderDialogPreferenceTest.zsh`](#5-using-reminderdialogpreferencetestzsh)
 6. [Using `monitorRemoteSession.zsh`](#6-using-monitorremotesessionzsh)
+7. [Diagnose client state](#7-diagnose-client-state)
 
 ---
 
@@ -503,3 +504,43 @@ sudo /bin/launchctl print "system/${launchDaemonLabel}"
 ```
 
 Do not use `xattr -c`; it removes unrelated extended attributes. Runtime heartbeat recovery diagnoses quarantine and logs bootstrap failures, but intentionally does not change trust metadata.
+
+---
+
+### 7. Diagnose client state
+
+Use [`diagnoseReminderState.zsh`](diagnoseReminderState.zsh) with the agent skill [`skills/diagnose-client-state/SKILL.md`](skills/diagnose-client-state/SKILL.md) when a reminder did not appear (or appeared unexpectedly) and a Mac Admin can upload files from the affected Mac.
+
+Required uploads:
+
+- Client-side log: `/var/log/<rdnn>.log`
+- `/var/log/install.log`
+- Client-side preferences, whichever exist:
+  - `/Library/Managed Preferences/<rdnn>.dorm.plist`
+  - `/Library/Preferences/<rdnn>.dorm.plist`
+
+The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `Normal DDM resolver result` line is what that Mac did; `install.log` is evidence that explains it.
+
+```zsh
+zsh Resources/diagnoseReminderState.zsh --help
+zsh Resources/diagnoseReminderState.zsh \
+    --client-log /path/to/<rdnn>.log \
+    --install-log /path/to/install.log \
+    --plist /path/to/<rdnn>.dorm.plist
+```
+
+When both preference layers are available:
+
+```zsh
+zsh Resources/diagnoseReminderState.zsh \
+    --client-log /path/to/<rdnn>.log \
+    --install-log /path/to/install.log \
+    --managed-plist /path/to/managed.dorm.plist \
+    --local-plist /path/to/local.dorm.plist
+```
+
+Optional extra files, when the admin has them: `/Library/Management/<rdnn>/dor-state.plist`, `dor-fallback-declaration.plist`, `/Library/LaunchDaemons/<rdnn>.dor.plist`, `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`, and whether `dor-aggressive-kill` existed.
+
+The helper redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers in the fact sheet. Attach the redacted agent report, and keep the raw uploads and the fact sheet out of public issues.
+
+Maintainers can re-check the bundled fixtures with `zsh Resources/skills/diagnose-client-state/check-fixtures.zsh`.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>DailyReminderTimes</key>
+    <string>08:00,12:00,16:00</string>
+    <key>AggressiveModePastDeadlineHours</key>
+    <integer>2</integer>
+    <key>ScriptLog</key>
+    <string>/var/log/us.snelson.log</string>
+</dict>
+</plist>

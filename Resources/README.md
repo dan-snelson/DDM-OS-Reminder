@@ -8,6 +8,7 @@
 4. [Extension Attributes](#4-extension-attributes)
 5. [Using `reminderDialogPreferenceTest.zsh`](#5-using-reminderdialogpreferencetestzsh)
 6. [Using `monitorRemoteSession.zsh`](#6-using-monitorremotesessionzsh)
+7. [Diagnose client state](#7-diagnose-client-state)
 
 ---
 
@@ -189,9 +190,9 @@ When both values are valid, deployment atomically creates or replaces `/Library/
 
 Both blank removes any stale fallback and intentionally disables the feature. A partial or malformed pair is rejected and also removes stale fallback data. `Uninstall` ignores fallback input and removes the plist. `All` and `Script` remove old fallback before valid values recreate it; `LaunchDaemon` preserves scheduler state while valid, blank, or invalid fallback inputs are applied before daemon bootstrap.
 
-A blank Parameter 4 means `All`. `All` and `Script` keep the aggressive-mode support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill` (and log a `[NOTICE]`), so redeployment does not silently resume aggressive mode that support paused; only `Uninstall` removes it.
+A blank Parameter 4 means `All`. `All` and `Script` keep the aggressive-mode support kill switch `/Library/Management/<rdnn>/dor-aggressive-kill` (and log a `[NOTICE]`), so redeployment does not silently resume aggressive mode that support paused. They also keep scheduler state `/Library/Management/<rdnn>/dor-state.plist` (and log a `[NOTICE]`), so pre-deadline threshold delivery records and **Update Tonight** suppression survive redeployment; only `NextScheduledReminder` is cleared, so the refreshed heartbeat evaluates reminders immediately. Only `Uninstall` removes either file.
 
-Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment validates `dor.pid` against the expected deployed `dor.zsh` command, requests termination of that runtime and its owned descendants, and waits briefly for shutdown. A missing, stale, malformed, or mismatched PID is logged without broadly terminating swiftDialog or unrelated processes.
+Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment unloads the heartbeat LaunchDaemon (`Script` unloads only the current `<rdnn>.dor` label; `All` and `Script` recreate and load it at the end of deployment), so a heartbeat cannot relaunch the previous runtime mid-redeploy. It then validates `dor.pid` against the expected deployed `dor.zsh` command, requests termination of that runtime and its owned descendants, and waits briefly for shutdown. A missing, stale, malformed, or mismatched PID is logged without broadly terminating swiftDialog or unrelated processes.
 
 Normal DDM declaration resolution always runs first. Runtime evaluates fallback when normal resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`. Confirmed DDM supersedes persisted fallback. Unknown resolver states never select fallback. Missing, corrupt, incomplete, wrong-type, or invalid fallback plists preserve the original suppression state and are never repaired by runtime.
 
@@ -503,3 +504,43 @@ sudo /bin/launchctl print "system/${launchDaemonLabel}"
 ```
 
 Do not use `xattr -c`; it removes unrelated extended attributes. Runtime heartbeat recovery diagnoses quarantine and logs bootstrap failures, but intentionally does not change trust metadata.
+
+---
+
+### 7. Diagnose client state
+
+Use [`diagnoseReminderState.zsh`](diagnoseReminderState.zsh) with the agent skill [`skills/diagnose-client-state/SKILL.md`](skills/diagnose-client-state/SKILL.md) when a reminder did not appear (or appeared unexpectedly) and a Mac Admin can upload files from the affected Mac.
+
+Required uploads:
+
+- Client-side log: `/var/log/<rdnn>.log`
+- `/var/log/install.log`
+- Client-side preferences, whichever exist:
+  - `/Library/Managed Preferences/<rdnn>.dorm.plist`
+  - `/Library/Preferences/<rdnn>.dorm.plist`
+
+The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `Normal DDM resolver result` line is what that Mac did; `install.log` is evidence that explains it.
+
+```zsh
+zsh Resources/diagnoseReminderState.zsh --help
+zsh Resources/diagnoseReminderState.zsh \
+    --client-log /path/to/<rdnn>.log \
+    --install-log /path/to/install.log \
+    --plist /path/to/<rdnn>.dorm.plist
+```
+
+When both preference layers are available:
+
+```zsh
+zsh Resources/diagnoseReminderState.zsh \
+    --client-log /path/to/<rdnn>.log \
+    --install-log /path/to/install.log \
+    --managed-plist /path/to/managed.dorm.plist \
+    --local-plist /path/to/local.dorm.plist
+```
+
+Optional extra files, when the admin has them: `/Library/Management/<rdnn>/dor-state.plist`, `dor-fallback-declaration.plist`, `/Library/LaunchDaemons/<rdnn>.dor.plist`, `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`, and whether `dor-aggressive-kill` existed.
+
+The helper redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers in the fact sheet. Attach the redacted agent report, and keep the raw uploads and the fact sheet out of public issues.
+
+Maintainers can re-check the bundled fixtures with `zsh Resources/skills/diagnose-client-state/check-fixtures.zsh`.

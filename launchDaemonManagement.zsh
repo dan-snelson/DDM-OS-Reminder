@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0"
+scriptVersion="5.1.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -125,21 +125,36 @@ function removeDeployedRuntimeAssets() {
     local runtimeAssetPaths=(
         "${dormScriptPath}"
         "${dorStarterPath}"
-        "${dorStatePlistPath}"
         "${dorPidFilePath}"
         "${dorFallbackDeclarationPlistPath}"
     )
 
-    # Support suppression survives redeployment; only Uninstall removes it
-    if [[ "${removalMode}" == "preserveAggressiveKillSwitch" ]]; then
+    # Support suppression and scheduler state survive redeployment; only Uninstall removes them
+    if [[ "${removalMode}" == "redeploy" ]]; then
         if [[ -e "${dorAggressiveKillSwitchPath}" ]]; then
             notice "Preserving aggressive-mode support kill switch '${dorAggressiveKillSwitchPath}'; aggressive mode stays suppressed until support removes it."
         fi
     else
-        runtimeAssetPaths+=( "${dorAggressiveKillSwitchPath}" )
+        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" )
     fi
 
     stopActiveReminderRuntime
+
+    # Threshold delivery records prevent duplicate reminders; a cleared schedule lets the refreshed heartbeat run promptly
+    if [[ "${removalMode}" == "redeploy" && -f "${dorStatePlistPath}" ]]; then
+        if /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            notice "Preserving scheduler state '${dorStatePlistPath}'; pre-deadline threshold delivery and Update Tonight suppression records carry across redeployment."
+            if /usr/libexec/PlistBuddy -c "Print :NextScheduledReminder" "${dorStatePlistPath}" >/dev/null 2>&1; then
+                if /usr/libexec/PlistBuddy -c "Delete :NextScheduledReminder" "${dorStatePlistPath}" >/dev/null 2>&1; then
+                    notice "Cleared NextScheduledReminder so the refreshed heartbeat evaluates reminders immediately."
+                else
+                    warning "Unable to clear NextScheduledReminder in '${dorStatePlistPath}'."
+                fi
+            fi
+        else
+            warning "Scheduler state '${dorStatePlistPath}' is unreadable; leaving it for runtime quarantine."
+        fi
+    fi
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
         if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
@@ -538,7 +553,7 @@ function resetConfiguration() {
 
             # Reset Script
             info "Reset Script … "
-            removeDeployedRuntimeAssets "preserveAggressiveKillSwitch"
+            removeDeployedRuntimeAssets "redeploy"
             ;;
 
         "LaunchDaemon" )
@@ -548,8 +563,12 @@ function resetConfiguration() {
 
         "Script" )
 
+            # Unload heartbeat first so it cannot relaunch the old runtime after scheduler state is cleared
+            info "Unload LaunchDaemon … "
+            unloadAndRemoveLaunchDaemon "${launchDaemonPath}"
+
             info "Reset Script … "
-            removeDeployedRuntimeAssets "preserveAggressiveKillSwitch"
+            removeDeployedRuntimeAssets "redeploy"
             ;;
 
         "Uninstall" )

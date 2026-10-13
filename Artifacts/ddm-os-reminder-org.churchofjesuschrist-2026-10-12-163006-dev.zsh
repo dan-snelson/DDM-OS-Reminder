@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0"
+scriptVersion="5.1.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -125,21 +125,36 @@ function removeDeployedRuntimeAssets() {
     local runtimeAssetPaths=(
         "${dormScriptPath}"
         "${dorStarterPath}"
-        "${dorStatePlistPath}"
         "${dorPidFilePath}"
         "${dorFallbackDeclarationPlistPath}"
     )
 
-    # Support suppression survives redeployment; only Uninstall removes it
-    if [[ "${removalMode}" == "preserveAggressiveKillSwitch" ]]; then
+    # Support suppression and scheduler state survive redeployment; only Uninstall removes them
+    if [[ "${removalMode}" == "redeploy" ]]; then
         if [[ -e "${dorAggressiveKillSwitchPath}" ]]; then
             notice "Preserving aggressive-mode support kill switch '${dorAggressiveKillSwitchPath}'; aggressive mode stays suppressed until support removes it."
         fi
     else
-        runtimeAssetPaths+=( "${dorAggressiveKillSwitchPath}" )
+        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" )
     fi
 
     stopActiveReminderRuntime
+
+    # Threshold delivery records prevent duplicate reminders; a cleared schedule lets the refreshed heartbeat run promptly
+    if [[ "${removalMode}" == "redeploy" && -f "${dorStatePlistPath}" ]]; then
+        if /usr/libexec/PlistBuddy -c "Print" "${dorStatePlistPath}" >/dev/null 2>&1; then
+            notice "Preserving scheduler state '${dorStatePlistPath}'; pre-deadline threshold delivery and Update Tonight suppression records carry across redeployment."
+            if /usr/libexec/PlistBuddy -c "Print :NextScheduledReminder" "${dorStatePlistPath}" >/dev/null 2>&1; then
+                if /usr/libexec/PlistBuddy -c "Delete :NextScheduledReminder" "${dorStatePlistPath}" >/dev/null 2>&1; then
+                    notice "Cleared NextScheduledReminder so the refreshed heartbeat evaluates reminders immediately."
+                else
+                    warning "Unable to clear NextScheduledReminder in '${dorStatePlistPath}'."
+                fi
+            fi
+        else
+            warning "Scheduler state '${dorStatePlistPath}' is unreadable; leaving it for runtime quarantine."
+        fi
+    fi
 
     for runtimeAssetPath in "${runtimeAssetPaths[@]}"; do
         if [[ ! -e "${runtimeAssetPath}" && ! -L "${runtimeAssetPath}" ]]; then
@@ -538,7 +553,7 @@ function resetConfiguration() {
 
             # Reset Script
             info "Reset Script … "
-            removeDeployedRuntimeAssets "preserveAggressiveKillSwitch"
+            removeDeployedRuntimeAssets "redeploy"
             ;;
 
         "LaunchDaemon" )
@@ -548,8 +563,12 @@ function resetConfiguration() {
 
         "Script" )
 
+            # Unload heartbeat first so it cannot relaunch the old runtime after scheduler state is cleared
+            info "Unload LaunchDaemon … "
+            unloadAndRemoveLaunchDaemon "${launchDaemonPath}"
+
             info "Reset Script … "
-            removeDeployedRuntimeAssets "preserveAggressiveKillSwitch"
+            removeDeployedRuntimeAssets "redeploy"
             ;;
 
         "Uninstall" )
@@ -659,7 +678,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.0.0"
+scriptVersion="5.1.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -886,7 +905,7 @@ declare -A preferenceConfiguration=(
     ["aggressiveModePastDeadlineHours"]="numeric|2"
     ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
-    ["minimumDiskFreePercentage"]="numeric|99"
+    ["minimumDiskFreeGB"]="numeric|999"
     ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
@@ -979,7 +998,7 @@ declare -A plistKeyMap=(
     ["aggressiveModePastDeadlineHours"]="AggressiveModePastDeadlineHours"
     ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
-    ["minimumDiskFreePercentage"]="MinimumDiskFreePercentage"
+    ["minimumDiskFreeGB"]="MinimumDiskFreeGB"
     ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
@@ -2617,6 +2636,7 @@ function loadPreferenceOverrides() {
     if [[ "${hasManagedPrefs}" == "false" && "${hasLocalPrefs}" == "false" ]]; then
         preFlight "No client-side preferences found; using script-defined defaults"
         loadDefaultPreferences
+        resolveDiskSpaceWarningThreshold
         return
     fi
     
@@ -2674,6 +2694,7 @@ function loadPreferenceOverrides() {
     fi
 
     resolveDateFormatDeadlineHumanReadable
+    resolveDiskSpaceWarningThreshold
 
     preFlight "Preferences loaded"
 
@@ -5091,12 +5112,55 @@ function computeDynamicWarnings() {
     fi
     
     # Disk Space Warning
-    if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-        local belowThreshold=$(echo "${freePercentage} < ${minimumDiskFreePercentage}" | bc)
-        [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
+    local diskSpaceWarningState=""
+    if [[ "${diskSpaceWarningThresholdMode}" == "percentage" ]]; then
+        if [[ "${freePercentage}" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            local belowThreshold=$(echo "${freePercentage} < ${legacyMinimumDiskFreePercentage}" | bc)
+            [[ "${belowThreshold}" -ne 1 ]] && diskSpaceWarningMessage=""
+            diskSpaceWarningState="${diskSpaceWarningMessage:+shown}"
+            info "Disk space: ${freeSpace} free (${freePercentage}%); deprecated MinimumDiskFreePercentage threshold ${legacyMinimumDiskFreePercentage}%; warning ${diskSpaceWarningState:-suppressed}"
+        else
+            warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning logic."
+            diskSpaceWarningMessage=""
+        fi
+    elif [[ "${freeBytes}" == <-> && "${freeSpace}" != "Unknown" ]]; then
+        (( freeBytes >= minimumDiskFreeGB * 1000000000 )) && diskSpaceWarningMessage=""
+        diskSpaceWarningState="${diskSpaceWarningMessage:+shown}"
+        info "Disk space: ${freeSpace} free; MinimumDiskFreeGB threshold ${minimumDiskFreeGB} GB; warning ${diskSpaceWarningState:-suppressed}"
     else
-        warning "freePercentage '${freePercentage}' is not numeric; suppressing disk-space warning logic."
+        warning "freeBytes '${freeBytes}' is not numeric; suppressing disk-space warning logic."
         diskSpaceWarningMessage=""
+    fi
+}
+
+function resolveDiskSpaceWarningThreshold() {
+    local legacyPlistKey="MinimumDiskFreePercentage"
+    local legacyValue=""
+    local legacySource=""
+    local candidatePlist=""
+
+    diskSpaceWarningThresholdMode="gb"
+    legacyMinimumDiskFreePercentage=""
+
+    # Deprecated in 5.1.0: honored only when MinimumDiskFreeGB is not set; remove in 6.0.0
+    for candidatePlist in "${managedPreferencesPlist}.plist" "${localPreferencesPlist}.plist"; do
+        [[ -f "${candidatePlist}" ]] || continue
+        if legacyValue=$(/usr/libexec/PlistBuddy -c "Print :${legacyPlistKey}" "${candidatePlist}" 2>/dev/null); then
+            legacySource="${candidatePlist}"
+            break
+        fi
+    done
+
+    [[ -z "${legacySource}" ]] && return
+
+    if [[ "${preferenceExplicitlySet["minimumDiskFreeGB"]}" == "true" ]]; then
+        warning "${legacyPlistKey} in '${legacySource}' is deprecated and ignored because MinimumDiskFreeGB is set."
+    elif [[ "${legacyValue}" =~ ^[0-9]+$ ]] && (( legacyValue <= 100 )); then
+        diskSpaceWarningThresholdMode="percentage"
+        legacyMinimumDiskFreePercentage="${legacyValue}"
+        warning "${legacyPlistKey} (${legacyValue}%) in '${legacySource}' is deprecated; honoring it because MinimumDiskFreeGB is not set. Replace it with MinimumDiskFreeGB before 6.0.0."
+    else
+        warning "Ignoring invalid deprecated ${legacyPlistKey} value '${legacyValue}' in '${legacySource}'; using MinimumDiskFreeGB threshold ${minimumDiskFreeGB} GB."
     fi
 }
 
@@ -5122,6 +5186,15 @@ function computeUpdateStagingMessage() {
     esac
 }
 
+function markdownColorSafeText() {
+    local text="${1}"
+
+    # A literal bracket would end swiftDialog's :color[…] span early
+    text="${text//\[/(}"
+    text="${text//\]/)}"
+    print -r -- "${text}"
+}
+
 function computeDeadlineEnforcementMessage() {
     local markdownColorMinimumVersion="3.0.0.4928"
     local deadlineDisplay="${ddmEnforcedInstallDateRelativeHumanReadable:-${ddmEnforcedInstallDateHumanReadable}}"
@@ -5133,6 +5206,15 @@ function computeDeadlineEnforcementMessage() {
         deadlineTemplateVariable="deadlineEnforcementMessageRelative"
     fi
 
+    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
+
+    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
+        dialogSupportsMarkdownColor="YES"
+        deadlineDisplay="$(markdownColorSafeText "${deadlineDisplay}")"
+    else
+        dialogSupportsMarkdownColor="NO"
+    fi
+
     baseDeadlineEnforcementMessage="${(P)deadlineTemplateVariable}"
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{deadlineDisplay\}/${deadlineDisplay}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\$\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
@@ -5140,14 +5222,10 @@ function computeDeadlineEnforcementMessage() {
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgrade\}/${titleMessageUpdateOrUpgrade}}
     baseDeadlineEnforcementMessage=${baseDeadlineEnforcementMessage//\{titleMessageUpdateOrUpgradeLower\}/${titleMessageUpdateOrUpgrade:l}}
 
-    dialogVersion="$("${dialogBinary}" -v 2>/dev/null)"
-
-    if [[ -n "${dialogVersion}" ]] && is-at-least "${markdownColorMinimumVersion}" "${dialogVersion}"; then
-        dialogSupportsMarkdownColor="YES"
+    if [[ "${dialogSupportsMarkdownColor}" == "YES" ]]; then
         deadlineEnforcementMessage=":red[${baseDeadlineEnforcementMessage}]"
         info "swiftDialog ${dialogVersion} supports markdown color; rendering enforcement sentence in red."
     else
-        dialogSupportsMarkdownColor="NO"
         deadlineEnforcementMessage="${baseDeadlineEnforcementMessage}"
         info "swiftDialog ${dialogVersion:-Unknown} does not support markdown color; rendering enforcement sentence without color."
     fi
@@ -5165,12 +5243,19 @@ function computeInfoboxHighlights() {
         return
     fi
 
+    local isDeadlineHighlighted="NO"
+
     if [[ -n "${infoboxDeadlineEpoch}" && "${infoboxDeadlineEpoch}" =~ ^[0-9]+$ ]] && (( infoboxDeadlineEpoch <= $(date +%s) )); then
-        infoboxDeadlineDisplay=":red[${infoboxDeadlineDisplay}]"
+        isDeadlineHighlighted="YES"
     fi
 
     if [[ "${infoboxDaysRemainingDisplay}" =~ ^-?[0-9]+$ ]] && (( infoboxDaysRemainingDisplay <= 0 )); then
         infoboxDaysRemainingDisplay=":red[${infoboxDaysRemainingDisplay}]"
+        isDeadlineHighlighted="YES"
+    fi
+
+    if [[ "${isDeadlineHighlighted}" == "YES" ]]; then
+        infoboxDeadlineDisplay=":red[$(markdownColorSafeText "${infoboxDeadlineDisplay}")]"
     fi
 
     if [[ "${pastDeadlineRestartSuppressedForUptime}" != "YES" ]] && (( upTimeMin >= (daysOfExcessiveUptimeWarning * 1440) )); then

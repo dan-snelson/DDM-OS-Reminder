@@ -41,8 +41,8 @@
     <integer>60</integer>
     <key>PastDeadlineForceRedisplayDelaySeconds</key>
     <integer>5</integer>
-    <key>MinimumDiskFreePercentage</key>
-    <integer>10</integer>
+    <key>MinimumDiskFreeGB</key>
+    <integer>26</integer>
     <key>DisableButton2InsteadOfHide</key>
     <true/>
     <key>MeetingDelay</key>

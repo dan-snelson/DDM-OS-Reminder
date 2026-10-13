@@ -261,6 +261,7 @@ PNG and SVG exports mirror the `.md` base name (for example, `01-system-architec
 6. **Troubleshooting Section**: Use [Runtime Decision Tree](02-runtime-decision-tree.md)
    - Shows all decision points and exit conditions
    - Helps diagnose why script may/may not display dialog
+   - Uploaded client logs, `install.log`, and preference plists: [Diagnose client state](../Resources/README.md#7-diagnose-client-state)
 
 ### For README.md
 
@@ -493,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.16 | 12-Oct-2026 | Aligned prose with `5.1.0`: `MinimumDiskFreeGB` replaces deprecated `MinimumDiskFreePercentage` in 03/06, and `Uninstall` alone removes `dor-state.plist` (kept by `All` / `Script`) in 04; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.15 | 04-Oct-2026 | Reconciled diagrams with `5.0.0` runtime truth: softwareupdate DDM state corroboration, private per-run `/var/tmp` files, app-bundle `dialogcli`, console-user exclusions (`_mbsetupuser`, `root`), bounded System Settings wait, atomic script deployment, self-extracting parameter forwarding, kill-switch preservation on `All` / `Script`, and language-code hardening; restored PNG and SVG exports for `00`–`05` (rendered with `mmdc` 12.0.0, including the second `03` timeline diagram) |
 | 1.0.14 | 21-Sep-2026 | Refreshed lifecycle, assembly, heartbeat, scheduler, MDM-agnostic deployment, configuration-boundary, and upgrade diagrams from the JNUC 2026 workflow; reconciled all content with `4.2.0` runtime truth |
 | 1.0.13 | 30-Jul-2026 | Added macOS 27 LaunchDaemon quarantine audit, targeted remediation, and label-specific verification guidance |
@@ -519,5 +521,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 04-Oct-2026
-**DDM OS Reminder Version**: 5.0.0
+**Last Updated**: 12-Oct-2026
+**DDM OS Reminder Version**: 5.1.0

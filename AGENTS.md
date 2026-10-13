@@ -19,11 +19,12 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 - Project does not perform OS updates, target non-macOS platforms, or act as general-purpose update/remediation framework.
 
 ## Key Commands
-- Validate syntax after every Zsh edit: `zsh -n reminderDialog.zsh`, `zsh -n launchDaemonManagement.zsh`, `zsh -n assemble.zsh`, and `zsh -n Resources/reminderDialogPreferenceTest.zsh` when touched
+- Validate syntax after every Zsh edit: `zsh -n reminderDialog.zsh`, `zsh -n launchDaemonManagement.zsh`, `zsh -n assemble.zsh`, `zsh -n Resources/reminderDialogPreferenceTest.zsh`, and `zsh -n Resources/diagnoseReminderState.zsh` when touched
 - Fastest runtime smoke test: `zsh reminderDialog.zsh demo`
 - Build deployable artifacts: `zsh assemble.zsh`
 - Review build and packaging workflow: `zsh assemble.zsh --help`
 - Preference/dialog validation helper: `zsh Resources/reminderDialogPreferenceTest.zsh --help`
+- Client-state diagnosis (uploaded logs/plist): `zsh Resources/diagnoseReminderState.zsh --help`
 
 ## Agent Workflow
 - Confirm this file is loaded before starting non-trivial work.
@@ -61,6 +62,12 @@ Invoke relevant skill name during planning.
 3. Keep `PlistBuddy`-based reads and existing key-mapping behavior.
 4. Validate fallback behavior, especially English and existing language families.
 5. Update docs and changelog when operator-facing behavior changes.
+
+### Diagnose Client State Skill
+1. Required uploads are the client-side log, `/var/log/install.log`, and the client-side `.plist`.
+2. Run `zsh Resources/diagnoseReminderState.zsh` when available; follow `Resources/skills/diagnose-client-state/SKILL.md`.
+3. The client log's `Normal DDM resolver result` is what that Mac did. Do not re-decide resolver status.
+4. Read-only: do not write preferences, scheduler state, or LaunchDaemons.
 
 ### Security Workflow Change Skill
 1. Treat `.github/workflows/security-scan.yml` as a blocking security gate: Semgrep runs with `--error`, Gitleaks is blocking, and finalizer steps should fail when findings or upload failures require attention.
@@ -127,9 +134,11 @@ Out of scope:
 - `launchDaemonManagement.zsh`: deployment and reset logic, heartbeat LaunchDaemon creation/loading, embedded `dor.zsh` and generated `dor-starter.zsh` writer, runtime asset cleanup, MDM Script Parameter 4 reset handling, and Parameters 5/6 fallback persistence
 - `assemble.zsh`: artifact builder, RDNN harmonization, heredoc embedding, syntax checks, plist and mobileconfig generation
 - `README.md`: current project overview, features, upgrade notes, operator guidance
-- `Resources/README.md`: assembly, packaging, plist/mobileconfig, EA, and preference-test instructions
+- `Resources/README.md`: assembly, packaging, plist/mobileconfig, EA, preference-test, and client-state diagnosis instructions
 - `Resources/sample.plist`: canonical localization and preference surface for generated configs
 - `Resources/reminderDialogPreferenceTest.zsh`: preference-driven dialog validation helper
+- `Resources/diagnoseReminderState.zsh`: read-only fact sheet from uploaded client log, `install.log`, and plist
+- `Resources/skills/diagnose-client-state/SKILL.md`: agent instructions for client-state diagnosis
 - `CHANGELOG.md`: release history and shipped behavior summary
 - `Artifacts/`: generated build outputs that may be tracked; do not refresh casually
 
@@ -151,7 +160,7 @@ Out of scope:
 - Console-user resolution rejects `loginwindow`, `_mbsetupuser`, and `root` before building per-user dialog context.
 - Root runtime temp files (icons, swiftDialog `--commandfile`, threshold marker) live only in per-run `mktemp -d` `/var/tmp/<organizationScriptName>.XXXXXX` (root `0755`, files `0644`; swiftDialog 3 reads them as console user). Never write fixed `/var/tmp` names as root.
 - swiftDialog runs from `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`; root `PATH` excludes `/usr/local`.
-- `All`/`Script` redeploys preserve `dor-aggressive-kill`; only `Uninstall` removes it. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
+- `All`/`Script` redeploys preserve `dor-aggressive-kill` and `dor-state.plist` (clearing only `NextScheduledReminder`); only `Uninstall` removes them. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until `zsh assemble.zsh` runs.
 
 ## Repository Rules
@@ -196,7 +205,7 @@ These rules override ad-hoc prompting. Match established shipped-script style un
 - Localization changes must not break English fallback behavior or existing language families.
 
 ## Required Validation
-1. Run `zsh -n` on every modified Zsh script.
+1. Run `zsh -n` on every modified Zsh script, including `Resources/diagnoseReminderState.zsh` when touched.
 2. For `reminderDialog.zsh` behavior changes, run `zsh reminderDialog.zsh demo`.
 3. For `assemble.zsh` or deployment-flow changes, review generated artifact expectations against `Resources/README.md` and related docs before calling work complete.
 4. For packaging changes, account for self-extracting bundle workflow in `Resources/createSelfExtracting.zsh` and validate generated `.mobileconfig` with `/usr/bin/plutil -lint`.

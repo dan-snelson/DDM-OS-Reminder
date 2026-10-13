@@ -1,0 +1,9 @@
+dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
+dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Reading preference overrides from '/Library/Managed Preferences/us.snelson.dorm.plist'
+dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Preferences loaded
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Resolved DailyReminderTimes: 08:00,12:00,16:00
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Version: 15.6.1
+dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Installed macOS Build: 24G84
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Normal DDM resolver result: status=missing; source=none; reason=No DDM declaration candidates found in install.log
+dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Resolver suppression summary: missing | No DDM declaration candidates found in install.log
+dorm (5.1.0): 2026-10-12 10:15:22 - [QUIT]            No DDM declaration candidates found in install.log; exiting quietly.

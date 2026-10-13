@@ -49,7 +49,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | aggressiveModeTitle | AggressiveModeTitle | String | `macOS {titleMessageUpdateOrUpgrade} Required Now` | Localization |
 | aggressiveModeMessage | AggressiveModeMessage | String | [Full aggressive update-focused body] | Localization |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
-| minimumDiskFreePercentage | MinimumDiskFreePercentage | Integer | 99 | Timing |
+| minimumDiskFreeGB | MinimumDiskFreeGB | Integer | 999 | Timing |
 | disableButton2InsteadOfHide | DisableButton2InsteadOfHide | Boolean | YES | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
@@ -869,35 +869,37 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
-#### minimumDiskFreePercentage
-**Plist Key**: `MinimumDiskFreePercentage`
+#### minimumDiskFreeGB
+**Plist Key**: `MinimumDiskFreeGB`
 **Type**: Integer
-**Default**: 99
-**Valid Range**: 0-99
+**Default**: 999 (script); 26 (`Resources/sample.plist`)
+**Valid Range**: 0-999
 
-**Description**: Minimum percentage of free disk space required to avoid showing a low disk space warning in the dialog.
+**Description**: Minimum free disk space, in decimal GB, required to avoid showing a low disk space warning in the dialog. Compared against the same Finder-aligned available capacity shown in the infobox, regardless of disk size.
 
 **Impact**:
 - Warns users who may not have enough space for update
 - 0 = disabled (no warning)
-- 99 = near-disabled (warning only if <1% free)
+- 999 = script default; effectively always warns (demo/no-preferences visibility)
 - Adds warning message, doesn't block dialog
 
 **Recommendations**:
 - **Disabled**: 0
-- **Typical macOS update**: 15-20%
-- **Major macOS upgrade**: 25-30%
+- **Typical macOS update**: 15-20
+- **Major macOS upgrade**: 26 (Apple's last published requirement, Monterey); 28 for extra margin
 
 **Script Default**:
 ```bash
-["minimumDiskFreePercentage"]="numeric|99"
+["minimumDiskFreeGB"]="numeric|999"
 ```
 
 **Configuration Profile**:
 ```xml
-<key>MinimumDiskFreePercentage</key>
-<integer>20</integer>
+<key>MinimumDiskFreeGB</key>
+<integer>26</integer>
 ```
+
+**Deprecated `MinimumDiskFreePercentage`**: Honored (and logged at `[WARNING]`) only when `MinimumDiskFreeGB` is not set; ignored with a `[WARNING]` when both are set. Removed in 6.0.0.
 
 **Warning Message Variable**: `diskSpaceWarningMessage`
 
@@ -1866,7 +1868,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Type**: String
 **Default**: [Warning about low disk space]
 
-**Description**: Warning message inserted when free disk space falls below `minimumDiskFreePercentage` threshold.
+**Description**: Warning message inserted when free disk space falls below `minimumDiskFreeGB` threshold.
 
 **Supports Placeholders**: Yes
 **Key Placeholders**:
@@ -1875,7 +1877,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Inserted Into**: `{diskSpaceWarningMessage}` in `message`
 
-**Triggered When**: Free disk space percentage < `minimumDiskFreePercentage`
+**Triggered When**: Free disk space (GB) < `minimumDiskFreeGB`
 
 **Script Default**:
 ```bash
@@ -2256,8 +2258,8 @@ message = "Contact {supportTeamInfo}"
 <integer>7</integer>
 
 <!-- Enable disk space warnings -->
-<key>MinimumDiskFreePercentage</key>
-<integer>20</integer>
+<key>MinimumDiskFreeGB</key>
+<integer>26</integer>
 
 <!-- Generous meeting delay -->
 <key>MeetingDelay</key>

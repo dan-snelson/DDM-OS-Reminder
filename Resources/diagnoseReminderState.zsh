@@ -28,7 +28,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.2.1"
+scriptVersion="1.2.2"
 checklistScriptVersion="5.1.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -64,6 +64,7 @@ typeset -a inputNotes=()
 typeset -a identityNotes=()
 typeset -a rejectedLocalizedKeys=()
 typeset -a redactedIdentityTokens=()
+typeset -a redactedHostTokens=()
 typeset -a runHistoryRows=()
 typeset -a installLogDeclarationSpans=()
 
@@ -739,10 +740,35 @@ function rememberRedactedToken() {
     redactedIdentityTokens+=("${token}")
 }
 
+function rememberRedactedHostToken() {
+    local token="${1}"
+
+    [[ -n "${token}" ]] || return 0
+    (( ${#token} >= 2 )) || return 0
+    case "${token}" in
+        localhost|"|"*|"<redacted>"|"<redacted-host>") return 0 ;;
+    esac
+
+    (( ${redactedHostTokens[(Ie)${token}]} )) && return 0
+    redactedHostTokens+=("${token}")
+}
+
 function collectIdentityTokens() {
     local logLine=""
+    # install.log line prefix: date, time with offset, computer name, process[pid]:
+    local installLogHostRegex='[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9:]{2,5} ([^[:space:]]+) [^[:space:]]+\[[0-9]+\]:'
+
+    # Client-log context lines quote install.log lines, computer name included
+    for logLine in "${installLogWindow[@]}"; do
+        if [[ "${logLine}" =~ "^${installLogHostRegex}" ]]; then
+            rememberRedactedHostToken "${match[1]}"
+        fi
+    done
 
     while IFS= read -r logLine; do
+        if [[ "${logLine}" =~ "${installLogHostRegex}" ]]; then
+            rememberRedactedHostToken "${match[1]}"
+        fi
         if [[ "${logLine}" =~ 'Current Logged-in User: ([^[:space:]]+)' ]]; then
             rememberRedactedToken "${match[1]}"
         fi
@@ -764,6 +790,7 @@ function collectIdentityTokens() {
 function redactBoundedToken() {
     local value="${1}"
     local token="${2}"
+    local replacement="${3:-<redacted>}"
     local head=""
     local tail=""
     local beforeChar=""
@@ -776,7 +803,7 @@ function redactBoundedToken() {
         beforeChar="${head[-1]:- }"
         afterChar="${tail[1]:- }"
         if [[ ! "${beforeChar}" =~ [[:alnum:]_.-] && ! "${afterChar}" =~ [[:alnum:]_.-] ]]; then
-            out+="${head}<redacted>"
+            out+="${head}${replacement}"
         else
             out+="${head}${token}"
         fi
@@ -803,6 +830,11 @@ function redactSensitiveText() {
     local token=""
 
     value="$(redactUsersPaths "${value}")"
+    if (( ${#redactedHostTokens[@]} > 0 )); then
+        for token in "${redactedHostTokens[@]}"; do
+            value="$(redactBoundedToken "${value}" "${token}" "<redacted-host>")"
+        done
+    fi
     if (( ${#redactedIdentityTokens[@]} > 0 )); then
         for token in "${redactedIdentityTokens[@]}"; do
             [[ -n "${token}" ]] || continue

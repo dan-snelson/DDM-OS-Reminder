@@ -109,6 +109,7 @@ dorm (5.1.0): 2026-10-12 10:00:00 - [INFO]            Return Code: 2
 dor (5.1.0): 2026-10-12 10:15:19 - [NOTICE]          Heartbeat launch triggered '/Library/Management/us.snelson/dor.zsh'.
 dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
 dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Display Reminder Dialog to zzuniqueuser with additional options: --ontop
+dorm (5.1.0): 2026-10-12 10:15:22 - [INFO]            Resolved declaration context: 2026-10-12 10:14:02-07:00 ContextOnlyHost softwareupdated[123]: [com.apple.softwareupdated.declarationFromKeys]: Found currently applicable declaration
 dorm (5.1.0): 2026-10-12 10:15:22 - [NOTICE]          Normal DDM resolver result: status=resolved; source=currentApplicableDeclaration; reason=none
 dorm (5.1.0): 2026-10-12 10:15:23 - [NOTICE]          Scheduled next daemon reminder for 2026-10-12:16:00:00 (baseline).
 dor  (5.1.0): 2026-10-12 11:00:00 - [PRE-FLIGHT]      Initiating …
@@ -121,6 +122,7 @@ requireText "colon offset candidate" "15.7.2" "${offsetAndDeploy}"
 rejectText "unparsed -0700 candidate" "15.7.1" "${offsetAndDeploy}"
 requireText "redacted host" "<redacted-host>" "${offsetAndDeploy}"
 rejectText "install.log computer name" "SecretHost" "${offsetAndDeploy}"
+rejectText "client-log context computer name" "ContextOnlyHost" "${offsetAndDeploy}"
 requireText "dialog line" "Display Reminder Dialog to <redacted>" "${offsetAndDeploy}"
 rejectText "dialog username" "zzuniqueuser" "${offsetAndDeploy}"
 requireText "next schedule" "Scheduled next daemon reminder for 2026-10-12:16:00:00" "${offsetAndDeploy}"

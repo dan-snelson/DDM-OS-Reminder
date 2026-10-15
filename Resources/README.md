@@ -519,7 +519,7 @@ Required uploads:
   - `/Library/Managed Preferences/<rdnn>.dorm.plist`
   - `/Library/Preferences/<rdnn>.dorm.plist`
 
-The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `Normal DDM resolver result` line is what that Mac did; `install.log` is evidence that explains it.
+The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `Normal DDM resolver result` line is what that Mac did; `install.log` is evidence that explains it. The fact sheet ends with a pre-filled report skeleton (files, identity, effective settings, declaration spans, and recent runtime runs); the agent completes only the verdict, agreement, and cause/next-steps sections, so every report shares one format.
 
 ```zsh
 zsh Resources/diagnoseReminderState.zsh --help

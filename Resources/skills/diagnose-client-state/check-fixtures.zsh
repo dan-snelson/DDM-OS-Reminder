@@ -43,6 +43,18 @@ function runHelper() {
     zsh "${helperPath}" "$@"
 }
 
+function requireSkeletonHeadings() {
+    local label="${1}"
+    local haystack="${2}"
+    local expected="## 1. Verdict|## 2. Files|## 3. Identity|## 4. Effective settings|## 5. DDM evidence (\`install.log\`)|## 6. Client-log runs|## 7. Do the client log and \`install.log\` agree?|## 8. Likely cause and next steps|## 9. Redaction"
+    local actual=""
+
+    requireText "${label} skeleton begin" "<!-- report-skeleton:begin -->" "${haystack}"
+    requireText "${label} skeleton end" "<!-- report-skeleton:end -->" "${haystack}"
+    actual="$(print -r -- "${haystack}" | sed -n '/<!-- report-skeleton:begin -->/,/<!-- report-skeleton:end -->/p' | grep -E '^## [1-9]\. ' | paste -sd '|' -)"
+    [[ "${actual}" == "${expected}" ]] || failCheck "${label}: skeleton headings '${actual}'"
+}
+
 function writePlist() {
     local plistPath="${1}"
     local body="${2}"
@@ -118,6 +130,43 @@ requireText "earlier return code" "Return Code: 2" "${offsetAndDeploy}"
 requireText "earlier return code note" "Last quiet-period Return Code is from an earlier run." "${offsetAndDeploy}"
 requireText "heartbeat line" "Heartbeat launch triggered" "${offsetAndDeploy}"
 requireText "runtime script name" "| Log script name | dorm |" "${offsetAndDeploy}"
+requireText "skeleton files table" "| File | Status | Note |" "${offsetAndDeploy}"
+requireText "skeleton state missing" '| `dor-state.plist` | not in upload |' "${offsetAndDeploy}"
+requireText "skeleton run row" '| 2026-10-12 10:15:20 | `dorm (5.1.0)` | `resolved` | dialog shown; no Return Code logged |' "${offsetAndDeploy}"
+requireText "skeleton deployment version" '| Deployment version | `5.1.0` (deployment output, not a runtime run) |' "${offsetAndDeploy}"
+
+for fixtureName in compliant conflict invalid-times missing; do
+    fixtureSheet="$(runHelper \
+        --client-log "${fixtureRoot}/${fixtureName}/client.log" \
+        --install-log "${fixtureRoot}/${fixtureName}/install.log" \
+        --plist "${fixtureRoot}/${fixtureName}/managed.dorm.plist")"
+    requireSkeletonHeadings "${fixtureName}" "${fixtureSheet}"
+done
+requireSkeletonHeadings "managed-over-local" "${managedOverLocal}"
+requireSkeletonHeadings "offset-and-deploy" "${offsetAndDeploy}"
+
+cat > "${workDirectory}/repeats.log" <<'EOF'
+2026-10-12 10:14:01-07:00 SecretHost softwareupdated[123]: [com.apple.softwareupdated.declarationFromKeys]: Falling back to default applicable declaration |EnforcedInstallDate:2025-10-02T14:10:00|VersionString:15.7.1|BuildVersionString:24G231|
+2026-10-12 11:14:01-07:00 SecretHost softwareupdated[123]: [com.apple.softwareupdated.declarationFromKeys]: Falling back to default applicable declaration |EnforcedInstallDate:2025-10-02T14:10:00|VersionString:15.7.1|BuildVersionString:24G231|
+2026-10-14 15:48:00-07:00 SecretHost softwareupdated[123]: [com.apple.softwareupdated.declarationFromKeys]: Found currently applicable declaration |EnforcedInstallDate:2026-10-20T00:00:00|VersionString:15.8.1|BuildVersionString:(null)|
+EOF
+cat > "${workDirectory}/deploy-only.log" <<'EOF'
+dor  (5.0.0): 2026-10-15 12:22:02 - [PRE-FLIGHT]      Initiating …
+dor  (5.0.0): 2026-10-15 12:25:56 - [QUIT]            Completed us.snelson.dor LaunchDaemon
+updateScriptLog:1: no such file or directory:
+updateScriptLog:1: no such file or directory:
+EOF
+deployOnly="$(runHelper \
+    --client-log "${workDirectory}/deploy-only.log" \
+    --install-log "${workDirectory}/repeats.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
+requireSkeletonHeadings "deploy-only" "${deployOnly}"
+requireText "span collapses repeats" "| 2026-10-12 10:14:01-07:00 | 2026-10-12 11:14:01-07:00 | 15.7.1 | 24G231 | 2025-10-02T14:10:00 | defaultApplicableDeclaration | not checked |" "${deployOnly}"
+requireText "span transition" "| 2026-10-14 15:48:00-07:00 | 2026-10-14 15:48:00-07:00 | 15.8.1 |" "${deployOnly}"
+requireText "no runtime run row" "| n/a | n/a | no runtime run in client log | n/a |" "${deployOnly}"
+requireText "unprefixed lines" "Lines without a DDM OS Reminder prefix: 2; most frequent (2x): \`updateScriptLog:1: no such file or directory:" "${deployOnly}"
+requireText "deploy-only runtime version" "| Runtime version | no runtime run in client log |" "${deployOnly}"
+rejectText "deploy-only host" "SecretHost" "${deployOnly}"
 
 /usr/bin/plutil -create xml1 "${workDirectory}/state.plist"
 /usr/bin/plutil -insert NextScheduledReminder -string "FALSE" "${workDirectory}/state.plist"
@@ -132,6 +181,7 @@ requireText "state false" "NextScheduledReminder: FALSE" "${stateSheet}"
 requireText "threshold delivered" "PreDeadlineThresholdDelivered: 45" "${stateSheet}"
 requireText "threshold skipped" "PreDeadlineThresholdSkipped: 30" "${stateSheet}"
 requireText "starter rule" "Starter exits quietly" "${stateSheet}"
+requireText "skeleton state received" '| `dor-state.plist` | received | `NextScheduledReminder`: FALSE |' "${stateSheet}"
 
 /usr/bin/plutil -create xml1 "${workDirectory}/fallback-good.plist"
 /usr/bin/plutil -insert SchemaVersion -integer 1 "${workDirectory}/fallback-good.plist"

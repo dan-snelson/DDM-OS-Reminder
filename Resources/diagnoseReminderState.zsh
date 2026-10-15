@@ -28,7 +28,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.2.0"
+scriptVersion="1.2.1"
 checklistScriptVersion="5.1.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -1502,7 +1502,7 @@ fi
 spanKey=""
 spanFirst=""
 spanLast=""
-spanSources=""
+typeset -a spanSourceList=()
 spanVersion=""
 spanBuild=""
 spanDate=""
@@ -1510,7 +1510,7 @@ spanCorroboration=""
 
 function flushDeclarationSpan() {
     [[ -n "${spanKey}" ]] || return 0
-    installLogDeclarationSpans+=("${spanFirst} | ${spanLast} | ${spanVersion} | ${spanBuild} | ${spanDate} | ${spanSources} | ${spanCorroboration}")
+    installLogDeclarationSpans+=("${spanFirst} | ${spanLast} | ${spanVersion} | ${spanBuild} | ${spanDate} | ${(j:, :)spanSourceList} | ${spanCorroboration}")
 }
 
 for logLine in "${installLogWindow[@]}"; do
@@ -1522,13 +1522,13 @@ for logLine in "${installLogWindow[@]}"; do
         candidateSpanKey="${parsedDDMVersionString}|${parsedDDMEnforcedInstallDate}|${parsedDDMBuildVersionString}"
         if [[ "${candidateSpanKey}" == "${spanKey:-}" ]]; then
             spanLast="${parsedDDMLogTimestamp}"
-            [[ ",${spanSources}," == *",${parsedDDMSourceType},"* ]] || spanSources+=", ${parsedDDMSourceType}"
+            (( ${spanSourceList[(Ie)${parsedDDMSourceType}]} )) || spanSourceList+=("${parsedDDMSourceType}")
         else
             flushDeclarationSpan
             spanKey="${candidateSpanKey}"
             spanFirst="${parsedDDMLogTimestamp}"
             spanLast="${parsedDDMLogTimestamp}"
-            spanSources="${parsedDDMSourceType}"
+            spanSourceList=("${parsedDDMSourceType}")
             spanVersion="${parsedDDMVersionString}"
             [[ "${versionValid}" == "yes" ]] || spanVersion+=" (invalid)"
             spanBuild="${parsedDDMBuildVersionString}"

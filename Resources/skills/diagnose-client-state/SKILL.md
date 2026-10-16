@@ -170,4 +170,4 @@ Style:
 - Quote log lines in `text` fenced blocks. Redact as the helper does.
 - In section 8, mark inferences as inferences. Number next steps; put read-only checks first and end each with `(read-only)`.
 
-After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest `ddm-os-reminder-<rdnn>-<YYYY-MM-DD>.md` next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.
+After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest the helper's `Suggested report filename` (`ddm-os-reminder-<rdnn>-<YYYY-MM-DD-HHMMSS>.md`, for example `ddm-os-reminder-us.snelson-2026-10-15-201132.md`) next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.

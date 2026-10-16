@@ -48,10 +48,12 @@ function requireSkeletonHeadings() {
     local haystack="${2}"
     local expected="## 1. Verdict|## 2. Files|## 3. Identity|## 4. Effective settings|## 5. DDM evidence (\`install.log\`)|## 6. Client-log runs|## 7. Do the client log and \`install.log\` agree?|## 8. Likely cause and next steps|## 9. Redaction"
     local actual=""
+    local reportFileNamePattern='Suggested report filename: `ddm-os-reminder-[A-Za-z0-9._-]+-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}\.md`'
 
     requireText "${label} skeleton begin" "<!-- report-skeleton:begin -->" "${haystack}"
     requireText "${label} skeleton end" "<!-- report-skeleton:end -->" "${haystack}"
     requireText "${label} skeleton title" $'\n# [DDM OS Reminder](https://snelson.us/ddm) diagnosis: ' "${haystack}"
+    [[ "${haystack}" =~ ${reportFileNamePattern} ]] || failCheck "${label}: missing timestamped report filename"
     actual="$(print -r -- "${haystack}" | sed -n '/<!-- report-skeleton:begin -->/,/<!-- report-skeleton:end -->/p' | grep -E '^## [1-9]\. ' | paste -sd '|' -)"
     [[ "${actual}" == "${expected}" ]] || failCheck "${label}: skeleton headings '${actual}'"
 }

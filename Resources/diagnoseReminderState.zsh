@@ -1947,11 +1947,15 @@ function skeletonMarkerBullet() {
 
 if [[ -n "${detectedRdnn}" ]]; then
     skeletonRdnn="\`${detectedRdnn}\`"
+    reportFileRdnn="${detectedRdnn//[^A-Za-z0-9._-]/-}"
 elif (( ${#rdnnCandidates[@]} == 0 )); then
     skeletonRdnn="undetected"
+    reportFileRdnn="rdnn-undetected"
 else
     skeletonRdnn="conflict: ${(j:, :)rdnnCandidates}"
+    reportFileRdnn="rdnn-conflict"
 fi
+reportFileName="ddm-os-reminder-${reportFileRdnn}-$(date +%Y-%m-%d-%H%M%S).md"
 
 if (( latestRuntimeInitiating > 0 )) && [[ -n "${logScriptVersion}" ]]; then
     skeletonRuntimeVersion="\`${logOrganizationScriptName} (${logScriptVersion})\`"
@@ -1993,6 +1997,8 @@ fi
 echo "## Report skeleton"
 echo ""
 echo "Copy everything between the markers into the report. Fill only the \`<!-- agent: … -->\` slots; do not reformat helper tables. Rules: Resources/skills/diagnose-client-state/SKILL.md."
+echo ""
+echo "Suggested report filename: \`${reportFileName}\`"
 echo ""
 echo "<!-- report-skeleton:begin -->"
 echo "# [DDM OS Reminder](https://snelson.us/ddm) diagnosis: ${skeletonRdnn}"

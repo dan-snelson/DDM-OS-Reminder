@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.17 | 16-Oct-2026 | Raised `MinimumDiskFreeGB` sample default from `26` to `35` in 06 after a 26.60 GB fully staged update was observed |
 | 1.0.16 | 12-Oct-2026 | Aligned prose with `5.1.0`: `MinimumDiskFreeGB` replaces deprecated `MinimumDiskFreePercentage` in 03/06, and `Uninstall` alone removes `dor-state.plist` (kept by `All` / `Script`) in 04; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.15 | 04-Oct-2026 | Reconciled diagrams with `5.0.0` runtime truth: softwareupdate DDM state corroboration, private per-run `/var/tmp` files, app-bundle `dialogcli`, console-user exclusions (`_mbsetupuser`, `root`), bounded System Settings wait, atomic script deployment, self-extracting parameter forwarding, kill-switch preservation on `All` / `Script`, and language-code hardening; restored PNG and SVG exports for `00`–`05` (rendered with `mmdc` 12.0.0, including the second `03` timeline diagram) |
 | 1.0.14 | 21-Sep-2026 | Refreshed lifecycle, assembly, heartbeat, scheduler, MDM-agnostic deployment, configuration-boundary, and upgrade diagrams from the JNUC 2026 workflow; reconciled all content with `4.2.0` runtime truth |

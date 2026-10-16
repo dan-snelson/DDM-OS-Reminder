@@ -872,7 +872,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 #### minimumDiskFreeGB
 **Plist Key**: `MinimumDiskFreeGB`
 **Type**: Integer
-**Default**: 999 (script); 26 (`Resources/sample.plist`)
+**Default**: 999 (script); 35 (`Resources/sample.plist`)
 **Valid Range**: 0-999
 
 **Description**: Minimum free disk space, in decimal GB, required to avoid showing a low disk space warning in the dialog. Compared against the same Finder-aligned available capacity shown in the infobox, regardless of disk size.
@@ -886,7 +886,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Recommendations**:
 - **Disabled**: 0
 - **Typical macOS update**: 15-20
-- **Major macOS upgrade**: 26 (Apple's last published requirement, Monterey); 28 for extra margin
+- **Major macOS upgrade**: 35 (covers an observed ~27 GB fully staged update plus install working room)
 
 **Script Default**:
 ```bash
@@ -896,7 +896,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Configuration Profile**:
 ```xml
 <key>MinimumDiskFreeGB</key>
-<integer>26</integer>
+<integer>35</integer>
 ```
 
 **Deprecated `MinimumDiskFreePercentage`**: Honored (and logged at `[WARNING]`) only when `MinimumDiskFreeGB` is not set; ignored with a `[WARNING]` when both are set. Removed in 6.0.0.
@@ -2259,7 +2259,7 @@ message = "Contact {supportTeamInfo}"
 
 <!-- Enable disk space warnings -->
 <key>MinimumDiskFreeGB</key>
-<integer>26</integer>
+<integer>35</integer>
 
 <!-- Generous meeting delay -->
 <key>MeetingDelay</key>

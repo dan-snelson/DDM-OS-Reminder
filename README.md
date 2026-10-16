@@ -129,6 +129,10 @@ Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now pri
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
 
+### 5.2.0 upgrade notes
+
+- **`MinimumDiskFreeGB` sample default raised from `26` to `35`.** A fully staged macOS update has been observed at 26.60 GB, so `26` no longer leaves room to install. Existing deployed plists and Configuration Profiles keep their current value, and `assemble.zsh` keeps an imported `MinimumDiskFreeGB`; raise it manually if yours is still `26`. The script default (`999`) and `0` (disabled) are unchanged.
+
 ### 5.1.0 upgrade notes
 
 - **Scheduler state survives redeployment.** `All` and `Script` keep `/Library/Management/<rdnn>/dor-state.plist`, so already-delivered pre-deadline threshold reminders and same-day **Update Tonight** suppression are not repeated after a redeploy. Only `NextScheduledReminder` is cleared, so the refreshed heartbeat still runs promptly; only `Uninstall` removes the file.

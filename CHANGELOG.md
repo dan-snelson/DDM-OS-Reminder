@@ -24,6 +24,7 @@
 - `Resources/diagnoseReminderState.zsh` (`1.3.0`) reads both `DDM update check:` and earlier `Normal DDM resolver result:` lines, both `Currently installed macOS` and earlier `Installed macOS Version` / `Build` lines, and both logged-in user formats (for redaction), so logs from older clients still diagnose
     - The **Client-log runs** outcome column now shows the run's `No reminder shown:` line or specific `[QUIT]` reason instead of the closing `Ticking away …` line every run ends with.
     - A generic `Mac` install.log computer name is no longer redacted, so plain-language lines such as "this Mac" stay readable.
+- `MinimumDiskFreeGB` sample default (`Resources/sample.plist`, generated `.plist` / `.mobileconfig`) raised from `26` to `35` after a fully staged macOS update was observed at `Update Size: 26.60 GB`. The script default (`999`), `0`-disables behavior, and imported values from a prior `.plist` are unchanged.
 - **Upgrade note:** Scripts, Extension Attributes, or log searches keyed on `Normal DDM resolver result`, `Resolver suppression summary`, `MDM fallback requirement`, `Version Comparison Result: No DDM enforcement log entry found`, `Installed macOS Version`, `Resolved DDM declaration`, or `Software Update handoff` must be updated; key on `DDM update check:`, `status=`, `No reminder shown:`, `Currently installed macOS`, `Opening Software Update`, and `DDM Emergency Fallback` instead.
 
 ### Version 5.2.0b1 (16-Oct-2026)

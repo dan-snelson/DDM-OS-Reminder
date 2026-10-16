@@ -196,7 +196,7 @@ Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment unload
 
 Normal DDM declaration resolution always runs first. Runtime evaluates fallback when normal resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`. Confirmed DDM supersedes persisted fallback. Unknown resolver states never select fallback. Missing, corrupt, incomplete, wrong-type, or invalid fallback plists preserve the original suppression state and are never repaired by runtime.
 
-Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs the original resolver status and fallback decision at `[NOTICE]`, whether fallback changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
+Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs the `DDM update check:` status and DDM Emergency Fallback decision at `[NOTICE]`, whether fallback changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
 
 `JamfEA-Pending_OS_Update_Date.zsh` and `JamfEA-Pending_OS_Update_Version.zsh` continue reporting native Apple DDM resolver health, not the runtime's effective fallback requirement. A `conflict`, `noMatch`, `missing`, or `invalidVersion` EA result can therefore coexist with an active DDM Emergency Fallback reminder. Like the runtime, they only trust `install.log` declarations that match an active declaration in the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` when that file is readable; when it is not, they keep the previous `install.log`-only behavior. See `SECURITY.md` for this accepted residual risk.
 
@@ -509,7 +509,18 @@ Do not use `xattr -c`; it removes unrelated extended attributes. Runtime heartbe
 
 ### 7. Diagnose client state
 
-Use [`diagnoseReminderState.zsh`](diagnoseReminderState.zsh) with the agent skill [`skills/diagnose-client-state/SKILL.md`](skills/diagnose-client-state/SKILL.md) when a reminder did not appear (or appeared unexpectedly) and a Mac Admin can upload files from the affected Mac.
+Start with the client-side log. Starting with `5.2.0b2`, every run that shows no reminder ends with a plain-language outcome and a next step, for example on a Mac with no pending DDM-enforced update:
+
+```
+[NOTICE]          DDM update check: no DDM-enforced macOS update found (status=missing; source=none; reason=No DDM-enforced macOS update found in install.log)
+[NOTICE]          DDM Emergency Fallback not configured (dor-fallback-declaration.plist absent); nothing to fall back to (DDM status=missing)
+[NOTICE]          No reminder shown: this Mac has no DDM-enforced macOS update pending (No DDM-enforced macOS update found in install.log)
+[NOTICE]          Next step: If an update should be enforced, confirm this Mac is in scope of a DDM software-update declaration in your MDM, then search '/var/log/install.log' for 'EnforcedInstallDate'.
+```
+
+`zsh reminderDialog.zsh demo` ignores DDM state and always shows a sample reminder, so an up-to-date Mac still displays the demo dialog.
+
+When the log alone does not explain the outcome, use [`diagnoseReminderState.zsh`](diagnoseReminderState.zsh) with the agent skill [`skills/diagnose-client-state/SKILL.md`](skills/diagnose-client-state/SKILL.md) when a reminder did not appear (or appeared unexpectedly) and a Mac Admin can upload files from the affected Mac.
 
 Required uploads:
 
@@ -519,7 +530,7 @@ Required uploads:
   - `/Library/Managed Preferences/<rdnn>.dorm.plist`
   - `/Library/Preferences/<rdnn>.dorm.plist`
 
-The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `Normal DDM resolver result` line is what that Mac did; `install.log` is evidence that explains it. The fact sheet ends with a pre-filled report skeleton (files, identity, effective settings, declaration spans, and recent runtime runs); the agent completes only the verdict, agreement, and cause/next-steps sections, so every report shares one format.
+The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `DDM update check:` line (`Normal DDM resolver result` before `5.2.0b2`) is what that Mac did; `install.log` is evidence that explains it. The fact sheet ends with a pre-filled report skeleton (files, identity, effective settings, declaration spans, and recent runtime runs); the agent completes only the verdict, agreement, and cause/next-steps sections, so every report shares one format.
 
 ```zsh
 zsh Resources/diagnoseReminderState.zsh --help

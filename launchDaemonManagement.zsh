@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0b1"
+scriptVersion="5.2.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -330,16 +330,16 @@ function removeFallbackDeclarationPlist() {
     local removalReason="${1}"
 
     if [[ ! -e "${dorFallbackDeclarationPlistPath}" && ! -L "${dorFallbackDeclarationPlistPath}" ]]; then
-        logComment "MDM fallback requirement plist not present: '${dorFallbackDeclarationPlistPath}'"
+        logComment "DDM Emergency Fallback plist not present: '${dorFallbackDeclarationPlistPath}'"
         return 0
     fi
 
     if rm -f "${dorFallbackDeclarationPlistPath}" 2>/dev/null; then
-        notice "Removed MDM fallback requirement plist (${removalReason}): '${dorFallbackDeclarationPlistPath}'"
+        notice "Removed DDM Emergency Fallback plist (${removalReason}): '${dorFallbackDeclarationPlistPath}'"
         return 0
     fi
 
-    warning "Failed to remove MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'"
+    warning "Failed to remove DDM Emergency Fallback plist '${dorFallbackDeclarationPlistPath}'"
     return 1
 }
 
@@ -353,7 +353,7 @@ function writeFallbackDeclarationPlist() {
 
     temporaryPath="$(/usr/bin/mktemp "${dorFallbackDeclarationPlistPath}.tmp.XXXXXX" 2>/dev/null)"
     if [[ -z "${temporaryPath}" || ! -f "${temporaryPath}" ]]; then
-        fatal "Unable to create temporary MDM fallback requirement plist beside '${dorFallbackDeclarationPlistPath}'."
+        fatal "Unable to create temporary DDM Emergency Fallback plist beside '${dorFallbackDeclarationPlistPath}'."
     fi
 
     if ! /usr/bin/plutil -create xml1 "${temporaryPath}" \
@@ -363,32 +363,32 @@ function writeFallbackDeclarationPlist() {
         || ! /usr/bin/plutil -insert EnforcedInstallDate -string "${fallbackEnforcedInstallDate}" "${temporaryPath}" \
         || ! /usr/bin/plutil -insert Source -string "JamfProScriptParameters" "${temporaryPath}"; then
         rm -f "${temporaryPath}" 2>/dev/null || true
-        fatal "Unable to write temporary MDM fallback requirement plist."
+        fatal "Unable to write temporary DDM Emergency Fallback plist."
     fi
 
     if ! plistValidationOutput="$(/usr/bin/plutil -lint "${temporaryPath}" 2>&1)"; then
         rm -f "${temporaryPath}" 2>/dev/null || true
-        fatal "MDM fallback requirement plist validation failed: ${plistValidationOutput:-no plutil output}"
+        fatal "DDM Emergency Fallback plist validation failed: ${plistValidationOutput:-no plutil output}"
     fi
 
     if ! chown root:wheel "${temporaryPath}" || ! chmod 644 "${temporaryPath}"; then
         rm -f "${temporaryPath}" 2>/dev/null || true
-        fatal "Unable to secure temporary MDM fallback requirement plist."
+        fatal "Unable to secure temporary DDM Emergency Fallback plist."
     fi
 
     plistPermissions="$(/usr/bin/stat -f '%Su:%Sg %Lp' "${temporaryPath}" 2>/dev/null)"
     if [[ "${plistPermissions}" != "root:wheel 644" ]]; then
         rm -f "${temporaryPath}" 2>/dev/null || true
-        fatal "Unexpected MDM fallback requirement plist ownership or mode '${plistPermissions:-unknown}'; expected 'root:wheel 644'."
+        fatal "Unexpected DDM Emergency Fallback plist ownership or mode '${plistPermissions:-unknown}'; expected 'root:wheel 644'."
     fi
 
     if ! mv -f "${temporaryPath}" "${dorFallbackDeclarationPlistPath}"; then
         rm -f "${temporaryPath}" 2>/dev/null || true
-        fatal "Unable to atomically replace MDM fallback requirement plist '${dorFallbackDeclarationPlistPath}'."
+        fatal "Unable to atomically replace DDM Emergency Fallback plist '${dorFallbackDeclarationPlistPath}'."
     fi
 
-    notice "${writeAction} MDM fallback requirement plist: '${dorFallbackDeclarationPlistPath}'"
-    info "MDM fallback requirement configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
+    notice "${writeAction} DDM Emergency Fallback plist: '${dorFallbackDeclarationPlistPath}'"
+    info "DDM Emergency Fallback configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
 }
 
 function applyFallbackDeclarationParameters() {
@@ -398,19 +398,22 @@ function applyFallbackDeclarationParameters() {
     fi
 
     if [[ -z "${fallbackVersionString}" || -z "${fallbackEnforcedInstallDate}" ]]; then
-        warning "Rejected partial MDM fallback requirement; Parameters 5 and 6 must both be populated."
+        warning "Rejected partial DDM Emergency Fallback; Parameters 5 and 6 must both be populated."
+        notice "Next step: populate both Parameter 5 (macOS version) and Parameter 6 (deadline), or leave both blank to disable DDM Emergency Fallback."
         removeFallbackDeclarationPlist "partial parameter pair rejected"
         return
     fi
 
     if ! isValidFallbackVersionString "${fallbackVersionString}"; then
-        warning "Rejected malformed MDM fallback requirement version from Parameter 5: '${fallbackVersionString}'"
+        warning "Rejected malformed DDM Emergency Fallback version from Parameter 5: '${fallbackVersionString}'"
+        notice "Next step: set Parameter 5 to a macOS version such as '26.1' or '15.7.2'."
         removeFallbackDeclarationPlist "malformed version rejected"
         return
     fi
 
     if ! isValidFallbackEnforcementDate "${fallbackEnforcedInstallDate}"; then
-        warning "Rejected malformed MDM fallback requirement deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
+        warning "Rejected malformed DDM Emergency Fallback deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
+        notice "Next step: set Parameter 6 to an ISO 8601 deadline with a timezone, such as '2026-11-02T17:00:00-05:00' or '2026-11-02T22:00:00Z'."
         removeFallbackDeclarationPlist "malformed or timezone-free deadline rejected"
         return
     fi

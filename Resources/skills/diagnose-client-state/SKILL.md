@@ -57,7 +57,7 @@ If the helper cannot run, read the three files and build the report from the tem
 
 ## Rules
 
-- The client log line `Normal DDM resolver result:` is what that Mac did. Quote it.
+- The client log line `DDM update check:` (`5.2.0b2` and later) or `Normal DDM resolver result:` (earlier) is what that Mac did. Quote it, along with any `No reminder shown:` and `Next step:` lines.
 - `install.log` explains that result. Do not invent a different resolver status.
 - If the log and `install.log` evidence disagree, say they disagree and quote both.
 - Without `SoftwareUpdateDDMStatePersistence.plist`, do not drop `install.log` candidates as uncorroborated. Quote client-log warnings about uncorroborated trust when present.

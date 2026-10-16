@@ -266,7 +266,7 @@ Work from state toward symptoms:
 2. Confirm the MDM-delivered preference file exists and contains expected types and values.
 3. Inspect `dor-state.plist` for a disabled or future schedule.
 4. Inspect `dor.pid` and matching processes before treating an overlap exit as a failure.
-5. Review recent `/var/log/install.log` declaration state and the project log's resolver decision. `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state` means candidates did not match `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`.
+5. Review recent `/var/log/install.log` declaration state and the project log's `DDM update check:`, `No reminder shown:`, and `Next step:` lines. `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state` means candidates did not match `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`.
 6. Confirm the installed macOS version is still below the resolved requirement.
 7. Confirm the reminder is inside a display, periodic, threshold, or aggressive window.
 8. Confirm meeting, quiet-period, or support kill-switch suppression is expected.

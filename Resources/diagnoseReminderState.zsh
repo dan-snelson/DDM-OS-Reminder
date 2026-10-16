@@ -28,8 +28,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.2.3"
-checklistScriptVersion="5.1.0"
+scriptVersion="1.3.0"
+checklistScriptVersion="5.2.0b2"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -746,7 +746,8 @@ function rememberRedactedHostToken() {
     [[ -n "${token}" ]] || return 0
     (( ${#token} >= 2 )) || return 0
     case "${token}" in
-        localhost|"|"*|"<redacted>"|"<redacted-host>") return 0 ;;
+        # Generic "Mac" is not identifying and would mangle plain-language runtime lines ("this Mac")
+        localhost|Mac|"|"*|"<redacted>"|"<redacted-host>") return 0 ;;
     esac
 
     (( ${redactedHostTokens[(Ie)${token}]} )) && return 0
@@ -769,7 +770,11 @@ function collectIdentityTokens() {
         if [[ "${logLine}" =~ "${installLogHostRegex}" ]]; then
             rememberRedactedHostToken "${match[1]}"
         fi
-        if [[ "${logLine}" =~ 'Current Logged-in User: ([^[:space:]]+)' ]]; then
+        # 5.2.0b2+ "Current Logged-in User: <user>, <first name>, <UID>"; earlier "Current Logged-in User: <user>"
+        if [[ "${logLine}" =~ 'Current Logged-in User: ([^,[:space:]]+), ([^,]+), [0-9]+' ]]; then
+            rememberRedactedToken "${match[1]}"
+            rememberRedactedToken "${match[2]}"
+        elif [[ "${logLine}" =~ 'Current Logged-in User: ([^,[:space:]]+)' ]]; then
             rememberRedactedToken "${match[1]}"
         fi
         if [[ "${logLine}" =~ 'Current Logged-in User First Name \(ID\): ([^[:space:]]+)' ]]; then
@@ -1406,7 +1411,7 @@ while IFS= read -r logLine; do
 done < <(tail -n +"${latestRunStart}" "${clientLogPath}")
 latestRunLineCount="${#latestRunLines[@]}"
 
-decisionPattern='(normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|return code:| clicked )'
+decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|return code:| clicked )'
 clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) - \[([A-Z -]+)\][[:space:]]+(.*)$'
 
 for logLine in "${latestRunLines[@]}"; do
@@ -1420,12 +1425,17 @@ for logLine in "${latestRunLines[@]}"; do
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
         fi
-        if [[ "${logMessage}" == "Installed macOS Version: "* ]]; then
+        # 5.2.0b2+ "Currently installed macOS <version> (<build>)"; earlier separate Version / Build lines
+        if [[ "${logMessage}" =~ '^Currently installed macOS ([^ ]+) \(([^)]+)\)$' ]]; then
+            installedMacOSVersion="${match[1]}"
+            installedMacOSBuild="${match[2]}"
+        elif [[ "${logMessage}" == "Installed macOS Version: "* ]]; then
             installedMacOSVersion="${logMessage#Installed macOS Version: }"
         elif [[ "${logMessage}" == "Installed macOS Build: "* ]]; then
             installedMacOSBuild="${logMessage#Installed macOS Build: }"
         fi
-        if [[ "${logMessage}" == "Normal DDM resolver result:"* ]]; then
+        # 5.2.0b2+ "DDM update check: … (status=…; …)"; earlier "Normal DDM resolver result: status=…"
+        if [[ "${logMessage}" == "DDM update check: "*"(status="* || "${logMessage}" == "Normal DDM resolver result:"* ]]; then
             resolverStatusLine="${logMessage}"
         fi
         if [[ "${logLevel}" == "QUIT" || "${logLevel}" == "FATAL ERROR" || "${logLevel}" == "ERROR" || "${logLevel}" == "WARNING" ]]; then
@@ -1467,7 +1477,9 @@ done < <(awk '
     function outcome() {
         if (dialog) return (rc != "" ? "dialog shown; " rc : "dialog shown; no Return Code logged")
         if (fatal != "") return "fatal: " fatal
+        if (noreminder != "") return noreminder
         if (quit != "") return "quit: " quit
+        if (quitend != "") return "quit: " quitend
         if (rc != "") return rc
         return "no outcome logged"
     }
@@ -1478,17 +1490,22 @@ done < <(awk '
         if ($0 ~ /\[PRE-FLIGHT\].*Initiating/) {
             flush()
             started=1; start=$3 " " $4; script=$1 " " $2; sub(/:$/, "", script)
-            status="no resolver line"; dialog=0; rc=""; quit=""; fatal=""
+            status="no resolver line"; dialog=0; rc=""; quit=""; quitend=""; fatal=""; noreminder=""
             next
         }
         if (!started) next
         message=substr($0, index($0, "]") + 1); sub(/^[ \t]+/, "", message)
-        if (message ~ /^Normal DDM resolver result: status=/) {
-            status=message; sub(/^Normal DDM resolver result: status=/, "", status); sub(/;.*$/, "", status)
+        if (message ~ /^Normal DDM resolver result: status=/ || message ~ /^DDM update check: .*\(status=/) {
+            status=substr(message, index(message, "status=") + 7); sub(/;.*$/, "", status)
         }
+        if (message ~ /^No reminder shown: /) noreminder=message
         if (message ~ /^Display Reminder Dialog/) dialog=1
         if (match(message, /Return Code: [0-9]+/)) rc=substr(message, RSTART, RLENGTH)
-        if ($0 ~ / - \[QUIT\]/) quit=message
+        # Every run ends with "Exiting …" / "Ticking away …"; keep the specific reason when one was logged
+        if ($0 ~ / - \[QUIT\]/) {
+            if (message ~ /^(Exiting|Ticking away)/) { if (quitend == "") quitend=message }
+            else quit=message
+        }
         if ($0 ~ / - \[FATAL ERROR\]/) fatal=message
     }
     END { flush() }
@@ -1732,7 +1749,7 @@ if [[ -n "${resolverStatusLine}" ]]; then
     echo "    $(redactSensitiveText "${resolverStatusLine}")"
     echo ""
 else
-    echo "No \`Normal DDM resolver result\` line in the latest run."
+    echo "No \`DDM update check\` (5.2.0b2+) or \`Normal DDM resolver result\` line in the latest run."
     echo ""
 fi
 
@@ -1990,7 +2007,7 @@ esac
 
 skeletonResolverHint="none recorded"
 if [[ -n "${resolverStatusLine}" ]]; then
-    skeletonResolverHint="${resolverStatusLine#Normal DDM resolver result: status=}"
+    skeletonResolverHint="${resolverStatusLine#*status=}"
     skeletonResolverHint="${skeletonResolverHint%%;*}"
 fi
 

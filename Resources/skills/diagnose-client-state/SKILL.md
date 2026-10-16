@@ -51,7 +51,7 @@ zsh Resources/diagnoseReminderState.zsh \
   --local-plist <local-path>
 ```
 
-The helper is read-only. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.2.2 report skeleton.
+The helper is read-only. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.2.3 report skeleton.
 
 If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
@@ -78,9 +78,9 @@ Every report uses one format. Do not add, drop, rename, merge, or reorder sectio
 Template (helper-filled parts shown as `…`):
 
 ````markdown
-# DDM OS Reminder diagnosis: `<rdnn>`
+# [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.2.2) · Checklist: `reminderDialog.zsh` 5.1.0
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.2.3) · Checklist: `reminderDialog.zsh` 5.1.0
 
 ## 1. Verdict
 

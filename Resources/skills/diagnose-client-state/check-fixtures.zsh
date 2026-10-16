@@ -51,6 +51,7 @@ function requireSkeletonHeadings() {
 
     requireText "${label} skeleton begin" "<!-- report-skeleton:begin -->" "${haystack}"
     requireText "${label} skeleton end" "<!-- report-skeleton:end -->" "${haystack}"
+    requireText "${label} skeleton title" $'\n# [DDM OS Reminder](https://snelson.us/ddm) diagnosis: ' "${haystack}"
     actual="$(print -r -- "${haystack}" | sed -n '/<!-- report-skeleton:begin -->/,/<!-- report-skeleton:end -->/p' | grep -E '^## [1-9]\. ' | paste -sd '|' -)"
     [[ "${actual}" == "${expected}" ]] || failCheck "${label}: skeleton headings '${actual}'"
 }

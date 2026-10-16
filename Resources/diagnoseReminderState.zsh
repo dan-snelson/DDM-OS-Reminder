@@ -28,7 +28,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.2.2"
+scriptVersion="1.2.3"
 checklistScriptVersion="5.1.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -1995,7 +1995,7 @@ echo ""
 echo "Copy everything between the markers into the report. Fill only the \`<!-- agent: … -->\` slots; do not reformat helper tables. Rules: Resources/skills/diagnose-client-state/SKILL.md."
 echo ""
 echo "<!-- report-skeleton:begin -->"
-echo "# DDM OS Reminder diagnosis: ${skeletonRdnn}"
+echo "# [DDM OS Reminder](https://snelson.us/ddm) diagnosis: ${skeletonRdnn}"
 echo ""
 echo "Analysis date: $(date +%F) · Helper: \`${scriptRelativePath}\` (${scriptVersion}) · Checklist: \`reminderDialog.zsh\` ${checklistScriptVersion}"
 echo ""

@@ -2,6 +2,19 @@
 
 ## Changelog
 
+### Version 5.2.0b1 (16-Oct-2026)
+- `assemble.zsh` now accepts a prior `.mobileconfig` as well as a prior `.plist` for prior-configuration import, so a hand-edited Configuration Profile can be re-assembled without the generated `.plist` drifting out of sync ([Issue #153](https://github.com/dan-snelson/DDM-OS-Reminder/issues/153); thanks, @anewhouse!)
+    - Works from the command line (`zsh assemble.zsh /path/to/prior.mobileconfig`) and the interactive drag-and-drop prompt; a `.mobileconfig` argument is no longer mistaken for an RDNN.
+    - CMS-signed profiles are decoded with `security cms -D` before reading. No new dependencies: extraction uses `PlistBuddy -x`, so dotted preference domains work on macOS 14 and earlier.
+    - `PayloadContent` is walked rather than assuming index `0`. Supported layouts: a `com.apple.ManagedClient.preferences` payload with a `*.dorm` domain (`Forced` preferred; `Set-Once` or `Often` used with a `⚠️` notice only when `Forced` is absent), or a payload whose `PayloadType` is the `*.dorm` domain (for example, iMazing Profile Editor), with `Payload*` metadata keys stripped.
+    - Exactly one DDM OS Reminder domain is required. Missing, multiple, or ambiguous payloads fail with a clear `❌` message (for example, `❌ Prior mobileconfig contains multiple DDM OS Reminder preferences payloads (…)`), as do multiple `Forced` entries and files that are neither a profile nor a CMS envelope.
+    - RDNN and deployment-lane inference use the original filename. New lane suffixes: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, and `-<lane>-signed.mobileconfig`; near-miss filenames such as `…-prod-5.1.0.mobileconfig` print the existing warning.
+    - Version metadata comes from the profile's `PayloadDescription` (`Configures DDM OS Reminder (<version>) …`), falling back to `PayloadDisplayName` (`DDM OS Reminder (<version>)`, as written by `Resources/createPlist.zsh`); profiles built elsewhere import with the existing best-effort `missing version metadata` warning.
+    - RDNN is still inferred from the imported `ScriptLog`; a `⚠️` warning now flags a profile whose `*.dorm` domain disagrees with that RDNN (for example, a `createPlist.zsh` profile whose `ScriptLog` still uses the placeholder RDNN).
+    - Extracted settings live in a `mktemp -d` directory under `$TMPDIR` (never `Artifacts/`), removed by an `EXIT` trap, including on Ctrl-C.
+    - Supplying more than one prior `.plist` or `.mobileconfig` positional argument now fails with `❌ Only one prior .plist or .mobileconfig may be supplied …` instead of treating the extra path as an RDNN.
+    - A prior `.plist` that is actually a Configuration Profile now adds a hint to rename it with a `.mobileconfig` extension. Otherwise, prior `.plist` import, messages, lane and RDNN inference, and generated output are unchanged.
+
 ### Version 5.1.0 (13-Oct-2026)
 - Added a read-only client-state diagnosis helper and agent skill so Mac Admins can upload the client-side log, `/var/log/install.log`, and client-side `.plist` and get a fact sheet of effective settings, `install.log` declaration evidence, and the last run's recorded resolver result ([Issue #147](https://github.com/dan-snelson/DDM-OS-Reminder/issues/147))
     - `Resources/diagnoseReminderState.zsh` writes nothing. The client log's `Normal DDM resolver result` line is authoritative for what that Mac did. The fact sheet follows the `5.1.0` install.log timestamp rule and minute-threshold order, and it redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers.

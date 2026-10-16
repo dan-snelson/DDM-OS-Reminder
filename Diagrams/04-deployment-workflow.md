@@ -10,9 +10,9 @@ flowchart TD
     FixDDM --> DDMReady
     DDMReady -->|Yes| Preview["Local preview<br/>source demo and optional<br/>preference validation helper"]
 
-    Preview --> Assemble{"Prior DOR .plist<br/>from 2.2.0 or later?"}
+    Preview --> Assemble{"Prior DOR .plist or .mobileconfig<br/>from 2.2.0 or later?"}
     Assemble -->|No| Interactive["zsh assemble.zsh --interactive<br/>answer organization prompts"]
-    Assemble -->|Yes| Import["zsh assemble.zsh /path/prior.plist<br/>import supported settings"]
+    Assemble -->|Yes| Import["zsh assemble.zsh /path/prior.plist<br/>or /path/prior.mobileconfig<br/>import supported settings"]
     Interactive --> Artifacts["Review three generated artifacts<br/>assembled script, .plist, .mobileconfig"]
     Import --> Artifacts
 
@@ -39,7 +39,7 @@ flowchart TD
     Monitor --> Upgrade{"New release?"}
     Upgrade -->|No| Monitor
     Upgrade -->|2.1.0 or earlier| Fresh["Uninstall old deployment<br/>and assemble fresh"]
-    Upgrade -->|2.2.0 or later| Reimport["Import prior .plist,<br/>review fresh artifacts"]
+    Upgrade -->|2.2.0 or later| Reimport["Import prior .plist or .mobileconfig,<br/>review fresh artifacts"]
     Fresh --> Artifacts
     Reimport --> Artifacts
 
@@ -295,7 +295,7 @@ Uninstall the old deployment and assemble a fresh current deployment. Do not rel
 
 ### Version 2.2.0 or later
 
-Import the prior generated `.plist`, review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
+Import the prior generated `.plist` (or, starting with `5.2.0b1`, the deployed `.mobileconfig`), review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
 
 Do not assume every release changes the Configuration Profile. Compare normalized preference output and release notes before redeploying it.
 

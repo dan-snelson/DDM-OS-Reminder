@@ -109,7 +109,7 @@ flowchart TB
 - `launchDaemonManagement.zsh`: deployment, reset, LaunchDaemon, starter, and runtime asset management
 - `Resources/sample.plist`: canonical preference and localization surface
 
-Assembly harmonizes RDNN values, embeds the reminder runtime in the deployment wrapper, applies interactive or prior-plist choices, validates syntax, and produces:
+Assembly harmonizes RDNN values, embeds the reminder runtime in the deployment wrapper, applies interactive or prior-plist / prior-mobileconfig choices, validates syntax, and produces:
 
 - one assembled deployment script
 - one organizational `.plist`

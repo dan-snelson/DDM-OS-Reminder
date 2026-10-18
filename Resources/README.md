@@ -384,6 +384,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
 - Final-minute threshold reminders are driven by `MinutesBeforeDeadlineReminderSchedule` (default `45,30,15,10,5`)
 - Quiet-period suppression, outside-window periodic reminders, secondary-button disable/hide behavior, and Force-mode restart timing are driven by `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds`
 - Past-deadline aggressive redisplay is driven by `AggressiveModePastDeadlineHours` and `AggressiveModeFrequencyMinutes`; support can suppress it temporarily by creating `/Library/Management/<rdnn>/dor-aggressive-kill`
+- The low-battery warning is driven by `MinimumBatteryPercentage` (`0`–`100`, default `50`; `0` disables) and `BatteryWarningMessage`; it appears only when the Mac is drawing from its internal battery below that charge
 
 **5.2.** Run against deployed preferences
 
@@ -411,6 +412,14 @@ Preview the update-focused aggressive-mode copy:
 zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson --aggressive
 ```
 
+Preview the low-battery warning on a desktop or AC-powered Mac:
+
+```zsh
+zsh Resources/reminderDialogPreferenceTest.zsh --rdnn us.snelson --battery-percentage 15
+```
+
+`--battery-percentage` can be combined with `--pre-deadline-threshold` or `--aggressive`.
+
 The script prints a resolved preference summary, shows the exact `swiftDialog` arguments it will use, then opens preview dialog.
 
 **5.3.** Quick local test workflow
@@ -437,12 +446,14 @@ The preview does **not** simulate:
 - `/var/log/install.log` parsing
 - LaunchDaemon scheduling or execution context
 - Meeting-delay logic
-- Past-deadline restart workflows
+- Past-deadline restart workflows (including the low-battery warning appended to `PastDeadlinePromptMessage` / `PastDeadlineForceMessage`)
 - Real deadline resolution from current DDM state
 
 Use `--pre-deadline-threshold <minutes>` to preview final-minute threshold title/message localization only; it does not mutate runtime scheduler state.
 
 Use `--aggressive` to preview aggressive title/message localization and placeholders. It does not simulate restart `Prompt` / `Force` behavior or write exact redisplay state.
+
+Use `--battery-percentage <0-100>` to simulate an internal battery discharging at that charge, so `{batteryWarningMessage}` renders when the value is below `MinimumBatteryPercentage`. Without it, the preview reads the real power state from `pmset -g ps`. Production `dor.zsh` never simulates power state.
 
 Use this script for appearance and preference validation. Use `zsh reminderDialog.zsh demo` when you need a broader reminder-dialog smoke test.
 

@@ -488,7 +488,15 @@ If Mac hasn't restarted recently (configurable threshold):
 If free disk space below `MinimumDiskFreeGB` (fixed GB, not percentage):
 - Dialog adds warning: "Only X GB available, may prevent update"
 - User directed to free space before updating
-- Applies to all phases where dialog displays
+- Applies to all phases where dialog displays, except restart-only (`Prompt` / `Force`) mode, which suppresses it
+
+### Low Battery Warning
+If the Mac is drawing from its internal battery below `MinimumBatteryPercentage` (default `50`; `0` disables):
+- Dialog adds warning: "Your Mac's battery is at X%. Please connect your power adapter…"
+- Charge is read on every run, so aggressive-mode redisplays reflect the current battery level
+- Never shown on AC or UPS power, on Macs without an internal battery, or when the charge can't be read
+- **Kept** in restart-only (`Prompt` / `Force`) mode, appended to the restart copy, because a restart does not charge the battery
+- Messaging only: restart eligibility, timing, and suppression are unchanged
 
 ### Quiet Period
 Between dialog displays (same day):

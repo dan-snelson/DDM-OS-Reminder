@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.2.0b2)
+# DDM OS Reminder (5.2.0b3)
 
 > A welcome racing-stripe to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a low-disk-space warning sized to real update needs (instead of disk percentages) and a consistent deadline display
 
@@ -132,6 +132,9 @@ When prior-plist import and localization filtering are used together, `assemble.
 ### 5.2.0 upgrade notes
 
 - **`MinimumDiskFreeGB` sample default raised from `26` to `35`.** A fully staged macOS update has been observed at 26.60 GB, so `26` no longer leaves room to install. Existing deployed plists and Configuration Profiles keep their current value, and `assemble.zsh` keeps an imported `MinimumDiskFreeGB`; raise it manually if yours is still `26`. The script default (`999`) and `0` (disabled) are unchanged.
+- **New low-battery warning (`5.2.0b3`).** When a Mac is running on its internal battery below `MinimumBatteryPercentage` (`0`–`100`; script and sample default `50`; `0` disables), the dialog adds `BatteryWarningMessage` through the new `{batteryWarningMessage}` placeholder, asking the user to plug in. Desktops, Macs on AC or UPS power, and Macs whose battery charge can't be read never show it. It is messaging only: `PastDeadlineRestartBehavior` `Prompt` / `Force` eligibility and timing are unchanged, and the warning also appears in the restart dialogs because a restart does not charge the battery.
+  - **Deploy the updated `dor.zsh` before, or together with, any Configuration Profile that contains `{batteryWarningMessage}`.** Older scripts replace only the placeholders they know, so the dialog would show the literal text `{batteryWarningMessage}`.
+  - **Customized templates need the placeholder added by hand.** Add `{batteryWarningMessage}` to customized `Message`, `AggressiveModeMessage`, `PreDeadlineThresholdMessage` (after `{diskSpaceWarningMessage}`, before `{supportAssistanceMessage}`), `PastDeadlinePromptMessage`, and `PastDeadlineForceMessage` (at the end), plus their `Localized_<code>` variants. Without it, the warning never appears. When `assemble.zsh` imports a prior `.plist` / `.mobileconfig`, it prints an `ℹ️` line listing each imported template that lacks the placeholder; it never rewrites admin-authored copy.
 
 ### 5.1.0 upgrade notes
 

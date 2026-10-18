@@ -2,6 +2,21 @@
 
 ## Changelog
 
+### Version 5.2.0b3 (18-Oct-2026)
+- New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)
+    - New `MinimumBatteryPercentage` preference: integer `0`–`100`, script and `Resources/sample.plist` default `50`; `0` disables. A non-integer or out-of-range value logs `[WARNING]` and falls back to `50`.
+    - New `BatteryWarningMessage` string (plus `BatteryWarningMessageLocalized_<code>` for `en`, `de`, `fr`, `es`, `pt`, `ja`, `nl`, and `it`) with the `{batteryPercentage}` placeholder, inserted through the new `{batteryWarningMessage}` placeholder.
+    - `{batteryWarningMessage}` added after `{diskSpaceWarningMessage}` in `Message`, `AggressiveModeMessage`, and `PreDeadlineThresholdMessage`, and appended to `PastDeadlinePromptMessage` and `PastDeadlineForceMessage` (all localized variants included). Restart mode still suppresses the uptime and disk-space warnings but keeps the battery warning, because a restart does not charge the battery.
+    - Detection uses positive evidence only from `pmset -g ps`: the warning appears only when the header reads `Now drawing from 'Battery Power'`, a charge parses from the `-InternalBattery-` line, and that charge is below the threshold. There is no warning on AC power (including `AC attached; not charging`), on UPS power, on Macs without an internal battery (desktops, VMs), or when the charge can't be read (logged at `[WARNING]`). The charge never comes from a UPS line.
+    - Each run logs one `[NOTICE] Battery: power source <source>; internal battery <charge>|not present|unreadable; MinimumBatteryPercentage threshold <n>%; warning shown|suppressed|disabled` line.
+    - Messaging only: `PastDeadlineRestartBehavior` `Prompt` / `Force` eligibility, timing, and suppression are unchanged.
+    - Applied the same change to `Resources/reminderDialogPreferenceTest.zsh` and `Resources/createPlist.zsh`. The preference test helper adds `--battery-percentage <0-100>` to preview the warning on a desktop or AC-powered Mac; production `dor.zsh` never simulates power state.
+    - When `assemble.zsh` imports a prior `.plist` / `.mobileconfig`, it prints an `ℹ️` line listing each imported template that lacks `{batteryWarningMessage}` (and adds it to **Recommended review items**); it never rewrites admin-authored copy.
+    - The non-English `BatteryWarningMessageLocalized_<code>` strings are new and would benefit from native-speaker review.
+- `Resources/diagnoseReminderState.zsh` (`1.4.0`) knows `MinimumBatteryPercentage` (flagged when outside `0`–`100`) and `BatteryWarningMessage`, so neither is reported as an unknown key, and it now lists the runtime `Battery:` and `Disk space:` lines under decision-related client-log lines.
+- Fixed: when the Finder-aligned disk-space query failed, the fallback `[WARNING]` (and any `[ERROR]` for unreadable disk data) was attempted before the logging helpers were defined, so it was never written to the client-side log. Both are now logged right after the `Initiating …` preamble.
+- **Upgrade note:** Deploy the updated `dor.zsh` before, or together with, any Configuration Profile that contains `{batteryWarningMessage}`; older scripts replace only the placeholders they know, so the dialog would show the literal text `{batteryWarningMessage}`. Customized `Message`, `AggressiveModeMessage`, `PreDeadlineThresholdMessage`, `PastDeadlinePromptMessage`, and `PastDeadlineForceMessage` strings (and their `Localized_<code>` variants) need `{batteryWarningMessage}` added by hand; without it, the warning never appears.
+
 ### Version 5.2.0b2 (16-Oct-2026)
 - Client-side log entries now speak to Mac Admins: every run that shows no reminder ends with what happened, why no dialog appeared, and what to do next ([Issue #154](https://github.com/dan-snelson/DDM-OS-Reminder/issues/154))
     - `Normal DDM resolver result: status=…` is now `DDM update check: <plain-language outcome> (status=…; source=…; reason=…)`; `status=`, `source=`, and `reason=` tokens are unchanged for support and tooling.

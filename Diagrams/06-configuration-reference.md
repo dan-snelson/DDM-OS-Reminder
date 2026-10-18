@@ -50,6 +50,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | aggressiveModeMessage | AggressiveModeMessage | String | [Full aggressive update-focused body] | Localization |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreeGB | MinimumDiskFreeGB | Integer | 999 | Timing |
+| minimumBatteryPercentage | MinimumBatteryPercentage | Integer | 50 | Timing |
 | disableButton2InsteadOfHide | DisableButton2InsteadOfHide | Boolean | YES | Timing |
 | organizationOverlayiconURL | OrganizationOverlayIconURL | String | https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d | Branding |
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
@@ -141,6 +142,14 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | diskSpaceWarningMessageLocalizedNl | DiskSpaceWarningMessageLocalized_nl | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedPt | DiskSpaceWarningMessageLocalized_pt | String | [Localized warning] | Localization |
 | diskSpaceWarningMessageLocalizedJa | DiskSpaceWarningMessageLocalized_ja | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedEn | BatteryWarningMessageLocalized_en | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedDe | BatteryWarningMessageLocalized_de | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedFr | BatteryWarningMessageLocalized_fr | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedEs | BatteryWarningMessageLocalized_es | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedIt | BatteryWarningMessageLocalized_it | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedNl | BatteryWarningMessageLocalized_nl | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedPt | BatteryWarningMessageLocalized_pt | String | [Localized warning] | Localization |
+| batteryWarningMessageLocalizedJa | BatteryWarningMessageLocalized_ja | String | [Localized warning] | Localization |
 | stagedUpdateMessageLocalizedEn | StagedUpdateMessageLocalized_en | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedDe | StagedUpdateMessageLocalized_de | String | [Localized staging message] | Localization |
 | stagedUpdateMessageLocalizedFr | StagedUpdateMessageLocalized_fr | String | [Localized staging message] | Localization |
@@ -214,6 +223,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | infobuttontext | InfoButtonText | String | Update macOS on Mac | UI Text |
 | excessiveUptimeWarningMessage | ExcessiveUptimeWarningMessage | String | [HTML message] | UI Text |
 | diskSpaceWarningMessage | DiskSpaceWarningMessage | String | [HTML message] | UI Text |
+| batteryWarningMessage | BatteryWarningMessage | String | [HTML message] | UI Text |
 | stagedUpdateMessage | StagedUpdateMessage | String | [HTML message] | Staging |
 | partiallyStagedUpdateMessage | PartiallyStagedUpdateMessage | String | [HTML message] | Staging |
 | pendingDownloadMessage | PendingDownloadMessage | String | [HTML message] | Staging |
@@ -905,6 +915,41 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
+#### minimumBatteryPercentage
+**Plist Key**: `MinimumBatteryPercentage`
+**Type**: Integer
+**Default**: 50 (script and `Resources/sample.plist`)
+**Valid Range**: 0-100
+
+**Description**: Internal-battery charge, in percent, below which the dialog adds a low-battery warning asking the user to connect power. Read on every run from `pmset -g ps`, so aggressive-mode redisplays pick up the current charge.
+
+**Impact**:
+- Warns only when **all** are true: the Mac is drawing from `Battery Power`, the charge parses from the `-InternalBattery-` line, and that charge is below this value
+- Never warns on AC power (including `AC attached; not charging`), on UPS power, on Macs with no internal battery (desktops, VMs), or when the charge can't be read (logged at `[WARNING]`)
+- 0 = disabled (no warning)
+- Values above 100 log `[WARNING]` and fall back to 50
+- Adds warning message, doesn't block dialog or change `PastDeadlineRestartBehavior` `Prompt` / `Force` timing
+- Each run logs one `[NOTICE] Battery: power source …; internal battery …; MinimumBatteryPercentage threshold …%; warning shown|suppressed|disabled` line
+
+**Recommendations**:
+- **Disabled**: 0
+- **Default**: 50 (Apple doesn't document a battery floor for enforced installs; on-battery installs may still be refused in the 20–49% band)
+
+**Script Default**:
+```bash
+["minimumBatteryPercentage"]="numeric|50"
+```
+
+**Configuration Profile**:
+```xml
+<key>MinimumBatteryPercentage</key>
+<integer>50</integer>
+```
+
+**Warning Message Variable**: `batteryWarningMessage`
+
+---
+
 ### 3. Branding & Appearance
 
 #### organizationOverlayiconURL
@@ -1427,6 +1472,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `SupportAssistanceMessageLocalized_{lang}`
 - `ExcessiveUptimeWarningMessageLocalized_{lang}`
 - `DiskSpaceWarningMessageLocalized_{lang}`
+- `BatteryWarningMessageLocalized_{lang}`
 - `StagedUpdateMessageLocalized_{lang}`
 - `PartiallyStagedUpdateMessageLocalized_{lang}`
 - `PendingDownloadMessageLocalized_{lang}`
@@ -1593,6 +1639,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `{ddmEnforcedInstallDateRelativeHumanReadable}` = Relative deadline when applicable (Today/Tomorrow), else formatted deadline
 - `{excessiveUptimeWarningMessage}` = Uptime warning (if applicable)
 - `{diskSpaceWarningMessage}` = Disk space warning (if applicable)
+- `{batteryWarningMessage}` = Low-battery warning (if applicable)
 - `{supportTeamName}` = Support team name
 - `{supportAssistanceMessage}` = Optional support sentence appended to message body
 - `{weekday}` = Current day of week
@@ -1892,6 +1939,37 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ---
 
+#### batteryWarningMessage
+**Plist Key**: `BatteryWarningMessage`
+**Type**: String
+**Default**: [Warning asking the user to connect power]
+
+**Description**: Warning message inserted when the Mac is drawing from its internal battery and the charge is below `minimumBatteryPercentage`.
+
+**Supports Placeholders**: Yes
+**Key Placeholders**:
+- `{batteryPercentage}` = Internal-battery charge (number only; add `%` in the copy)
+- `{titleMessageUpdateOrUpgradeLower}` = "update" or "upgrade"
+
+**Inserted Into**: `{batteryWarningMessage}` in `message`, `aggressiveModeMessage`, and `preDeadlineThresholdMessage` (after `{diskSpaceWarningMessage}`), and at the end of `pastDeadlinePromptMessage` and `pastDeadlineForceMessage`. Unlike the uptime and disk-space warnings, it is kept in restart mode.
+
+**Triggered When**: Power source is `Battery Power` and internal-battery charge < `minimumBatteryPercentage` (and `minimumBatteryPercentage` > 0)
+
+**Script Default**:
+```bash
+["batteryWarningMessage"]="string|<br><br>**Note:** Your Mac's battery is at **{batteryPercentage}%**. Please connect your power adapter and leave it plugged in until the macOS {titleMessageUpdateOrUpgradeLower} completes."
+```
+
+**Configuration Profile**:
+```xml
+<key>BatteryWarningMessage</key>
+<string>&lt;br&gt;&lt;br&gt;**Low Battery:** {batteryPercentage}% remaining. Connect your power adapter before updating.</string>
+```
+
+**Upgrade note**: Deploy the updated `dor.zsh` before, or together with, any Configuration Profile that contains `{batteryWarningMessage}`; older scripts leave the literal placeholder text in the dialog. Customized templates need `{batteryWarningMessage}` added by hand.
+
+---
+
 ### 9. Dynamic Localization Primitives
 
 Preference families that supply localized runtime copy previously hard-coded in the script. Each family includes a base scalar key (the fallback) and per-language variants following the `{PlistKey}Localized_{lang}` pattern where `{lang}` is `en`, `de`, `fr`, `es`, `nl`, `pt`, or `ja`. Changing these keys customizes or retranslates copy without modifying the script.
@@ -1960,7 +2038,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 
 **Description**: Title and message body used for configured final-minute threshold reminders from `MinutesBeforeDeadlineReminderSchedule`.
 
-**Key Placeholders**: `{minutesBeforeDeadline}`, `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}` (effective deadline display), `{titleMessageUpdateOrUpgradeLower}`, `{softwareUpdateButtonText}`, `{preDeadlineThresholdEmphasisOpen}`, `{preDeadlineThresholdEmphasisClose}`
+**Key Placeholders**: `{minutesBeforeDeadline}`, `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}` (effective deadline display), `{titleMessageUpdateOrUpgradeLower}`, `{softwareUpdateButtonText}`, `{preDeadlineThresholdEmphasisOpen}`, `{preDeadlineThresholdEmphasisClose}`, plus `{excessiveUptimeWarningMessage}`, `{diskSpaceWarningMessage}`, `{batteryWarningMessage}`, and `{supportAssistanceMessage}`
 
 ---
 
@@ -1971,6 +2049,8 @@ Preference families that supply localized runtime copy previously hard-coded in 
 
 **Description**: Title and message body used when `PastDeadlineRestartBehavior` is `Prompt`. `button1text` is also overridden to `RestartNowButtonText` in this mode.
 
+**Key Placeholders**: `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}`, `{titleMessageUpdateOrUpgradeLower}`, `{button1text}`, and `{batteryWarningMessage}` (appended at the end; restart mode suppresses the uptime and disk-space warnings but keeps the low-battery warning, because a restart does not charge the battery)
+
 ---
 
 #### pastDeadlineForceTitle / pastDeadlineForceMessage
@@ -1979,6 +2059,8 @@ Preference families that supply localized runtime copy previously hard-coded in 
 **Defaults**: `Your Mac is restarting` / [full force-restart body]
 
 **Description**: Title and message body used when `PastDeadlineRestartBehavior` is `Force`. A `--timer` countdown is added from `PastDeadlineForceTimerSeconds`; the dialog re-displays until the Mac restarts, with `PastDeadlineForceRedisplayDelaySeconds` between attempts.
+
+**Key Placeholders**: `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}`, `{titleMessageUpdateOrUpgradeLower}`, `{button1text}`, and `{batteryWarningMessage}` (appended at the end, as in `pastDeadlinePromptMessage`)
 
 ---
 
@@ -1989,7 +2071,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 
 **Description**: Title and message body used when aggressive mode is active and `PastDeadlineRestartBehavior` is `Off` or restart workflow is not eligible. If `PastDeadlineRestartBehavior` is `Prompt` and restart workflow is eligible, restart-focused copy remains in use while aggressive mode controls the redisplay cadence. If `PastDeadlineRestartBehavior` is `Force`, force-restart copy and forced loop behavior take precedence.
 
-**Key Placeholders**: `{aggressiveModeHoursPastDeadline}`, `{aggressiveModeFrequencyMinutes}`, `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}`, `{titleMessageUpdateOrUpgradeLower}`, `{softwareUpdateButtonText}`, plus the standard support, disk, staging, and deadline placeholders.
+**Key Placeholders**: `{aggressiveModeHoursPastDeadline}`, `{aggressiveModeFrequencyMinutes}`, `{ddmVersionString}`, `{ddmVersionStringDeadlineHumanReadable}`, `{titleMessageUpdateOrUpgradeLower}`, `{softwareUpdateButtonText}`, plus the standard support, disk, battery, staging, and deadline placeholders.
 
 **Localized Families**: `AggressiveModeTitleLocalized_<code>` / `AggressiveModeMessageLocalized_<code>`
 
@@ -2020,9 +2102,11 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{softwareUpdateButtonText}` | Logic | Expected button label | Update Now |
 | `{uptimeHumanReadable}` | System | Time since restart | 5 days |
 | `{diskSpaceHumanReadable}` | System | Free space | 128.5 GB (45.2% available) |
+| `{batteryPercentage}` | System | Internal-battery charge (empty when unavailable) | 18 |
 | `{updateReadyMessage}` | Logic | Staging status | [Staged update message] |
 | `{excessiveUptimeWarningMessage}` | Logic | Uptime warning | [Warning if triggered] |
 | `{diskSpaceWarningMessage}` | Logic | Disk space warning | [Warning if triggered] |
+| `{batteryWarningMessage}` | Logic | Low-battery warning | [Warning if triggered] |
 | `{supportTeamName}` | Config | Support team | IT Support |
 | `{supportTeamPhone}` | Config | Phone number | +1 (555) 123-4567 |
 | `{supportTeamEmail}` | Config | Email | helpdesk@company.com |
@@ -2260,6 +2344,10 @@ message = "Contact {supportTeamInfo}"
 <!-- Enable disk space warnings -->
 <key>MinimumDiskFreeGB</key>
 <integer>35</integer>
+
+<!-- Warn laptops running on battery below 50% -->
+<key>MinimumBatteryPercentage</key>
+<integer>50</integer>
 
 <!-- Generous meeting delay -->
 <key>MeetingDelay</key>
@@ -2549,6 +2637,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 5.2.0b3 | 18-Oct-2026 | Added `MinimumBatteryPercentage` (0-100; default 50; 0 disables) and `BatteryWarningMessage` (plus `BatteryWarningMessageLocalized_<code>`) with `{batteryWarningMessage}` / `{batteryPercentage}` placeholders; `{batteryWarningMessage}` added to `message`, `aggressiveModeMessage`, `preDeadlineThresholdMessage`, `pastDeadlinePromptMessage`, and `pastDeadlineForceMessage` ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157)); restart gating and precedence rules unchanged |
 | 5.0.0 | 04-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) logs `[WARNING]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
 | 5.0.0b2 | 02-Oct-2026 | `DailyReminderTimes` and `MinutesBeforeDeadlineReminderSchedule` values mixing valid and invalid entries (for example `8:00,17:00` or `45,abc`) now keep the valid entries and log each invalid entry at `[WARNING]`; previously the warning text was captured into the resolved value, leaving no baseline slots or thresholds ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139)); `HH:MM` still requires zero-padded hours; unrecognized `LanguageOverride` or user language values fall back to English and the global `DateFormatDeadlineHumanReadable` with a `[WARNING]`, and localized keys with an unrecognized `<code>` suffix are skipped; no preference keys, defaults, or precedence rules changed |
 | 4.3.0b1 | 30-Sep-2026 | Runtime-only Update Tonight suppression: confirmed same-day `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version pauses normal reminders until local midnight; thresholds, aggressive, and Force bypass; scheduler state key `UpdateTonightSuppressionUntil` ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)); no preference keys or precedence rules changed |
@@ -2581,5 +2670,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 04-Oct-2026
-**DDM OS Reminder Version**: 5.0.0
+**Last Updated**: 18-Oct-2026
+**DDM OS Reminder Version**: 5.2.0b3

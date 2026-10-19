@@ -28,8 +28,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.3.0"
-checklistScriptVersion="5.2.0b2"
+scriptVersion="1.4.0"
+checklistScriptVersion="5.2.0b3"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -88,6 +88,7 @@ typeset -A preferenceConfiguration=(
     ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreeGB"]="numeric|999"
+    ["minimumBatteryPercentage"]="numeric|50"
     ["disableButton2InsteadOfHide"]="boolean|YES"
     ["languageOverride"]="string|auto"
 )
@@ -112,6 +113,7 @@ typeset -A plistKeyMap=(
     ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreeGB"]="MinimumDiskFreeGB"
+    ["minimumBatteryPercentage"]="MinimumBatteryPercentage"
     ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
@@ -137,6 +139,7 @@ typeset -A plistKeyMap=(
     ["infobuttontext"]="InfoButtonText"
     ["excessiveUptimeWarningMessage"]="ExcessiveUptimeWarningMessage"
     ["diskSpaceWarningMessage"]="DiskSpaceWarningMessage"
+    ["batteryWarningMessage"]="BatteryWarningMessage"
     ["stagedUpdateMessage"]="StagedUpdateMessage"
     ["partiallyStagedUpdateMessage"]="PartiallyStagedUpdateMessage"
     ["pendingDownloadMessage"]="PendingDownloadMessage"
@@ -1208,6 +1211,13 @@ function evaluateDecisionCriticalPreference() {
                                 resolvedPrefSource="default"
                             fi
                             ;;
+                        minimumBatteryPercentage)
+                            if (( effective > 100 )); then
+                                flags="invalid '${resolvedPrefRaw}' (expected 0-100); using default ${defaultValue}"
+                                effective="${defaultValue}"
+                                resolvedPrefSource="default"
+                            fi
+                            ;;
                     esac
                 else
                     flags="invalid '${resolvedPrefRaw}' (expected integer 0-999); using default ${defaultValue}"
@@ -1319,6 +1329,7 @@ decisionCriticalOrder=(
     meetingDelay
     acceptableAssertionApplicationNames
     minimumDiskFreeGB
+    minimumBatteryPercentage
     daysOfExcessiveUptimeWarning
     disableButton2InsteadOfHide
     languageOverride
@@ -1411,7 +1422,7 @@ while IFS= read -r logLine; do
 done < <(tail -n +"${latestRunStart}" "${clientLogPath}")
 latestRunLineCount="${#latestRunLines[@]}"
 
-decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|return code:| clicked )'
+decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|return code:| clicked )'
 clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) - \[([A-Z -]+)\][[:space:]]+(.*)$'
 
 for logLine in "${latestRunLines[@]}"; do

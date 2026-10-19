@@ -330,6 +330,7 @@ hideSupportTeamWebsite_raw=$(extract_from_preference_map hideSupportTeamWebsite)
 hideSupportKB_raw=$(extract_from_preference_map hideSupportKB)
 hideSupportAssistanceMessage_raw=$(extract_from_preference_map hideSupportAssistanceMessage)
 minimumDiskFreeGB=$(extract_from_preference_map minimumDiskFreeGB)
+minimumBatteryPercentage=$(extract_from_preference_map minimumBatteryPercentage)
 languageOverride=$(extract_from_preference_map languageOverride)
 
 case "${swapOverlayAndLogo_raw:u}" in
@@ -394,6 +395,15 @@ defaultDiskSpaceWarningMessageLocalizedIt=$(extract_from_preference_map diskSpac
 defaultDiskSpaceWarningMessageLocalizedPt=$(extract_from_preference_map diskSpaceWarningMessageLocalizedPt)
 defaultDiskSpaceWarningMessageLocalizedJa=$(extract_from_preference_map diskSpaceWarningMessageLocalizedJa)
 defaultDiskSpaceWarningMessageLocalizedNl=$(extract_from_preference_map diskSpaceWarningMessageLocalizedNl)
+defaultBatteryWarningMessage=$(extract_from_preference_map batteryWarningMessage)
+defaultBatteryWarningMessageLocalizedEn=$(extract_from_preference_map batteryWarningMessageLocalizedEn)
+defaultBatteryWarningMessageLocalizedDe=$(extract_from_preference_map batteryWarningMessageLocalizedDe)
+defaultBatteryWarningMessageLocalizedFr=$(extract_from_preference_map batteryWarningMessageLocalizedFr)
+defaultBatteryWarningMessageLocalizedEs=$(extract_from_preference_map batteryWarningMessageLocalizedEs)
+defaultBatteryWarningMessageLocalizedIt=$(extract_from_preference_map batteryWarningMessageLocalizedIt)
+defaultBatteryWarningMessageLocalizedPt=$(extract_from_preference_map batteryWarningMessageLocalizedPt)
+defaultBatteryWarningMessageLocalizedJa=$(extract_from_preference_map batteryWarningMessageLocalizedJa)
+defaultBatteryWarningMessageLocalizedNl=$(extract_from_preference_map batteryWarningMessageLocalizedNl)
 defaultMessage=$(extract_from_preference_map message)
 defaultInfobox=$(extract_from_preference_map infobox)
 defaultHelpmessage=$(extract_from_preference_map helpmessage)
@@ -740,6 +750,15 @@ diskSpaceWarningMessageLocalizedIt_xml=$(process "$defaultDiskSpaceWarningMessag
 diskSpaceWarningMessageLocalizedPt_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedPt")
 diskSpaceWarningMessageLocalizedJa_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedJa")
 diskSpaceWarningMessageLocalizedNl_xml=$(process "$defaultDiskSpaceWarningMessageLocalizedNl")
+batteryWarningMessage_xml=$(process "$defaultBatteryWarningMessage")
+batteryWarningMessageLocalizedEn_xml=$(process "$defaultBatteryWarningMessageLocalizedEn")
+batteryWarningMessageLocalizedDe_xml=$(process "$defaultBatteryWarningMessageLocalizedDe")
+batteryWarningMessageLocalizedFr_xml=$(process "$defaultBatteryWarningMessageLocalizedFr")
+batteryWarningMessageLocalizedEs_xml=$(process "$defaultBatteryWarningMessageLocalizedEs")
+batteryWarningMessageLocalizedIt_xml=$(process "$defaultBatteryWarningMessageLocalizedIt")
+batteryWarningMessageLocalizedPt_xml=$(process "$defaultBatteryWarningMessageLocalizedPt")
+batteryWarningMessageLocalizedJa_xml=$(process "$defaultBatteryWarningMessageLocalizedJa")
+batteryWarningMessageLocalizedNl_xml=$(process "$defaultBatteryWarningMessageLocalizedNl")
 stagedUpdateMessage_xml=$(process "${defaultStagedUpdateMessage}")
 stagedUpdateMessageLocalizedEn_xml=$(process "${defaultStagedUpdateMessageLocalizedEn}")
 stagedUpdateMessageLocalizedDe_xml=$(process "${defaultStagedUpdateMessageLocalizedDe}")
@@ -1117,6 +1136,8 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${acceptableAssertionApplicationNames_xml}</string>
     <key>MinimumDiskFreeGB</key>
     <integer>${minimumDiskFreeGB}</integer>
+    <key>MinimumBatteryPercentage</key>
+    <integer>${minimumBatteryPercentage}</integer>
     <key>DisableButton2InsteadOfHide</key>
     ${disableButton2InsteadOfHide_xml}
 
@@ -1287,6 +1308,24 @@ cat > "$OUTPUT_PLIST_FILE" <<EOF
     <string>${diskSpaceWarningMessageLocalizedJa_xml}</string>
     <key>DiskSpaceWarningMessageLocalized_nl</key>
     <string>${diskSpaceWarningMessageLocalizedNl_xml}</string>
+    <key>BatteryWarningMessage</key>
+    <string>${batteryWarningMessage_xml}</string>
+    <key>BatteryWarningMessageLocalized_en</key>
+    <string>${batteryWarningMessageLocalizedEn_xml}</string>
+    <key>BatteryWarningMessageLocalized_de</key>
+    <string>${batteryWarningMessageLocalizedDe_xml}</string>
+    <key>BatteryWarningMessageLocalized_fr</key>
+    <string>${batteryWarningMessageLocalizedFr_xml}</string>
+    <key>BatteryWarningMessageLocalized_es</key>
+    <string>${batteryWarningMessageLocalizedEs_xml}</string>
+    <key>BatteryWarningMessageLocalized_it</key>
+    <string>${batteryWarningMessageLocalizedIt_xml}</string>
+    <key>BatteryWarningMessageLocalized_pt</key>
+    <string>${batteryWarningMessageLocalizedPt_xml}</string>
+    <key>BatteryWarningMessageLocalized_ja</key>
+    <string>${batteryWarningMessageLocalizedJa_xml}</string>
+    <key>BatteryWarningMessageLocalized_nl</key>
+    <string>${batteryWarningMessageLocalizedNl_xml}</string>
     <key>StagedUpdateMessage</key>
     <string>${stagedUpdateMessage_xml}</string>
     <key>StagedUpdateMessageLocalized_en</key>
@@ -1885,6 +1924,8 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${acceptableAssertionApplicationNames_xml}</string>
                                 <key>MinimumDiskFreeGB</key>
                                 <integer>${minimumDiskFreeGB}</integer>
+                                <key>MinimumBatteryPercentage</key>
+                                <integer>${minimumBatteryPercentage}</integer>
                                 <key>DisableButton2InsteadOfHide</key>
                                 ${disableButton2InsteadOfHide_xml}
                                 <key>OrganizationOverlayIconURL</key>
@@ -2047,6 +2088,24 @@ cat <<EOF > "${OUTPUT_MOBILECONFIG_FILE}"
                                 <string>${diskSpaceWarningMessageLocalizedJa_xml}</string>
                                 <key>DiskSpaceWarningMessageLocalized_nl</key>
                                 <string>${diskSpaceWarningMessageLocalizedNl_xml}</string>
+                                <key>BatteryWarningMessage</key>
+                                <string>${batteryWarningMessage_xml}</string>
+                                <key>BatteryWarningMessageLocalized_en</key>
+                                <string>${batteryWarningMessageLocalizedEn_xml}</string>
+                                <key>BatteryWarningMessageLocalized_de</key>
+                                <string>${batteryWarningMessageLocalizedDe_xml}</string>
+                                <key>BatteryWarningMessageLocalized_fr</key>
+                                <string>${batteryWarningMessageLocalizedFr_xml}</string>
+                                <key>BatteryWarningMessageLocalized_es</key>
+                                <string>${batteryWarningMessageLocalizedEs_xml}</string>
+                                <key>BatteryWarningMessageLocalized_it</key>
+                                <string>${batteryWarningMessageLocalizedIt_xml}</string>
+                                <key>BatteryWarningMessageLocalized_pt</key>
+                                <string>${batteryWarningMessageLocalizedPt_xml}</string>
+                                <key>BatteryWarningMessageLocalized_ja</key>
+                                <string>${batteryWarningMessageLocalizedJa_xml}</string>
+                                <key>BatteryWarningMessageLocalized_nl</key>
+                                <string>${batteryWarningMessageLocalizedNl_xml}</string>
                                 <key>StagedUpdateMessage</key>
                                 <string>${stagedUpdateMessage_xml}</string>
                                 <key>StagedUpdateMessageLocalized_en</key>

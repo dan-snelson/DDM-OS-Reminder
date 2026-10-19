@@ -295,4 +295,26 @@ badLocalized="$(runHelper \
     --plist "${workDirectory}/bad-localized.plist")"
 requireText "rejected localized key" "TitleLocalized_123 (bad-localized.plist): unrecognized language code" "${badLocalized}"
 
+writePlist "${workDirectory}/battery.plist" '    <key>MinimumBatteryPercentage</key>
+    <integer>101</integer>
+    <key>BatteryWarningMessage</key>
+    <string>Plug in</string>
+    <key>BatteryWarningMessageLocalized_de</key>
+    <string>Netzteil anschliessen</string>'
+cat > "${workDirectory}/battery.log" <<'EOF'
+dorm (5.2.0b3): 2026-10-18 09:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.2.0b3): 2026-10-18 09:00:06 - [INFO]            Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB; warning suppressed
+dorm (5.2.0b3): 2026-10-18 09:00:06 - [NOTICE]          Battery: power source Battery Power; internal battery 18%; MinimumBatteryPercentage threshold 50%; warning shown
+dorm (5.2.0b3): 2026-10-18 09:00:07 - [QUIT]            Exiting …
+EOF
+battery="$(runHelper \
+    --client-log "${workDirectory}/battery.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${workDirectory}/battery.plist")"
+requireText "battery threshold range" "| MinimumBatteryPercentage | 50 | default | invalid '101' (expected 0-100); using default 50 |" "${battery}"
+rejectText "battery message known" "BatteryWarningMessage (battery.plist)" "${battery}"
+rejectText "battery localized known" "BatteryWarningMessageLocalized_de (battery.plist)" "${battery}"
+requireText "battery decision line" "Battery: power source Battery Power; internal battery 18%" "${battery}"
+requireText "disk decision line" "Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB" "${battery}"
+
 echo "diagnose fixture checks passed"

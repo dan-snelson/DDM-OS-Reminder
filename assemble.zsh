@@ -43,7 +43,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.2.0b2"
+scriptVersion="5.2.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -71,6 +71,7 @@ priorPlistPath=""
 priorPlistImported=false
 priorPlistPrompted=false
 importedLegacyMinimumDiskFreePercentage=""
+importedTemplatesMissingBatteryPlaceholder=""
 priorConfigSourcePath=""
 priorConfigPlistPath=""
 priorConfigLabel="plist"
@@ -1194,6 +1195,60 @@ function preferenceTypeForPlistKey() {
   return 1
 }
 
+# Added in 5.2.0b3; report imported admin copy that will never show the low-battery warning, but never rewrite it
+function reportImportedTemplatesMissingBatteryPlaceholder() {
+  local sourcePlist="${1}"
+  local targetPlist="${2}"
+  local importedKey=""
+  local templateBase=""
+  local templateValue=""
+  local templateSummary=""
+  local -a templateBases=(Message AggressiveModeMessage PreDeadlineThresholdMessage PastDeadlinePromptMessage PastDeadlineForceMessage)
+  local -a missingSummaries=()
+  local -A missingBaseKeySet
+  local -A missingLocalizedCount
+
+  importedTemplatesMissingBatteryPlaceholder=""
+
+  while IFS= read -r importedKey; do
+    [[ -z "${importedKey}" ]] && continue
+    templateBase="${importedKey%%Localized_*}"
+    (( ${templateBases[(Ie)${templateBase}]} )) || continue
+    if isLocalizedPlistKey "${importedKey}" && ! shouldKeepLocalizedPlistKey "${importedKey}"; then
+      continue
+    fi
+    templateValue="$(
+      /usr/libexec/PlistBuddy -c "Print :${importedKey}" "${targetPlist}" 2>/dev/null || true
+    )"
+    [[ "${templateValue}" == *"{batteryWarningMessage}"* ]] && continue
+    if [[ "${importedKey}" == "${templateBase}" ]]; then
+      missingBaseKeySet[${templateBase}]=1
+    else
+      missingLocalizedCount[${templateBase}]=$(( ${missingLocalizedCount[${templateBase}]:-0} + 1 ))
+    fi
+  done < <(extractPlistKeys "${sourcePlist}")
+
+  for templateBase in "${templateBases[@]}"; do
+    if [[ -n "${missingBaseKeySet[${templateBase}]:-}" ]]; then
+      templateSummary="${templateBase}"
+      if (( ${missingLocalizedCount[${templateBase}]:-0} > 0 )); then
+        templateSummary+=" (+${missingLocalizedCount[${templateBase}]} localized)"
+      fi
+    elif (( ${missingLocalizedCount[${templateBase}]:-0} > 0 )); then
+      templateSummary="${templateBase}Localized_* (${missingLocalizedCount[${templateBase}]})"
+    else
+      continue
+    fi
+    missingSummaries+=("${templateSummary}")
+  done
+
+  if (( ${#missingSummaries[@]} > 0 )); then
+    importedTemplatesMissingBatteryPlaceholder="${(j:, :)missingSummaries}"
+    echo "    ℹ️  Imported templates without {batteryWarningMessage}; the low-battery warning will not appear in them until you add it:"
+    echo "        ${importedTemplatesMissingBatteryPlaceholder}"
+  fi
+}
+
 function applyImportedPreferences() {
   local sourcePlist="${1}"
   local targetPlist="${2}"
@@ -1316,6 +1371,8 @@ function applyImportedPreferences() {
       echo "        Low-disk-space warning now uses fixed GB free, not a percentage of disk size; review before deployment"
     fi
   fi
+
+  reportImportedTemplatesMissingBatteryPlaceholder "${sourcePlist}" "${targetPlist}"
 
   /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${targetPlist}"
 }
@@ -2156,6 +2213,9 @@ case "${deploymentMode}" in
     echo "    - AggressiveModePastDeadlineHours and AggressiveModeFrequencyMinutes"
     if [[ -n "${importedLegacyMinimumDiskFreePercentage}" ]]; then
       echo "    - MinimumDiskFreeGB (replaces imported MinimumDiskFreePercentage ${importedLegacyMinimumDiskFreePercentage}%)"
+    fi
+    if [[ -n "${importedTemplatesMissingBatteryPlaceholder}" ]]; then
+      echo "    - Add {batteryWarningMessage} to imported templates: ${importedTemplatesMissingBatteryPlaceholder}"
     fi
     echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then

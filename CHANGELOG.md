@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 5.2.0b4 (19-Oct-2026)
+- Fixed: `{minutesBeforeDeadline}` in `PreDeadlineThresholdMessage` showed the crossed threshold (for example, `45`) instead of the time actually left, so a late run (padded deadline from `setPastDuePaddedEnforcementDate`, heartbeat delay, wake from sleep, collapsed stale thresholds, or a manual run) overstated time remaining ([Issue #160](https://github.com/dan-snelson/DDM-OS-Reminder/issues/160))
+    - The placeholder now shows minutes remaining until the effective deadline, rounded up and never above the crossed threshold, computed when the dialog copy is applied. On-time runs still show the threshold value.
+    - `Pre-deadline threshold reminder due: …` and `Applying …-minute pre-deadline threshold dialog copy` notices now append `(<n> minute(s) remaining)`.
+    - Threshold delivered/skipped state, scheduling, and preference keys are unchanged. Known: copy reads `1 minutes` when one minute remains.
+- `Resources/diagnoseReminderState.zsh` checklist version now `5.2.0b4`; no diagnosis logic changes.
+
 ### Version 5.2.0b3 (18-Oct-2026)
 - New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)
     - New `MinimumBatteryPercentage` preference: integer `0`–`100`, script and `Resources/sample.plist` default `50`; `0` disables. A non-integer or out-of-range value logs `[WARNING]` and falls back to `50`.

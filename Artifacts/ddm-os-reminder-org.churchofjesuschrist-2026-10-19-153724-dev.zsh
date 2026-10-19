@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0b3"
+scriptVersion="5.2.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -681,7 +681,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0b3"
+scriptVersion="5.2.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -775,6 +775,7 @@ normalizedDailyReminderTimesCSV=""
 normalizedMinuteThresholdScheduleCSV=""
 preDeadlineThresholdReminderMode="NO"
 preDeadlineThresholdMinutes=""
+preDeadlineThresholdMinutesRemaining=""
 preDeadlineThresholdSignature=""
 preDeadlineThresholdDeliveredCSV=""
 preDeadlineThresholdSkippedCSV=""
@@ -1916,6 +1917,23 @@ function setNextReminderScheduleForQuietOrThreshold() {
     fi
 }
 
+function computePreDeadlineThresholdMinutesRemaining() {
+    local nowEpoch="$(date +%s)"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local remainingSeconds=""
+
+    preDeadlineThresholdMinutesRemaining=""
+    [[ "${preDeadlineThresholdMinutes}" =~ ^[0-9]+$ && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+
+    # Round up so on-time runs keep the threshold label; never exceed the crossed threshold.
+    remainingSeconds=$(( deadlineReferenceEpoch - nowEpoch ))
+    preDeadlineThresholdMinutesRemaining=$(( (remainingSeconds + 59) / 60 ))
+    (( preDeadlineThresholdMinutesRemaining < 1 )) && preDeadlineThresholdMinutesRemaining=1
+    (( preDeadlineThresholdMinutesRemaining > preDeadlineThresholdMinutes )) && preDeadlineThresholdMinutesRemaining="${preDeadlineThresholdMinutes}"
+
+    return 0
+}
+
 function resolveDuePreDeadlineThresholdReminder() {
     local nowEpoch="$(date +%s)"
     local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
@@ -1928,6 +1946,7 @@ function resolveDuePreDeadlineThresholdReminder() {
 
     preDeadlineThresholdReminderMode="NO"
     preDeadlineThresholdMinutes=""
+    preDeadlineThresholdMinutesRemaining=""
 
     [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
     [[ "${pastDeadlineRestartEffective}" == "Off" ]] || return 1
@@ -1960,7 +1979,8 @@ function resolveDuePreDeadlineThresholdReminder() {
 
     preDeadlineThresholdReminderMode="YES"
     preDeadlineThresholdMinutes="${dueThreshold}"
-    notice "Pre-deadline threshold reminder due: ${preDeadlineThresholdMinutes} minute(s) before enforcement deadline."
+    computePreDeadlineThresholdMinutesRemaining
+    notice "Pre-deadline threshold reminder due: ${preDeadlineThresholdMinutes} minute(s) before enforcement deadline (${preDeadlineThresholdMinutesRemaining:-${preDeadlineThresholdMinutes}} minute(s) remaining)."
     return 0
 }
 
@@ -2922,7 +2942,7 @@ function buildPlaceholderMap() {
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
-        [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
+        [minutesBeforeDeadline]="${preDeadlineThresholdMinutesRemaining:-${preDeadlineThresholdMinutes}}"
         [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
         [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
         [aggressiveModeHoursPastDeadline]="${aggressiveModeHoursPastDeadline}"
@@ -5544,7 +5564,8 @@ function applyPreDeadlineThresholdDialogOverrides() {
 
     title="${preDeadlineThresholdTitle}"
     message="${preDeadlineThresholdMessage}"
-    notice "Applying ${preDeadlineThresholdMinutes}-minute pre-deadline threshold dialog copy."
+    computePreDeadlineThresholdMinutesRemaining
+    notice "Applying ${preDeadlineThresholdMinutes}-minute pre-deadline threshold dialog copy (${preDeadlineThresholdMinutesRemaining:-${preDeadlineThresholdMinutes}} minute(s) remaining)."
 }
 
 function executeRestartAction() {

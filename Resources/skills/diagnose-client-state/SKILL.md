@@ -80,7 +80,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.4.0) · Checklist: `reminderDialog.zsh` 5.2.0b3
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.4.0) · Checklist: `reminderDialog.zsh` 5.2.0b4
 
 ## 1. Verdict
 

@@ -2092,7 +2092,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{ddmEnforcedInstallDateRelativeHumanReadable}` | DDM | Effective deadline with Today/Tomorrow wording when applicable, else formatted deadline | Tomorrow, 6:00 p.m. |
 | `{ddmVersionStringDeadlineHumanReadable}` | DDM | Effective deadline display used in user-facing copy | Today, 3:31 p.m. |
 | `{ddmVersionStringDaysRemaining}` | DDM | Days to effective enforcement deadline used by runtime reminder logic | 14 |
-| `{minutesBeforeDeadline}` | DDM | Active pre-deadline threshold in minutes | 30 |
+| `{minutesBeforeDeadline}` | DDM | Minutes remaining until the effective deadline (rounded up, capped at the crossed pre-deadline threshold) | 30 |
 | `{aggressiveModeHoursPastDeadline}` | DDM | Whole hours past effective enforcement deadline when aggressive mode is evaluated | 3 |
 | `{aggressiveModeFrequencyMinutes}` | Preferences | Aggressive redisplay interval in minutes | 20 |
 | `{preDeadlineThresholdEmphasisOpen}` | DDM | Opens red markdown emphasis for threshold copy when swiftDialog supports markdown color, else empty | :red[ |
@@ -2637,6 +2637,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 5.2.0b4 | 19-Oct-2026 | `{minutesBeforeDeadline}` now shows minutes remaining until the effective deadline (rounded up, capped at the crossed pre-deadline threshold) instead of the crossed threshold; no preference keys or defaults changed |
 | 5.2.0b3 | 18-Oct-2026 | Added `MinimumBatteryPercentage` (0-100; default 50; 0 disables) and `BatteryWarningMessage` (plus `BatteryWarningMessageLocalized_<code>`) with `{batteryWarningMessage}` / `{batteryPercentage}` placeholders; `{batteryWarningMessage}` added to `message`, `aggressiveModeMessage`, `preDeadlineThresholdMessage`, `pastDeadlinePromptMessage`, and `pastDeadlineForceMessage` ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157)); restart gating and precedence rules unchanged |
 | 5.0.0 | 04-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) logs `[WARNING]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
 | 5.0.0b2 | 02-Oct-2026 | `DailyReminderTimes` and `MinutesBeforeDeadlineReminderSchedule` values mixing valid and invalid entries (for example `8:00,17:00` or `45,abc`) now keep the valid entries and log each invalid entry at `[WARNING]`; previously the warning text was captured into the resolved value, leaving no baseline slots or thresholds ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139)); `HH:MM` still requires zero-padded hours; unrecognized `LanguageOverride` or user language values fall back to English and the global `DateFormatDeadlineHumanReadable` with a `[WARNING]`, and localized keys with an unrecognized `<code>` suffix are skipped; no preference keys, defaults, or precedence rules changed |
@@ -2670,5 +2671,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 18-Oct-2026
-**DDM OS Reminder Version**: 5.2.0b3
+**Last Updated**: 19-Oct-2026
+**DDM OS Reminder Version**: 5.2.0b4

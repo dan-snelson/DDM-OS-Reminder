@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.19 | 19-Oct-2026 | Updated the `{minutesBeforeDeadline}` description in 06 for `5.2.0b4` (minutes remaining, rounded up, capped at the crossed threshold); no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.18 | 18-Oct-2026 | Documented the `5.2.0b3` low-battery warning (`MinimumBatteryPercentage`, `BatteryWarningMessage`, `{batteryWarningMessage}`, `{batteryPercentage}`) in 03/06; corrected 03 to say the low-disk-space warning is suppressed in restart-only mode while the low-battery warning is kept; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.17 | 16-Oct-2026 | Raised `MinimumDiskFreeGB` sample default from `26` to `35` in 06 after a 26.60 GB fully staged update was observed |
 | 1.0.16 | 12-Oct-2026 | Aligned prose with `5.1.0`: `MinimumDiskFreeGB` replaces deprecated `MinimumDiskFreePercentage` in 03/06, and `Uninstall` alone removes `dor-state.plist` (kept by `All` / `Script`) in 04; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
@@ -523,5 +524,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 18-Oct-2026
-**DDM OS Reminder Version**: 5.2.0b3
+**Last Updated**: 19-Oct-2026
+**DDM OS Reminder Version**: 5.2.0b4

@@ -66,7 +66,7 @@ Invoke relevant skill name during planning.
 ### Diagnose Client State Skill
 1. Required uploads are the client-side log, `/var/log/install.log`, and the client-side `.plist`.
 2. Run `zsh Resources/diagnoseReminderState.zsh` when available; follow `Resources/skills/diagnose-client-state/SKILL.md`.
-3. The client log's `Normal DDM resolver result` is what that Mac did. Do not re-decide resolver status.
+3. The client log's `DDM update check:` line (`Normal DDM resolver result` before `5.2.0`) is what that Mac did. Do not re-decide resolver status.
 4. Read-only: do not write preferences, scheduler state, or LaunchDaemons.
 
 ### Security Workflow Change Skill
@@ -151,6 +151,7 @@ Out of scope:
 - Baseline reminder slots resolve from `DailyReminderTimes` in deployed preferences. Default sample values (`08:00,12:00,16:00`) are fallback defaults, not runtime hardcodes.
 - Pre-deadline minute thresholds resolve from `MinutesBeforeDeadlineReminderSchedule` (`45,30,15,10,5` by default). Per-threshold delivery state stays in `dor-state.plist`.
 - Past-deadline aggressive cadence resolves from `AggressiveModePastDeadlineHours` (`2` by default) and `AggressiveModeFrequencyMinutes` (`20` by default). Mac Admins can effectively suppress it with a high hour value such as `720`; support can temporarily suppress it with `/Library/Management/<rdnn>/dor-aggressive-kill`.
+- Low-battery warning (`MinimumBatteryPercentage`, `0`–`100`, default `50`; `0` disables) is messaging-only: warn only on positive `pmset -g ps` evidence (`Battery Power` + parsed `-InternalBattery-` charge below threshold), never on AC/UPS/no-battery/unreadable states, never gate `Prompt`/`Force`, keep `{batteryWarningMessage}` in restart mode, and never simulate power state in production (preview via `reminderDialogPreferenceTest.zsh --battery-percentage`).
 - Update Tonight suppression is runtime-only (no preference key). Same-day, post-boot `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version suppresses normal reminders until local midnight. Threshold, aggressive, and Force bypass it, and it never applies when the effective deadline is at or before midnight. `UpdateTonightSuppressionUntil` lives only in `dor-state.plist`.
 - `dor-starter.zsh` is expected to exit quietly when `NextScheduledReminder` is `FALSE` or future-dated. Check `dor-state.plist` before treating a no-op heartbeat as failure.
 - Only starter-launched runs should mutate `dor-state.plist` or `dor.pid`; direct/manual/demo runs bypass daemon scheduler writes.

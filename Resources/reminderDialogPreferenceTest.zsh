@@ -13,6 +13,7 @@
 # Usage:
 #   zsh Resources/reminderDialogPreferenceTest.zsh
 #   zsh Resources/reminderDialogPreferenceTest.zsh --rdnn <your.reverse.domain.name.notation>
+#   zsh Resources/reminderDialogPreferenceTest.zsh --rdnn <your.reverse.domain.name.notation> --battery-percentage 15
 #
 # Notes:
 # - To test another language, set `LanguageOverride` in the target preference
@@ -36,6 +37,7 @@
 cliReverseDomainNameNotation=""
 cliPreDeadlineThresholdMinutes=""
 cliAggressiveModePreview="NO"
+cliBatteryPercentage=""
 scriptRelativePath="Resources/reminderDialogPreferenceTest.zsh"
 defaultUsage="zsh ${scriptRelativePath}"
 rdnnUsage="zsh ${scriptRelativePath} --rdnn <your.reverse.domain.name.notation>"
@@ -55,6 +57,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "  ${rdnnUsage}"
             echo "  ${rdnnUsage} --pre-deadline-threshold 30"
             echo "  ${rdnnUsage} --aggressive"
+            echo "  ${rdnnUsage} --battery-percentage 15"
             exit 0
             ;;
         --rdnn)
@@ -92,12 +95,25 @@ while [[ "$#" -gt 0 ]]; do
             cliAggressiveModePreview="YES"
             shift
             ;;
+        --battery-percentage)
+            if [[ -z "${2:-}" || ! "${2}" =~ ^[0-9]+$ || "${2}" -gt 100 ]]; then
+                echo "Usage:"
+                echo "  ${defaultUsage}"
+                echo "  ${rdnnUsage}"
+                echo "  ${rdnnUsage} --battery-percentage 15"
+                exit 64
+            fi
+
+            cliBatteryPercentage="${2}"
+            shift 2
+            ;;
         *)
             echo "Usage:"
             echo "  ${defaultUsage}"
             echo "  ${rdnnUsage}"
             echo "  ${rdnnUsage} --pre-deadline-threshold 30"
             echo "  ${rdnnUsage} --aggressive"
+            echo "  ${rdnnUsage} --battery-percentage 15"
             exit 64
             ;;
     esac
@@ -118,7 +134,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="5.1.0"
+scriptVersion="5.2.0"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -185,6 +201,7 @@ declare -A preferenceConfiguration=(
     ["pastDeadlineForceTimerSeconds"]="numeric|60"
     ["pastDeadlineForceRedisplayDelaySeconds"]="numeric|5"
     ["minimumDiskFreeGB"]="numeric|999"
+    ["minimumBatteryPercentage"]="numeric|50"
     ["disableButton2InsteadOfHide"]="boolean|YES"
     ["organizationOverlayiconURL"]="string|https://usw2.ics.services.jamfcloud.com/icon/hash_2d64ce7f0042ad68234a2515211adb067ad6714703dd8ebd6f33c1ab30354b1d"
     ["organizationOverlayiconURLdark"]="string|https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39"
@@ -214,6 +231,7 @@ declare -A preferenceConfiguration=(
     ["infobuttontext"]="string|Update macOS on Mac"
     ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
     ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}."
+    ["batteryWarningMessage"]="string|<br><br>**Note:** Your Mac's battery is at **{batteryPercentage}%**. Please connect your power adapter and leave it plugged in until the macOS {titleMessageUpdateOrUpgradeLower} completes."
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
     ["pendingDownloadMessage"]="string|<br><br>Your Mac will begin downloading the update shortly."
@@ -234,10 +252,10 @@ declare -A preferenceConfiguration=(
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
-    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{batteryWarningMessage}{supportAssistanceMessage}"
     ["aggressiveModeTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Required Now"
-    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{batteryWarningMessage}{supportAssistanceMessage}"
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{batteryWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -251,6 +269,7 @@ declare -A plistKeyMap=(
     ["pastDeadlineForceTimerSeconds"]="PastDeadlineForceTimerSeconds"
     ["pastDeadlineForceRedisplayDelaySeconds"]="PastDeadlineForceRedisplayDelaySeconds"
     ["minimumDiskFreeGB"]="MinimumDiskFreeGB"
+    ["minimumBatteryPercentage"]="MinimumBatteryPercentage"
     ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
@@ -280,6 +299,7 @@ declare -A plistKeyMap=(
     ["infobuttontext"]="InfoButtonText"
     ["excessiveUptimeWarningMessage"]="ExcessiveUptimeWarningMessage"
     ["diskSpaceWarningMessage"]="DiskSpaceWarningMessage"
+    ["batteryWarningMessage"]="BatteryWarningMessage"
     ["stagedUpdateMessage"]="StagedUpdateMessage"
     ["partiallyStagedUpdateMessage"]="PartiallyStagedUpdateMessage"
     ["pendingDownloadMessage"]="PendingDownloadMessage"
@@ -940,6 +960,15 @@ function resolveAggressiveModeThreshold() {
     fi
 }
 
+function resolveMinimumBatteryPercentage() {
+    local defaultMinimumBatteryPercentage="${preferenceConfiguration[minimumBatteryPercentage]#*|}"
+
+    if [[ ! "${minimumBatteryPercentage}" =~ ^[0-9]+$ ]] || (( minimumBatteryPercentage < 0 || minimumBatteryPercentage > 100 )); then
+        warning "MinimumBatteryPercentage value '${minimumBatteryPercentage}' is invalid; defaulting to '${defaultMinimumBatteryPercentage}'. Valid range: 0-100 (0 disables the low-battery warning)."
+        minimumBatteryPercentage="${defaultMinimumBatteryPercentage}"
+    fi
+}
+
 function resolveDailyReminderTimes() {
     local defaultDailyReminderTimes="${preferenceConfiguration[dailyReminderTimes]#*|}"
 
@@ -1358,7 +1387,7 @@ function applyLocalizedDialogText() {
     local localizedFields=(
         "title" "button1text" "button2text" "infobuttontext"
         "message" "helpmessage"
-        "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+        "excessiveUptimeWarningMessage" "diskSpaceWarningMessage" "batteryWarningMessage"
         "stagedUpdateMessage" "partiallyStagedUpdateMessage" "pendingDownloadMessage"
         "supportAssistanceMessage"
         "updateWord" "upgradeWord"
@@ -1467,6 +1496,41 @@ function collectDiskFacts() {
     diskSpaceHumanReadable="${freeSpace} (${freePercentage}% available)"
 }
 
+function collectBatteryFacts() {
+    local pmsetOutput=""
+    local pmsetLine=""
+
+    batteryPowerSource=""
+    batteryPercentage=""
+    batteryInternalPresent="NO"
+
+    # Preview only: --battery-percentage simulates an internal battery discharging at that charge
+    if [[ -n "${cliBatteryPercentage}" ]]; then
+        batteryPowerSource="Battery Power"
+        batteryPercentage="${cliBatteryPercentage}"
+        batteryInternalPresent="YES"
+        notice "Simulating internal battery at ${batteryPercentage}% (--battery-percentage)"
+        return
+    fi
+
+    pmsetOutput=$( /usr/bin/pmset -g ps 2>/dev/null )
+
+    for pmsetLine in "${(@f)pmsetOutput}"; do
+        if [[ "${pmsetLine}" =~ "^Now drawing from '([^']+)'" ]]; then
+            batteryPowerSource="${match[1]}"
+        elif [[ "${pmsetLine}" == *"-InternalBattery-"* ]]; then
+            batteryInternalPresent="YES"
+            if [[ "${pmsetLine}" =~ '[[:space:]]([0-9]{1,3})%;' ]] && (( match[1] <= 100 )); then
+                batteryPercentage="${match[1]}"
+            fi
+        fi
+    done
+
+    if [[ "${batteryInternalPresent}" == "YES" && -z "${batteryPercentage}" ]]; then
+        warning "Internal battery detected, but its charge could not be read from 'pmset -g ps'; suppressing low-battery warning."
+    fi
+}
+
 function collectMachineFacts() {
     installedmacOSVersion=$(sw_vers -productVersion 2>/dev/null)
     [[ -z "${installedmacOSVersion}" ]] && installedmacOSVersion="Unknown"
@@ -1490,6 +1554,7 @@ function prepareDemoRuntimeState() {
 
     collectUptimeFacts
     collectDiskFacts
+    collectBatteryFacts
     collectMachineFacts
 
     IFS='.' read -r installedMajorVersion installedMinorVersion installedPatchVersion <<< "${installedmacOSVersion}"
@@ -1652,6 +1717,24 @@ function computeDynamicWarnings() {
         warning "freeBytes '${freeBytes}' is not numeric; suppressing disk-space warning."
         diskSpaceWarningMessage=""
     fi
+
+    local batteryWarningState="suppressed"
+    local batteryChargeDisplay="not present"
+    if [[ "${batteryPercentage}" == <-> ]]; then
+        batteryChargeDisplay="${batteryPercentage}%"
+    elif [[ "${batteryInternalPresent}" == "YES" ]]; then
+        batteryChargeDisplay="unreadable"
+    fi
+
+    if (( minimumBatteryPercentage == 0 )); then
+        batteryWarningMessage=""
+        batteryWarningState="disabled"
+    elif [[ "${batteryPowerSource}" == "Battery Power" && "${batteryPercentage}" == <-> ]] && (( batteryPercentage < minimumBatteryPercentage )); then
+        batteryWarningState="shown"
+    else
+        batteryWarningMessage=""
+    fi
+    notice "Battery: power source ${batteryPowerSource:-unknown}; internal battery ${batteryChargeDisplay}; MinimumBatteryPercentage threshold ${minimumBatteryPercentage}%; warning ${batteryWarningState}"
 }
 
 function resolveDiskSpaceWarningThreshold() {
@@ -1817,6 +1900,8 @@ function buildPlaceholderMap() {
         [updateReadyMessage]="${updateReadyMessage}"
         [diskSpaceHumanReadable]="${diskSpaceHumanReadable}"
         [diskSpaceWarningMessage]="${diskSpaceWarningMessage}"
+        [batteryPercentage]="${batteryPercentage}"
+        [batteryWarningMessage]="${batteryWarningMessage}"
         [softwareUpdateButtonText]="${softwareUpdateButtonText}"
         [infoboxLabelCurrent]="${infoboxLabelCurrent}"
         [infoboxLabelRequired]="${infoboxLabelRequired}"
@@ -2004,7 +2089,7 @@ function updateRequiredVariables() {
     local textFields=(
         "title" "button1text" "button2text" "infobuttontext"
         "infobox" "helpmessage" "helpimage"
-        "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+        "excessiveUptimeWarningMessage" "diskSpaceWarningMessage" "batteryWarningMessage"
         "message" "supportAssistanceMessage"
     )
 
@@ -2035,6 +2120,9 @@ function printResolvedPreferenceSummary() {
     fi
     if [[ "${aggressiveModeActive}" == "YES" ]]; then
         preFlight "Aggressive mode preview: ${aggressiveModeHoursPastDeadline} hour(s) past deadline; frequency ${aggressiveModeFrequencyMinutes} minute(s)"
+    fi
+    if [[ -n "${cliBatteryPercentage}" ]]; then
+        preFlight "Battery preview: simulated internal battery at ${cliBatteryPercentage}%; MinimumBatteryPercentage threshold ${minimumBatteryPercentage}%"
     fi
     preFlight "Resolved language: ${dialogLanguage}"
     preFlight "Detected appearance: ${requestedAppearanceMode}"
@@ -2185,6 +2273,7 @@ resolveDailyReminderTimes
 resolveMinuteThresholdSchedule
 resolveAggressiveModeThreshold
 resolveAggressiveModeFrequency
+resolveMinimumBatteryPercentage
 prepareDemoRuntimeState
 
 # -------------------------------------------------------------------------

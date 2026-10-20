@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.1.0"
+scriptVersion="5.2.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -48,6 +48,11 @@ ddmResolvedPaddedEpoch=""
 ddmResolvedPaddedRawLine=""
 ddmResolverFailureMarker=""
 ddmResolverConflictSummary=""
+ddmResolverNextStep=""
+noReminderLevel=""
+noReminderReason=""
+noReminderNextStep=""
+loggedDialogLanguageDecision=""
 ddmResolverConflictContext=""
 ddmResolverIgnoredInvalidSummary=""
 ddmResolverIgnoredInvalidContext=""
@@ -109,6 +114,7 @@ normalizedDailyReminderTimesCSV=""
 normalizedMinuteThresholdScheduleCSV=""
 preDeadlineThresholdReminderMode="NO"
 preDeadlineThresholdMinutes=""
+preDeadlineThresholdMinutesRemaining=""
 preDeadlineThresholdSignature=""
 preDeadlineThresholdDeliveredCSV=""
 preDeadlineThresholdSkippedCSV=""
@@ -192,6 +198,10 @@ fi
 # fall back to diskutil when the Foundation query is unavailable or reports 0.
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+# Logging helpers are not defined yet; queue messages and log them after the preamble
+diskSpaceQueryWarning=""
+diskSpaceQueryError=""
+
 diskRawValues=$(osascript -l JavaScript -e "ObjC.import('Foundation'); var url = \$.NSURL.fileURLWithPath('/'); var result = url.resourceValuesForKeysError(['NSURLVolumeAvailableCapacityForImportantUsageKey','NSURLVolumeTotalCapacityKey'], null); [result.valueForKey('NSURLVolumeAvailableCapacityForImportantUsageKey').js, result.valueForKey('NSURLVolumeTotalCapacityKey').js].join(' ');" 2>/dev/null)
 read freeBytes diskBytes <<< "${diskRawValues}"
 
@@ -200,7 +210,7 @@ if [[ "${freeBytes}" == <-> && "${diskBytes}" == <-> ]] && (( freeBytes > 0 && d
     freeSpace="${freeSpace} GB"
     freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
 else
-    warning "JXA disk space query returned invalid data; falling back to diskutil. diskBytes=${diskBytes}, freeBytes=${freeBytes}"
+    diskSpaceQueryWarning="JXA disk space query returned invalid data; falling back to diskutil. diskBytes=${diskBytes}, freeBytes=${freeBytes}"
     freeSpace=$(diskutil info / | awk -F ': ' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk -F '(' '{print $1}' | xargs)
     diskBytes=$(diskutil info / | awk -F '[()]' '/Total Space/ {print $2}' | awk '{print $1}')
     freeBytes=$(diskutil info / | awk -F '[()]' '/Free Space|Available Space|Container Free Space/ {print $2}' | awk '{print $1}')
@@ -208,7 +218,7 @@ else
     if [[ "${freeBytes}" == <-> && "${diskBytes}" == <-> ]] && (( diskBytes > 0 && diskBytes >= freeBytes )); then
         freePercentage=$(echo "scale=2; (${freeBytes} * 100) / ${diskBytes}" | bc)
     else
-        error "Invalid disk space data: diskBytes=${diskBytes}, freeBytes=${freeBytes}"
+        diskSpaceQueryError="Invalid disk space data: diskBytes=${diskBytes}, freeBytes=${freeBytes}"
         freeSpace="Unknown"
         freePercentage="Unknown"
     fi
@@ -248,6 +258,7 @@ declare -A preferenceConfiguration=(
     ["aggressiveModeFrequencyMinutes"]="numeric|20"
     ["acceptableAssertionApplicationNames"]="string|MSTeams zoom.us Webex"
     ["minimumDiskFreeGB"]="numeric|999"
+    ["minimumBatteryPercentage"]="numeric|50"
     ["disableButton2InsteadOfHide"]="boolean|YES"
     
     # Branding
@@ -281,7 +292,8 @@ declare -A preferenceConfiguration=(
     ["infobuttontext"]="string|Update macOS on Mac"
     ["excessiveUptimeWarningMessage"]="string|<br><br>**Note:** Your Mac has been powered-on for **{uptimeHumanReadable}**. For more reliable results, please manually restart your Mac before proceeding."
     ["diskSpaceWarningMessage"]="string|<br><br>**Note:** Your Mac has only **{diskSpaceHumanReadable}**, which may prevent this macOS {titleMessageUpdateOrUpgradeLower}."
-    
+    ["batteryWarningMessage"]="string|<br><br>**Note:** Your Mac's battery is at **{batteryPercentage}%**. Please connect your power adapter and leave it plugged in until the macOS {titleMessageUpdateOrUpgradeLower} completes."
+
     # Update Staging Messages
     ["stagedUpdateMessage"]="string|<br><br>**Good news!** The macOS {ddmVersionString} update has already been downloaded to your Mac and is ready to install. Installation will proceed quickly when you click **{button1text}**."
     ["partiallyStagedUpdateMessage"]="string|<br><br>Your Mac has begun downloading and preparing required macOS update components. Installation will be quicker once all assets have finished staging."
@@ -305,16 +317,16 @@ declare -A preferenceConfiguration=(
     ["deadlineEnforcementMessageAbsolute"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** on **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["deadlineEnforcementMessageRelative"]="string|However, your Mac **will automatically restart and {titleMessageUpdateOrUpgradeLower}** **{deadlineDisplay}** if you have not {titleMessageUpdateOrUpgradeLower}d before the deadline."
     ["preDeadlineThresholdTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Deadline Soon"
-    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["preDeadlineThresholdMessage"]="string|**{preDeadlineThresholdEmphasisOpen}Your Mac reaches the macOS {ddmVersionString} enforcement deadline in {minutesBeforeDeadline} minutes.{preDeadlineThresholdEmphasisClose}**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>{preDeadlineThresholdEmphasisOpen}Please {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString} now to avoid the automatic enforcement action at {ddmVersionStringDeadlineHumanReadable}.{preDeadlineThresholdEmphasisClose}{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{batteryWarningMessage}{supportAssistanceMessage}"
     ["pastDeadlinePromptTitle"]="string|Restart Your Mac"
-    ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgradeLower}.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    ["pastDeadlinePromptMessage"]="string|**Please restart your Mac now**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to {titleMessageUpdateOrUpgradeLower} to macOS {ddmVersionString}.<br><br>Click **{button1text}** to restart now to help complete the required {titleMessageUpdateOrUpgradeLower}.<br><br>(This reminder will persist until your Mac has been restarted.){batteryWarningMessage}"
     ["pastDeadlineForceTitle"]="string|Your Mac is restarting"
-    ["pastDeadlineForceMessage"]="string|**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgradeLower} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.)"
+    ["pastDeadlineForceMessage"]="string|**Your Mac will restart when the timer below expires.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac is past the **{ddmVersionStringDeadlineHumanReadable}** deadline to install macOS {ddmVersionString} and needs to be restarted to help the {titleMessageUpdateOrUpgradeLower} process to complete, or you can click **{button1text}**.<br><br>(This reminder will persist until your Mac has been restarted.){batteryWarningMessage}"
     ["aggressiveModeTitle"]="string|macOS {titleMessageUpdateOrUpgrade} Required Now"
-    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["aggressiveModeMessage"]="string|**Your Mac is past its required macOS {titleMessageUpdateOrUpgradeLower} deadline.**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Your Mac has been past the **{ddmVersionStringDeadlineHumanReadable}** deadline for **{aggressiveModeHoursPastDeadline} hour(s)** and still needs macOS {ddmVersionString}.<br><br>Click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**. This reminder will return about every {aggressiveModeFrequencyMinutes} minutes until macOS {ddmVersionString} is installed.{updateReadyMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{batteryWarningMessage}{supportAssistanceMessage}"
     
     # Complex UI Text
-    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{supportAssistanceMessage}"
+    ["message"]="string|**A required macOS {titleMessageUpdateOrUpgradeLower} is now available**<br><br>Happy {weekday}, {loggedInUserFirstname}!<br><br>Please {titleMessageUpdateOrUpgradeLower} to macOS **{ddmVersionString}** to ensure your Mac remains secure and compliant with organizational policies.{updateReadyMessage}<br><br>To perform the {titleMessageUpdateOrUpgradeLower} now, click **{button1text}**, review the on-screen instructions, then click **{softwareUpdateButtonText}**.<br><br>If you are unable to perform this {titleMessageUpdateOrUpgradeLower} now, click **{button2text}** to be reminded again later (which is disabled when the deadline is imminent).<br><br>{deadlineEnforcementMessage}{excessiveUptimeWarningMessage}{diskSpaceWarningMessage}{batteryWarningMessage}{supportAssistanceMessage}"
     ["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}<br><br>**{infoboxLabelDaysRemaining}:** {infoboxDaysRemainingDisplay}<br><br>**{infoboxLabelLastRestart}:** {infoboxLastRestartDisplay}<br><br>**{infoboxLabelFreeDiskSpace}:** {diskSpaceHumanReadable}"
     ["helpmessage"]="string|For assistance, please contact: **{supportTeamName}**<br>- **Telephone:** {supportTeamPhone}<br>- **Email:** {supportTeamEmail}<br>- **Website:** {supportTeamWebsite}<br>- **Knowledge Base Article:** {supportKBURL}<br><br>**User Information:**<br>- **Full Name:** {userfullname}<br>- **User Name:** {username}<br><br>**Computer Information:**<br>- **Computer Name:** {computername}<br>- **Serial Number:** {serialnumber}<br>- **macOS:** {osversion}<br><br>**Script Information:**<br>- **Dialog:** {dialogVersion}<br>- **Script:** {scriptVersion}<br>"
     ["helpimage"]="string|qr={infobuttonaction}"
@@ -341,6 +353,7 @@ declare -A plistKeyMap=(
     ["aggressiveModeFrequencyMinutes"]="AggressiveModeFrequencyMinutes"
     ["acceptableAssertionApplicationNames"]="AcceptableAssertionApplicationNames"
     ["minimumDiskFreeGB"]="MinimumDiskFreeGB"
+    ["minimumBatteryPercentage"]="MinimumBatteryPercentage"
     ["disableButton2InsteadOfHide"]="DisableButton2InsteadOfHide"
     ["organizationOverlayiconURL"]="OrganizationOverlayIconURL"
     ["organizationOverlayiconURLdark"]="OrganizationOverlayIconURLdark"
@@ -366,6 +379,7 @@ declare -A plistKeyMap=(
     ["infobuttontext"]="InfoButtonText"
     ["excessiveUptimeWarningMessage"]="ExcessiveUptimeWarningMessage"
     ["diskSpaceWarningMessage"]="DiskSpaceWarningMessage"
+    ["batteryWarningMessage"]="BatteryWarningMessage"
     ["stagedUpdateMessage"]="StagedUpdateMessage"
     ["partiallyStagedUpdateMessage"]="PartiallyStagedUpdateMessage"
     ["pendingDownloadMessage"]="PendingDownloadMessage"
@@ -422,6 +436,27 @@ function error()        { updateScriptLog "[ERROR]           ${1}"; let errorCou
 function warning()      { updateScriptLog "[WARNING]         ${1}"; let errorCount++; }
 function fatal()        { updateScriptLog "[FATAL ERROR]     ${1}"; exit 1; }
 function quitOut()      { updateScriptLog "[QUIT]            ${1}"; }
+
+# Plain-language outcome for Mac Admins: why no dialog appeared, then what to do next
+function logNoReminder() {
+    local reason="${1}"
+    local nextStep="${2}"
+    local level="${3:-quit}"
+
+    case "${level}" in
+        notice  ) notice "No reminder shown: ${reason}" ;;
+        warning ) warning "No reminder shown: ${reason}" ;;
+        *       ) quitOut "No reminder shown: ${reason}" ;;
+    esac
+    [[ -n "${nextStep}" ]] && notice "Next step: ${nextStep}"
+}
+
+# Record a no-dialog outcome now; logNoReminder writes it at exit, just before "Exiting …"
+function setNoReminderOutcome() {
+    noReminderLevel="${1}"
+    noReminderReason="${2}"
+    noReminderNextStep="${3}"
+}
 
 
 
@@ -483,15 +518,13 @@ function selectMDMFallbackRequirement() {
     local fallbackDeadline=""
     local fallbackSource=""
 
-    notice "Evaluating MDM fallback requirement because normal DDM declaration status is '${normalResolverStatus}'."
-
     if [[ ! -f "${dorFallbackDeclarationPlistPath}" ]]; then
-        notice "MDM fallback requirement is not configured; preserving normal DDM resolver status '${normalResolverStatus}'."
+        notice "DDM Emergency Fallback not configured (${dorFallbackDeclarationPlistPath:t} absent); nothing to fall back to (DDM status=${normalResolverStatus})"
         return 1
     fi
 
     if ! /usr/bin/plutil -lint "${dorFallbackDeclarationPlistPath}" >/dev/null 2>&1; then
-        warning "MDM fallback requirement plist is unreadable or corrupt; preserving normal DDM resolver status '${normalResolverStatus}'."
+        warning "DDM Emergency Fallback ignored: '${dorFallbackDeclarationPlistPath}' is unreadable or corrupt; redeploy with Parameters 5 and 6 (DDM status=${normalResolverStatus})"
         return 1
     fi
 
@@ -502,39 +535,48 @@ function selectMDMFallbackRequirement() {
     fallbackSource="$(/usr/bin/plutil -extract Source raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackSource=""
 
     if [[ "${schemaVersion}" != "1" || "${fallbackBuild}" != "(null)" || "${fallbackSource}" != "JamfProScriptParameters" ]]; then
-        warning "MDM fallback requirement plist schema or constants are invalid; preserving normal DDM resolver status '${normalResolverStatus}'."
+        warning "DDM Emergency Fallback ignored: '${dorFallbackDeclarationPlistPath}' has an unexpected schema; redeploy with Parameters 5 and 6 (DDM status=${normalResolverStatus})"
         return 1
     fi
 
     if ! isValidDDMVersionString "${fallbackVersion}"; then
-        warning "MDM fallback requirement version is invalid: '${fallbackVersion:-missing}'"
+        warning "DDM Emergency Fallback ignored: macOS version '${fallbackVersion:-missing}' is invalid; redeploy with a valid Parameter 5 (DDM status=${normalResolverStatus})"
         return 1
     fi
 
     if ! isValidFallbackEnforcementDate "${fallbackDeadline}"; then
-        warning "MDM fallback requirement deadline is invalid or timezone-free: '${fallbackDeadline:-missing}'"
+        warning "DDM Emergency Fallback ignored: deadline '${fallbackDeadline:-missing}' is invalid or lacks a timezone; redeploy with a valid Parameter 6 (DDM status=${normalResolverStatus})"
         return 1
     fi
 
     ddmResolverStatus="fallback"
     ddmResolverSource="mdmFallback"
     ddmResolverSuppressionType=""
-    ddmResolverReason="Normal DDM declaration resolution returned ${normalResolverStatus}; MDM fallback requirement selected"
+    ddmResolverReason="DDM update check returned ${normalResolverStatus}; DDM Emergency Fallback selected"
     ddmVersionString="${fallbackVersion}"
     ddmBuildVersionString="${fallbackBuild}"
     ddmEnforcedInstallDate="${fallbackDeadline}"
     ddmDeclarationLogTimestamp=""
     ddmDeclarationRawLine=""
 
-    notice "Selected MDM fallback requirement after normal DDM declaration status '${normalResolverStatus}'."
-    info "MDM fallback requirement version: ${ddmVersionString}"
-    info "MDM fallback requirement enforcement date: ${ddmEnforcedInstallDate}"
+    notice "Using DDM Emergency Fallback: macOS ${ddmVersionString}, deadline ${ddmEnforcedInstallDate} (DDM status=${normalResolverStatus})"
     return 0
+}
+
+# install.log line without computer name or PID: "<timestamp> <process>: <message>"
+function installLogEvidence() {
+    local line="${1}"
+
+    if [[ "${line}" =~ '^([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]{8}[+-][0-9:]{2,5}) [^ ]+ ([^ []+)\[[0-9]+\]: (.*)$' ]]; then
+        echo "${match[1]} ${match[2]}: ${match[3]}"
+    else
+        echo "${line}"
+    fi
 }
 
 function requirementLogLabel() {
     if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-        echo "MDM fallback requirement"
+        echo "DDM Emergency Fallback requirement"
     else
         echo "DDM-enforced requirement"
     fi
@@ -710,7 +752,7 @@ function initializeDorPidFile() {
 
     if [[ -f "${dorPidFilePath}" ]]; then
         if pgrep -F "${dorPidFilePath}" >/dev/null 2>&1; then
-            fatal "Another ${humanReadableScriptName} process is already running."
+            fatal "No reminder shown: another ${humanReadableScriptName} process is already running. Next step: None; if this repeats, confirm the PID in '${dorPidFilePath}' belongs to a running ${humanReadableScriptName} process."
         fi
 
         warning "Removing stale PID file '${dorPidFilePath}'."
@@ -1214,6 +1256,23 @@ function setNextReminderScheduleForQuietOrThreshold() {
     fi
 }
 
+function computePreDeadlineThresholdMinutesRemaining() {
+    local nowEpoch="$(date +%s)"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local remainingSeconds=""
+
+    preDeadlineThresholdMinutesRemaining=""
+    [[ "${preDeadlineThresholdMinutes}" =~ ^[0-9]+$ && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+
+    # Round up so on-time runs keep the threshold label; never exceed the crossed threshold.
+    remainingSeconds=$(( deadlineReferenceEpoch - nowEpoch ))
+    preDeadlineThresholdMinutesRemaining=$(( (remainingSeconds + 59) / 60 ))
+    (( preDeadlineThresholdMinutesRemaining < 1 )) && preDeadlineThresholdMinutesRemaining=1
+    (( preDeadlineThresholdMinutesRemaining > preDeadlineThresholdMinutes )) && preDeadlineThresholdMinutesRemaining="${preDeadlineThresholdMinutes}"
+
+    return 0
+}
+
 function resolveDuePreDeadlineThresholdReminder() {
     local nowEpoch="$(date +%s)"
     local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
@@ -1226,6 +1285,7 @@ function resolveDuePreDeadlineThresholdReminder() {
 
     preDeadlineThresholdReminderMode="NO"
     preDeadlineThresholdMinutes=""
+    preDeadlineThresholdMinutesRemaining=""
 
     [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
     [[ "${pastDeadlineRestartEffective}" == "Off" ]] || return 1
@@ -1258,7 +1318,8 @@ function resolveDuePreDeadlineThresholdReminder() {
 
     preDeadlineThresholdReminderMode="YES"
     preDeadlineThresholdMinutes="${dueThreshold}"
-    notice "Pre-deadline threshold reminder due: ${preDeadlineThresholdMinutes} minute(s) before enforcement deadline."
+    computePreDeadlineThresholdMinutesRemaining
+    notice "Pre-deadline threshold reminder due: ${preDeadlineThresholdMinutes} minute(s) before enforcement deadline (${preDeadlineThresholdMinutesRemaining:-${preDeadlineThresholdMinutes}} minute(s) remaining)."
     return 0
 }
 
@@ -2102,6 +2163,7 @@ function validatePreferenceLoad() {
     local defaultAggressiveModeFrequencyMinutes="${preferenceConfiguration[aggressiveModeFrequencyMinutes]#*|}"
     local defaultPastDeadlineForceTimerSeconds="${preferenceConfiguration[pastDeadlineForceTimerSeconds]#*|}"
     local defaultPastDeadlineForceRedisplayDelaySeconds="${preferenceConfiguration[pastDeadlineForceRedisplayDelaySeconds]#*|}"
+    local defaultMinimumBatteryPercentage="${preferenceConfiguration[minimumBatteryPercentage]#*|}"
     for var in "${criticalVars[@]}"; do
         if [[ -z "${(P)var}" ]]; then
             warning "Critical preference '${var}' is empty; using default"
@@ -2127,7 +2189,7 @@ function validatePreferenceLoad() {
 
     dailyReminderTimes="${normalizedDailyReminderTimesCSV}"
     parseDailyReminderTimes "${dailyReminderTimes}" >/dev/null 2>&1
-    notice "Resolved DailyReminderTimes: ${dailyReminderTimesResolvedCSV}"
+    preFlight "Resolved DailyReminderTimes: ${dailyReminderTimesResolvedCSV}"
 
     normalizeMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" "YES" || {
         warning "MinutesBeforeDeadlineReminderSchedule value '${minutesBeforeDeadlineReminderSchedule}' is invalid; defaulting to '${defaultMinuteThresholdSchedule}'."
@@ -2137,9 +2199,9 @@ function validatePreferenceLoad() {
     minutesBeforeDeadlineReminderSchedule="${normalizedMinuteThresholdScheduleCSV}"
     parseMinuteThresholdSchedule "${minutesBeforeDeadlineReminderSchedule}" >/dev/null 2>&1
     if [[ -n "${minutesBeforeDeadlineReminderScheduleResolvedCSV}" ]]; then
-        notice "Resolved MinutesBeforeDeadlineReminderSchedule: ${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
+        preFlight "Resolved MinutesBeforeDeadlineReminderSchedule: ${minutesBeforeDeadlineReminderScheduleResolvedCSV}"
     else
-        notice "MinutesBeforeDeadlineReminderSchedule is empty; pre-deadline threshold reminders disabled."
+        preFlight "MinutesBeforeDeadlineReminderSchedule is empty; pre-deadline threshold reminders disabled."
     fi
 
     if [[ ! "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || (( aggressiveModePastDeadlineHours < 0 || aggressiveModePastDeadlineHours > 999 )); then
@@ -2160,6 +2222,11 @@ function validatePreferenceLoad() {
     if [[ ! "${pastDeadlineForceRedisplayDelaySeconds}" =~ ^[0-9]+$ ]] || (( pastDeadlineForceRedisplayDelaySeconds < 1 || pastDeadlineForceRedisplayDelaySeconds > 999 )); then
         warning "PastDeadlineForceRedisplayDelaySeconds value '${pastDeadlineForceRedisplayDelaySeconds}' is invalid; defaulting to '${defaultPastDeadlineForceRedisplayDelaySeconds}'."
         pastDeadlineForceRedisplayDelaySeconds="${defaultPastDeadlineForceRedisplayDelaySeconds}"
+    fi
+
+    if [[ ! "${minimumBatteryPercentage}" =~ ^[0-9]+$ ]] || (( minimumBatteryPercentage < 0 || minimumBatteryPercentage > 100 )); then
+        warning "MinimumBatteryPercentage value '${minimumBatteryPercentage}' is invalid; defaulting to '${defaultMinimumBatteryPercentage}'. Valid range: 0-100 (0 disables the low-battery warning)."
+        minimumBatteryPercentage="${defaultMinimumBatteryPercentage}"
     fi
 }
 
@@ -2192,6 +2259,8 @@ function buildPlaceholderMap() {
         [updateReadyMessage]="${updateReadyMessage}"
         [diskSpaceHumanReadable]="${diskSpaceHumanReadable}"
         [diskSpaceWarningMessage]="${diskSpaceWarningMessage}"
+        [batteryPercentage]="${batteryPercentage}"
+        [batteryWarningMessage]="${batteryWarningMessage}"
         [softwareUpdateButtonText]="${softwareUpdateButtonText}"
         [infoboxLabelCurrent]="${infoboxLabelCurrent}"
         [infoboxLabelRequired]="${infoboxLabelRequired}"
@@ -2212,7 +2281,7 @@ function buildPlaceholderMap() {
         [infobuttonaction]="${infobuttonaction}"
         [dialogVersion]="${dialogVersion}"
         [scriptVersion]="${scriptVersion}"
-        [minutesBeforeDeadline]="${preDeadlineThresholdMinutes}"
+        [minutesBeforeDeadline]="${preDeadlineThresholdMinutesRemaining:-${preDeadlineThresholdMinutes}}"
         [preDeadlineThresholdEmphasisOpen]="${preDeadlineThresholdEmphasisOpen}"
         [preDeadlineThresholdEmphasisClose]="${preDeadlineThresholdEmphasisClose}"
         [aggressiveModeHoursPastDeadline]="${aggressiveModeHoursPastDeadline}"
@@ -2583,6 +2652,19 @@ function refreshLocalizedRuntimeFacts() {
     fi
 }
 
+# First decision logs during pre-flight; later calls log only when the decision changes
+function logDialogLanguageDecision() {
+    local message="${1}"
+
+    [[ "${message}" == "${loggedDialogLanguageDecision}" ]] && return
+    if [[ -z "${loggedDialogLanguageDecision}" ]]; then
+        preFlight "${message}"
+    else
+        notice "${message}"
+    fi
+    loggedDialogLanguageDecision="${message}"
+}
+
 function resolveDialogLanguage() {
     local normalizedOverride=""
     local detectedLanguage=""
@@ -2595,14 +2677,14 @@ function resolveDialogLanguage() {
         fi
         normalizedOverride="$(normalizeDialogLanguageCode "${languageOverride}")"
         dialogLanguage="${normalizedOverride}"
-        notice "LanguageOverride is '${languageOverride}'; using '${dialogLanguage}'"
+        logDialogLanguageDecision "LanguageOverride is '${languageOverride}'; using '${dialogLanguage}'"
         return
     fi
 
     detectedLanguage="$(detectLoggedInUserLanguageCode)"
     if [[ -z "${detectedLanguage}" ]]; then
         dialogLanguage="en"
-        notice "Could not detect logged-in user language; defaulting to '${dialogLanguage}'"
+        logDialogLanguageDecision "Could not detect logged-in user language; defaulting to '${dialogLanguage}'"
         return
     fi
 
@@ -2613,7 +2695,7 @@ function resolveDialogLanguage() {
     fi
 
     dialogLanguage="$(normalizeDialogLanguageCode "${detectedLanguage}")"
-    notice "Detected logged-in user language '${detectedLanguage}'; using '${dialogLanguage}'"
+    logDialogLanguageDecision "Detected logged-in user language '${detectedLanguage}'; using '${dialogLanguage}'"
 }
 
 function initializeLocalizedRuntimeFields() {
@@ -2657,7 +2739,7 @@ function applyLocalizedDialogText() {
     local localizedField
     local localizedFields=("title" "button1text" "button2text" "infobuttontext"
                         "message" "helpmessage"
-                        "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+                        "excessiveUptimeWarningMessage" "diskSpaceWarningMessage" "batteryWarningMessage"
                         "stagedUpdateMessage" "partiallyStagedUpdateMessage" "pendingDownloadMessage"
                         "supportAssistanceMessage"
                         "updateWord" "upgradeWord"
@@ -2699,7 +2781,7 @@ function updateRequiredVariables() {
     # Check swiftDialog before creating the runtime directory or downloading icons
     dialogBinary="/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli"
     if [[ ! -x "${dialogBinary}" ]]; then
-        fatal "swiftDialog not found at '${dialogBinary}'; are downloads from GitHub blocked on this Mac?"
+        fatal "No reminder shown: swiftDialog not found at '${dialogBinary}'. Next step: install swiftDialog (https://github.com/swiftDialog/swiftDialog/releases), or confirm downloads from GitHub are not blocked on this Mac."
     fi
     downloadBrandingAssets
 
@@ -2723,7 +2805,7 @@ function updateRequiredVariables() {
     
     local textFields=("title" "button1text" "button2text" "infobuttontext"
                     "infobox" "helpmessage" "helpimage"
-                    "excessiveUptimeWarningMessage" "diskSpaceWarningMessage"
+                    "excessiveUptimeWarningMessage" "diskSpaceWarningMessage" "batteryWarningMessage"
                     "message")
     
     for field in "${textFields[@]}"; do
@@ -2741,7 +2823,6 @@ function updateRequiredVariables() {
 
 function currentLoggedInUser() {
     loggedInUser=$( echo "show State:/Users/ConsoleUser" | scutil | awk '/Name :/ { print $3 }' )
-    preFlight "Current Logged-in User: ${loggedInUser}"
 }
 
 
@@ -3708,6 +3789,7 @@ function resolveDDMEnforcementFromInstallLog() {
 
     ddmResolverStatus=""
     ddmResolverReason=""
+    ddmResolverNextStep=""
     ddmResolverSource=""
     ddmResolverSuppressionType=""
     ddmDeclarationLogTimestamp=""
@@ -3730,7 +3812,8 @@ function resolveDDMEnforcementFromInstallLog() {
     if ! tailRecentInstallLogWindow; then
         ddmResolverStatus="missing"
         ddmResolverSuppressionType="missing"
-        ddmResolverReason="No readable install.log window available"
+        ddmResolverReason="install.log is missing or unreadable"
+        ddmResolverNextStep="Confirm '${installLogPath}' exists and is readable by root."
         return 1
     fi
 
@@ -3787,15 +3870,18 @@ function resolveDDMEnforcementFromInstallLog() {
         ddmResolverStatus="missing"
         ddmResolverSuppressionType="missing"
         if [[ -n "${ddmResolverIgnoredInvalidSummary}" ]]; then
-            ddmResolverReason="Only invalid stale DDM declarations found in install.log"
+            ddmResolverReason="install.log has only expired or invalid DDM update entries"
+            ddmResolverNextStep="Confirm this Mac is in scope of a current DDM software-update declaration in your MDM."
             notice "Ignoring invalid stale DDM declaration: ${ddmResolverIgnoredInvalidSummary}"
             if [[ -n "${ddmResolverIgnoredInvalidContext}" ]] || latestDDMResolverContextLine; then
-                info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+                info "install.log context: $(installLogEvidence "${ddmResolverIgnoredInvalidContext}")"
             fi
         elif (( ${#ddmUncorroboratedCandidates[@]} > 0 )); then
-            ddmResolverReason="No install.log DDM declaration candidates corroborated by softwareupdate DDM state"
+            ddmResolverReason="install.log DDM update entries are not active in softwareupdate DDM state"
+            ddmResolverNextStep="Confirm the DDM software-update declaration is still active in your MDM; install.log entries do not match '${ddmStatePersistencePlistPath}'."
         else
-            ddmResolverReason="No DDM declaration candidates found in install.log"
+            ddmResolverReason="No DDM-enforced macOS update found in install.log"
+            ddmResolverNextStep="If an update should be enforced, confirm this Mac is in scope of a DDM software-update declaration in your MDM, then search '${installLogPath}' for 'EnforcedInstallDate'."
         fi
         return 1
     fi
@@ -3837,7 +3923,8 @@ function resolveDDMEnforcementFromInstallLog() {
     if (( distinctCandidateCount != 1 )); then
         ddmResolverStatus="conflict"
         ddmResolverSuppressionType="conflict"
-        ddmResolverReason="Conflicting DDM declarations detected in install.log"
+        ddmResolverReason="install.log shows conflicting DDM-enforced macOS updates"
+        ddmResolverNextStep="Scope this Mac to a single DDM software-update declaration in your MDM, or configure a DDM Emergency Fallback (Parameters 5 and 6)."
         warning "${ddmResolverReason}"
 
         for index in "${filteredIndexes[@]}"; do
@@ -3846,7 +3933,7 @@ function resolveDDMEnforcementFromInstallLog() {
         done
 
         if latestDDMResolverContextLine; then
-            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+            info "install.log context: $(installLogEvidence "${ddmResolverIgnoredInvalidContext}")"
         fi
 
         return 1
@@ -3864,7 +3951,8 @@ function resolveDDMEnforcementFromInstallLog() {
     if ! isValidDDMVersionString "${ddmVersionString}"; then
         ddmResolverStatus="invalidVersion"
         ddmResolverSuppressionType="invalidVersion"
-        ddmResolverReason="Invalid DDM version string detected in resolved declaration"
+        ddmResolverReason="DDM-enforced macOS version in install.log is invalid"
+        ddmResolverNextStep="Correct the target macOS version in your MDM's DDM software-update declaration, or configure a DDM Emergency Fallback (Parameters 5 and 6)."
         warning "${ddmResolverReason}: ${ddmVersionString}"
         return 1
     fi
@@ -3872,13 +3960,26 @@ function resolveDDMEnforcementFromInstallLog() {
     if candidateHasConflictingEvidence "${candidateSignature}" "${ddmVersionString}" "${candidateFirstEpochs[$latestIndex]}" "${candidateEpochs[$latestIndex]}"; then
         ddmResolverStatus="conflict"
         ddmResolverSuppressionType="conflict"
-        ddmResolverReason="Conflicting DDM state detected in install.log"
+        case "${ddmResolverConflictSummary}" in
+            "Declaration persisted after"* )
+                ddmResolverReason="softwareupdated found no update to enforce, yet DDM-enforced macOS ${ddmVersionString} is still declared"
+                ddmResolverNextStep="Confirm the target macOS version and deadline of this Mac's DDM software-update declaration in your MDM; if this Mac already meets it, a later softwareupdate scan may clear this, otherwise update or remove the declaration."
+                ;;
+            "Available descriptor"* )
+                ddmResolverReason="softwareupdated offers macOS ${${ddmResolverConflictSummary#Available descriptor }%% *}, not DDM-enforced macOS ${ddmVersionString}"
+                ddmResolverNextStep="Confirm this Mac's DDM software-update declaration targets a macOS version offered in System Settings > General > Software Update; a later softwareupdate scan may resolve this."
+                ;;
+            * )
+                ddmResolverReason="install.log shows two different DDM-enforced macOS updates"
+                ddmResolverNextStep="Scope this Mac to a single DDM software-update declaration in your MDM, or configure a DDM Emergency Fallback (Parameters 5 and 6)."
+                ;;
+        esac
         warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
 
         if [[ -n "${ddmResolverConflictContext}" ]]; then
-            info "Resolver context: ${ddmResolverConflictContext}"
+            info "install.log context: $(installLogEvidence "${ddmResolverConflictContext}")"
         elif latestDDMResolverContextLine; then
-            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+            info "install.log context: $(installLogEvidence "${ddmResolverIgnoredInvalidContext}")"
         fi
 
         return 1
@@ -3887,11 +3988,12 @@ function resolveDDMEnforcementFromInstallLog() {
     if candidateHasNoMatchScanFailure "${ddmVersionString}" "${candidateEpochs[$latestIndex]}"; then
         ddmResolverStatus="noMatch"
         ddmResolverSuppressionType="noMatch"
-        ddmResolverReason="Chosen DDM declaration does not map to an available update"
+        ddmResolverReason="DDM-enforced macOS version in install.log does not match an available update"
+        ddmResolverNextStep="Confirm the declared macOS version is offered to this Mac in System Settings > General > Software Update, or configure a DDM Emergency Fallback (Parameters 5 and 6)."
         warning "${ddmResolverReason}: ${ddmVersionString} (${ddmResolverFailureMarker})"
 
         if latestDDMResolverContextLine; then
-            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+            info "install.log context: $(installLogEvidence "${ddmResolverIgnoredInvalidContext}")"
         fi
 
         return 1
@@ -3902,13 +4004,10 @@ function resolveDDMEnforcementFromInstallLog() {
     if [[ -n "${ddmResolverIgnoredInvalidSummary}" ]]; then
         notice "Ignored invalid stale DDM declaration: ${ddmResolverIgnoredInvalidSummary}"
         if [[ -n "${ddmResolverIgnoredInvalidContext}" ]]; then
-            info "Resolver context: ${ddmResolverIgnoredInvalidContext}"
+            info "install.log context: $(installLogEvidence "${ddmResolverIgnoredInvalidContext}")"
         fi
     fi
-    notice "Resolved DDM declaration source: ${ddmResolverSource}"
-    notice "Resolved DDM declaration version: ${ddmVersionString}"
-    notice "Resolved DDM declaration enforcement date: ${ddmEnforcedInstallDate}"
-    info "Resolved declaration context: ${ddmDeclarationRawLine}"
+    info "DDM declaration logged by softwareupdated at ${ddmDeclarationLogTimestamp} (${ddmResolverSource})"
 
     return 0
 }
@@ -4064,39 +4163,53 @@ installedOSvsDDMenforcedOS() {
     # Installed macOS Version
     installedmacOSVersion=$( sw_vers -productVersion )
     installedmacOSBuild=$( sw_vers -buildVersion )
-    notice "Installed macOS Version: ${installedmacOSVersion}"
-    notice "Installed macOS Build: ${installedmacOSBuild}"
+    notice "Currently installed macOS ${installedmacOSVersion} (${installedmacOSBuild})"
 
     # DDM-enforced macOS Version
     resolveDDMEnforcementFromInstallLog
     normalDDMResolverStatus="${ddmResolverStatus:-unknown}"
     normalDDMResolverSource="${ddmResolverSource:-none}"
     normalDDMResolverReason="${ddmResolverReason:-none}"
-    notice "Normal DDM resolver result: status=${normalDDMResolverStatus}; source=${normalDDMResolverSource}; reason=${normalDDMResolverReason}"
+    local ddmUpdateCheckOutcome=""
+    local missingDDMNextStep="If an update should be enforced, confirm this Mac is in scope of a DDM software-update declaration in your MDM, then search '${installLogPath}' for 'EnforcedInstallDate'."
+    case "${normalDDMResolverStatus}" in
+        resolved       ) ddmUpdateCheckOutcome="found DDM-enforced macOS ${ddmVersionString:-unknown}, declared deadline ${ddmEnforcedInstallDate:-unknown}" ;;
+        missing        ) ddmUpdateCheckOutcome="no DDM-enforced macOS update found" ;;
+        conflict       ) ddmUpdateCheckOutcome="DDM update state is unclear" ;;
+        noMatch        ) ddmUpdateCheckOutcome="DDM-enforced macOS update does not match an available update" ;;
+        invalidVersion ) ddmUpdateCheckOutcome="DDM-enforced macOS version is invalid" ;;
+        *              ) ddmUpdateCheckOutcome="unrecognized result" ;;
+    esac
+    notice "DDM update check: ${ddmUpdateCheckOutcome} (status=${normalDDMResolverStatus}; source=${normalDDMResolverSource}; reason=${normalDDMResolverReason})"
     case "${normalDDMResolverStatus}" in
         resolved)
             if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
-                notice "Confirmed DDM declaration takes precedence over persisted MDM fallback requirement."
+                notice "DDM-enforced update found in install.log takes precedence over configured DDM Emergency Fallback."
             fi
             ;;
         missing|conflict|noMatch|invalidVersion)
             if ! selectMDMFallbackRequirement "${normalDDMResolverStatus}"; then
                 if [[ "${normalDDMResolverStatus}" == "missing" ]]; then
-                    versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
-                    notice "Resolver suppression summary: ${normalDDMResolverStatus} | ${normalDDMResolverReason}"
+                    versionComparisonResult="No DDM update (status=missing)"
+                    setNoReminderOutcome "notice" "this Mac has no DDM-enforced macOS update pending (${normalDDMResolverReason})" "${ddmResolverNextStep:-${missingDDMNextStep}}"
+                elif [[ "${ddmResolverConflictSummary}" == "Declaration persisted after"* ]] && currentMacSatisfiesResolvedDeclaration; then
+                    # Logging only: suppression is unchanged, but the admin's question is "is this Mac compliant?"
+                    versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
+                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; softwareupdated has nothing left to enforce (status=${normalDDMResolverStatus})" "None; this Mac is up to date. The leftover declaration in install.log should clear after a later softwareupdate scan."
+                elif [[ "${ddmResolverConflictSummary}" == "Available descriptor"* ]] && currentMacSatisfiesResolvedDeclaration; then
+                    versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
+                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; the different update softwareupdated offers (macOS ${${ddmResolverConflictSummary#Available descriptor }%% *}) is not enforced by DDM (status=${normalDDMResolverStatus})" "None; this Mac meets its DDM declaration. To enforce a newer macOS, update the DDM software-update declaration in your MDM."
                 else
-                    versionComparisonResult="DDM enforcement state unresolved; suppressing reminder dialog."
-                    warning "Resolver suppression summary: ${normalDDMResolverStatus} | ${normalDDMResolverReason}"
-                    quitOut "${normalDDMResolverReason}; exiting quietly."
+                    versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
+                    setNoReminderOutcome "warning" "DDM update state is unclear, so no deadline can be trusted (${normalDDMResolverReason}; status=${normalDDMResolverStatus})" "${ddmResolverNextStep:-Review DDM software-update declarations for this Mac in your MDM.}"
                 fi
                 return
             fi
             ;;
         *)
-            versionComparisonResult="Unexpected DDM resolver state; suppressing reminder dialog."
-            warning "Unexpected normal DDM resolver status '${normalDDMResolverStatus}'; fallback is ineligible."
-            warning "Resolver suppression summary: ${normalDDMResolverStatus} | ${normalDDMResolverReason}"
-            quitOut "Unexpected DDM resolver state; exiting quietly."
+            versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
+            warning "Unrecognized DDM update check status '${normalDDMResolverStatus}'; DDM Emergency Fallback is not eligible."
+            setNoReminderOutcome "warning" "DDM update check returned an unrecognized status (status=${normalDDMResolverStatus}; reason=${normalDDMResolverReason})" "Collect ${scriptLog}, ${installLogPath}, and preferences; see Resources/README.md (Client-state diagnosis)."
             return
             ;;
     esac
@@ -4104,17 +4217,18 @@ installedOSvsDDMenforcedOS() {
     if [[ -n "${ddmVersionString}" ]] && currentMacSatisfiesResolvedDeclaration; then
         versionComparisonResult="Up-to-date"
         if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-            notice "Installed macOS already satisfies MDM fallback requirement ${ddmVersionString}."
-            notice "MDM fallback contribution: updateRequired=NO; reminderDisplayed=NO."
+            notice "DDM Emergency Fallback contribution: updateRequired=NO; reminderDisplayed=NO."
+            setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM Emergency Fallback macOS ${ddmVersionString}" "None; this Mac is up to date."
         else
-            notice "Installed macOS already satisfies DDM declaration ${ddmVersionString}."
+            setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}" "None; this Mac is up to date."
         fi
         return
     fi
 
     ddmLogEntry="${ddmDeclarationRawLine}"
     if [[ "${ddmResolverStatus}" != "fallback" && -z "${ddmLogEntry}" ]]; then
-        versionComparisonResult="No DDM enforcement log entry found; please confirm this Mac is in-scope for DDM-enforced updates."
+        versionComparisonResult="No DDM update (no install.log entry)"
+        setNoReminderOutcome "notice" "DDM-enforced macOS ${ddmVersionString:-update} has no matching install.log entry" "${missingDDMNextStep}"
         return
     fi
 
@@ -4122,8 +4236,12 @@ installedOSvsDDMenforcedOS() {
     if ! isValidDDMVersionString "${ddmVersionString}"; then
         warning "Invalid $(requirementLogLabel) OS version format. Log entry: ${ddmLogEntry}"
         warning "Invalid $(requirementLogLabel) OS version: ${ddmVersionString}"
-        versionComparisonResult="Invalid DDM version string; suppressing reminder dialog."
-        quitOut "Invalid DDM version string; exiting quietly."
+        versionComparisonResult="Invalid DDM version"
+        if [[ "${ddmResolverStatus}" == "fallback" ]]; then
+            setNoReminderOutcome "warning" "DDM Emergency Fallback macOS version '${ddmVersionString}' is invalid" "Redeploy with a valid Parameter 5."
+        else
+            setNoReminderOutcome "warning" "DDM-enforced macOS version '${ddmVersionString}' is invalid" "Correct the target macOS version in your MDM's DDM software-update declaration."
+        fi
         return
     fi
 
@@ -4143,10 +4261,10 @@ installedOSvsDDMenforcedOS() {
 
         # Enforcement deadline passed
         if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-            warning "MDM fallback requirement deadline has passed; using supplied timestamp directly without padded-date waiting."
+            warning "DDM Emergency Fallback deadline has passed; using its supplied timestamp directly without padded-date waiting."
             ddmEnforcedInstallDateHumanReadable="${ddmVersionStringDeadlineHumanReadable}"
             ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
-            info "Effective enforcement source: MDM fallback requirement EnforcedInstallDate"
+            info "Effective enforcement source: DDM Emergency Fallback EnforcedInstallDate"
         else
             notice "DDM enforcement deadline has passed; evaluating post-deadline enforcement …"
 
@@ -4212,7 +4330,7 @@ installedOSvsDDMenforcedOS() {
 
         versionComparisonResult="Update Required"
         if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-            notice "MDM fallback contribution: updateRequired=YES; reminderDisplayed=PENDING."
+            notice "DDM Emergency Fallback contribution: updateRequired=YES; reminderDisplayed=PENDING."
         fi
 
         # Detect staged updates
@@ -4473,6 +4591,53 @@ function computeDynamicWarnings() {
         warning "freeBytes '${freeBytes}' is not numeric; suppressing disk-space warning logic."
         diskSpaceWarningMessage=""
     fi
+
+    # Low Battery Warning (positive evidence only; messaging never gates restart workflows)
+    resolveBatteryPowerState
+    local batteryWarningState="suppressed"
+    local batteryChargeDisplay="not present"
+    if [[ "${batteryPercentage}" == <-> ]]; then
+        batteryChargeDisplay="${batteryPercentage}%"
+    elif [[ "${batteryInternalPresent}" == "YES" ]]; then
+        batteryChargeDisplay="unreadable"
+    fi
+
+    if (( minimumBatteryPercentage == 0 )); then
+        batteryWarningMessage=""
+        batteryWarningState="disabled"
+    elif [[ "${batteryPowerSource}" == "Battery Power" && "${batteryPercentage}" == <-> ]] && (( batteryPercentage < minimumBatteryPercentage )); then
+        batteryWarningState="shown"
+    else
+        batteryWarningMessage=""
+    fi
+    notice "Battery: power source ${batteryPowerSource:-unknown}; internal battery ${batteryChargeDisplay}; MinimumBatteryPercentage threshold ${minimumBatteryPercentage}%; warning ${batteryWarningState}"
+}
+
+function resolveBatteryPowerState() {
+    local pmsetOutput=""
+    local pmsetLine=""
+
+    batteryPowerSource=""
+    batteryPercentage=""
+    batteryInternalPresent="NO"
+
+    pmsetOutput=$( /usr/bin/pmset -g ps 2>/dev/null )
+
+    # Read the charge only from the internal battery line; a UPS line can also report a percentage
+    for pmsetLine in "${(@f)pmsetOutput}"; do
+        if [[ "${pmsetLine}" =~ "^Now drawing from '([^']+)'" ]]; then
+            batteryPowerSource="${match[1]}"
+        elif [[ "${pmsetLine}" == *"-InternalBattery-"* ]]; then
+            batteryInternalPresent="YES"
+            if [[ "${pmsetLine}" =~ '[[:space:]]([0-9]{1,3})%;' ]] && (( match[1] <= 100 )); then
+                batteryPercentage="${match[1]}"
+            fi
+        fi
+    done
+
+    if [[ "${batteryInternalPresent}" == "YES" && -z "${batteryPercentage}" ]]; then
+        warning "Internal battery detected, but its charge could not be read from 'pmset -g ps'; suppressing low-battery warning."
+    fi
 }
 
 function resolveDiskSpaceWarningThreshold() {
@@ -4710,7 +4875,8 @@ function applyPastDeadlineDialogOverrides() {
         message="${pastDeadlinePromptMessage}"
     fi
 
-    # Restart-focused dialog mode intentionally suppresses extra warning blocks.
+    # Restart-focused dialog mode intentionally suppresses extra warning blocks;
+    # batteryWarningMessage stays because a restart does not charge the battery.
     excessiveUptimeWarningMessage=""
     diskSpaceWarningMessage=""
     updateReadyMessage=""
@@ -4737,7 +4903,8 @@ function applyPreDeadlineThresholdDialogOverrides() {
 
     title="${preDeadlineThresholdTitle}"
     message="${preDeadlineThresholdMessage}"
-    notice "Applying ${preDeadlineThresholdMinutes}-minute pre-deadline threshold dialog copy."
+    computePreDeadlineThresholdMinutesRemaining
+    notice "Applying ${preDeadlineThresholdMinutes}-minute pre-deadline threshold dialog copy (${preDeadlineThresholdMinutesRemaining:-${preDeadlineThresholdMinutes}} minute(s) remaining)."
 }
 
 function executeRestartAction() {
@@ -4783,8 +4950,8 @@ function displayReminderDialog() {
     ensureDialogRuntimeDirectory
 
     if [[ "${ddmResolverStatus}" == "fallback" ]]; then
-        warning "Activated MDM fallback requirement for reminder display after normal DDM declaration status '${normalDDMResolverStatus}'."
-        warning "MDM fallback contribution: updateRequired=YES; reminderDisplayed=YES; target=${ddmVersionString}; deadline=${ddmEnforcedInstallDate}"
+        warning "Showing reminder from DDM Emergency Fallback because DDM update check returned status=${normalDDMResolverStatus}."
+        warning "DDM Emergency Fallback contribution: updateRequired=YES; reminderDisplayed=YES; target=${ddmVersionString}; deadline=${ddmEnforcedInstallDate}"
     fi
 
     notice "Display Reminder Dialog to ${loggedInUser} with additional options: ${additionalDialogOptions}"
@@ -4911,7 +5078,7 @@ function displayReminderDialog() {
                 fi
                 ;;
             *"systempreferences"*)
-                notice "Software Update handoff: requirementSource=${ddmResolverSource:-unknown}; normalResolverStatus=${normalDDMResolverStatus:-unknown}; target=${ddmVersionString:-unknown}; deadline=${ddmEnforcedInstallDate:-unknown}; action=${action}"
+                notice "Opening Software Update for ${loggedInUser} to install macOS ${ddmVersionString:-unknown} (deadline ${ddmEnforcedInstallDateHumanReadable:-${ddmEnforcedInstallDate:-unknown}}; source=${ddmResolverSource:-unknown}; status=${normalDDMResolverStatus:-unknown})"
                 launchctl asuser "${loggedInUserID}" /usr/bin/sudo -u "${loggedInUser}" /usr/bin/open "${action}"
                 notice "Checking if System Settings is open …"
                 local settingsLaunchWaitCount=0
@@ -5092,6 +5259,8 @@ fi
 
 preFlight "\n\n###\n# $humanReadableScriptName (${scriptVersion})\n# http://snelson.us/ddm\n###\n"
 preFlight "Initiating …"
+[[ -n "${diskSpaceQueryWarning}" ]] && warning "${diskSpaceQueryWarning}"
+[[ -n "${diskSpaceQueryError}" ]] && error "${diskSpaceQueryError}"
 
 
 
@@ -5100,7 +5269,7 @@ preFlight "Initiating …"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if [[ $(id -u) -ne 0 ]]; then
-    fatal "This script must be run as root; exiting."
+    fatal "No reminder shown: this script must be run as root. Next step: run it from your MDM or with 'sudo zsh <script>'."
 fi
 
 initializeDorPidFile
@@ -5121,19 +5290,19 @@ maxWait=120  # 2 minutes
 counter=0
 until [[ -n "${loggedInUser}" && "${loggedInUser}" != "loginwindow" && "${loggedInUser}" != "_mbsetupuser" && "${loggedInUser}" != "root" ]]; do
     if [[ "${counter}" -ge "${maxWait}" ]]; then
-        fatal "No valid user logged in after ${maxWait} seconds; exiting."
+        fatal "No reminder shown: no user logged in at the console after ${maxWait} seconds. Next step: None; the next scheduled run retries once a user logs in."
     fi
     sleep 1
     ((counter++))
     currentLoggedInUser
-    preFlight "Logged-in User Counter: ${counter}"
+    preFlight "Logged-in User Counter: ${counter} (console user: ${loggedInUser:-none})"
 done
 
 loggedInUserFullname=$( id -F "${loggedInUser}" )
 loggedInUserFirstname=$( echo "$loggedInUserFullname" | sed -E 's/^.*, // ; s/([^ ]*).*/\1/' | sed 's/\(.\{25\}\).*/\1…/' | awk '{print ( $0 == toupper($0) ? toupper(substr($0,1,1))substr(tolower($0),2) : toupper(substr($0,1,1))substr($0,2) )}' )
 loggedInUserID=$( id -u "${loggedInUser}" )
 loggedInUserHomeDirectory=$( dscl . read "/Users/${loggedInUser}" NFSHomeDirectory | awk -F ' ' '{print $2}' )
-preFlight "Current Logged-in User First Name (ID): ${loggedInUserFirstname} (${loggedInUserID})"
+preFlight "Current Logged-in User: ${loggedInUser}, ${loggedInUserFirstname}, ${loggedInUserID}"
 
 
 
@@ -5171,7 +5340,7 @@ preFlight "Complete"
 
 if [[ "${1}" == "demo" ]]; then
 
-    notice "Demo mode enabled"
+    notice "Demo mode enabled: ignores DDM state and shows a sample reminder, even on an up-to-date Mac (presentation, swiftDialog, and console-user checks still apply)"
 
     demoPastDeadlineRestartModeRaw="${2:-Off}"
     demoAggressiveModeRequested="NO"
@@ -5278,7 +5447,7 @@ if [[ "${1}" == "demo" ]]; then
             if checkUserDisplaySleepAssertions; then
                 notice "No active Display Sleep Assertions detected; proceeding …"
             else
-                quitOut "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+                logNoReminder "${loggedInUser} is still presenting or in a meeting after ${meetingDelay} minute(s) (MeetingDelay)" "None; the next scheduled run tries again."
                 exit 0
             fi
         else
@@ -5361,7 +5530,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
             notice "No reminder interaction history found; displaying initial reminder dialog"
         elif (( periodicReminderDays <= 0 )); then
             setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminders disabled"
-            quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and outside-display-window periodic reminders are disabled; exiting quietly."
+            logNoReminder "deadline is ${ddmVersionStringDaysRemaining} days away, beyond DaysBeforeDeadlineDisplayReminder (${daysBeforeDeadlineDisplayReminder}), and OutsideDisplayWindowPeriodicReminderDays is 0" "None; reminders start ${daysBeforeDeadlineDisplayReminder} days before the deadline."
             quitScript "0"
         else
             # Validate the extracted timestamp matches expected format
@@ -5378,7 +5547,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                         # Last interaction was within 28 days; skip
                         daysAgo=$(( delta / 86400 ))
                         setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminder not due"
-                        quitOut "Deadline still ${ddmVersionStringDaysRemaining} days away and last reminder was ${daysAgo} day(s) ago; exiting quietly."
+                        logNoReminder "deadline is ${ddmVersionStringDaysRemaining} days away, beyond DaysBeforeDeadlineDisplayReminder (${daysBeforeDeadlineDisplayReminder}), and the last reminder was ${daysAgo} day(s) ago" "None; the next reminder appears after ${periodicReminderDays} day(s) (OutsideDisplayWindowPeriodicReminderDays) or ${daysBeforeDeadlineDisplayReminder} days before the deadline."
                         quitScript "0"
                     fi
                 else
@@ -5412,7 +5581,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                 warning "Unable to resolve first baseline reminder after local midnight; falling back to baseline scheduling."
                 setNextReminderScheduleBaseline "Update Tonight suppression baseline fallback"
             fi
-            quitOut "Update Tonight is scheduled for ${ddmVersionString}; exiting quietly."
+            logNoReminder "${loggedInUser} scheduled Update Tonight for macOS ${ddmVersionString}" "None; reminders resume after local midnight if the update has not installed."
             quitScript "0"
         else
             clearUpdateTonightSuppressionState "cleared; suppression is not eligible"
@@ -5444,7 +5613,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                     if (( delta < quietPeriodSeconds )); then
                         minutesAgo=$(( delta / 60 ))
                         setNextReminderScheduleForQuietOrThreshold "$(( lastEpoch + quietPeriodSeconds ))" "Quiet period remains active from recent reminder interaction"
-                        quitOut "User last interacted with reminder dialog ${minutesAgo} minute(s) ago; exiting quietly."
+                        logNoReminder "${loggedInUser} responded to a reminder ${minutesAgo} minute(s) ago (QuietPeriodMinutes: ${quietPeriodMinutes})" "None; the next reminder appears after the quiet period."
                         quitScript "0"
                     fi
                 fi
@@ -5465,11 +5634,11 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
             if checkUserDisplaySleepAssertions; then
                 notice "No active Display Sleep Assertions detected; proceeding …"
             else
-                quitOut "Presentation still active after ${meetingDelay} minutes; exiting quietly."
+                logNoReminder "${loggedInUser} is still presenting or in a meeting after ${meetingDelay} minute(s) (MeetingDelay)" "None; the next scheduled run tries again."
                 quitScript "0"
             fi
         else
-            info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+            info "Deadline is within 36 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
         fi
     fi
 
@@ -5529,6 +5698,11 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 else
 
     notice "Version Comparison Result: ${versionComparisonResult}"
+    if [[ -n "${noReminderReason}" ]]; then
+        logNoReminder "${noReminderReason}" "${noReminderNextStep}" "${noReminderLevel}"
+    else
+        logNoReminder "no macOS update required (${versionComparisonResult:-unknown})" "None." "notice"
+    fi
 
 fi
 

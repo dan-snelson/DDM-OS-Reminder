@@ -4,8 +4,8 @@
 <dict>
 
     <!-- Preferences Domain: org.churchofjesuschrist.dorm -->
-    <!-- Version: 4.2.0 -->
-    <!-- Generated on: 2026-09-08-164302 -->
+    <!-- Version: 5.2.0 -->
+    <!-- Generated on: 2026-10-20-114832 -->
 
     <!-- Logging -->
     <key>ScriptLog</key>
@@ -42,7 +42,9 @@
     <key>PastDeadlineForceRedisplayDelaySeconds</key>
     <integer>5</integer>
     <key>MinimumDiskFreeGB</key>
-    <integer>26</integer>
+    <integer>35</integer>
+    <key>MinimumBatteryPercentage</key>
+    <integer>50</integer>
     <key>DisableButton2InsteadOfHide</key>
     <true/>
     <key>MeetingDelay</key>
@@ -258,6 +260,24 @@
     <string>DiskSpaceWarningMessageLocalized_nl</string>
     <key>DiskSpaceWarningMessageLocalized_it</key>
     <string>DiskSpaceWarningMessageLocalized_it</string>
+    <key>BatteryWarningMessage</key>
+    <string>BatteryWarningMessage</string>
+    <key>BatteryWarningMessageLocalized_en</key>
+    <string>BatteryWarningMessageLocalized_en</string>
+    <key>BatteryWarningMessageLocalized_de</key>
+    <string>BatteryWarningMessageLocalized_de</string>
+    <key>BatteryWarningMessageLocalized_fr</key>
+    <string>BatteryWarningMessageLocalized_fr</string>
+    <key>BatteryWarningMessageLocalized_es</key>
+    <string>BatteryWarningMessageLocalized_es</string>
+    <key>BatteryWarningMessageLocalized_pt</key>
+    <string>BatteryWarningMessageLocalized_pt</string>
+    <key>BatteryWarningMessageLocalized_ja</key>
+    <string>BatteryWarningMessageLocalized_ja</string>
+    <key>BatteryWarningMessageLocalized_nl</key>
+    <string>BatteryWarningMessageLocalized_nl</string>
+    <key>BatteryWarningMessageLocalized_it</key>
+    <string>BatteryWarningMessageLocalized_it</string>
     <key>StagedUpdateMessage</key>
     <string>StagedUpdateMessage</string>
     <key>StagedUpdateMessageLocalized_en</key>

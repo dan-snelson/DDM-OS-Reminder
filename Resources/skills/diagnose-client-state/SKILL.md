@@ -51,13 +51,13 @@ zsh Resources/diagnoseReminderState.zsh \
   --local-plist <local-path>
 ```
 
-The helper is read-only. It prints a fact sheet. Preference ranges, plist key names, and `install.log` source-type markers live there; do not restate them here.
+The helper is read-only. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.4.0 report skeleton.
 
-If the helper cannot run, read the three files and follow the same sections the helper prints. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
+If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
 ## Rules
 
-- The client log line `Normal DDM resolver result:` is what that Mac did.
+- The client log line `DDM update check:` (`5.2.0` and later) or `Normal DDM resolver result:` (earlier) is what that Mac did. Quote it, along with any `No reminder shown:` and `Next step:` lines.
 - `install.log` explains that result. Do not invent a different resolver status.
 - If the log and `install.log` evidence disagree, say they disagree and quote both.
 - Without `SoftwareUpdateDDMStatePersistence.plist`, do not drop `install.log` candidates as uncorroborated. Quote client-log warnings about uncorroborated trust when present.
@@ -69,16 +69,105 @@ If the helper cannot run, read the three files and follow the same sections the 
 
 ## Report
 
-Write Markdown in this order:
+Every report uses one format. Do not add, drop, rename, merge, or reorder sections.
 
-1. Verdict in one sentence, from the last run: resolver suppression (`missing`, `conflict`, `noMatch`, `invalidVersion`), fallback selected, already compliant, outside the display window, quiet period, Update Tonight, meeting or Focus delay, threshold or aggressive dialog, dialog shown, fatal setup error, or not enough evidence.
-2. Files received and files that were not in the upload.
-3. Identity: RDNN, script version, installed macOS from the log.
-4. Effective settings for the decision-critical keys in the helper table, with source and any rejected raw value.
-5. DDM evidence from `install.log`, with timestamps.
-6. What the last run did, quoted from the client log (redacted).
-7. Whether the log and `install.log` agree.
-8. Likely cause and operator next steps.
-9. A line that the report is redacted and that raw uploads should stay out of a public issue.
+1. Copy the helper's `## Report skeleton` block, from `<!-- report-skeleton:begin -->` to `<!-- report-skeleton:end -->`. Drop the two marker lines.
+2. Fill only the `<!-- agent: … -->` slots: sections 1, 7, and 8, plus optional extra bullets in section 5. Replace each slot; do not leave comments behind.
+3. Do not reformat, re-sort, trim, or re-word helper tables, bullets, or the section 9 sentence. If a helper row is wrong, say so in section 8; do not edit the row.
 
-After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest `ddm-os-reminder-<rdnn>-<YYYY-MM-DD>.md` next to the uploads, outside this repository. Save only the redacted report. Do not save the raw uploads or the helper fact sheet.
+Template (helper-filled parts shown as `…`):
+
+````markdown
+# [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
+
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.4.0) · Checklist: `reminderDialog.zsh` 5.2.0
+
+## 1. Verdict
+
+**<Category>** (`<status>`). One or two sentences.
+
+## 2. Files
+
+| File | Status | Note |
+|---|---|---|
+…  fixed rows: Client log, `install.log`, Managed plist, Local plist (or Supplied plist (layer unknown)), `dor-state.plist`, `dor-fallback-declaration.plist`, `SoftwareUpdateDDMStatePersistence.plist`, LaunchDaemon plist, `dor-aggressive-kill`
+
+## 3. Identity
+
+| Field | Value |
+|---|---|
+…  RDNN, Runtime version, Deployment version, Installed macOS, Checklist match
+- Helper notes: none | - Helper note: …
+
+## 4. Effective settings
+
+Precedence: …
+
+| Plist key | Effective | Source | Flags |
+|---|---|---|---|
+…
+- Deprecated keys: none | …
+- Unknown keys: none | …
+- Rejected localized keys: none | …
+
+## 5. DDM evidence (`install.log`)
+
+Window: … Corroboration: …
+
+| First seen | Last seen | Version | Build | EnforcedInstallDate | Source types | Corroborated |
+|---|---|---|---|---|---|---|
+…
+- Invalid declarations: …
+- No updates found for DDM to enforce: …
+- Recovery markers: …
+- No-match markers: …
+- Update Tonight softwareupdated lines: …
+- (optional agent bullets)
+
+## 6. Client-log runs
+
+| Started | Script | Resolver result | Outcome |
+|---|---|---|---|
+…
+Last run (YYYY-MM-DD HH:MM:SS):
+
+```text
+…
+```
+
+- Lines without a DDM OS Reminder prefix: …
+
+## 7. Do the client log and `install.log` agree?
+
+**Yes.** | **No.** | **Not comparable.** Up to three sentences.
+
+## 8. Likely cause and next steps
+
+### Likely cause
+
+One short paragraph.
+
+### Next steps
+
+1. … (read-only)
+2. …
+
+## 9. Redaction
+
+This report is redacted: usernames, first names, `/Users` paths, `install.log` computer names, and labeled serial numbers are removed. Keep the raw uploads and the helper fact sheet out of any public issue.
+````
+
+Verdict categories (pick exactly one, bold, sentence case): **Resolver suppression**, **Fallback selected**, **Already compliant**, **Outside the display window**, **Quiet period**, **Update Tonight**, **Meeting or Focus delay**, **Threshold dialog**, **Aggressive dialog**, **Dialog shown**, **Fatal setup error**, **Not enough evidence**. Follow with the recorded resolver status in backticks when the last run has one, for example **Resolver suppression** (`conflict`).
+
+Style:
+
+- Headings exactly as in the template, including numbers. Use `###` only for the two section 8 subheadings.
+- Tables stay tables; never convert helper tables to bullets or bullets to tables.
+- Full timestamps (`YYYY-MM-DD HH:MM` or as logged). Never short forms like `10-14`.
+- US English spelling (labeled, honored, analyze).
+- Backticks for preference keys, file names, paths, statuses, versions, and quoted log fragments.
+- Bold only for the verdict category and the section 7 lead word.
+- Quote log lines in `text` fenced blocks. Redact as the helper does.
+- In section 8, mark inferences as inferences. Number next steps; put read-only checks first and end each with `(read-only)`.
+
+After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest the helper's `Suggested report filename` (`ddm-os-reminder-<rdnn>-<YYYY-MM-DD-HHMMSS>.md`, for example `ddm-os-reminder-us.snelson-2026-10-15-201132.md`) next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.

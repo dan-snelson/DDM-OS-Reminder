@@ -10,9 +10,9 @@ flowchart TD
     FixDDM --> DDMReady
     DDMReady -->|Yes| Preview["Local preview<br/>source demo and optional<br/>preference validation helper"]
 
-    Preview --> Assemble{"Prior DOR .plist<br/>from 2.2.0 or later?"}
+    Preview --> Assemble{"Prior DOR .plist or .mobileconfig<br/>from 2.2.0 or later?"}
     Assemble -->|No| Interactive["zsh assemble.zsh --interactive<br/>answer organization prompts"]
-    Assemble -->|Yes| Import["zsh assemble.zsh /path/prior.plist<br/>import supported settings"]
+    Assemble -->|Yes| Import["zsh assemble.zsh /path/prior.plist<br/>or /path/prior.mobileconfig<br/>import supported settings"]
     Interactive --> Artifacts["Review three generated artifacts<br/>assembled script, .plist, .mobileconfig"]
     Import --> Artifacts
 
@@ -39,7 +39,7 @@ flowchart TD
     Monitor --> Upgrade{"New release?"}
     Upgrade -->|No| Monitor
     Upgrade -->|2.1.0 or earlier| Fresh["Uninstall old deployment<br/>and assemble fresh"]
-    Upgrade -->|2.2.0 or later| Reimport["Import prior .plist,<br/>review fresh artifacts"]
+    Upgrade -->|2.2.0 or later| Reimport["Import prior .plist or .mobileconfig,<br/>review fresh artifacts"]
     Fresh --> Artifacts
     Reimport --> Artifacts
 
@@ -97,7 +97,7 @@ zsh assemble.zsh --interactive
 
 Interactive assembly can collect or confirm:
 
-- optional previous `.plist` import
+- optional previous `.plist` or `.mobileconfig` import
 - RDNN
 - internal support contact information
 - info-button and knowledge-base behavior
@@ -116,7 +116,15 @@ For a previous DDM OS Reminder `.plist` from version `2.2.0` or later:
 zsh assemble.zsh /path/to/previous-config.plist
 ```
 
-Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist`.
+Starting with `5.2.0`, a prior Configuration Profile works the same way:
+
+```zsh
+zsh assemble.zsh /path/to/previous-profile.mobileconfig
+```
+
+Unsigned and CMS-signed profiles are supported. The profile must contain exactly one DDM OS Reminder (`*.dorm`) preferences payload; `Forced` settings are preferred. Supply only one prior `.plist` or `.mobileconfig`.
+
+Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`).
 
 ### Non-interactive options
 
@@ -266,7 +274,7 @@ Work from state toward symptoms:
 2. Confirm the MDM-delivered preference file exists and contains expected types and values.
 3. Inspect `dor-state.plist` for a disabled or future schedule.
 4. Inspect `dor.pid` and matching processes before treating an overlap exit as a failure.
-5. Review recent `/var/log/install.log` declaration state and the project log's resolver decision. `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state` means candidates did not match `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`.
+5. Review recent `/var/log/install.log` declaration state and the project log's `DDM update check:`, `No reminder shown:`, and `Next step:` lines. `[WARNING] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state` means candidates did not match `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`.
 6. Confirm the installed macOS version is still below the resolved requirement.
 7. Confirm the reminder is inside a display, periodic, threshold, or aggressive window.
 8. Confirm meeting, quiet-period, or support kill-switch suppression is expected.
@@ -295,9 +303,18 @@ Uninstall the old deployment and assemble a fresh current deployment. Do not rel
 
 ### Version 2.2.0 or later
 
-Import the prior generated `.plist`, review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
+Import the prior generated `.plist` (or, starting with `5.2.0`, the deployed `.mobileconfig`), review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
 
 Do not assume every release changes the Configuration Profile. Compare normalized preference output and release notes before redeploying it.
+
+### Version 5.2.0
+
+Review the [5.2.0 upgrade notes](../README.md#520-upgrade-notes):
+
+- Deploy the updated `dor.zsh` before, or together with, any Configuration Profile containing `{batteryWarningMessage}`; older scripts show the literal placeholder.
+- Customized message templates (and their `Localized_<code>` variants) need `{batteryWarningMessage}` added by hand, or the low-battery warning never appears. `assemble.zsh` lists imported templates that lack it.
+- Update scripts, Extension Attributes, or log searches keyed on `Normal DDM resolver result`, `Resolver suppression summary`, or `MDM fallback requirement`; key on `DDM update check:`, `status=`, `No reminder shown:`, and `DDM Emergency Fallback` instead.
+- An imported `MinimumDiskFreeGB` value is kept; raise it manually if it is still `26` (the sample default is now `35`).
 
 ### Version 5.0.0
 

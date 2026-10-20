@@ -14,21 +14,21 @@
 #
 ####################################################################################################
 
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/usr/local:/usr/local/bin
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="2.3.0"
+scriptVersion="5.2.0"
 
-# Client-side Log (must match value set in "ddmOSReminder.zsh" script)
+# Client-side Log (must match value set in "reminderDialog.zsh" script, deployed as "/Library/Management/<rdnn>/dor.zsh")
 scriptLog="/var/log/org.churchofjesuschrist.log"
 
-# Organization's Script Name (must match value set in "ddmOSReminder.zsh" script)
+# Organization's Script Name (must match value set in "reminderDialog.zsh" script)
 organizationScriptName="dorm"
 
-# Static Row Header text to identify log level (must match value set in "ddmOSReminder.zsh" script)
+# Static Row Header text to identify log level (must match value set in "reminderDialog.zsh" script)
 logRowHeader="NOTICE"
 
-# Static text to identify log entries from this script (must match value set in "ddmOSReminder.zsh" script)
+# Static text to identify log entries from this script (must match value set in "reminderDialog.zsh" script)
 logStaticText="clicked"
 
 # Number of lines to search (from the bottom of the log file)
@@ -43,12 +43,13 @@ logLinesToSearch="5"
 ####################################################################################################
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Match the "$logStaticText" within rows which contain "$logRowHeader" for the "$organizationScriptName"
-# for the last "$logLinesToSearch" lines from "$scriptLog"
+# Match "<user> $logStaticText <button>" in "[$logRowHeader]" rows for the "$organizationScriptName"
+# for the last "$logLinesToSearch" matches from "$scriptLog"
+# (other log levels, such as "[INFO]", may also mention "clicked" and are ignored)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 result=$(
-  grep -E "$organizationScriptName.*$logStaticText|$logStaticText.*$organizationScriptName" "$scriptLog" 2>/dev/null \
+  grep -E "^${organizationScriptName} .*\[${logRowHeader}\][[:space:]]+[^[:space:]]+ ${logStaticText} " "$scriptLog" 2>/dev/null \
   | tail -n "$logLinesToSearch" \
   | while IFS= read -r line; do
       ts=$(sed -E 's/.*([0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}).*/\1/' <<< "$line")

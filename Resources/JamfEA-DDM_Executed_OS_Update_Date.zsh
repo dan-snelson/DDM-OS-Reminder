@@ -1,10 +1,10 @@
 #!/bin/zsh --no-rcs
 
 # EA: DDM Executed OS Update Date (log-based)
-# Reports when the CURRENT OS version/build first appeared in /var/log/install.log.
+# Reports when the CURRENT OS version/build was installed, from the most recent matching /var/log/install.log entry.
 #
-# Version: 2.3.0
-# Date: 19-Jan-2026
+# Version: 5.2.0
+# Date: 20-Oct-2026
 
 # Safety: don't use -e or pipefail in Jamf EA context
 set -u

@@ -12,6 +12,7 @@
 #   zsh assemble.zsh us.snelson --lane prod
 #   zsh assemble.zsh us.snelson --lane prod --interactive
 #   zsh assemble.zsh /path/to/previous-config.plist
+#   zsh assemble.zsh /path/to/previous-profile.mobileconfig
 #
 # Expected directory layout:
 #   DDM-OS-Reminder/
@@ -42,7 +43,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.1.0"
+scriptVersion="5.2.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -70,6 +71,13 @@ priorPlistPath=""
 priorPlistImported=false
 priorPlistPrompted=false
 importedLegacyMinimumDiskFreePercentage=""
+importedTemplatesMissingBatteryPlaceholder=""
+priorConfigSourcePath=""
+priorConfigPlistPath=""
+priorConfigLabel="plist"
+priorConfigPreferenceDomain=""
+priorConfigVersionMetadata=""
+priorConfigTempDir=""
 rdnnInferredFromPriorPlist=false
 modeInferredFromPriorPlist=false
 validLaneArgumentProvided=false
@@ -109,17 +117,31 @@ localizationSelectionProvidedViaCLI=false
 function printUsage() {
   echo
   echo "Usage:"
-  echo "  zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--minimal|--languages <csv>] [--help]"
+  echo "  zsh assemble.zsh [RDNN|prior-plist|prior-mobileconfig] [--lane dev|test|prod] [--interactive] [--minimal|--languages <csv>] [--help]"
   echo
   echo "Options:"
   echo "  --lane <dev|test|prod>       Select deployment mode"
-  echo "  --interactive                Prompt for optional prior .plist import, IT support, branding, restart policy, and aggressive mode values"
+  echo "  --interactive                Prompt for optional prior .plist or .mobileconfig import, IT support, branding, restart policy, and aggressive mode values"
   echo "  --minimal                    Keep base keys plus English localized keys only"
   echo "  --languages <csv>            Keep base keys, English localized keys, and selected language families"
   echo "  prior-plist                  Auto-enables interactive mode and infers RDNN plus deployment mode only when filename ends with -dev.plist, -test.plist or -prod.plist"
+  echo "  prior-mobileconfig           Same as prior-plist for an unsigned or signed .mobileconfig; lane suffixes: -<lane>.mobileconfig, -<lane>-unsigned.mobileconfig, -<lane>-signed.mobileconfig"
   echo "  --help, -h                   Show this help"
   echo
 }
+
+
+
+function cleanupPriorConfigTempDir() {
+  if [[ -n "${priorConfigTempDir}" && -d "${priorConfigTempDir}" ]]; then
+    rm -rf "${priorConfigTempDir}" 2>/dev/null || true
+  fi
+}
+
+# Registered at top level; zsh scopes EXIT traps set inside functions to that function
+trap cleanupPriorConfigTempDir EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 
 
@@ -148,9 +170,9 @@ done
 ####################################################################################################
 
 echo
-echo "==============================================================="
+echo "====================================================================================="
 echo "🧩 Assemble DDM OS Reminder (${scriptVersion})"
-echo "==============================================================="
+echo "====================================================================================="
 echo
 echo "📍 Full Paths:"
 echo
@@ -251,7 +273,7 @@ fi
 echo
 
 # Parse command-line arguments
-# Usage: zsh assemble.zsh [RDNN|prior-plist] [--lane dev|test|prod] [--interactive] [--help]
+# Usage: zsh assemble.zsh [RDNN|prior-plist|prior-mobileconfig] [--lane dev|test|prod] [--interactive] [--help]
 skipRDNNPrompt=false
 skipModePrompt=false
 
@@ -269,10 +291,237 @@ function normalizePathInput() {
   echo "${rawValue}"
 }
 
+function isPriorMobileconfigArgument() {
+  local candidateValue="${1}"
+
+  [[ "${candidateValue:l}" == *.mobileconfig ]]
+}
+
 function isPriorPlistArgument() {
   local candidateValue="${1}"
 
-  [[ "${candidateValue:l}" == *.plist ]]
+  [[ "${candidateValue:l}" == *.plist ]] || isPriorMobileconfigArgument "${candidateValue}"
+}
+
+function emitTopLevelPlistDictKeys() {
+  local xmlPlistPath="${1}"
+
+  # Depth-aware so nested dict keys are never mistaken for top-level keys
+  /usr/bin/awk '
+    {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+    }
+
+    line ~ /^<key>[^<]*<\/key>$/ && depth == 1 {
+      key = line
+      sub(/^<key>/, "", key)
+      sub(/<\/key>$/, "", key)
+      print key
+      next
+    }
+
+    line ~ /^<(dict|array)>/ {
+      depth++
+      next
+    }
+
+    line ~ /^<\/(dict|array)>/ {
+      depth--
+      next
+    }
+  ' "${xmlPlistPath}"
+}
+
+function ensurePriorConfigTempDir() {
+  if [[ -n "${priorConfigTempDir}" && -d "${priorConfigTempDir}" ]]; then
+    return 0
+  fi
+
+  priorConfigTempDir="$(/usr/bin/mktemp -d -t ddm-os-reminder-assemble)" || {
+    priorConfigTempDir=""
+    echo "❌ Unable to create a temporary directory for .mobileconfig import" >&2
+    return 1
+  }
+}
+
+function extractPriorMobileconfigPreferences() {
+  local candidatePath="${1}"
+  local profilePath="${candidatePath}"
+  local decodedProfilePath=""
+  local extractedPlistPath=""
+  local payloadXmlPath=""
+  local payloadIndex=0
+  local payloadType=""
+  local payloadDomain=""
+  local candidateEntry=""
+  local candidateStyle=""
+  local candidateIndex=""
+  local candidateDomain=""
+  local manageLevel=""
+  local selectedManageLevel=""
+  local topLevelKey=""
+  local payloadDescription=""
+  local -a payloadMetadataKeys
+  local -a preferenceCandidates
+  local -a candidateDomains
+  local -a manageLevelsPresent
+
+  if [[ ! -e "${candidatePath}" ]]; then
+    echo "❌ Prior mobileconfig not found: ${candidatePath}" >&2
+    return 1
+  fi
+
+  if [[ ! -r "${candidatePath}" ]]; then
+    echo "❌ Prior mobileconfig is not readable: ${candidatePath}" >&2
+    return 1
+  fi
+
+  ensurePriorConfigTempDir || return 1
+  decodedProfilePath="${priorConfigTempDir}/decoded.mobileconfig"
+  extractedPlistPath="${priorConfigTempDir}/prior.plist"
+  payloadXmlPath="${priorConfigTempDir}/payload.plist"
+  rm -f "${decodedProfilePath}" "${extractedPlistPath}" "${payloadXmlPath}" 2>/dev/null || true
+
+  # Signed profiles are CMS envelopes; decode them before reading payloads
+  if ! /usr/bin/plutil -lint "${profilePath}" >/dev/null 2>&1; then
+    if /usr/bin/security cms -D -i "${candidatePath}" -o "${decodedProfilePath}" >/dev/null 2>&1 \
+      && /usr/bin/plutil -lint "${decodedProfilePath}" >/dev/null 2>&1; then
+      profilePath="${decodedProfilePath}"
+      echo "🔓 Decoded signed mobileconfig: ${candidatePath}" >&2
+    else
+      echo "❌ Prior mobileconfig is neither a valid property list nor a CMS-signed profile: ${candidatePath}" >&2
+      return 1
+    fi
+  fi
+
+  if ! /usr/libexec/PlistBuddy -c "Print :PayloadContent" "${profilePath}" >/dev/null 2>&1; then
+    echo "❌ Prior mobileconfig is not a configuration profile (no PayloadContent): ${candidatePath}" >&2
+    return 1
+  fi
+
+  while /usr/libexec/PlistBuddy -c "Print :PayloadContent:${payloadIndex}" "${profilePath}" >/dev/null 2>&1; do
+    payloadType="$(
+      /usr/libexec/PlistBuddy -c "Print :PayloadContent:${payloadIndex}:PayloadType" "${profilePath}" 2>/dev/null || true
+    )"
+
+    if [[ "${payloadType}" == "com.apple.ManagedClient.preferences" ]]; then
+      if /usr/libexec/PlistBuddy -x -c "Print :PayloadContent:${payloadIndex}:PayloadContent" "${profilePath}" > "${payloadXmlPath}" 2>/dev/null; then
+        while IFS= read -r payloadDomain; do
+          [[ "${payloadDomain}" == *".${currentOrgScriptName_reminder}" ]] || continue
+          preferenceCandidates+=("mcx|${payloadIndex}|${payloadDomain}")
+        done < <(emitTopLevelPlistDictKeys "${payloadXmlPath}")
+      fi
+    elif [[ "${payloadType}" == *".${currentOrgScriptName_reminder}" ]]; then
+      # Alternate format (e.g., iMazing Profile Editor): settings live directly in the payload dict
+      preferenceCandidates+=("flat|${payloadIndex}|${payloadType}")
+    fi
+
+    payloadIndex=$(( payloadIndex + 1 ))
+  done
+
+  if (( ${#preferenceCandidates[@]} == 0 )); then
+    echo "❌ Prior mobileconfig does not contain a DDM OS Reminder preferences payload (*.${currentOrgScriptName_reminder}): ${candidatePath}" >&2
+    return 1
+  fi
+
+  if (( ${#preferenceCandidates[@]} > 1 )); then
+    for candidateEntry in "${preferenceCandidates[@]}"; do
+      candidateDomains+=("${candidateEntry##*|} [${candidateEntry%%|*} payload ${${candidateEntry#*|}%%|*}]")
+    done
+    echo "❌ Prior mobileconfig contains multiple DDM OS Reminder preferences payloads (${(j:, :)candidateDomains}); export a profile with exactly one: ${candidatePath}" >&2
+    return 1
+  fi
+
+  candidateEntry="${preferenceCandidates[1]}"
+  candidateStyle="${candidateEntry%%|*}"
+  candidateIndex="${${candidateEntry#*|}%%|*}"
+  candidateDomain="${candidateEntry##*|}"
+
+  if [[ "${candidateStyle}" == "mcx" ]]; then
+    for manageLevel in Forced Set-Once Often; do
+      if /usr/libexec/PlistBuddy -c "Print :PayloadContent:${candidateIndex}:PayloadContent:${candidateDomain}:${manageLevel}" "${profilePath}" >/dev/null 2>&1; then
+        manageLevelsPresent+=("${manageLevel}")
+      fi
+    done
+
+    if (( ${#manageLevelsPresent[@]} == 0 )); then
+      echo "❌ Prior mobileconfig domain '${candidateDomain}' has no Forced, Set-Once or Often settings: ${candidatePath}" >&2
+      return 1
+    fi
+
+    selectedManageLevel="${manageLevelsPresent[1]}"
+
+    if [[ "${selectedManageLevel}" != "Forced" ]]; then
+      echo "⚠️  Prior mobileconfig domain '${candidateDomain}' has no Forced settings; using ${selectedManageLevel} settings" >&2
+    elif (( ${#manageLevelsPresent[@]} > 1 )); then
+      echo "⚠️  Prior mobileconfig domain '${candidateDomain}' also has ${(j:, :)manageLevelsPresent[2,-1]} settings; importing Forced only" >&2
+    fi
+
+    if /usr/libexec/PlistBuddy -c "Print :PayloadContent:${candidateIndex}:PayloadContent:${candidateDomain}:${selectedManageLevel}:1" "${profilePath}" >/dev/null 2>&1; then
+      echo "❌ Prior mobileconfig domain '${candidateDomain}' has multiple ${selectedManageLevel} entries; export a profile with exactly one: ${candidatePath}" >&2
+      return 1
+    fi
+
+    if ! /usr/libexec/PlistBuddy -x -c "Print :PayloadContent:${candidateIndex}:PayloadContent:${candidateDomain}:${selectedManageLevel}:0:mcx_preference_settings" "${profilePath}" > "${extractedPlistPath}" 2>/dev/null; then
+      echo "❌ Prior mobileconfig domain '${candidateDomain}' has no ${selectedManageLevel} mcx_preference_settings: ${candidatePath}" >&2
+      return 1
+    fi
+  else
+    if ! /usr/libexec/PlistBuddy -x -c "Print :PayloadContent:${candidateIndex}" "${profilePath}" > "${extractedPlistPath}" 2>/dev/null; then
+      echo "❌ Unable to read '${candidateDomain}' payload from prior mobileconfig: ${candidatePath}" >&2
+      return 1
+    fi
+
+    # Strip profile metadata (PayloadType, PayloadUUID, …) so only preference keys remain
+    payloadMetadataKeys=("${(@f)$(emitTopLevelPlistDictKeys "${extractedPlistPath}")}")
+    for topLevelKey in "${payloadMetadataKeys[@]}"; do
+      [[ "${topLevelKey}" == Payload* ]] || continue
+      /usr/libexec/PlistBuddy -c "Delete :${topLevelKey}" "${extractedPlistPath}" >/dev/null 2>&1 || true
+    done
+  fi
+
+  if ! /usr/bin/plutil -lint "${extractedPlistPath}" >/dev/null 2>&1; then
+    echo "❌ Preferences extracted from prior mobileconfig are invalid: ${candidatePath}" >&2
+    return 1
+  fi
+
+  payloadDescription="$(
+    /usr/libexec/PlistBuddy -c "Print :PayloadDescription" "${profilePath}" 2>/dev/null || true
+  )"
+  priorConfigVersionMetadata=""
+  if [[ "${payloadDescription}" =~ 'DDM OS Reminder \(([^)]+)\)' ]]; then
+    priorConfigVersionMetadata="${match[1]}"
+  else
+    # Resources/createPlist.zsh carries the version in PayloadDisplayName instead
+    payloadDescription="$(
+      /usr/libexec/PlistBuddy -c "Print :PayloadDisplayName" "${profilePath}" 2>/dev/null || true
+    )"
+    if [[ "${payloadDescription}" =~ 'DDM OS Reminder \(([^)]+)\)' ]]; then
+      priorConfigVersionMetadata="${match[1]}"
+    fi
+  fi
+
+  priorConfigPreferenceDomain="${candidateDomain}"
+  priorConfigPlistPath="${extractedPlistPath}"
+  echo "🧾 Extracted '${candidateDomain}' preferences from prior mobileconfig" >&2
+}
+
+function resolvePriorConfiguration() {
+  local candidatePath="${1}"
+
+  priorConfigSourcePath="${candidatePath}"
+  priorConfigPreferenceDomain=""
+  priorConfigVersionMetadata=""
+
+  if isPriorMobileconfigArgument "${candidatePath}"; then
+    priorConfigLabel="mobileconfig"
+    priorConfigPlistPath=""
+    extractPriorMobileconfigPreferences "${candidatePath}"
+  else
+    priorConfigLabel="plist"
+    priorConfigPlistPath="${candidatePath}"
+  fi
 }
 
 function validatePriorPlistPath() {
@@ -287,17 +536,17 @@ function validatePriorPlistPath() {
   local hasLocalizedHelpMessage="false"
 
   if [[ ! -e "${candidatePath}" ]]; then
-    echo "❌ Prior plist not found: ${candidatePath}" >&2
+    echo "❌ Prior ${priorConfigLabel} not found: ${candidatePath}" >&2
     return 1
   fi
 
   if [[ ! -r "${candidatePath}" ]]; then
-    echo "❌ Prior plist is not readable: ${candidatePath}" >&2
+    echo "❌ Prior ${priorConfigLabel} is not readable: ${candidatePath}" >&2
     return 1
   fi
 
   if ! /usr/bin/plutil -lint "${candidatePath}" >/dev/null 2>&1; then
-    echo "❌ Prior plist is invalid: ${candidatePath}" >&2
+    echo "❌ Prior ${priorConfigLabel} is invalid: ${candidatePath}" >&2
     return 1
   fi
 
@@ -320,7 +569,14 @@ function validatePriorPlistPath() {
   fi
 
   if (( ${#missingRequiredKeys[@]} > 0 )); then
-    echo "❌ Prior plist does not appear to be a DDM OS Reminder plist; missing required keys: ${(j:, :)missingRequiredKeys}" >&2
+    if [[ "${priorConfigLabel}" == "mobileconfig" ]]; then
+      echo "❌ Prior mobileconfig '${priorConfigPreferenceDomain}' settings are missing required DDM OS Reminder keys: ${(j:, :)missingRequiredKeys} (${priorConfigSourcePath})" >&2
+    else
+      echo "❌ Prior ${priorConfigLabel} does not appear to be a DDM OS Reminder plist; missing required keys: ${(j:, :)missingRequiredKeys}" >&2
+      if /usr/libexec/PlistBuddy -c "Print :PayloadContent" "${candidatePath}" >/dev/null 2>&1; then
+        echo "    This file looks like a configuration profile; rename it with a .mobileconfig extension to import it." >&2
+      fi
+    fi
     return 1
   fi
 
@@ -329,33 +585,42 @@ function validatePriorPlistPath() {
   )"
 
   if [[ -z "${scriptLogValue}" || "${scriptLogValue:t}" != *.log ]]; then
-    echo "❌ Prior plist does not contain a valid DDM OS Reminder ScriptLog path" >&2
+    echo "❌ Prior ${priorConfigLabel} does not contain a valid DDM OS Reminder ScriptLog path" >&2
     return 1
   fi
 
-  preferencesDomainComment="$(
-    /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Preferences Domain:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
-      | /usr/bin/head -n 1
-  )"
-  preferencesDomainComment="$(
-    printf "%s\n" "${preferencesDomainComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
-  )"
+  if [[ "${priorConfigLabel}" == "mobileconfig" ]]; then
+    # Extracted settings carry no XML comments; use metadata read from the profile itself
+    preferencesDomainComment="${priorConfigPreferenceDomain}"
+  else
+    preferencesDomainComment="$(
+      /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Preferences Domain:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
+        | /usr/bin/head -n 1
+    )"
+    preferencesDomainComment="$(
+      printf "%s\n" "${preferencesDomainComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+    )"
+  fi
 
   if [[ -n "${preferencesDomainComment}" && "${preferencesDomainComment}" != *".${currentOrgScriptName_reminder}" ]]; then
-    echo "❌ Prior plist metadata does not match a DDM OS Reminder preferences domain: ${preferencesDomainComment}" >&2
+    echo "❌ Prior ${priorConfigLabel} metadata does not match a DDM OS Reminder preferences domain: ${preferencesDomainComment}" >&2
     return 1
   fi
 
-  versionComment="$(
-    /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Version:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
-      | /usr/bin/head -n 1
-  )"
-  versionComment="$(
-    printf "%s\n" "${versionComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
-  )"
+  if [[ "${priorConfigLabel}" == "mobileconfig" ]]; then
+    versionComment="${priorConfigVersionMetadata}"
+  else
+    versionComment="$(
+      /usr/bin/sed -n 's#^[[:space:]]*<!--[[:space:]]*Version:[[:space:]]*\(.*\)[[:space:]]*-->[[:space:]]*$#\1#p' "${candidatePath}" \
+        | /usr/bin/head -n 1
+    )"
+    versionComment="$(
+      printf "%s\n" "${versionComment}" | /usr/bin/sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+    )"
+  fi
 
   if [[ -z "${versionComment}" ]]; then
-    echo "⚠️  Prior plist is missing version metadata; continuing with documented 2.2.0+ compatibility on a best-effort basis" >&2
+    echo "⚠️  Prior ${priorConfigLabel} is missing version metadata; continuing with documented 2.2.0+ compatibility on a best-effort basis" >&2
     echo "${candidatePath}"
     return 0
   fi
@@ -365,13 +630,13 @@ function validatePriorPlistPath() {
   )"
 
   if [[ -z "${versionCore}" ]]; then
-    echo "⚠️  Prior plist version metadata is not recognized ('${versionComment}'); continuing with best-effort import" >&2
+    echo "⚠️  Prior ${priorConfigLabel} version metadata is not recognized ('${versionComment}'); continuing with best-effort import" >&2
     echo "${candidatePath}"
     return 0
   fi
 
   if ! is-at-least 2.2.0 "${versionCore}"; then
-    echo "⚠️  Prior plist version '${versionComment}' predates the documented 2.2.0+ compatibility baseline; continuing with best-effort import" >&2
+    echo "⚠️  Prior ${priorConfigLabel} version '${versionComment}' predates the documented 2.2.0+ compatibility baseline; continuing with best-effort import" >&2
   fi
 
   echo "${candidatePath}"
@@ -387,6 +652,7 @@ function isSafeScriptLogPath() {
 
 function inferRDNNFromPriorPlist() {
   local plistPath="${1}"
+  local filenamePath="${2:-${1}}"
   local importedScriptLog=""
   local inferredRDNN=""
   local plistFilename=""
@@ -400,7 +666,7 @@ function inferRDNNFromPriorPlist() {
   fi
 
   if [[ -z "${inferredRDNN}" ]]; then
-    plistFilename="${plistPath:t}"
+    plistFilename="${filenamePath:t}"
     if [[ "${plistFilename}" == *".${currentOrgScriptName_reminder}-"* ]]; then
       inferredRDNN="${plistFilename%%.${currentOrgScriptName_reminder}-*}"
     fi
@@ -415,9 +681,9 @@ function inferDeploymentModeFromPriorPlist() {
   local plistFilename="${1:t:l}"
 
   case "${plistFilename}" in
-    *-dev.plist)  echo "dev" ;;
-    *-test.plist) echo "test" ;;
-    *-prod.plist) echo "prod" ;;
+    *-dev.plist|*-dev.mobileconfig|*-dev-unsigned.mobileconfig|*-dev-signed.mobileconfig)     echo "dev" ;;
+    *-test.plist|*-test.mobileconfig|*-test-unsigned.mobileconfig|*-test-signed.mobileconfig) echo "test" ;;
+    *-prod.plist|*-prod.mobileconfig|*-prod-unsigned.mobileconfig|*-prod-signed.mobileconfig) echo "prod" ;;
   esac
 }
 
@@ -425,9 +691,9 @@ function detectNearMissDeploymentModeTokenFromPriorPlist() {
   local plistFilename="${1:t:l}"
 
   case "${plistFilename}" in
-    *-dev-*.plist)  echo "dev" ;;
-    *-test-*.plist) echo "test" ;;
-    *-prod-*.plist) echo "prod" ;;
+    *-dev-*.plist|*-dev-*.mobileconfig)   echo "dev" ;;
+    *-test-*.plist|*-test-*.mobileconfig) echo "test" ;;
+    *-prod-*.plist|*-prod-*.mobileconfig) echo "prod" ;;
   esac
 }
 
@@ -453,14 +719,19 @@ function applyPriorPlistSelections() {
 
   priorPlistPath="${plistPath}"
   priorPlistImported=true
+  [[ -n "${priorConfigSourcePath}" ]] || priorConfigSourcePath="${plistPath}"
 
   echo
-  echo "ℹ️  Importing supported values from: ${priorPlistPath}"
+  echo "ℹ️  Importing supported values from: ${priorConfigSourcePath}"
 
   if [[ -z "${newRDNN}" || "${rdnnInferredFromPriorPlist}" == true ]]; then
-    inferredRDNN="$(inferRDNNFromPriorPlist "${priorPlistPath}")"
+    inferredRDNN="$(inferRDNNFromPriorPlist "${priorPlistPath}" "${priorConfigSourcePath}")"
     if [[ -n "${inferredRDNN}" ]]; then
-      echo "🔎 Inferred RDNN from prior plist: '${inferredRDNN}'"
+      if [[ -n "${priorConfigPreferenceDomain}" && "${priorConfigPreferenceDomain}" != "${inferredRDNN}.${currentOrgScriptName_reminder}" ]]; then
+        echo "⚠️  Prior ${priorConfigLabel} domain '${priorConfigPreferenceDomain}' does not match ScriptLog-derived RDNN '${inferredRDNN}'"
+        echo "    Verify the RDNN below, or re-run with the intended RDNN as a positional argument."
+      fi
+      echo "🔎 Inferred RDNN from prior ${priorConfigLabel}: '${inferredRDNN}'"
       newRDNN="${inferredRDNN}"
       skipRDNNPrompt=true
       rdnnInferredFromPriorPlist=true
@@ -468,15 +739,15 @@ function applyPriorPlistSelections() {
   fi
 
   if [[ "${skipModePrompt}" == false ]]; then
-    inferredDeploymentMode="$(inferDeploymentModeFromPriorPlist "${priorPlistPath}")"
+    inferredDeploymentMode="$(inferDeploymentModeFromPriorPlist "${priorConfigSourcePath}")"
     if [[ -n "${inferredDeploymentMode}" ]]; then
       deploymentMode="${inferredDeploymentMode}"
       skipModePrompt=true
       modeInferredFromPriorPlist=true
       nearMissDeploymentModeToken=""
-      echo "🔎 Inferred deployment mode from prior plist: '${deploymentMode}'"
+      echo "🔎 Inferred deployment mode from prior ${priorConfigLabel}: '${deploymentMode}'"
     elif [[ "${validLaneArgumentProvided}" == false ]]; then
-      nearMissModeToken="$(detectNearMissDeploymentModeTokenFromPriorPlist "${priorPlistPath}")"
+      nearMissModeToken="$(detectNearMissDeploymentModeTokenFromPriorPlist "${priorConfigSourcePath}")"
       if [[ -n "${nearMissModeToken}" ]]; then
         nearMissDeploymentModeToken="${nearMissModeToken}"
       fi
@@ -539,12 +810,16 @@ while [[ $# -gt 0 ]]; do
       positionalArgument="$(normalizePathInput "${1}")"
 
       if [[ -z "${priorPlistPath}" ]] && isPriorPlistArgument "${positionalArgument}"; then
-        priorPlistPath="$(validatePriorPlistPath "${positionalArgument}")" || exit 1
+        resolvePriorConfiguration "${positionalArgument}" || exit 1
+        priorPlistPath="$(validatePriorPlistPath "${priorConfigPlistPath}")" || exit 1
         interactiveMode=true
         priorPlistPrompted=true
 
-        echo "📥 Prior plist provided via command-line argument: '${priorPlistPath}'"
+        echo "📥 Prior ${priorConfigLabel} provided via command-line argument: '${priorConfigSourcePath}'"
         applyPriorPlistSelections "${priorPlistPath}"
+      elif isPriorPlistArgument "${positionalArgument}"; then
+        echo "❌ Only one prior .plist or .mobileconfig may be supplied; extra argument: '${positionalArgument}'"
+        exit 1
       elif [[ -z "${newRDNN}" || "${rdnnInferredFromPriorPlist}" == true ]]; then
         echo "📥 RDNN provided via command-line argument: '${positionalArgument}'"
         newRDNN="${positionalArgument}"
@@ -722,7 +997,7 @@ function promptForPriorPlistImport() {
   showInteractiveConfigurationHeader
 
   while true; do
-    read -r "?Drag-and-drop an earlier DOR .plist to import [Return to skip] (or ‘X’ to exit): " candidatePath
+    read -r "?Drag-and-drop an earlier DOR .plist or .mobileconfig to import [Return to skip] (or ‘X’ to exit): " candidatePath
 
     if [[ "${candidatePath}" == [Xx] ]]; then
       echo "❎ Exiting at user request."
@@ -737,7 +1012,11 @@ function promptForPriorPlistImport() {
       return
     fi
 
-    if ! validatedPath="$(validatePriorPlistPath "${candidatePath}")"; then
+    if ! resolvePriorConfiguration "${candidatePath}"; then
+      continue
+    fi
+
+    if ! validatedPath="$(validatePriorPlistPath "${priorConfigPlistPath}")"; then
       continue
     fi
 
@@ -916,6 +1195,60 @@ function preferenceTypeForPlistKey() {
   return 1
 }
 
+# Added in 5.2.0; report imported admin copy that will never show the low-battery warning, but never rewrite it
+function reportImportedTemplatesMissingBatteryPlaceholder() {
+  local sourcePlist="${1}"
+  local targetPlist="${2}"
+  local importedKey=""
+  local templateBase=""
+  local templateValue=""
+  local templateSummary=""
+  local -a templateBases=(Message AggressiveModeMessage PreDeadlineThresholdMessage PastDeadlinePromptMessage PastDeadlineForceMessage)
+  local -a missingSummaries=()
+  local -A missingBaseKeySet
+  local -A missingLocalizedCount
+
+  importedTemplatesMissingBatteryPlaceholder=""
+
+  while IFS= read -r importedKey; do
+    [[ -z "${importedKey}" ]] && continue
+    templateBase="${importedKey%%Localized_*}"
+    (( ${templateBases[(Ie)${templateBase}]} )) || continue
+    if isLocalizedPlistKey "${importedKey}" && ! shouldKeepLocalizedPlistKey "${importedKey}"; then
+      continue
+    fi
+    templateValue="$(
+      /usr/libexec/PlistBuddy -c "Print :${importedKey}" "${targetPlist}" 2>/dev/null || true
+    )"
+    [[ "${templateValue}" == *"{batteryWarningMessage}"* ]] && continue
+    if [[ "${importedKey}" == "${templateBase}" ]]; then
+      missingBaseKeySet[${templateBase}]=1
+    else
+      missingLocalizedCount[${templateBase}]=$(( ${missingLocalizedCount[${templateBase}]:-0} + 1 ))
+    fi
+  done < <(extractPlistKeys "${sourcePlist}")
+
+  for templateBase in "${templateBases[@]}"; do
+    if [[ -n "${missingBaseKeySet[${templateBase}]:-}" ]]; then
+      templateSummary="${templateBase}"
+      if (( ${missingLocalizedCount[${templateBase}]:-0} > 0 )); then
+        templateSummary+=" (+${missingLocalizedCount[${templateBase}]} localized)"
+      fi
+    elif (( ${missingLocalizedCount[${templateBase}]:-0} > 0 )); then
+      templateSummary="${templateBase}Localized_* (${missingLocalizedCount[${templateBase}]})"
+    else
+      continue
+    fi
+    missingSummaries+=("${templateSummary}")
+  done
+
+  if (( ${#missingSummaries[@]} > 0 )); then
+    importedTemplatesMissingBatteryPlaceholder="${(j:, :)missingSummaries}"
+    echo "    ℹ️  Imported templates without {batteryWarningMessage}; the low-battery warning will not appear in them until you add it:"
+    echo "        ${importedTemplatesMissingBatteryPlaceholder}"
+  fi
+}
+
 function applyImportedPreferences() {
   local sourcePlist="${1}"
   local targetPlist="${2}"
@@ -1039,6 +1372,8 @@ function applyImportedPreferences() {
     fi
   fi
 
+  reportImportedTemplatesMissingBatteryPlaceholder "${sourcePlist}" "${targetPlist}"
+
   /usr/bin/plutil -replace ScriptLog -string "${resolvedScriptLogPath}" "${targetPlist}"
 }
 
@@ -1094,7 +1429,7 @@ if [[ "${interactiveMode}" == true ]]; then
 
   if [[ "${priorPlistImported}" == true ]]; then
     echo ""
-    echo "ℹ️  Prior plist supplied; skipping IT support, branding and restart policy prompts."
+    echo "ℹ️  Prior ${priorConfigLabel} supplied; skipping IT support, branding and restart policy prompts."
     echo ""
   else
 
@@ -1247,6 +1582,8 @@ if [[ "${interactiveMode}" == true ]]; then
       fi
       echo "⚠️  Invalid input for AggressiveModeFrequencyMinutes; enter an integer from 1 to 999."
     done
+
+    echo ""
   fi
 fi
 
@@ -1272,9 +1609,13 @@ echo
 if [[ "${skipModePrompt}" == false ]]; then
   if [[ -n "${nearMissDeploymentModeToken}" ]]; then
     echo
-    echo "⚠️  Prior plist filename includes '-${nearMissDeploymentModeToken}-', but deployment mode was not inferred."
-    echo "    Exact filename suffix required: -dev.plist, -test.plist or -prod.plist"
-    echo "    Re-run with --lane ${nearMissDeploymentModeToken}, or rename prior plist to exact supported suffix."
+    echo "⚠️  Prior ${priorConfigLabel} filename includes '-${nearMissDeploymentModeToken}-', but deployment mode was not inferred."
+    if [[ "${priorConfigLabel}" == "mobileconfig" ]]; then
+      echo "    Exact filename suffix required: -<lane>.mobileconfig, -<lane>-unsigned.mobileconfig or -<lane>-signed.mobileconfig"
+    else
+      echo "    Exact filename suffix required: -dev.plist, -test.plist or -prod.plist"
+    fi
+    echo "    Re-run with --lane ${nearMissDeploymentModeToken}, or rename prior ${priorConfigLabel} to exact supported suffix."
   fi
 
   echo
@@ -1289,7 +1630,7 @@ if [[ "${skipModePrompt}" == false ]]; then
   echo "  [Press ‘X’ to exit ❎]"
   echo
   while true; do
-    if ! read -r "?Enter mode [1/2/3]: " modeChoice; then
+    if ! read -r "?Specify Deployment Mode [1/2/3]: " modeChoice; then
       echo
       echo "❌ No deployment mode entered; re-run with --lane <dev|test|prod>."
       exit 1
@@ -1316,7 +1657,9 @@ if [[ "${skipModePrompt}" == false ]]; then
 fi
 
 echo
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "📦 Deployment Mode: ${deploymentMode}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Set mode suffix for artifact naming
 case "${deploymentMode}" in
@@ -1551,9 +1894,9 @@ if [[ -f "${plistSample}" ]]; then
 
   if [[ "${interactiveMode}" == true ]]; then
     if [[ "${priorPlistImported}" == true ]]; then
-      echo "    🔧 Importing supported values from prior plist …"
+      echo "    🔧 Importing supported values from prior ${priorConfigLabel} …"
       if ! applyImportedPreferences "${priorPlistPath}" "${plistOutput}"; then
-        echo "❌ Failed to import supported values from prior plist."
+        echo "❌ Failed to import supported values from prior ${priorConfigLabel}."
         exit 1
       fi
     else
@@ -1814,8 +2157,6 @@ echo "📦 Deployment Artifacts:"
 echo "         Assembled Script: ${newOutputScript#$projectDir/}"
 echo "     Organizational Plist: ${plistOutput#$projectDir/}"
 echo "    Configuration Profile: ${mobileconfigOutput#$projectDir/}"
-echo "  Deployed Runtime Assets: /Library/Management/${newRDNN}/dor-starter.zsh, dor-state.plist, dor.pid"
-echo " Optional Fallback Config: /Library/Management/${newRDNN}/dor-fallback-declaration.plist"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1828,8 +2169,8 @@ case "${deploymentMode}" in
     echo "  🧪 Development Artifacts Generated:"
     echo "    - Legacy 'Sample' placeholders replaced with '${placeholderMarker}'"
     if [[ "${priorPlistImported}" == true ]]; then
-      echo "    - Supported configuration values imported from prior plist"
-      echo "    - Prior plist: ${priorPlistPath}"
+      echo "    - Supported configuration values imported from prior ${priorConfigLabel}"
+      echo "    - Prior ${priorConfigLabel}: ${priorConfigSourcePath}"
       echo "    - ScriptLog resolved to '${resolvedScriptLogPath}'"
     fi
     echo "    - Safe to deploy for local validation"
@@ -1838,7 +2179,7 @@ case "${deploymentMode}" in
   test)
     echo "  Testing Artifacts Generated:"
     echo "    - All placeholder text replaced with 'TEST'"
-    echo "    - Suitable for staging/QA environments"
+    echo "    - Suitable for staging / QA environments"
     echo "    - NOT suitable for production use"
     ;;
   prod)
@@ -1847,8 +2188,8 @@ case "${deploymentMode}" in
     echo "    - Localization artifact mode: $(localizationFilterSummary)"
     if [[ "${interactiveMode}" == true ]]; then
       if [[ "${priorPlistImported}" == true ]]; then
-        echo "    - Supported configuration values imported from prior plist"
-        echo "    - Prior plist: ${priorPlistPath}"
+        echo "    - Supported configuration values imported from prior ${priorConfigLabel}"
+        echo "    - Prior ${priorConfigLabel}: ${priorConfigSourcePath}"
         echo "    - ScriptLog resolved to '${resolvedScriptLogPath}'"
       else
         echo "    - IT support, branding, restart and aggressive mode values applied from prompts"
@@ -1873,6 +2214,9 @@ case "${deploymentMode}" in
     if [[ -n "${importedLegacyMinimumDiskFreePercentage}" ]]; then
       echo "    - MinimumDiskFreeGB (replaces imported MinimumDiskFreePercentage ${importedLegacyMinimumDiskFreePercentage}%)"
     fi
+    if [[ -n "${importedTemplatesMissingBatteryPlaceholder}" ]]; then
+      echo "    - Add {batteryWarningMessage} to imported templates: ${importedTemplatesMissingBatteryPlaceholder}"
+    fi
     echo "    - Localization key set matches intended artifact mode"
     if [[ "${priorPlistImported}" == true ]]; then
       echo "    - Imported ScriptLog path and any carried-forward KB/help visibility"
@@ -1891,6 +2235,6 @@ case "${deploymentMode}" in
 esac
 
 echo
-echo "==============================================================="
+echo "====================================================================================="
 echo
 exit 0

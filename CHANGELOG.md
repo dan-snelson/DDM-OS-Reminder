@@ -2,6 +2,46 @@
 
 ## Changelog
 
+### Version 5.2.0 (20-Oct-2026)
+- New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)
+    - New `MinimumBatteryPercentage` preference: integer `0`–`100`, default `50`; `0` disables. Invalid values log `[WARNING]` and fall back to `50`.
+    - New `BatteryWarningMessage` string (localized for `en`, `de`, `fr`, `es`, `pt`, `ja`, `nl`, and `it`) with a `{batteryPercentage}` placeholder, inserted through the new `{batteryWarningMessage}` placeholder in `Message`, `AggressiveModeMessage`, `PreDeadlineThresholdMessage`, `PastDeadlinePromptMessage`, and `PastDeadlineForceMessage`. Restart mode keeps the battery warning, because a restart does not charge the battery.
+    - Shown only when `pmset -g ps` reports `Battery Power` and an internal-battery charge below the threshold; never on AC or UPS power, on Macs without an internal battery, or when the charge can't be read.
+    - Each run logs one `[NOTICE] Battery: …` line with power source, charge, threshold, and whether the warning was shown.
+    - Messaging only: `PastDeadlineRestartBehavior` `Prompt` / `Force` behavior is unchanged.
+    - `Resources/reminderDialogPreferenceTest.zsh` adds `--battery-percentage <0-100>` to preview the warning on a desktop or AC-powered Mac.
+    - `assemble.zsh` lists any imported message template missing `{batteryWarningMessage}` under **Recommended review items**; it never rewrites your copy.
+    - Non-English battery strings are new and would benefit from native-speaker review.
+- Client-side log entries now speak to Mac Admins: every run that shows no reminder ends with what happened, why, and what to do next ([Issue #154](https://github.com/dan-snelson/DDM-OS-Reminder/issues/154))
+    - `Normal DDM resolver result: …` is now `DDM update check: <plain-language outcome> (status=…; source=…; reason=…)`; the `status=`, `source=`, and `reason=` tokens are unchanged.
+    - `Resolver suppression summary: …` is replaced by `No reminder shown: …` and `Next step: …` at the end of the run. `missing` and up-to-date outcomes log at `[NOTICE]`; `conflict`, `noMatch`, `invalidVersion`, and unrecognized states stay `[WARNING]`.
+    - Each unresolved state names its own next step (for example, scope to one declaration, correct the target version, or configure a DDM Emergency Fallback). `conflict` now says which kind of conflict occurred; when installed macOS already meets the declared version, it logs at `[NOTICE]` with `Next step: None`.
+    - Up-to-date Macs log `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>`.
+    - Display-window, periodic, Update Tonight, quiet-period, and meeting exits log `[QUIT] No reminder shown: …` naming the controlling preference and when the reminder returns. Fatal exits (missing swiftDialog, non-root, no console user, overlapping run) include a next step.
+    - Demo mode logs that it ignores DDM state and always shows a sample reminder.
+    - Routine lines are shorter and combined (installed macOS version/build, logged-in user, resolved declaration, Software Update handoff), and logs say "DDM Emergency Fallback" instead of "MDM fallback requirement".
+    - No changes to reminder timing, DDM trust rules, suppression decisions, preferences, or log line format.
+- `assemble.zsh` now accepts a prior `.mobileconfig` as well as a prior `.plist`, so a hand-edited Configuration Profile can be re-assembled without the generated `.plist` drifting out of sync ([Issue #153](https://github.com/dan-snelson/DDM-OS-Reminder/issues/153); thanks, @anewhouse!)
+    - Works from the command line (`zsh assemble.zsh /path/to/prior.mobileconfig`) and the drag-and-drop prompt; signed profiles are supported.
+    - The profile must contain exactly one DDM OS Reminder (`*.dorm`) preferences payload; `Forced` settings are preferred. Missing, multiple, or ambiguous payloads fail with a clear `❌` message.
+    - RDNN and deployment lane are inferred as before; a `⚠️` warning flags a profile whose `*.dorm` domain disagrees with the RDNN in `ScriptLog`.
+    - Supplying more than one prior `.plist` or `.mobileconfig` now fails instead of treating the extra path as an RDNN. Prior `.plist` import is otherwise unchanged.
+- Fixed: `{minutesBeforeDeadline}` in `PreDeadlineThresholdMessage` showed the crossed threshold (for example, `45`) instead of the time actually left, overstating time remaining on late runs (padded deadline, heartbeat delay, wake from sleep, or manual run) ([Issue #160](https://github.com/dan-snelson/DDM-OS-Reminder/issues/160))
+    - The placeholder now shows minutes remaining until the effective deadline, never above the crossed threshold; on-time runs still show the threshold value. Related `[NOTICE]` lines append `(<n> minute(s) remaining)`.
+    - Known: copy reads `1 minutes` when one minute remains.
+- Fixed: when the disk-space query failed, its fallback `[WARNING]` was never written to the client-side log.
+- `MinimumDiskFreeGB` sample default (`Resources/sample.plist`, generated `.plist` / `.mobileconfig`) raised from `26` to `35` after a fully staged macOS update was observed at `26.60 GB`. The script default (`999`), `0`-disables behavior, and imported values are unchanged.
+- `Resources/diagnoseReminderState.zsh` (`1.4.0`) reads both new and pre-`5.2.0` log lines, so logs from older clients still diagnose. It recognizes `MinimumBatteryPercentage` and `BatteryWarningMessage`, lists the runtime `Battery:` and `Disk space:` lines, and shows each run's `No reminder shown:` or `[QUIT]` reason in **Client-log runs**.
+- Reviewed the bundled Jamf Pro Extension Attributes for `5.2.0`. The `5.2.0` client-side log changes do not affect them.
+    - `JamfEA-Pending_OS_Update_Date.zsh`, `JamfEA-Pending_OS_Update_Version.zsh`, and `JamfEA-DDM-OS-Reminder-Next-Scheduled-Reminder.zsh` are now version `5.2.0`; their resolver and scheduler logic is unchanged.
+    - Fixed: `JamfEA-DDM-OS-Reminder-User-Clicks.zsh` (`5.2.0`) also reported the unformatted `[INFO] … not re-showing dialog after <user> clicked …` line. It now reports only `[NOTICE]` `<user> clicked <button>` lines, and `/usr/local` was removed from its `PATH`.
+    - Fixed: `JamfEA-Volume_Owners.zsh` reported every local cryptographic user; it now reports only users flagged `Volume Owner: Yes`.
+    - `JamfEA-DDM_Executed_OS_Update_Date.zsh` (`5.2.0`): corrected its header and the `Resources/README.md` example to match its actual behavior and `YYYY-MM-DD HH:MM:SS` output (most recent matching `install.log` entry).
+    - `JamfEA-SecureToken_Users.zsh` and `JamfEA-Volume_Owners.zsh` now run with `--no-rcs`, like the other bundled Extension Attributes.
+- **Upgrade notes:**
+    - Deploy the updated `dor.zsh` before, or together with, any Configuration Profile containing `{batteryWarningMessage}`; older scripts would show the literal placeholder. Customized message strings (and their `Localized_<code>` variants) need `{batteryWarningMessage}` added by hand, or the warning never appears.
+    - Scripts, Extension Attributes, or log searches keyed on `Normal DDM resolver result`, `Resolver suppression summary`, `MDM fallback requirement`, `Version Comparison Result: No DDM enforcement log entry found`, `Installed macOS Version`, `Resolved DDM declaration`, or `Software Update handoff` must be updated; key on `DDM update check:`, `status=`, `No reminder shown:`, `Currently installed macOS`, `Opening Software Update`, and `DDM Emergency Fallback` instead.
+
 ### Version 5.1.0 (13-Oct-2026)
 - Added a read-only client-state diagnosis helper and agent skill so Mac Admins can upload the client-side log, `/var/log/install.log`, and client-side `.plist` and get a fact sheet of effective settings, `install.log` declaration evidence, and the last run's recorded resolver result ([Issue #147](https://github.com/dan-snelson/DDM-OS-Reminder/issues/147))
     - `Resources/diagnoseReminderState.zsh` writes nothing. The client log's `Normal DDM resolver result` line is authoritative for what that Mac did. The fact sheet follows the `5.1.0` install.log timestamp rule and minute-threshold order, and it redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers.

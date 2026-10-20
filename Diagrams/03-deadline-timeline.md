@@ -25,7 +25,7 @@ gantt
     Button Disabled/Hidden      :milestone, m3, 2026-07-11, 0d
     DDM Deadline                :milestone, m4, 2026-08-01, 0d
     Aggressive Eligible         :milestone, m4a, 2026-08-01, 0d
-    Restart Eligible (Default)  :milestone, m5, 2026-08-03, 0d
+    Restart Eligible (if enabled) :milestone, m5, 2026-08-03, 0d
 ```
 
 **Note**: Dates above are illustrative only. Post-deadline behavior depends on `AggressiveModePastDeadlineHours`, `AggressiveModeFrequencyMinutes`, `PastDeadlineRestartBehavior`, `DaysPastDeadlineRestartWorkflow`, and uptime eligibility.
@@ -200,7 +200,7 @@ Scheduler rules:
 - 🚨 Urgent/critical messaging
 - ⏰ Shows specific deadline date/time
 - 🔄 Triggered when heartbeat scheduling resolves a due reminder (default baseline `08:00,12:00,16:00` via `DailyReminderTimes`)
-- ⚠️ Meeting deferral is ignored when less than 24 hours remain
+- ⚠️ Meeting deferral is ignored when less than 36 hours remain (rounded days remaining of `1` or less)
 
 **Key Change**: User can no longer postpone
 
@@ -226,6 +226,7 @@ Scheduler rules:
 - Evaluates against the effective enforcement epoch, including a trusted padded enforcement date when available
 - Displays each configured threshold once per resolved deadline/version
 - Bypasses `QuietPeriodMinutes` so an earlier threshold interaction does not suppress later 30/15/10/5-minute reminders
+- `{minutesBeforeDeadline}` shows the minutes actually remaining until the effective deadline (rounded up, never above the crossed threshold), so a late run (padded deadline, heartbeat delay, wake from sleep) does not overstate time left
 - Uses the existing heartbeat + `dor-starter` + `NextScheduledReminder` exact scheduler path
 
 **Runtime State**:
@@ -312,10 +313,10 @@ Here, `26.6` is the target `VersionString`, `(null)` means Apple did not supply 
 | Window / Condition | Primary UX | Button 2 | Meeting Deferral | Trigger Behavior |
 |--------------------|------------|----------|------------------|------------------|
 | `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (periodic reminder still possible via `OutsideDisplayWindowPeriodicReminderDays`) | N/A when no dialog | N/A when no dialog | Heartbeat daemon + `dor-starter` due check |
-| `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
-| `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
-| `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if >24h to deadline) | Heartbeat daemon + `dor-starter` due check |
-| `<24` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | Heartbeat daemon + `dor-starter` due check |
+| `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if ≥36h to deadline) | Heartbeat daemon + `dor-starter` due check |
+| `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if ≥36h to deadline) | Heartbeat daemon + `dor-starter` due check |
+| `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if ≥36h to deadline) | Heartbeat daemon + `dor-starter` due check |
+| `<36` hours before deadline | Urgent reminder | ❌ Disabled/hidden | ❌ No (ignored) | Heartbeat daemon + `dor-starter` due check |
 | Configured minute thresholds before deadline | Final-minute threshold reminder | ❌ Disabled/hidden (by deadline threshold) | ❌ No (deadline window) | Exact `NextScheduledReminder` from `dor-state.plist` |
 | Past deadline before aggressive threshold or with kill switch | Update-focused reminder continues | ❌ Disabled/hidden (by threshold) | ❌ No (deadline window) | Heartbeat daemon + `dor-starter` due check |
 | Past deadline + aggressive mode + restart mode `Off` or not restart-eligible | Aggressive update-focused reminder | ❌ Disabled/hidden | ❌ No (deadline window) | Exact `NextScheduledReminder` after `Open Software Update` or dismissal |
@@ -488,7 +489,15 @@ If Mac hasn't restarted recently (configurable threshold):
 If free disk space below `MinimumDiskFreeGB` (fixed GB, not percentage):
 - Dialog adds warning: "Only X GB available, may prevent update"
 - User directed to free space before updating
-- Applies to all phases where dialog displays
+- Applies to all phases where dialog displays, except restart-only (`Prompt` / `Force`) mode, which suppresses it
+
+### Low Battery Warning
+If the Mac is drawing from its internal battery below `MinimumBatteryPercentage` (default `50`; `0` disables):
+- Dialog adds warning: "Your Mac's battery is at X%. Please connect your power adapter…"
+- Charge is read on every run, so aggressive-mode redisplays reflect the current battery level
+- Never shown on AC or UPS power, on Macs without an internal battery, or when the charge can't be read
+- **Kept** in restart-only (`Prompt` / `Force`) mode, appended to the restart copy, because a restart does not charge the battery
+- Messaging only: restart eligibility, timing, and suppression are unchanged
 
 ### Quiet Period
 Between dialog displays (same day):
@@ -502,8 +511,8 @@ Between dialog displays (same day):
 
 ### Meeting Deferral
 Display-sleep assertion checks (`meetingDelay`) are availability controls, not absolute blockers:
-- Used when more than 24 hours remain to deadline
-- Ignored within 24 hours of deadline
+- Used when at least 36 hours remain to deadline (rounded days remaining greater than `1`)
+- Ignored within 36 hours of deadline
 - Ignored in post-deadline `Force` mode
 
 ---
@@ -520,7 +529,7 @@ A: Mac updates at Apple's DDM enforcement event (which can be after the original
 A: Not recommended, but theoretically possible by setting very low threshold. Blurscreen is key differentiator from Apple's subtle notification.
 
 **Q: What if user needs to postpone due to critical work?**
-A: User can postpone during early/medium phases. Within 24 hours of deadline, meeting deferral is ignored. If post-deadline restart `Force` mode is enabled and eligible, postponement is not available.
+A: User can postpone during early/medium phases. Within 36 hours of deadline, meeting deferral is ignored. If post-deadline restart `Force` mode is enabled and eligible, postponement is not available.
 
 **Q: When does the post-deadline restart workflow start?**
 A: Only when all gates pass: restart behavior not `Off`, deadline has passed by `DaysPastDeadlineRestartWorkflow`, update is still required, and uptime is at least `PastDeadlineRestartMinimumUptimeMinutes`.

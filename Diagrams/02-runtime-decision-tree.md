@@ -54,7 +54,7 @@ flowchart TD
     Quiet -->|No| Meeting{More than 24 hours remain<br/>and allowed meeting active?}
     Meeting -->|Yes| MeetingWait[Check every 5 minutes<br/>until clear or MeetingDelay reached]
     Meeting -->|No| Build
-    MeetingWait --> Build[Build localized dialog<br/>and apply active mode]
+    MeetingWait --> Build[Build localized dialog,<br/>disk-space and battery warnings,<br/>and apply active mode]
 
     Build --> Mode{Dialog mode}
     Mode -->|Update| UpdateDialog[Standard, blur, urgent,<br/>or aggressive update dialog]
@@ -152,3 +152,11 @@ The earliest applicable exact time wins. Threshold reminders bypass quiet-period
 ## Observable Exit Paths
 
 Every meaningful branch logs through the existing structured log format. Common quiet exits include active PID, future or disabled schedule, unresolved requirement without valid fallback, compliance, outside-window suppression, Update Tonight suppression, active quiet period, and DND/Focus return. Use `dor-state.plist` before treating a heartbeat no-op as failure.
+
+Starting with `5.2.0`, client-log entries name the outcome and the next step:
+
+- `DDM update check: <outcome> (status=…; source=…; reason=…)` records what the resolver decided on that Mac.
+- Every run that shows no reminder ends with `No reminder shown: …` and `Next step: …`. `missing` and up-to-date outcomes log at `[NOTICE]`; `conflict`, `noMatch`, `invalidVersion`, and unrecognized states log at `[WARNING]`.
+- Display-window, periodic, Update Tonight, quiet-period, and meeting exits log `[QUIT] No reminder shown: …`, naming the controlling preference and when the reminder returns.
+- Fatal exits (not running as root, overlapping run, no console user, missing swiftDialog) include a next step.
+- Each displaying run logs `[INFO] Disk space: …` and `[NOTICE] Battery: …` lines showing whether each warning was shown.

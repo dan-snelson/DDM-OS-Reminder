@@ -43,7 +43,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.2.0b4"
+scriptVersion="5.2.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1195,7 +1195,7 @@ function preferenceTypeForPlistKey() {
   return 1
 }
 
-# Added in 5.2.0b3; report imported admin copy that will never show the low-battery warning, but never rewrite it
+# Added in 5.2.0; report imported admin copy that will never show the low-battery warning, but never rewrite it
 function reportImportedTemplatesMissingBatteryPlaceholder() {
   local sourcePlist="${1}"
   local targetPlist="${2}"

@@ -14,7 +14,7 @@ body:
         
         If you're not sure about something, do your best. (The more information included, the easier it is to investigate and _hopefully_ resolve your issue.)
 
-        If you haven't already, please review [5.5 Troubleshooting](https://snelson.us/ddm#5) using the latest release of DDM OS Reminder. (If you’d like to first discuss your issue, please join us over on the Mac Admins Slack [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel. For dialog rendering issues, please first review [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues).)
+        If you haven't already, please review [4.5 Troubleshooting](https://snelson.us/ddm#4.5) using the latest release of DDM OS Reminder. (If you’d like to first discuss your issue, please join us over on the Mac Admins Slack [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel. For dialog rendering issues, please first review [open swiftDialog issues](https://github.com/swiftDialog/swiftDialog/issues).)
         
 
   - type: checkboxes
@@ -22,7 +22,7 @@ body:
     attributes:
       label: Before you submit
       options:
-        - label: I have completed [5.5 Troubleshooting](https://snelson.us/ddm#5) using the latest release of DDM OS Reminder
+        - label: I have completed [4.5 Troubleshooting](https://snelson.us/ddm#4.5) using the latest release of DDM OS Reminder
           required: true
 
   - type: input
@@ -30,7 +30,7 @@ body:
     attributes:
       label: Installed macOS version
       description: From **About This Mac** or `sw_vers -productVersion`
-      placeholder: "e.g. 15.7.9"
+      placeholder: "e.g. 26.7.1"
     validations:
       required: true
 
@@ -39,7 +39,7 @@ body:
     attributes:
       label: Target macOS version
       description: As specified by your Declarative Device Management (DDM) software update declaration.
-      placeholder: "e.g. 26.6.2"
+      placeholder: "e.g. 27.2"
     validations:
       required: true
 
@@ -48,7 +48,7 @@ body:
     attributes:
       label: Script version
       description: Which version of DDM OS Reminder are you deploying?
-      placeholder: "e.g. 4.2.0"
+      placeholder: "e.g. 5.2.0"
     validations:
       required: true
 
@@ -57,7 +57,7 @@ body:
     attributes:
       label: swiftDialog version
       description: From `dialog --version`.
-      placeholder: "e.g. 3.1.0.4994"
+      placeholder: "e.g. 3.1.1.5000"
     validations:
       required: true
 

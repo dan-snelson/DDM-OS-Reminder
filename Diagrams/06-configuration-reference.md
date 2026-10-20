@@ -48,6 +48,8 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | aggressiveModeFrequencyMinutes | AggressiveModeFrequencyMinutes | Integer | 20 | Timing |
 | aggressiveModeTitle | AggressiveModeTitle | String | `macOS {titleMessageUpdateOrUpgrade} Required Now` | Localization |
 | aggressiveModeMessage | AggressiveModeMessage | String | [Full aggressive update-focused body] | Localization |
+| aggressiveModeTitle_{lang} | AggressiveModeTitleLocalized_{lang} | String | [Localized title] | Localization |
+| aggressiveModeMessage_{lang} | AggressiveModeMessageLocalized_{lang} | String | [Localized message] | Localization |
 | acceptableAssertionApplicationNames | AcceptableAssertionApplicationNames | String | MSTeams zoom.us Webex | Timing |
 | minimumDiskFreeGB | MinimumDiskFreeGB | Integer | 999 | Timing |
 | minimumBatteryPercentage | MinimumBatteryPercentage | Integer | 50 | Timing |
@@ -56,6 +58,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | organizationOverlayiconURLdark | OrganizationOverlayIconURLdark | String | https://use2.ics.services.jamfcloud.com/icon/hash_d3a3bc5e06d2db5f9697f9b4fa095bfecb2dc0d22c71aadea525eb38ff981d39 | Branding |
 | swapOverlayAndLogo | SwapOverlayAndLogo | Boolean | NO | Branding |
 | dateFormatDeadlineHumanReadable | DateFormatDeadlineHumanReadable | String | `+%a, %d-%b-%Y, %-l:%M %p` | Branding |
+| dateFormatDeadlineHumanReadable (per-locale) | DateFormatDeadlineHumanReadableLocalized_&lt;code&gt; | String | [none; exact locale → base language → global] | Branding |
 | supportTeamName | SupportTeamName | String | IT Support | Support |
 | supportTeamPhone | SupportTeamPhone | String | +1 (801) 555-1212 | Support |
 | hideSupportTeamPhone | HideSupportTeamPhone | Boolean | NO | Support |
@@ -174,7 +177,6 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | pendingDownloadMessageLocalizedNl | PendingDownloadMessageLocalized_nl | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedPt | PendingDownloadMessageLocalized_pt | String | [Localized staging message] | Localization |
 | pendingDownloadMessageLocalizedJa | PendingDownloadMessageLocalized_ja | String | [Localized staging message] | Localization |
-| hideStagedInfo | HideStagedUpdateInfo | Boolean | NO | Localization |
 | relativeDeadlineToday | RelativeDeadlineToday | String | Today | Localization |
 | relativeDeadlineToday_{lang} | RelativeDeadlineTodayLocalized_{lang} | String | [Localized phrase] | Localization |
 | relativeDeadlineTomorrow | RelativeDeadlineTomorrow | String | Tomorrow | Localization |
@@ -205,7 +207,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | deadlineEnforcementMessageAbsolute_{lang} | DeadlineEnforcementMessageAbsoluteLocalized_{lang} | String | [Localized deadline sentence] | Localization |
 | deadlineEnforcementMessageRelative | DeadlineEnforcementMessageRelative | String | [Deadline sentence w/ Today/Tomorrow] | Localization |
 | deadlineEnforcementMessageRelative_{lang} | DeadlineEnforcementMessageRelativeLocalized_{lang} | String | [Localized deadline sentence] | Localization |
-| preDeadlineThresholdTitle | PreDeadlineThresholdTitle | String | macOS Update Deadline Soon | Localization |
+| preDeadlineThresholdTitle | PreDeadlineThresholdTitle | String | `macOS {titleMessageUpdateOrUpgrade} Deadline Soon` | Localization |
 | preDeadlineThresholdTitle_{lang} | PreDeadlineThresholdTitleLocalized_{lang} | String | [Localized title] | Localization |
 | preDeadlineThresholdMessage | PreDeadlineThresholdMessage | String | [Final-minute reminder body] | Localization |
 | preDeadlineThresholdMessage_{lang} | PreDeadlineThresholdMessageLocalized_{lang} | String | [Localized message] | Localization |
@@ -217,7 +219,7 @@ Complete reference guide for all configurable preferences in DDM OS Reminder.
 | pastDeadlineForceTitle_{lang} | PastDeadlineForceTitleLocalized_{lang} | String | [Localized title] | Localization |
 | pastDeadlineForceMessage | PastDeadlineForceMessage | String | [Force restart message] | Localization |
 | pastDeadlineForceMessage_{lang} | PastDeadlineForceMessageLocalized_{lang} | String | [Localized message] | Localization |
-| title | Title | String | macOS {placeholder} Required | UI Text |
+| title | Title | String | `macOS {titleMessageUpdateOrUpgrade} Required` | UI Text |
 | button1text | Button1Text | String | Open Software Update | UI Text |
 | button2text | Button2Text | String | Remind Me Later | UI Text |
 | infobuttontext | InfoButtonText | String | Update macOS on Mac | UI Text |
@@ -1435,6 +1437,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 **Description**: Selects the localization family used for dialog content.
 When set to `auto`, the script reads the logged-in user’s `AppleLanguages:0` value, normalizes the built-in supported locales, and can honor additional languages when matching `*Localized_<code>` keys are present in managed or local preferences.
+Any language other than `en` (whether from `LanguageOverride` or `auto`) is used only when `TitleLocalized_<code>` exists in managed or local preferences; otherwise the dialog falls back to `en`. Artifacts assembled with `--minimal` or `--languages <csv>` therefore show only the included languages. Region subtags are dropped for dialog text (`fr_CA` → `fr`); only `DateFormatDeadlineHumanReadableLocalized_<code>` honors the exact region.
 Values that are not recognizable language codes (2–3 letters, optionally followed by `_`/`-` region or script subtags) fall back to `en` and log `[WARNING] LanguageOverride is not a recognized language code`. Localized preference keys whose `<code>` suffix is unrecognized are skipped with a `[WARNING]`.
 
 **Fallback Chain**:
@@ -1472,7 +1475,6 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `SupportAssistanceMessageLocalized_{lang}`
 - `ExcessiveUptimeWarningMessageLocalized_{lang}`
 - `DiskSpaceWarningMessageLocalized_{lang}`
-- `BatteryWarningMessageLocalized_{lang}`
 - `StagedUpdateMessageLocalized_{lang}`
 - `PartiallyStagedUpdateMessageLocalized_{lang}`
 - `PendingDownloadMessageLocalized_{lang}`
@@ -1493,12 +1495,20 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `InfoboxLabelFreeDiskSpaceLocalized_{lang}`
 - `DeadlineEnforcementMessageAbsoluteLocalized_{lang}`
 - `DeadlineEnforcementMessageRelativeLocalized_{lang}`
+- `PreDeadlineThresholdTitleLocalized_{lang}`
+- `PreDeadlineThresholdMessageLocalized_{lang}`
 - `PastDeadlinePromptTitleLocalized_{lang}`
 - `PastDeadlinePromptMessageLocalized_{lang}`
 - `PastDeadlineForceTitleLocalized_{lang}`
 - `PastDeadlineForceMessageLocalized_{lang}`
 - `AggressiveModeTitleLocalized_{lang}`
 - `AggressiveModeMessageLocalized_{lang}`
+
+*Low-battery warning (5.2.0+)*:
+- `BatteryWarningMessageLocalized_{lang}`
+
+*Deadline date format (region-aware)*:
+- `DateFormatDeadlineHumanReadableLocalized_<code>` (exact locale, then base language, then global `DateFormatDeadlineHumanReadable`)
 
 ---
 
@@ -1635,8 +1645,9 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `{button1text}` = Button 1 label
 - `{button2text}` = Button 2 label
 - `{softwareUpdateButtonText}` = Expected button in System Settings
-- `{ddmEnforcedInstallDateHumanReadable}` = Formatted deadline
-- `{ddmEnforcedInstallDateRelativeHumanReadable}` = Relative deadline when applicable (Today/Tomorrow), else formatted deadline
+- `{deadlineEnforcementMessage}` = Deadline sentence built from `DeadlineEnforcementMessageAbsolute` / `DeadlineEnforcementMessageRelative`
+- `{ddmEnforcedInstallDateHumanReadable}` = Formatted deadline (optional; not in the default message)
+- `{ddmEnforcedInstallDateRelativeHumanReadable}` = Relative deadline when applicable (Today/Tomorrow), else formatted deadline (optional; not in the default message)
 - `{excessiveUptimeWarningMessage}` = Uptime warning (if applicable)
 - `{diskSpaceWarningMessage}` = Disk space warning (if applicable)
 - `{batteryWarningMessage}` = Low-battery warning (if applicable)
@@ -1679,10 +1690,11 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 - `{infoboxDaysRemainingDisplay}` = Signed days-until-effective-deadline display (red when `<= 0` on supported swiftDialog versions)
 - `{infoboxLastRestartDisplay}` = Time since last restart display (red when uptime meets/exceeds threshold on supported swiftDialog versions)
 - `{diskSpaceHumanReadable}` = Free disk space
+- `{infoboxLabelCurrent}`, `{infoboxLabelRequired}`, `{infoboxLabelDeadline}`, `{infoboxLabelDaysRemaining}`, `{infoboxLabelLastRestart}`, `{infoboxLabelFreeDiskSpace}` = Localized row labels from the matching `InfoboxLabel*` keys
 
 **Script Default**:
 ```bash
-["infobox"]="string|**Current:** macOS {installedmacOSVersion}<br><br>**Required:** macOS {ddmVersionString}<br><br>**Deadline:** {infoboxDeadlineDisplay}..."
+["infobox"]="string|**{infoboxLabelCurrent}:** macOS {installedmacOSVersion}<br><br>**{infoboxLabelRequired}:** macOS {ddmVersionString}<br><br>**{infoboxLabelDeadline}:** {infoboxDeadlineDisplay}..."
 ```
 
 **Configuration Profile**:
@@ -1723,7 +1735,7 @@ grep "LanguageOverride is" /var/log/org.churchofjesuschrist.log
 <string>**Need Help?**&lt;br&gt;&lt;br&gt;Contact {supportTeamName}:&lt;br&gt;Phone: {supportTeamPhone}&lt;br&gt;Email: {supportTeamEmail}</string>
 ```
 
-**Assembly Note**: `assemble.zsh --interactive` with `Knowledge Base ('YES' to specify; 'NO' to hide)` set to `NO` rewrites `HelpMessage` to remove the `Knowledge Base Article` row.
+**Assembly Note**: In `assemble.zsh --interactive`, answering `NO` to `Knowledge Base Row ('YES' to specify; 'NO' to hide)` (asked only when the Info button is enabled) sets `HideSupportKB` to `true` and blanks `SupportKB` / `SupportKBURL`; at runtime, the `Knowledge Base Article` row is removed from `HelpMessage`.
 
 ---
 
@@ -1972,7 +1984,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 
 ### 9. Dynamic Localization Primitives
 
-Preference families that supply localized runtime copy previously hard-coded in the script. Each family includes a base scalar key (the fallback) and per-language variants following the `{PlistKey}Localized_{lang}` pattern where `{lang}` is `en`, `de`, `fr`, `es`, `nl`, `pt`, or `ja`. Changing these keys customizes or retranslates copy without modifying the script.
+Preference families that supply localized runtime copy previously hard-coded in the script. Each family includes a base scalar key (the fallback) and per-language variants following the `{PlistKey}Localized_{lang}` pattern where `{lang}` is `en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, or `ja`. Changing these keys customizes or retranslates copy without modifying the script.
 
 ---
 
@@ -2099,7 +2111,7 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{preDeadlineThresholdEmphasisClose}` | DDM | Closes red markdown emphasis for threshold copy when swiftDialog supports markdown color, else empty | ] |
 | `{titleMessageUpdateOrUpgrade}` | Logic | Update or Upgrade | Update |
 | `{titleMessageUpdateOrUpgradeLower}` | Logic | Lowercase variant | update |
-| `{softwareUpdateButtonText}` | Logic | Expected button label | Update Now |
+| `{softwareUpdateButtonText}` | Logic | Expected button label (`SoftwareUpdateButtonTextUpdate` or `SoftwareUpdateButtonTextUpgrade`) | Restart Now |
 | `{uptimeHumanReadable}` | System | Time since restart | 5 days |
 | `{diskSpaceHumanReadable}` | System | Free space | 128.5 GB (45.2% available) |
 | `{batteryPercentage}` | System | Internal-battery charge (empty when unavailable) | 18 |
@@ -2107,6 +2119,16 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{excessiveUptimeWarningMessage}` | Logic | Uptime warning | [Warning if triggered] |
 | `{diskSpaceWarningMessage}` | Logic | Disk space warning | [Warning if triggered] |
 | `{batteryWarningMessage}` | Logic | Low-battery warning | [Warning if triggered] |
+| `{deadlineEnforcementMessage}` | Logic | Deadline sentence from `DeadlineEnforcementMessageAbsolute` / `DeadlineEnforcementMessageRelative` | However, your Mac **will automatically restart and update** on … |
+| `{infoboxDeadlineDisplay}` | DDM | Infobox deadline value (red when past deadline on supported swiftDialog versions) | Sat, 01-Aug-2026, 8:00 a.m. |
+| `{infoboxDaysRemainingDisplay}` | DDM | Infobox signed days remaining (red when `<= 0` on supported swiftDialog versions) | 14 |
+| `{infoboxLastRestartDisplay}` | System | Infobox time since last restart (red when uptime meets the warning threshold) | 5 days |
+| `{infoboxLabelCurrent}` | Config | Localized infobox label | Current |
+| `{infoboxLabelRequired}` | Config | Localized infobox label | Required |
+| `{infoboxLabelDeadline}` | Config | Localized infobox label | Deadline |
+| `{infoboxLabelDaysRemaining}` | Config | Localized infobox label | Day(s) Remaining |
+| `{infoboxLabelLastRestart}` | Config | Localized infobox label | Last Restart |
+| `{infoboxLabelFreeDiskSpace}` | Config | Localized infobox label | Free Disk Space |
 | `{supportTeamName}` | Config | Support team | IT Support |
 | `{supportTeamPhone}` | Config | Phone number | +1 (555) 123-4567 |
 | `{supportTeamEmail}` | Config | Email | helpdesk@company.com |
@@ -2118,7 +2140,9 @@ Preference families that supply localized runtime copy previously hard-coded in 
 | `{button2text}` | Config | Secondary button | Remind Me Later |
 | `{infobuttonaction}` | Config | Info button URL | https://support.apple.com/... |
 | `{dialogVersion}` | System | swiftDialog version | 3.1.1.4997 |
-| `{scriptVersion}` | System | Script version | 5.0.0 |
+| `{scriptVersion}` | System | Script version | 5.2.0 |
+
+`{deadlineDisplay}` is not a general placeholder: it resolves only inside `DeadlineEnforcementMessageAbsolute` / `DeadlineEnforcementMessageRelative`. The legacy `{titleMessageUpdateOrUpgrade:l}` form is still accepted for older configurations.
 
 ### swiftDialog Built-in Variables (Resolved by swiftDialog)
 
@@ -2132,7 +2156,7 @@ These placeholders are resolved at render time by swiftDialog itself. See the fu
 | `{serialnumber}` | HelpMessage | C02ABC123DEF |
 | `{osversion}` | HelpMessage | 15.1.1 |
 
-**Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. Invalid formats suppress reminder dialogs and emit a `[WARNING]` log entry.
+**Note**: `{ddmVersionString}` must be numeric `X.Y` or `X.Y.Z`. An invalid DDM-declared version yields resolver status `invalidVersion`, which is eligible for DDM Emergency Fallback; without a valid fallback, the run shows no reminder and logs `[WARNING] No reminder shown: …` followed by `Next step: …`.
 
 **3.2.0 compliance note**: When Apple omits a usable `BuildVersionString` (`(null)`), the runtime and bundled pending-update EAs still treat the device as compliant if the installed macOS product version matches or exceeds the resolved `{ddmVersionString}`.
 
@@ -2152,11 +2176,13 @@ Placeholders can reference other placeholders. The script resolves them in multi
 
 **Example**:
 ```
-supportTeamInfo = "{supportTeamName} - {supportTeamPhone}"
-message = "Contact {supportTeamInfo}"
+supportAssistanceMessage = "For assistance, please contact **{supportTeamName}** …"
+message = "… {supportAssistanceMessage}"
 ```
 
-**Resolves to**: `Contact IT Support - +1 (555) 123-4567`
+Pass 1 inserts the support sentence into `message`; pass 2 resolves `{supportTeamName}` inside it (for example, `IT Support`).
+
+Only the placeholders listed above resolve. Custom names such as `{supportTeamInfo}` remain as literal text.
 
 ---
 
@@ -2451,7 +2477,7 @@ sudo defaults write "$PLIST" SwapOverlayAndLogo -bool NO
 - Ensuring script always has valid configuration
 - One-time deployment without ongoing management
 
-**Customization Location**: [reminderDialog.zsh](../reminderDialog.zsh) lines ~150-210
+**Customization Location**: [reminderDialog.zsh](../reminderDialog.zsh) `preferenceConfiguration` (lines ~240-333), with plist key mapping in `plistKeyMap` (lines ~336-414)
 
 **Format**:
 ```bash
@@ -2484,6 +2510,20 @@ Test Mac: Use 7 (local override for testing)
 
 ## Troubleshooting
 
+### Reminder Not Shown
+
+**Problem**: A run completed but no dialog appeared
+
+**Diagnosis** (5.2.0 and later):
+```bash
+# What the DDM update check decided, why no reminder was shown, and what to do next
+grep -E "DDM update check:|No reminder shown:|Next step:" /var/log/org.churchofjesuschrist.log
+```
+
+**Solution**: Follow the logged `Next step:`. For uploaded client logs, `install.log`, and preference plists, see [Diagnose client state](../Resources/README.md#7-diagnose-client-state). Logs from clients before `5.2.0` use `Normal DDM resolver result` and `Resolver suppression summary` instead.
+
+---
+
 ### Variables Not Taking Effect
 
 **Problem**: Changed preference but dialog still shows old value
@@ -2508,23 +2548,25 @@ grep "Reading preference overrides" /var/log/org.churchofjesuschrist.log
 
 ### Type Mismatch Errors
 
-**Problem**: Preference not loading due to wrong data type
+**Problem**: Preference value has a different type or an invalid value
 
-**Common Mistakes**:
+The runtime reads values with `PlistBuddy` and tolerates numeric strings (`<string>60</string>`) and boolean strings (`YES` / `NO`, `true` / `false`, `1` / `0`). Use native types anyway, so MDM profile validation and `plutil -p` comparisons stay clean. Invalid numeric values (non-digits, or outside `0`–`999`) log `[WARNING]` and use the script default; unrecognized boolean values also use the script default.
+
+**Recommended Types**:
 ```xml
-<!-- WRONG: Integer as string -->
+<!-- NOT RECOMMENDED: Integer as string (tolerated at runtime) -->
 <key>DaysBeforeDeadlineDisplayReminder</key>
 <string>60</string>
 
-<!-- CORRECT: Integer as integer -->
+<!-- RECOMMENDED: Integer as integer -->
 <key>DaysBeforeDeadlineDisplayReminder</key>
 <integer>60</integer>
 
-<!-- WRONG: Boolean as string -->
+<!-- NOT RECOMMENDED: Boolean as string (tolerated at runtime) -->
 <key>SwapOverlayAndLogo</key>
 <string>YES</string>
 
-<!-- CORRECT: Boolean as boolean -->
+<!-- RECOMMENDED: Boolean as boolean -->
 <key>SwapOverlayAndLogo</key>
 <true/>
 ```
@@ -2549,16 +2591,17 @@ diff -u <(plutil -p OLD.plist) <(plutil -p NEW.plist)
 
 **Causes**:
 1. Typo in placeholder name (case-sensitive)
-2. Placeholder not available in that context
-3. Multi-pass resolution limit reached (>5 levels deep)
+2. Placeholder not available in that context (for example, `{deadlineDisplay}` outside the deadline-enforcement sentences)
+3. Custom placeholder name not in the [Placeholder Reference](#placeholder-reference)
+4. Deployed `dor.zsh` older than the profile (for example, `{batteryWarningMessage}` with a pre-`5.2.0` script)
+5. Multi-pass resolution limit reached (>5 levels deep)
 
-**Diagnosis**:
+**Diagnosis**: Placeholder resolution is not logged. Preview the configuration with the preference test helper:
 ```bash
-# Check script logs for placeholder resolution
-grep "replacePlaceholders" /var/log/org.churchofjesuschrist.log
+zsh Resources/reminderDialogPreferenceTest.zsh --help
 ```
 
-**Solution**: Verify placeholder spelling and context
+**Solution**: Verify placeholder spelling and context against the [Placeholder Reference](#placeholder-reference), and confirm the deployed script version
 
 ---
 
@@ -2637,8 +2680,9 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 5.2.0b4 | 19-Oct-2026 | `{minutesBeforeDeadline}` now shows minutes remaining until the effective deadline (rounded up, capped at the crossed pre-deadline threshold) instead of the crossed threshold; no preference keys or defaults changed |
-| 5.2.0b3 | 18-Oct-2026 | Added `MinimumBatteryPercentage` (0-100; default 50; 0 disables) and `BatteryWarningMessage` (plus `BatteryWarningMessageLocalized_<code>`) with `{batteryWarningMessage}` / `{batteryPercentage}` placeholders; `{batteryWarningMessage}` added to `message`, `aggressiveModeMessage`, `preDeadlineThresholdMessage`, `pastDeadlinePromptMessage`, and `pastDeadlineForceMessage` ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157)); restart gating and precedence rules unchanged |
+| 5.2.0 | 20-Oct-2026 | Added `MinimumBatteryPercentage` (0-100; default 50; 0 disables) and `BatteryWarningMessage` (plus `BatteryWarningMessageLocalized_<code>`) with `{batteryWarningMessage}` / `{batteryPercentage}` placeholders ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157)); `{minutesBeforeDeadline}` now shows minutes remaining until the effective deadline (rounded up, capped at the crossed pre-deadline threshold) instead of the crossed threshold ([Issue #160](https://github.com/dan-snelson/DDM-OS-Reminder/issues/160)); `Resources/sample.plist` `MinimumDiskFreeGB` raised from 26 to 35 (script default 999 and imported values unchanged); `assemble.zsh` accepts a prior `.mobileconfig` as well as a prior `.plist` ([Issue #153](https://github.com/dan-snelson/DDM-OS-Reminder/issues/153)); client-log lines now use `DDM update check:`, `No reminder shown:`, and `Next step:` ([Issue #154](https://github.com/dan-snelson/DDM-OS-Reminder/issues/154)); precedence rules unchanged |
+| 5.2.0 | 18-Oct-2026 | Added `MinimumBatteryPercentage` (0-100; default 50; 0 disables) and `BatteryWarningMessage` (plus `BatteryWarningMessageLocalized_<code>`) with `{batteryWarningMessage}` / `{batteryPercentage}` placeholders; `{batteryWarningMessage}` added to `message`, `aggressiveModeMessage`, `preDeadlineThresholdMessage`, `pastDeadlinePromptMessage`, and `pastDeadlineForceMessage` ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157)); restart gating and precedence rules unchanged |
+| 5.1.0 | 13-Oct-2026 | Added `MinimumDiskFreeGB` (script default 999; sample default 26; 0 disables), replacing deprecated `MinimumDiskFreePercentage` (honored only when `MinimumDiskFreeGB` is unset; removed in 6.0.0) ([Issue #146](https://github.com/dan-snelson/DDM-OS-Reminder/issues/146)); `All` / `Script` redeployments keep `dor-state.plist` and clear only `NextScheduledReminder` ([Issue #149](https://github.com/dan-snelson/DDM-OS-Reminder/issues/149)); no precedence rules changed |
 | 5.0.0 | 04-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) logs `[WARNING]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
 | 5.0.0b2 | 02-Oct-2026 | `DailyReminderTimes` and `MinutesBeforeDeadlineReminderSchedule` values mixing valid and invalid entries (for example `8:00,17:00` or `45,abc`) now keep the valid entries and log each invalid entry at `[WARNING]`; previously the warning text was captured into the resolved value, leaving no baseline slots or thresholds ([Issue #139](https://github.com/dan-snelson/DDM-OS-Reminder/issues/139)); `HH:MM` still requires zero-padded hours; unrecognized `LanguageOverride` or user language values fall back to English and the global `DateFormatDeadlineHumanReadable` with a `[WARNING]`, and localized keys with an unrecognized `<code>` suffix are skipped; no preference keys, defaults, or precedence rules changed |
 | 4.3.0b1 | 30-Sep-2026 | Runtime-only Update Tonight suppression: confirmed same-day `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version pauses normal reminders until local midnight; thresholds, aggressive, and Force bypass; scheduler state key `UpdateTonightSuppressionUntil` ([Issue #133](https://github.com/dan-snelson/DDM-OS-Reminder/issues/133)); no preference keys or precedence rules changed |
@@ -2671,5 +2715,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 19-Oct-2026
-**DDM OS Reminder Version**: 5.2.0b4
+**Last Updated**: 20-Oct-2026
+**DDM OS Reminder Version**: 5.2.0

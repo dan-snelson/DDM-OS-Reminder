@@ -29,7 +29,7 @@ set -u
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 scriptVersion="1.4.0"
-checklistScriptVersion="5.2.0b4"
+checklistScriptVersion="5.2.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -773,7 +773,7 @@ function collectIdentityTokens() {
         if [[ "${logLine}" =~ "${installLogHostRegex}" ]]; then
             rememberRedactedHostToken "${match[1]}"
         fi
-        # 5.2.0b2+ "Current Logged-in User: <user>, <first name>, <UID>"; earlier "Current Logged-in User: <user>"
+        # 5.2.0+ "Current Logged-in User: <user>, <first name>, <UID>"; earlier "Current Logged-in User: <user>"
         if [[ "${logLine}" =~ 'Current Logged-in User: ([^,[:space:]]+), ([^,]+), [0-9]+' ]]; then
             rememberRedactedToken "${match[1]}"
             rememberRedactedToken "${match[2]}"
@@ -1436,7 +1436,7 @@ for logLine in "${latestRunLines[@]}"; do
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
         fi
-        # 5.2.0b2+ "Currently installed macOS <version> (<build>)"; earlier separate Version / Build lines
+        # 5.2.0+ "Currently installed macOS <version> (<build>)"; earlier separate Version / Build lines
         if [[ "${logMessage}" =~ '^Currently installed macOS ([^ ]+) \(([^)]+)\)$' ]]; then
             installedMacOSVersion="${match[1]}"
             installedMacOSBuild="${match[2]}"
@@ -1445,7 +1445,7 @@ for logLine in "${latestRunLines[@]}"; do
         elif [[ "${logMessage}" == "Installed macOS Build: "* ]]; then
             installedMacOSBuild="${logMessage#Installed macOS Build: }"
         fi
-        # 5.2.0b2+ "DDM update check: … (status=…; …)"; earlier "Normal DDM resolver result: status=…"
+        # 5.2.0+ "DDM update check: … (status=…; …)"; earlier "Normal DDM resolver result: status=…"
         if [[ "${logMessage}" == "DDM update check: "*"(status="* || "${logMessage}" == "Normal DDM resolver result:"* ]]; then
             resolverStatusLine="${logMessage}"
         fi
@@ -1760,7 +1760,7 @@ if [[ -n "${resolverStatusLine}" ]]; then
     echo "    $(redactSensitiveText "${resolverStatusLine}")"
     echo ""
 else
-    echo "No \`DDM update check\` (5.2.0b2+) or \`Normal DDM resolver result\` line in the latest run."
+    echo "No \`DDM update check\` (5.2.0+) or \`Normal DDM resolver result\` line in the latest run."
     echo ""
 fi
 

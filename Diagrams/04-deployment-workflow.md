@@ -97,7 +97,7 @@ zsh assemble.zsh --interactive
 
 Interactive assembly can collect or confirm:
 
-- optional previous `.plist` import
+- optional previous `.plist` or `.mobileconfig` import
 - RDNN
 - internal support contact information
 - info-button and knowledge-base behavior
@@ -116,7 +116,15 @@ For a previous DDM OS Reminder `.plist` from version `2.2.0` or later:
 zsh assemble.zsh /path/to/previous-config.plist
 ```
 
-Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist`.
+Starting with `5.2.0`, a prior Configuration Profile works the same way:
+
+```zsh
+zsh assemble.zsh /path/to/previous-profile.mobileconfig
+```
+
+Unsigned and CMS-signed profiles are supported. The profile must contain exactly one DDM OS Reminder (`*.dorm`) preferences payload; `Forced` settings are preferred. Supply only one prior `.plist` or `.mobileconfig`.
+
+Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`).
 
 ### Non-interactive options
 
@@ -295,9 +303,18 @@ Uninstall the old deployment and assemble a fresh current deployment. Do not rel
 
 ### Version 2.2.0 or later
 
-Import the prior generated `.plist` (or, starting with `5.2.0b1`, the deployed `.mobileconfig`), review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
+Import the prior generated `.plist` (or, starting with `5.2.0`, the deployed `.mobileconfig`), review every fresh artifact, update the deployed preference artifact when its values or supported keys changed, replace the assembled script, and make the MDM execute the updated script once on each target Mac.
 
 Do not assume every release changes the Configuration Profile. Compare normalized preference output and release notes before redeploying it.
+
+### Version 5.2.0
+
+Review the [5.2.0 upgrade notes](../README.md#520-upgrade-notes):
+
+- Deploy the updated `dor.zsh` before, or together with, any Configuration Profile containing `{batteryWarningMessage}`; older scripts show the literal placeholder.
+- Customized message templates (and their `Localized_<code>` variants) need `{batteryWarningMessage}` added by hand, or the low-battery warning never appears. `assemble.zsh` lists imported templates that lack it.
+- Update scripts, Extension Attributes, or log searches keyed on `Normal DDM resolver result`, `Resolver suppression summary`, or `MDM fallback requirement`; key on `DDM update check:`, `status=`, `No reminder shown:`, and `DDM Emergency Fallback` instead.
+- An imported `MinimumDiskFreeGB` value is kept; raise it manually if it is still `26` (the sample default is now `35`).
 
 ### Version 5.0.0
 

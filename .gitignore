@@ -28,7 +28,11 @@ Icon?
 *.zwc
 
 ### Codex
-.codex/
+.codex/*
+!.codex/skills/
+.codex/skills/*
+!.codex/skills/diagnose-client-state
+!.codex/skills/README.md
 .envrc
 
 

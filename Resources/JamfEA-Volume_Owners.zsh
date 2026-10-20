@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/zsh --no-rcs
 
 # Extension Attribute: Volume Owners
 # Returns all users who are Volume Owners
@@ -12,8 +12,11 @@ if [[ "${osMajorVersion}" -lt 10 ]] || [[ "${osMajorVersion}" -eq 10 && $(echo "
     exit 0
 fi
 
-# Get list of Volume Owner UUIDs
-volumeOwners=$(/usr/sbin/diskutil apfs listUsers / 2>/dev/null | /usr/bin/awk '/\+-- [0-9A-Fa-f-]+$/ {print $2}')
+# Get list of Volume Owner UUIDs (only cryptographic users flagged "Volume Owner: Yes")
+volumeOwners=$(/usr/sbin/diskutil apfs listUsers / 2>/dev/null | /usr/bin/awk '
+    /\+-- [0-9A-Fa-f-]+$/ { ownerUUID = $2; next }
+    /Volume Owner: Yes/ && ownerUUID != "" { print ownerUUID; ownerUUID = "" }
+')
 
 if [[ -z "${volumeOwners}" ]]; then
     echo "<result>Unable to determine</result>"

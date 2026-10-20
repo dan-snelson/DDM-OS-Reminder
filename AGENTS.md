@@ -66,7 +66,7 @@ Invoke relevant skill name during planning.
 ### Diagnose Client State Skill
 1. Required uploads are the client-side log, `/var/log/install.log`, and the client-side `.plist`.
 2. Run `zsh Resources/diagnoseReminderState.zsh` when available; follow `Resources/skills/diagnose-client-state/SKILL.md`.
-3. The client log's `DDM update check:` line (`Normal DDM resolver result` before `5.2.0b2`) is what that Mac did. Do not re-decide resolver status.
+3. The client log's `DDM update check:` line (`Normal DDM resolver result` before `5.2.0`) is what that Mac did. Do not re-decide resolver status.
 4. Read-only: do not write preferences, scheduler state, or LaunchDaemons.
 
 ### Security Workflow Change Skill

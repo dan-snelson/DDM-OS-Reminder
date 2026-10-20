@@ -1,4 +1,4 @@
-# DDM OS Reminder (5.0.0) - Documentation Diagrams
+# DDM OS Reminder (5.2.0) - Documentation Diagrams
 
 This directory contains comprehensive, **AI-generated** visual diagrams to augment the DDM OS Reminder documentation at [snelson.us/ddm](https://snelson.us/ddm).
 
@@ -68,7 +68,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 **Shows**:
 - DDM and non-production test prerequisites
 - Source demo and preference preview
-- Interactive or prior-plist assembly
+- Interactive, prior-plist, or prior-mobileconfig assembly
 - Either-or preference artifact deployment followed by one-time script execution
 - Heartbeat verification and expected no-op behavior
 - Pilot, production, monitoring, and upgrade paths
@@ -91,7 +91,7 @@ This directory contains comprehensive, **AI-generated** visual diagrams to augme
 ---
 
 ### 7. [Configuration Reference](06-configuration-reference.md)
-**Purpose**: Complete reference for all 75 base configurable preferences and their localized families
+**Purpose**: Complete reference for all 77 base configurable preferences and their localized families
 
 **Shows**:
 - Quick reference table (all variables at a glance)
@@ -494,8 +494,9 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.19 | 19-Oct-2026 | Updated the `{minutesBeforeDeadline}` description in 06 for `5.2.0b4` (minutes remaining, rounded up, capped at the crossed threshold); no Mermaid source changes, so PNG/SVG exports were not re-rendered |
-| 1.0.18 | 18-Oct-2026 | Documented the `5.2.0b3` low-battery warning (`MinimumBatteryPercentage`, `BatteryWarningMessage`, `{batteryWarningMessage}`, `{batteryPercentage}`) in 03/06; corrected 03 to say the low-disk-space warning is suppressed in restart-only mode while the low-battery warning is kept; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
+| 1.0.20 | 20-Oct-2026 | Reconciled diagrams with `5.2.0` runtime truth: 77 base preference keys in 05/README; disk-space and battery warnings in the 02 dialog-build step; `DDM update check:`, `No reminder shown:`, and `Next step:` log wording in 02/06; `{minutesBeforeDeadline}` behavior in 03; prior `.mobileconfig` import and a `5.2.0` upgrade section in 04; corrected 06 defaults (`title`, `preDeadlineThresholdTitle`, `infobox`), placeholder table (10 missing placeholders), localized families, language-selection gating, Knowledge Base assembly note, and troubleshooting tips; expanded the 06 `5.2.0` history row and added the missing `5.1.0` row; re-rendered `02`, `04`, and `05` PNG/SVG exports with `mmdc` 12.0.0 (`04` exports had predated its `5.2.0` Mermaid change) |
+| 1.0.19 | 20-Oct-2026 | Updated the `{minutesBeforeDeadline}` description in 06 for `5.2.0` (minutes remaining, rounded up, capped at the crossed threshold); no Mermaid source changes, so PNG/SVG exports were not re-rendered |
+| 1.0.18 | 18-Oct-2026 | Documented the `5.2.0` low-battery warning (`MinimumBatteryPercentage`, `BatteryWarningMessage`, `{batteryWarningMessage}`, `{batteryPercentage}`) in 03/06; corrected 03 to say the low-disk-space warning is suppressed in restart-only mode while the low-battery warning is kept; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.17 | 16-Oct-2026 | Raised `MinimumDiskFreeGB` sample default from `26` to `35` in 06 after a 26.60 GB fully staged update was observed |
 | 1.0.16 | 12-Oct-2026 | Aligned prose with `5.1.0`: `MinimumDiskFreeGB` replaces deprecated `MinimumDiskFreePercentage` in 03/06, and `Uninstall` alone removes `dor-state.plist` (kept by `All` / `Script`) in 04; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.15 | 04-Oct-2026 | Reconciled diagrams with `5.0.0` runtime truth: softwareupdate DDM state corroboration, private per-run `/var/tmp` files, app-bundle `dialogcli`, console-user exclusions (`_mbsetupuser`, `root`), bounded System Settings wait, atomic script deployment, self-extracting parameter forwarding, kill-switch preservation on `All` / `Script`, and language-code hardening; restored PNG and SVG exports for `00`–`05` (rendered with `mmdc` 12.0.0, including the second `03` timeline diagram) |
@@ -524,5 +525,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 19-Oct-2026
-**DDM OS Reminder Version**: 5.2.0b4
+**Last Updated**: 20-Oct-2026
+**DDM OS Reminder Version**: 5.2.0

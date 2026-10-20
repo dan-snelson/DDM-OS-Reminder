@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/zsh --no-rcs
 
 # Extension Attribute to determine users' SecureToken status (all local users)
 

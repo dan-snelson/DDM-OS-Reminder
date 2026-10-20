@@ -226,6 +226,7 @@ Scheduler rules:
 - Evaluates against the effective enforcement epoch, including a trusted padded enforcement date when available
 - Displays each configured threshold once per resolved deadline/version
 - Bypasses `QuietPeriodMinutes` so an earlier threshold interaction does not suppress later 30/15/10/5-minute reminders
+- `{minutesBeforeDeadline}` shows the minutes actually remaining until the effective deadline (rounded up, never above the crossed threshold), so a late run (padded deadline, heartbeat delay, wake from sleep) does not overstate time left
 - Uses the existing heartbeat + `dor-starter` + `NextScheduledReminder` exact scheduler path
 
 **Runtime State**:

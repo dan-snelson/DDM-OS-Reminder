@@ -141,30 +141,30 @@ requireText "skeleton run row" '| 2026-10-12 10:15:20 | `dorm (5.1.0)` | `resolv
 requireText "skeleton deployment version" '| Deployment version | `5.1.0` (deployment output, not a runtime run) |' "${offsetAndDeploy}"
 
 cat > "${workDirectory}/plain-language.log" <<'EOF'
-dorm (5.2.0b2): 2026-10-16 10:31:05 - [PRE-FLIGHT]      Initiating …
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [NOTICE]          DDM update check: no DDM-enforced macOS update found (status=missing; source=none; reason=No DDM-enforced macOS update found in install.log)
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [NOTICE]          DDM Emergency Fallback not configured (dor-fallback-declaration.plist absent); nothing to fall back to (DDM status=missing)
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [NOTICE]          Version Comparison Result: No DDM update (status=missing)
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [NOTICE]          No reminder shown: this Mac has no DDM-enforced macOS update pending (No DDM-enforced macOS update found in install.log)
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [NOTICE]          Next step: If an update should be enforced, confirm this Mac is in scope of a DDM software-update declaration in your MDM, then search '/var/log/install.log' for 'EnforcedInstallDate'.
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [QUIT]            Exiting …
-dorm (5.2.0b2): 2026-10-16 10:31:06 - [QUIT]            Ticking away the moments that make up a dull day …
-dorm (5.2.0b2): 2026-10-16 12:00:05 - [PRE-FLIGHT]      Initiating …
-dorm (5.2.0b2): 2026-10-16 12:00:05 - [PRE-FLIGHT]      Current Logged-in User: zzplainuser, Zzplainfirst, 501
-dorm (5.2.0b2): 2026-10-16 12:00:06 - [NOTICE]          Currently installed macOS 15.6.1 (24G84)
-dorm (5.2.0b2): 2026-10-16 12:00:06 - [NOTICE]          Opening Software Update for zzplainuser to install macOS 15.7.2 (deadline Wed, 21-Oct-2026, 9:00 a.m.; source=currentApplicableDeclaration; status=resolved); Zzplainfirst
-dorm (5.2.0b2): 2026-10-16 12:00:06 - [NOTICE]          DDM update check: found DDM-enforced macOS 15.7.2, declared deadline 2026-10-21T09:00:00 (status=resolved; source=currentApplicableDeclaration; reason=none)
-dorm (5.2.0b2): 2026-10-16 12:00:07 - [QUIT]            No reminder shown: deadline is 5 days away, beyond DaysBeforeDeadlineDisplayReminder (3), and the last reminder was 1 day(s) ago
-dorm (5.2.0b2): 2026-10-16 12:00:07 - [NOTICE]          Next step: None; the next reminder appears after 28 day(s) (OutsideDisplayWindowPeriodicReminderDays) or 3 days before the deadline.
-dorm (5.2.0b2): 2026-10-16 12:00:07 - [QUIT]            Exiting …
-dorm (5.2.0b2): 2026-10-16 12:00:07 - [QUIT]            Ticking away the moments that make up a dull day …
+dorm (5.2.0): 2026-10-16 10:31:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.2.0): 2026-10-16 10:31:06 - [NOTICE]          DDM update check: no DDM-enforced macOS update found (status=missing; source=none; reason=No DDM-enforced macOS update found in install.log)
+dorm (5.2.0): 2026-10-16 10:31:06 - [NOTICE]          DDM Emergency Fallback not configured (dor-fallback-declaration.plist absent); nothing to fall back to (DDM status=missing)
+dorm (5.2.0): 2026-10-16 10:31:06 - [NOTICE]          Version Comparison Result: No DDM update (status=missing)
+dorm (5.2.0): 2026-10-16 10:31:06 - [NOTICE]          No reminder shown: this Mac has no DDM-enforced macOS update pending (No DDM-enforced macOS update found in install.log)
+dorm (5.2.0): 2026-10-16 10:31:06 - [NOTICE]          Next step: If an update should be enforced, confirm this Mac is in scope of a DDM software-update declaration in your MDM, then search '/var/log/install.log' for 'EnforcedInstallDate'.
+dorm (5.2.0): 2026-10-16 10:31:06 - [QUIT]            Exiting …
+dorm (5.2.0): 2026-10-16 10:31:06 - [QUIT]            Ticking away the moments that make up a dull day …
+dorm (5.2.0): 2026-10-16 12:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.2.0): 2026-10-16 12:00:05 - [PRE-FLIGHT]      Current Logged-in User: zzplainuser, Zzplainfirst, 501
+dorm (5.2.0): 2026-10-16 12:00:06 - [NOTICE]          Currently installed macOS 15.6.1 (24G84)
+dorm (5.2.0): 2026-10-16 12:00:06 - [NOTICE]          Opening Software Update for zzplainuser to install macOS 15.7.2 (deadline Wed, 21-Oct-2026, 9:00 a.m.; source=currentApplicableDeclaration; status=resolved); Zzplainfirst
+dorm (5.2.0): 2026-10-16 12:00:06 - [NOTICE]          DDM update check: found DDM-enforced macOS 15.7.2, declared deadline 2026-10-21T09:00:00 (status=resolved; source=currentApplicableDeclaration; reason=none)
+dorm (5.2.0): 2026-10-16 12:00:07 - [QUIT]            No reminder shown: deadline is 5 days away, beyond DaysBeforeDeadlineDisplayReminder (3), and the last reminder was 1 day(s) ago
+dorm (5.2.0): 2026-10-16 12:00:07 - [NOTICE]          Next step: None; the next reminder appears after 28 day(s) (OutsideDisplayWindowPeriodicReminderDays) or 3 days before the deadline.
+dorm (5.2.0): 2026-10-16 12:00:07 - [QUIT]            Exiting …
+dorm (5.2.0): 2026-10-16 12:00:07 - [QUIT]            Ticking away the moments that make up a dull day …
 EOF
 plainLanguage="$(runHelper \
     --client-log "${workDirectory}/plain-language.log" \
     --install-log "${fixtureRoot}/missing/install.log" \
     --plist "${fixtureRoot}/missing/managed.dorm.plist")"
-requireText "plain-language missing row" '| 2026-10-16 10:31:05 | `dorm (5.2.0b2)` | `missing` | No reminder shown: this Mac has no DDM-enforced macOS update pending' "${plainLanguage}"
-requireText "plain-language resolved row" '| 2026-10-16 12:00:05 | `dorm (5.2.0b2)` | `resolved` | No reminder shown: deadline is 5 days away' "${plainLanguage}"
+requireText "plain-language missing row" '| 2026-10-16 10:31:05 | `dorm (5.2.0)` | `missing` | No reminder shown: this Mac has no DDM-enforced macOS update pending' "${plainLanguage}"
+requireText "plain-language resolved row" '| 2026-10-16 12:00:05 | `dorm (5.2.0)` | `resolved` | No reminder shown: deadline is 5 days away' "${plainLanguage}"
 requireText "plain-language recorded result" "DDM update check: found DDM-enforced macOS 15.7.2" "${plainLanguage}"
 requireText "plain-language installed version" "| Installed macOS version | 15.6.1 |" "${plainLanguage}"
 requireText "plain-language installed build" "| Installed macOS build | 24G84 |" "${plainLanguage}"
@@ -302,10 +302,10 @@ writePlist "${workDirectory}/battery.plist" '    <key>MinimumBatteryPercentage</
     <key>BatteryWarningMessageLocalized_de</key>
     <string>Netzteil anschliessen</string>'
 cat > "${workDirectory}/battery.log" <<'EOF'
-dorm (5.2.0b3): 2026-10-18 09:00:05 - [PRE-FLIGHT]      Initiating …
-dorm (5.2.0b3): 2026-10-18 09:00:06 - [INFO]            Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB; warning suppressed
-dorm (5.2.0b3): 2026-10-18 09:00:06 - [NOTICE]          Battery: power source Battery Power; internal battery 18%; MinimumBatteryPercentage threshold 50%; warning shown
-dorm (5.2.0b3): 2026-10-18 09:00:07 - [QUIT]            Exiting …
+dorm (5.2.0): 2026-10-18 09:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.2.0): 2026-10-18 09:00:06 - [INFO]            Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB; warning suppressed
+dorm (5.2.0): 2026-10-18 09:00:06 - [NOTICE]          Battery: power source Battery Power; internal battery 18%; MinimumBatteryPercentage threshold 50%; warning shown
+dorm (5.2.0): 2026-10-18 09:00:07 - [QUIT]            Exiting …
 EOF
 battery="$(runHelper \
     --client-log "${workDirectory}/battery.log" \

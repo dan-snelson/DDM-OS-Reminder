@@ -9,7 +9,7 @@ flowchart TB
         Local["2. Local Preferences<br/>/Library/Preferences/<br/>&lt;rdnn&gt;.dorm.plist<br/><br/>Per-key fallback"]
         Defaults["3. Script Defaults<br/>preferenceConfiguration map<br/><br/>Always available"]
 
-        Managed --> Resolve["Resolve each of 75 base keys<br/>Managed, then Local, then Default"]
+        Managed --> Resolve["Resolve each of 77 base keys<br/>Managed, then Local, then Default"]
         Local --> Resolve
         Defaults --> Resolve
         Resolve --> Types["Normalize strings, numbers,<br/>booleans, schedules, and modes"]
@@ -68,6 +68,7 @@ The presence of a managed preference file does not suppress every local key. A m
 - final-minute threshold schedule
 - aggressive-mode timing
 - optional restart policy
+- disk-space and low-battery warning thresholds
 - support details and actions
 - branding
 - localization and dialog copy
@@ -113,7 +114,7 @@ Local preferences do not override matching managed values. When testing a local 
 
 **Location**: `preferenceConfiguration` in `reminderDialog.zsh`
 
-The runtime defines 75 base preference keys with string, numeric, or boolean defaults. These values keep the script functional when neither managed nor local configuration supplies a key.
+The runtime defines 77 base preference keys with string, numeric, or boolean defaults. These values keep the script functional when neither managed nor local configuration supplies a key.
 
 Representative defaults:
 

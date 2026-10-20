@@ -5638,7 +5638,7 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
                 quitScript "0"
             fi
         else
-            info "Deadline is within 24 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
+            info "Deadline is within 36 hours; ignoring ${loggedInUser}'s Display Sleep Assertions; proceeding …"
         fi
     fi
 

@@ -51,7 +51,7 @@ flowchart TD
     QuietBypass -->|Yes| Build
     QuietBypass -->|No| Quiet{Within interaction<br/>quiet period?}
     Quiet -->|Yes| ScheduleQuiet[Schedule exact quiet expiry<br/>or earlier threshold and exit]
-    Quiet -->|No| Meeting{More than 24 hours remain<br/>and allowed meeting active?}
+    Quiet -->|No| Meeting{At least 36 hours remain<br/>and allowed meeting active?}
     Meeting -->|Yes| MeetingWait[Check every 5 minutes<br/>until clear or MeetingDelay reached]
     Meeting -->|No| Build
     MeetingWait --> Build[Build localized dialog,<br/>disk-space and battery warnings,<br/>and apply active mode]

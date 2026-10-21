@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0"
+scriptVersion="5.2.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1209,6 +1209,23 @@ function resolveNextPendingPreDeadlineThresholdEpoch() {
     return 1
 }
 
+function resolveAggressiveModeStartEpoch() {
+    # Silent by design: callers use command substitution and notice() writes to stdout
+    local nowEpoch="${1:-$(date +%s)}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local aggressiveStartEpoch=""
+
+    [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || return 1
+    [[ -e "${aggressiveModeKillSwitchPath}" ]] && return 1
+
+    aggressiveStartEpoch=$(( deadlineReferenceEpoch + (aggressiveModePastDeadlineHours * 3600) ))
+    (( aggressiveStartEpoch > nowEpoch )) || return 1
+
+    echo "${aggressiveStartEpoch}"
+}
+
 function setNextReminderScheduleForPendingThresholdOrBaseline() {
     local scheduleReason="${1:-Pre-deadline threshold or baseline schedule}"
     local nowEpoch="$(date +%s)"
@@ -1216,6 +1233,7 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     local thresholdEpoch=""
     local thresholdMinutes=""
     local baselineEpoch=""
+    local aggressiveStartEpoch=""
 
     shouldManageDaemonScheduling || return 0
 
@@ -1226,8 +1244,13 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     fi
 
     baselineEpoch="$(resolveNextBaselineReminderEpoch "${nowEpoch}")"
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
+    # Thresholds always precede the deadline, so they always precede the aggressive-mode start
     if [[ -n "${thresholdEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( thresholdEpoch < baselineEpoch )); }; then
         setNextReminderScheduleExactEpoch "${thresholdEpoch}" "${scheduleReason}: ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( aggressiveStartEpoch < baselineEpoch )); }; then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "${scheduleReason}: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleBaseline "${scheduleReason}: baseline"
     fi
@@ -1240,6 +1263,7 @@ function setNextReminderScheduleForQuietOrThreshold() {
     local thresholdResult=""
     local thresholdEpoch=""
     local thresholdMinutes=""
+    local aggressiveStartEpoch=""
 
     shouldManageDaemonScheduling || return 0
 
@@ -1249,8 +1273,12 @@ function setNextReminderScheduleForQuietOrThreshold() {
         thresholdMinutes="${thresholdResult##*|}"
     fi
 
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
     if [[ -n "${thresholdEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( thresholdEpoch < quietTargetEpoch )); then
         setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Quiet-period bypass for ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( aggressiveStartEpoch < quietTargetEpoch )); then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "Quiet-period bypass for aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleExactEpoch "${quietTargetEpoch}" "${scheduleReason}"
     fi

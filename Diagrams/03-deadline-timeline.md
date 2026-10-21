@@ -68,7 +68,7 @@ Scheduler rules:
 - Baseline slots remain administrator-controlled preferences.
 - Thresholds can preempt a later baseline or quiet-period time and are delivered once per declaration signature.
 - Quiet time begins after recorded user interaction, not when the dialog first appears.
-- Aggressive mode starts only after the effective deadline plus `AggressiveModePastDeadlineHours`, unless the support kill switch exists.
+- Aggressive mode starts only after the effective deadline plus `AggressiveModePastDeadlineHours`, unless the support kill switch exists. When that start comes before the next baseline or quiet-period time, it becomes the exact `NextScheduledReminder`.
 - Mutable schedule values stay in `dor-state.plist`; they are never written into managed or local preferences.
 
 ## Timeline Phases

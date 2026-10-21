@@ -2,6 +2,14 @@
 
 ## Changelog
 
+### Version 5.2.1b1 (21-Oct-2026)
+- Fixed: past-deadline aggressive mode was never scheduled when the next `DailyReminderTimes` slot came after the aggressive-mode start, leaving a Mac past its deadline without reminders until the next baseline slot (for example, overnight after a final pre-deadline threshold reminder at 16:25 for a 16:29 deadline) ([Issue #164](https://github.com/dan-snelson/DDM-OS-Reminder/issues/164))
+    - The aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`) is now a scheduling candidate alongside pending pre-deadline thresholds and baseline slots. The earliest wins.
+    - Applies after pre-deadline threshold reminders, after regular reminders shown between the deadline and the aggressive-mode start, and to quiet-period and Update Tonight scheduling, which aggressive mode already bypasses at runtime.
+    - Skipped while `/Library/Management/<rdnn>/dor-aggressive-kill` exists; the next run re-evaluates once support removes it.
+    - Logged as `[NOTICE] Scheduled next daemon reminder for … (…: aggressive-mode start (<n> hour(s) past effective deadline))` or `(Quiet-period bypass for aggressive-mode start …)`.
+    - No changes to preferences, defaults, DDM trust rules, or suppression rules.
+
 ### Version 5.2.0 (20-Oct-2026)
 - New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)
     - New `MinimumBatteryPercentage` preference: integer `0`–`100`, default `50`; `0` disables. Invalid values log `[WARNING]` and fall back to `50`.

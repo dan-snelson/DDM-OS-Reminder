@@ -1379,6 +1379,7 @@ function shouldAutoRefreshOpenDialogAtPreDeadlineThreshold() {
 function monitorOpenDialogForPreDeadlineThreshold() {
     local dialogPid="${1}"
     local refreshMarkerPath="${2}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
     local thresholdResult=""
     local watchedThresholdEpoch=""
     local watchedThresholdMinutes=""
@@ -1392,15 +1393,22 @@ function monitorOpenDialogForPreDeadlineThreshold() {
         nowEpoch="$(date +%s)"
 
         if [[ -n "${watchedThresholdEpoch}" && "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= watchedThresholdEpoch )); then
-            notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
-            printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
-            kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
-            sleep 2
-            if kill -0 "${dialogPid}" >/dev/null 2>&1; then
-                warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
-                kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+            # A wake from sleep can also cross the deadline; no refreshed threshold dialog would replace this one
+            if [[ "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= deadlineReferenceEpoch )); then
+                notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open, but the effective deadline has passed; leaving the open dialog in place."
+                watchedThresholdEpoch=""
+                watchedThresholdMinutes=""
+            else
+                notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
+                printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
+                kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
+                sleep 2
+                if kill -0 "${dialogPid}" >/dev/null 2>&1; then
+                    warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
+                    kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+                fi
+                return 0
             fi
-            return 0
         fi
 
         thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
@@ -5064,7 +5072,17 @@ function displayReminderDialog() {
         esac
     fi
 
-    completePreDeadlineThresholdReminderDelivery
+    # Only user-interaction return codes confirm the threshold reminder was seen
+    case ${returncode} in
+        0|2|3|4|10)
+            completePreDeadlineThresholdReminderDelivery
+            ;;
+        *)
+            if isPreDeadlineThresholdReminderMode; then
+                notice "Pre-deadline threshold ${preDeadlineThresholdMinutes}-minute reminder not marked delivered; return code ${returncode} is not a user interaction."
+            fi
+            ;;
+    esac
 
     if isPastDeadlineForceMode; then
         while true; do

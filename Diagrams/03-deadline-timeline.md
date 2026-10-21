@@ -231,7 +231,7 @@ Scheduler rules:
 
 **Runtime State**:
 - `PreDeadlineThresholdSignature` identifies the threshold-delivery ledger for the resolved declaration using `<VersionString>|<BuildVersionString>|<effective-enforcement-epoch>`
-- `PreDeadlineThresholdDelivered` records configured minute thresholds already displayed for that signature
+- `PreDeadlineThresholdDelivered` records configured minute thresholds already displayed for that signature, confirmed by a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh
 - `PreDeadlineThresholdSkipped` records older thresholds crossed before the most-recent due threshold could be displayed
 - When the version, build, or effective enforcement epoch changes, runtime replaces the signature and clears the delivered/skipped lists so the new declaration receives its own threshold sequence
 - These keys are mutable runtime state in `/Library/Management/<rdnn>/dor-state.plist`; they are not Configuration Profile preferences

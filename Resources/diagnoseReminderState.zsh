@@ -10,9 +10,10 @@
 # or, on the affected Mac, the same files read from their live paths (--rdnn)
 #
 # Prints a structured fact sheet that ends with a pre-filled report skeleton.
-# Does not write files, change preferences, mutate scheduler state, or
-# re-decide resolver status. The client log's recorded resolver result is
-# authoritative for what that Mac did.
+# Does not change preferences, mutate scheduler state, or re-decide resolver
+# status. Writes nothing, except --no-redaction with --rdnn, which saves the
+# printed fact sheet to /Library/Management/<rdnn>/. The client log's recorded
+# resolver result is authoritative for what that Mac did.
 #
 # Usage:
 #   zsh Resources/diagnoseReminderState.zsh --help
@@ -21,6 +22,7 @@
 #       --install-log /path/to/install.log \
 #       --plist /path/to/<rdnn>.dorm.plist
 #   sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>
+#   sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn> --no-redaction
 #
 # http://snelson.us/ddm
 #
@@ -30,7 +32,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.5.0"
+scriptVersion="1.6.0"
 checklistScriptVersion="5.3.0b1"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -50,6 +52,7 @@ persistencePlistPath=""
 launchDaemonPlistPath=""
 aggressiveKillState="unknown"
 rdnnOption=""
+redactionEnabled="true"
 inferredInputPath=""
 
 # Per-input source: supplied | inferred | absent | unreadable (empty = not in upload)
@@ -206,6 +209,12 @@ unprefixedLineCount=0
 unprefixedTopLine=""
 unprefixedTopCount=0
 fallbackGate=""
+identityComputerName=""
+identityComputerNameSource=""
+identitySerialNumber=""
+identitySerialNumberSource=""
+factSheetSavePath=""
+factSheetSaveError=""
 reportSkeletonRunLimit=5
 reportSkeletonSpanLimit=20
 
@@ -236,6 +245,8 @@ function printUsage() {
     echo "  --persistence-plist <path>  /var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
     echo "  --launch-daemon-plist <path> /Library/LaunchDaemons/<rdnn>.dor.plist"
     echo "  --aggressive-kill yes|no    Whether dor-aggressive-kill existed on the Mac"
+    echo "  --no-redaction              Print usernames, first names, /Users paths, computer names, and serial numbers as logged;"
+    echo "                              with --rdnn, also save the output to /Library/Management/<rdnn>/"
     echo ""
     echo "On the affected Mac (alternative to the required files):"
     echo "  --rdnn <rdnn>               Read each input not supplied above from its live path:"
@@ -249,7 +260,9 @@ function printUsage() {
     echo ""
     echo "Without --rdnn, at least one of --plist, --managed-plist, or --local-plist is required."
     echo "With --rdnn, a Mac with no preference plist is reported with script defaults."
-    echo "Read-only: prints a fact sheet to stdout and writes nothing."
+    echo "Default: prints a redacted fact sheet to stdout and writes nothing."
+    echo "--no-redaction output identifies the Mac and its user; keep it out of public issues."
+    echo "--no-redaction with --rdnn also saves the fact sheet (mode 0600) and exits 73 if it cannot."
     echo "The fact sheet ends with a pre-filled report skeleton for the agent to complete."
 }
 
@@ -804,6 +817,10 @@ function collectIdentityTokens() {
     for logLine in "${installLogWindow[@]}"; do
         if [[ "${logLine}" =~ "^${installLogHostRegex}" ]]; then
             rememberRedactedHostToken "${match[1]}"
+            if [[ "${match[1]}" != "|"* ]]; then
+                identityComputerName="${match[1]}"
+                identityComputerNameSource="install.log"
+            fi
         fi
     done
 
@@ -829,8 +846,60 @@ function collectIdentityTokens() {
         fi
         if [[ "${logLine}" =~ 'Serial Number: ([A-Za-z0-9]+)' ]]; then
             rememberRedactedToken "${match[1]}"
+            identitySerialNumber="${match[1]}"
+            identitySerialNumberSource="client log"
         fi
     done < "${clientLogPath}"
+}
+
+function collectLiveIdentity() {
+    local liveValue=""
+
+    # --rdnn runs on the affected Mac, so its live identity wins over logged values
+    liveValue="$(/usr/sbin/scutil --get ComputerName 2>/dev/null)"
+    if [[ -n "${liveValue}" ]]; then
+        identityComputerName="${liveValue}"
+        identityComputerNameSource="this Mac"
+    fi
+
+    liveValue="$(/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice 2>/dev/null | /usr/bin/awk -F'"' '/IOPlatformSerialNumber/ { print $4; exit }')"
+    if [[ -n "${liveValue}" ]]; then
+        identitySerialNumber="${liveValue}"
+        identitySerialNumberSource="this Mac"
+    fi
+}
+
+function identityValueCell() {
+    local value="${1}"
+    local source="${2}"
+
+    if [[ -z "${value}" ]]; then
+        echo "not logged"
+        return 0
+    fi
+    echo "$(escapeTableCell "${value}") (${source})"
+}
+
+function factSheetSaveDirectoryProblem() {
+    local saveDirectory="${1}"
+
+    if [[ -L "${saveDirectory}" ]]; then
+        echo "${saveDirectory} is a symbolic link"
+    elif [[ ! -d "${saveDirectory}" ]]; then
+        echo "${saveDirectory} does not exist on this Mac"
+    elif [[ "$(/usr/bin/stat -f %u "${saveDirectory}" 2>/dev/null)" != "0" ]]; then
+        echo "${saveDirectory} is not owned by root"
+    elif [[ ! -w "${saveDirectory}" ]]; then
+        echo "${saveDirectory} is not writable (rerun with sudo)"
+    fi
+}
+
+function writeFactSheetOutput() {
+    if [[ -n "${factSheetSavePath}" ]]; then
+        ( umask 077; /usr/bin/tee "${factSheetSavePath}" )
+    else
+        /bin/cat
+    fi
 }
 
 function redactBoundedToken() {
@@ -875,6 +944,11 @@ function redactSensitiveText() {
     local value="${1}"
     local token=""
 
+    if [[ "${redactionEnabled}" != "true" ]]; then
+        echo "${value}"
+        return 0
+    fi
+
     value="$(redactUsersPaths "${value}")"
     if (( ${#redactedHostTokens[@]} > 0 )); then
         for token in "${redactedHostTokens[@]}"; do
@@ -896,6 +970,11 @@ function redactInstallLogLine() {
     local timeToken=""
     local hostToken=""
     local remainder=""
+
+    if [[ "${redactionEnabled}" != "true" ]]; then
+        echo "${line}"
+        return 0
+    fi
 
     line="$(redactSensitiveText "${line}")"
     dateToken="${line%% *}"
@@ -1085,6 +1164,10 @@ while [[ "$#" -gt 0 ]]; do
             rdnnOption="${2}"
             shift 2
             ;;
+        --no-redaction)
+            redactionEnabled="false"
+            shift
+            ;;
         *)
             failUsage "Unknown option '${1}'"
             ;;
@@ -1186,7 +1269,7 @@ if [[ -n "${rdnnOption}" ]]; then
     # ---------------------------------------------------------------------------------------------
 
     if [[ -z "${installLogPath}" ]]; then
-        [[ -e "/var/log/install.log" ]] || failMissing "install.log not found on this Mac: /var/log/install.log (supply --install-log)"
+        [[ -e "/var/log/install.log" ]] || failMissing "install.log not found on this Mac: /var/log/install.log (inferred from --rdnn ${rdnnOption}; supply --install-log)"
         [[ -r "/var/log/install.log" ]] || failMissing "install.log is not readable: /var/log/install.log (inferred from --rdnn ${rdnnOption}; rerun with sudo)"
         installLogPath="/var/log/install.log"
         inputSource[installLog]="inferred"
@@ -1826,18 +1909,78 @@ flushDeclarationSpan
 
 ####################################################################################################
 #
+# Identity, report filename, and save target
+#
+####################################################################################################
+
+collectIdentityTokens
+if [[ "${redactionEnabled}" != "true" && -n "${rdnnOption}" ]]; then
+    collectLiveIdentity
+fi
+
+if [[ -n "${detectedRdnn}" ]]; then
+    skeletonRdnn="\`${detectedRdnn}\`"
+    reportFileRdnn="${detectedRdnn//[^A-Za-z0-9._-]/-}"
+elif (( ${#rdnnCandidates[@]} == 0 )); then
+    skeletonRdnn="undetected"
+    reportFileRdnn="rdnn-undetected"
+else
+    skeletonRdnn="conflict: ${(j:, :)rdnnCandidates}"
+    reportFileRdnn="rdnn-conflict"
+fi
+runTimestamp="$(date +%Y-%m-%d-%H%M%S)"
+reportFileUnredacted=""
+if [[ "${redactionEnabled}" != "true" ]]; then
+    reportFileComputerName="${identityComputerName//[^A-Za-z0-9._-]/-}"
+    while [[ "${reportFileComputerName}" == *--* ]]; do
+        reportFileComputerName="${reportFileComputerName//--/-}"
+    done
+    reportFileComputerName="${${reportFileComputerName#-}%-}"
+    reportFileUnredacted="${reportFileComputerName:+-${reportFileComputerName}}-unredacted"
+fi
+reportFileName="ddm-os-reminder-${reportFileRdnn}${reportFileUnredacted}-${runTimestamp}.md"
+
+# ---------------------------------------------------------------------------------------------
+# --no-redaction saves only on the affected Mac (--rdnn), never into a directory it creates
+# ---------------------------------------------------------------------------------------------
+
+if [[ "${redactionEnabled}" != "true" ]]; then
+    if [[ -z "${rdnnOption}" ]]; then
+        echo "Note: --no-redaction without --rdnn prints to stdout only; nothing was saved." >&2
+    else
+        factSheetSaveError="$(factSheetSaveDirectoryProblem "${rdnnManagementDirectory}")"
+        if [[ -z "${factSheetSaveError}" ]]; then
+            factSheetSavePath="${rdnnManagementDirectory}/${reportFileName%.md}-fact-sheet.md"
+        fi
+    fi
+fi
+
+
+
+####################################################################################################
+#
 # Fact sheet
 #
 ####################################################################################################
+
+{
 
 echo "# [DDM OS Reminder](https://snelson.us/ddm) client-state fact sheet"
 echo ""
 echo "- Helper: ${scriptRelativePath} (${scriptVersion})"
 echo "- Checklist: reminderDialog.zsh ${checklistScriptVersion} preference defaults and log phrases"
-echo "- Read-only: no files were written"
+if [[ -n "${factSheetSavePath}" ]]; then
+    echo "- Wrote only this fact sheet: ${factSheetSavePath} (mode 0600); nothing else was written"
+else
+    echo "- Read-only: no files were written"
+fi
 echo "- Client log resolver result is authoritative for what this Mac did"
 echo "- This helper lists install.log evidence; it does not re-decide resolver status"
-echo "- Usernames, first names, /Users paths, install.log computer names, and labeled serial numbers are redacted below"
+if [[ "${redactionEnabled}" == "true" ]]; then
+    echo "- Usernames, first names, /Users paths, install.log computer names, and labeled serial numbers are redacted below"
+else
+    echo "- Redaction is off (--no-redaction): usernames, first names, /Users paths, install.log computer names, and serial numbers appear as logged. Keep this output out of public issues."
+fi
 echo ""
 
 function inputRow() {
@@ -1852,7 +1995,6 @@ echo "## Inputs"
 echo ""
 echo "| Input | Path or value | Status |"
 echo "|---|---|---|"
-collectIdentityTokens
 
 if [[ -n "${rdnnOption}" ]]; then
     echo "| --rdnn | ${rdnnOption} | supplied |"
@@ -1899,6 +2041,10 @@ echo "| Log script name | ${logOrganizationScriptName:-undetected} |"
 echo "| Log scriptVersion | ${logScriptVersion:-undetected} |"
 echo "| Installed macOS version | ${installedMacOSVersion:-not in latest run} |"
 echo "| Installed macOS build | ${installedMacOSBuild:-not in latest run} |"
+if [[ "${redactionEnabled}" != "true" ]]; then
+    echo "| Computer name | $(identityValueCell "${identityComputerName}" "${identityComputerNameSource}") |"
+    echo "| Serial number | $(identityValueCell "${identitySerialNumber}" "${identitySerialNumberSource}") |"
+fi
 echo "| Latest run lines | ${latestRunLineCount} (from last Initiating line) |"
 echo ""
 
@@ -2185,18 +2331,6 @@ function skeletonMarkerBullet() {
     echo "- ${label}: ${#} line(s); latest: \`${latestLine}\`"
 }
 
-if [[ -n "${detectedRdnn}" ]]; then
-    skeletonRdnn="\`${detectedRdnn}\`"
-    reportFileRdnn="${detectedRdnn//[^A-Za-z0-9._-]/-}"
-elif (( ${#rdnnCandidates[@]} == 0 )); then
-    skeletonRdnn="undetected"
-    reportFileRdnn="rdnn-undetected"
-else
-    skeletonRdnn="conflict: ${(j:, :)rdnnCandidates}"
-    reportFileRdnn="rdnn-conflict"
-fi
-reportFileName="ddm-os-reminder-${reportFileRdnn}-$(date +%Y-%m-%d-%H%M%S).md"
-
 if (( latestRuntimeInitiating > 0 )) && [[ -n "${logScriptVersion}" ]]; then
     skeletonRuntimeVersion="\`${logOrganizationScriptName} (${logScriptVersion})\`"
     if [[ "${logScriptVersion}" == "${checklistScriptVersion}" ]]; then
@@ -2308,6 +2442,10 @@ echo "| Runtime version | ${skeletonRuntimeVersion} |"
 echo "| Deployment version | ${skeletonDeploymentVersion} |"
 echo "| Installed macOS | ${skeletonInstalledMacOS} |"
 echo "| Checklist match | ${skeletonChecklistMatch} |"
+if [[ "${redactionEnabled}" != "true" ]]; then
+    echo "| Computer name | $(identityValueCell "${identityComputerName}" "${identityComputerNameSource}") |"
+    echo "| Serial number | $(identityValueCell "${identitySerialNumber}" "${identitySerialNumberSource}") |"
+fi
 echo ""
 if (( ${#identityNotes[@]} == 0 )); then
     echo "- Helper notes: none"
@@ -2529,5 +2667,33 @@ echo ""
 
 echo "## 9. Redaction"
 echo ""
-echo "This report is redacted: usernames, first names, \`/Users\` paths, \`install.log\` computer names, and labeled serial numbers are removed. Keep the raw client files and the helper fact sheet out of any public issue."
+if [[ "${redactionEnabled}" == "true" ]]; then
+    echo "This report is redacted: usernames, first names, \`/Users\` paths, \`install.log\` computer names, and labeled serial numbers are removed. Keep the raw client files and the helper fact sheet out of any public issue."
+else
+    echo "This report is not redacted (\`--no-redaction\`): usernames, first names, \`/Users\` paths, \`install.log\` computer names, and serial numbers appear as logged. Keep this report, the raw client files, and the helper fact sheet out of any public issue."
+fi
 echo "<!-- report-skeleton:end -->"
+
+} | writeFactSheetOutput
+typeset -a factSheetPipeStatus=("${pipestatus[@]}")
+
+
+
+####################################################################################################
+#
+# Save result
+#
+####################################################################################################
+
+(( factSheetPipeStatus[1] == 0 )) || exit "${factSheetPipeStatus[1]}"
+
+if [[ -n "${factSheetSavePath}" ]]; then
+    if (( factSheetPipeStatus[-1] != 0 )) || [[ ! -s "${factSheetSavePath}" ]]; then
+        echo "Error: could not save unredacted fact sheet: ${factSheetSavePath}" >&2
+        exit 73
+    fi
+    echo "Saved unredacted fact sheet: ${factSheetSavePath}" >&2
+elif [[ -n "${factSheetSaveError}" ]]; then
+    echo "Error: ${factSheetSaveError}; unredacted fact sheet was not saved" >&2
+    exit 73
+fi

@@ -26,6 +26,12 @@
     - Report section 8 (**Likely cause and next steps**) now opens with recorded evidence from the last run: its outcome, the runtime's own `No reminder shown:` and `Next step:` text, the latest user action, the latest scheduling line, and `NextScheduledReminder`. The agent still writes the cause and next steps.
     - Non-root runs add a note that root-only files may be unreadable; run with `sudo`. The helper stays read-only, the RDNN is never auto-discovered, and redaction is unchanged.
     - Checklist updated to `reminderDialog.zsh` `5.3.0b1`; preference defaults are unchanged.
+- `Resources/diagnoseReminderState.zsh` (`1.6.0`) adds opt-in `--no-redaction`, so a Mac Admin diagnosing several Macs can tell the reports apart and match them to MDM records
+    - Usernames, first names, `/Users` paths, `install.log` computer names, and serial numbers appear as logged. The fact-sheet header and report section 9 say the output is not redacted.
+    - The fact-sheet and report-skeleton identity tables add **Computer name** and **Serial number** rows: from this Mac (`scutil --get ComputerName`, `IOPlatformSerialNumber`) with `--rdnn`, otherwise from the latest `install.log` computer name and a labeled client-log `Serial Number:` line.
+    - The suggested report filename adds the computer name and `-unredacted`, for example `ddm-os-reminder-us.snelson-Mac-Lab-07-unredacted-2026-10-21-161500.md`.
+    - With `--rdnn`, the full output is also saved to `/Library/Management/<rdnn>/…-unredacted-<timestamp>-fact-sheet.md` (mode `0600`). The helper never creates that directory; a missing, symbolic-link, non-root-owned, or unwritable directory still prints the fact sheet and exits `73`. Without `--rdnn`, nothing is saved.
+    - Default runs are unchanged: redacted, and they write nothing.
 
 ### Version 5.2.0 (20-Oct-2026)
 - New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)

@@ -137,7 +137,7 @@ Out of scope:
 - `Resources/README.md`: assembly, packaging, plist/mobileconfig, EA, preference-test, and client-state diagnosis instructions
 - `Resources/sample.plist`: canonical localization and preference surface for generated configs
 - `Resources/reminderDialogPreferenceTest.zsh`: preference-driven dialog validation helper
-- `Resources/diagnoseReminderState.zsh`: read-only fact sheet from uploaded client log, `install.log`, and plist, or from live paths on the affected Mac via `--rdnn`
+- `Resources/diagnoseReminderState.zsh`: read-only, redacted fact sheet from uploaded client log, `install.log`, and plist, or from live paths on the affected Mac via `--rdnn`; opt-in `--no-redaction` with `--rdnn` also saves the unredacted fact sheet to `/Library/Management/<rdnn>/`
 - `Resources/skills/diagnose-client-state/SKILL.md`: agent instructions for client-state diagnosis
 - `CHANGELOG.md`: release history and shipped behavior summary
 - `Artifacts/`: generated build outputs that may be tracked; do not refresh casually

@@ -120,6 +120,7 @@ cat > "${workDirectory}/offsets.log" <<'EOF'
 EOF
 cat > "${workDirectory}/runtime.log" <<'EOF'
 dorm (5.1.0): 2026-10-12 10:00:00 - [INFO]            Return Code: 2
+dorm (5.1.0): 2026-10-12 10:00:01 - [INFO]            Serial Number: ZZSERIAL123
 dor (5.1.0): 2026-10-12 10:15:19 - [NOTICE]          Heartbeat launch triggered '/Library/Management/us.snelson/dor.zsh'.
 dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
 dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Display Reminder Dialog to zzuniqueuser with additional options: --ontop
@@ -153,6 +154,43 @@ requireText "skeleton files table" "| File | Status | Note |" "${offsetAndDeploy
 requireText "skeleton state missing" '| `dor-state.plist` | not in upload |' "${offsetAndDeploy}"
 requireText "skeleton run row" '| 2026-10-12 10:15:20 | `dorm (5.1.0)` | `resolved` | dialog shown; no Return Code logged |' "${offsetAndDeploy}"
 requireText "skeleton deployment version" '| Deployment version | `5.1.0` (deployment output, not a runtime run) |' "${offsetAndDeploy}"
+rejectText "serial number" "ZZSERIAL123" "${offsetAndDeploy}"
+rejectText "redacted computer name row" "| Computer name |" "${offsetAndDeploy}"
+requireText "redacted read-only" "- Read-only: no files were written" "${offsetAndDeploy}"
+
+unredacted="$(runHelper \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --no-redaction 2>/dev/null)"
+requireSkeletonHeadings "unredacted" "${unredacted}"
+rejectText "unredacted placeholder" "<redacted" "${unredacted}"
+requireText "unredacted install.log computer name" "SecretHost softwareupdated" "${unredacted}"
+requireText "unredacted dialog line" "Display Reminder Dialog to zzuniqueuser" "${unredacted}"
+requireText "unredacted computer name row" "| Computer name | SecretHost (install.log) |" "${unredacted}"
+requireText "unredacted serial number row" "| Serial number | ZZSERIAL123 (client log) |" "${unredacted}"
+requireText "unredacted report filename" "-SecretHost-unredacted-" "${unredacted}"
+requireText "unredacted section 9" "This report is not redacted (\`--no-redaction\`)" "${unredacted}"
+requireText "unredacted without --rdnn writes nothing" "- Read-only: no files were written" "${unredacted}"
+requireExitStatus "unredacted without --rdnn" 0 \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --no-redaction
+requireExitStatus "unredacted save directory absent" 73 \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --rdnn zz.fixture.invalid \
+    --no-redaction
+unsaved="$(runHelper \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --rdnn zz.fixture.invalid \
+    --no-redaction 2>/dev/null)"
+requireSkeletonHeadings "unsaved" "${unsaved}"
+requireText "unsaved writes nothing" "- Read-only: no files were written" "${unsaved}"
 
 cat > "${workDirectory}/plain-language.log" <<'EOF'
 dorm (5.2.0): 2026-10-16 10:31:05 - [PRE-FLIGHT]      Initiating …

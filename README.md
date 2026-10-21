@@ -410,7 +410,7 @@ Region-aware Configuration Profile example:
 
 Community-supplied, best-effort support is available on the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel, or you can open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).
 
-To triage a missing or unexpected reminder from uploaded client files, see [Diagnose client state](Resources/README.md#7-diagnose-client-state). Upload the client-side log (`/var/log/<rdnn>.log`), `/var/log/install.log`, and the client-side `.plist`. On the affected Mac itself, run `sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>` and the helper reads those files from their live paths. Keep those files out of public issues; attach a redacted report instead.
+To triage a missing or unexpected reminder from uploaded client files, see [Diagnose client state](Resources/README.md#7-diagnose-client-state). Upload the client-side log (`/var/log/<rdnn>.log`), `/var/log/install.log`, and the client-side `.plist`. On the affected Mac itself, run `sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>` and the helper reads those files from their live paths. Keep those files out of public issues; attach a redacted report instead. To track several Macs internally, add `--no-redaction`; with `--rdnn`, the unredacted fact sheet is also saved to `/Library/Management/<rdnn>/`.
 
 See also: [Diagrams/README.md](Diagrams/README.md) for architecture and sequence diagrams.
 

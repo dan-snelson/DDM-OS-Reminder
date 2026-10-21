@@ -10,7 +10,7 @@ description: >
 
 # Diagnose DDM OS Reminder client state
 
-Read-only against the affected Mac. Do not write preferences, scheduler state, LaunchDaemons, or logs. The only file this skill may write is the redacted findings Markdown, and only after the user confirms a path.
+Read-only against the affected Mac. Do not write preferences, scheduler state, LaunchDaemons, or logs. The only file this skill may write is the findings Markdown, and only after the user confirms a path. Never add `--no-redaction` unless the Mac Admin asks for it.
 
 Mac Admins upload files from the affected Mac. Do not assume live access to that Mac.
 
@@ -59,9 +59,11 @@ If the Mac Admin runs the helper on the affected Mac, `--rdnn` reads each input 
 sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>
 ```
 
+To track several Macs internally, the Mac Admin may add `--no-redaction`. With `--rdnn`, the helper then also saves its fact sheet as `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md` (mode `0600`) and exits `73` if it cannot. That saved file is the helper's only write.
+
 Treat the resulting fact sheet exactly like one built from uploads. Uploads stay the default; do not ask for live access.
 
-The helper is read-only. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.5.0 report skeleton.
+The helper is read-only. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.6.0 report skeleton.
 
 If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
@@ -77,6 +79,7 @@ If the helper cannot run, read the three files and build the report from the tem
 - Files-table statuses: `supplied` (named on the command line), `not in upload`, and with `--rdnn` also `inferred (--rdnn)`, `not present on this Mac`, and `unreadable on this Mac`. Report an `unreadable on this Mac` file as missing evidence, not as absent.
 - Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.3.0b1. If the version differs, say the checklist is best-effort.
 - The helper redacts usernames, first names, `/Users/…` paths, install.log computer names, and labeled serial numbers in the fact sheet. Keep RDNN, versions, deadlines, and preference keys. Attach the redacted report. Keep raw client files and the fact sheet out of public issues.
+- With `--no-redaction`, the fact sheet says `Redaction is off`, values appear as logged, section 3 adds `Computer name` and `Serial number` rows, section 9 says the report is not redacted, and the suggested report filename carries the computer name and `-unredacted`. Do not redact such a report by hand. Never attach an unredacted report to a public issue.
 
 ## Report
 
@@ -91,7 +94,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.5.0) · Checklist: `reminderDialog.zsh` 5.3.0b1
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.6.0) · Checklist: `reminderDialog.zsh` 5.3.0b1
 
 ## 1. Verdict
 
@@ -107,7 +110,7 @@ Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.5.
 
 | Field | Value |
 |---|---|
-…  RDNN, Runtime version, Deployment version, Installed macOS, Checklist match
+…  RDNN, Runtime version, Deployment version, Installed macOS, Checklist match (plus Computer name, Serial number with --no-redaction)
 - Helper notes: none | - Helper note: …
 
 ## 4. Effective settings
@@ -176,6 +179,8 @@ One short paragraph.
 This report is redacted: usernames, first names, `/Users` paths, `install.log` computer names, and labeled serial numbers are removed. Keep the raw client files and the helper fact sheet out of any public issue.
 ````
 
+With `--no-redaction`, the helper writes the section 9 sentence as `This report is not redacted (--no-redaction): …`. Copy it unchanged.
+
 Verdict categories (pick exactly one, bold, sentence case): **Resolver suppression**, **Fallback selected**, **Already compliant**, **Outside the display window**, **Quiet period**, **Update Tonight**, **Meeting or Focus delay**, **Threshold dialog**, **Aggressive dialog**, **Dialog shown**, **Fatal setup error**, **Not enough evidence**. Follow with the recorded resolver status in backticks when the last run has one, for example **Resolver suppression** (`conflict`).
 
 Style:
@@ -189,4 +194,4 @@ Style:
 - Quote log lines in `text` fenced blocks. Redact as the helper does.
 - In section 8, mark inferences as inferences. Number next steps; put read-only checks first and end each with `(read-only)`.
 
-After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest the helper's `Suggested report filename` (`ddm-os-reminder-<rdnn>-<YYYY-MM-DD-HHMMSS>.md`, for example `ddm-os-reminder-us.snelson-2026-10-15-201132.md`) next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.
+After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest the helper's `Suggested report filename` (`ddm-os-reminder-<rdnn>-<YYYY-MM-DD-HHMMSS>.md`, for example `ddm-os-reminder-us.snelson-2026-10-15-201132.md`; with `--no-redaction`, `ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>.md`) next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.

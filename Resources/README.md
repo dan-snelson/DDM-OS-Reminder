@@ -643,4 +643,19 @@ sudo zsh Resources/diagnoseReminderState.zsh --rdnn us.snelson
 
 The helper redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers in the fact sheet. Attach the redacted agent report, and keep the raw uploads and the fact sheet out of public issues.
 
+When you diagnose several Macs for internal tracking, `--no-redaction` (helper `1.6.0`) turns redaction off:
+
+```zsh
+sudo zsh Resources/diagnoseReminderState.zsh --rdnn us.snelson --no-redaction
+```
+
+- Usernames, first names, `/Users` paths, `install.log` computer names, and serial numbers appear as logged.
+- The fact sheet and report skeleton add **Computer name** and **Serial number** identity rows. With `--rdnn`, they come from this Mac (`scutil --get ComputerName`, `IOPlatformSerialNumber`); otherwise from the latest `install.log` computer name and a labeled `Serial Number:` client-log line, or `not logged`.
+- The suggested report filename becomes `ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>.md`, and report section 9 says the report is not redacted.
+- With `--rdnn`, the helper also saves its full output to `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md` (mode `0600`). This is its only write. It never creates the directory, and it refuses a directory that is missing, a symbolic link, not owned by root, or not writable: the fact sheet still prints, and the helper exits `73`.
+- Without `--rdnn`, nothing is saved; the output prints to stdout only.
+- `Uninstall` removes only DDM OS Reminder runtime files, so saved fact sheets (and the `/Library/Management/<rdnn>/` directory) remain until you delete them.
+
+Unredacted output identifies the Mac and its user. Keep it, and any report built from it, out of public issues.
+
 Maintainers can re-check the bundled fixtures with `zsh Resources/skills/diagnose-client-state/check-fixtures.zsh`.

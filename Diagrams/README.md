@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.22 | 21-Oct-2026 | Updated the 03 scheduler rules for `5.2.1b1`: the aggressive-mode start becomes the exact `NextScheduledReminder` when it comes before the next baseline or quiet-period time ([Issue #164](https://github.com/dan-snelson/DDM-OS-Reminder/issues/164)); noted the same candidate in the 02 Update Tonight scheduling prose and the 06 `AggressiveModePastDeadlineHours` behavior; noted in 03/06 that `PreDeadlineThresholdDelivered` records a threshold only after a user-interaction return code or an open-dialog refresh; no Mermaid source changes, so PNG/SVG exports were not re-rendered |
 | 1.0.21 | 20-Oct-2026 | Corrected the meeting-deferral window in 02/03/06: `MeetingDelay` applies only when at least 36 hours remain (rounded days remaining greater than `1`), not 24 hours; relabeled the 03 gantt milestone `Restart Eligible (if enabled)` because `PastDeadlineRestartBehavior` defaults to `Off`; re-rendered `02-runtime-decision-tree` and `03-deadline-timeline` PNG/SVG exports |
 | 1.0.20 | 20-Oct-2026 | Reconciled diagrams with `5.2.0` runtime truth: 77 base preference keys in 05/README; disk-space and battery warnings in the 02 dialog-build step; `DDM update check:`, `No reminder shown:`, and `Next step:` log wording in 02/06; `{minutesBeforeDeadline}` behavior in 03; prior `.mobileconfig` import and a `5.2.0` upgrade section in 04; corrected 06 defaults (`title`, `preDeadlineThresholdTitle`, `infobox`), placeholder table (10 missing placeholders), localized families, language-selection gating, Knowledge Base assembly note, and troubleshooting tips; expanded the 06 `5.2.0` history row and added the missing `5.1.0` row; re-rendered `02`, `04`, and `05` PNG/SVG exports with `mmdc` 12.0.0 (`04` exports had predated its `5.2.0` Mermaid change) |
 | 1.0.19 | 20-Oct-2026 | Updated the `{minutesBeforeDeadline}` description in 06 for `5.2.0` (minutes remaining, rounded up, capped at the crossed threshold); no Mermaid source changes, so PNG/SVG exports were not re-rendered |
@@ -526,5 +527,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 20-Oct-2026
+**Last Updated**: 21-Oct-2026
 **DDM OS Reminder Version**: 5.2.0

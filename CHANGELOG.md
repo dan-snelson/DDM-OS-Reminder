@@ -2,6 +2,20 @@
 
 ## Changelog
 
+### Version 5.2.1b1 (21-Oct-2026)
+- Fixed: past-deadline aggressive mode was never scheduled when the next `DailyReminderTimes` slot came after the aggressive-mode start, leaving a Mac past its deadline without reminders until the next baseline slot (for example, overnight after a final pre-deadline threshold reminder at 16:25 for a 16:29 deadline) ([Issue #164](https://github.com/dan-snelson/DDM-OS-Reminder/issues/164))
+    - The aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`) is now a scheduling candidate alongside pending pre-deadline thresholds and baseline slots. The earliest wins.
+    - Applies after pre-deadline threshold reminders, after regular reminders shown between the deadline and the aggressive-mode start, and to quiet-period and Update Tonight scheduling, which aggressive mode already bypasses at runtime.
+    - Skipped while `/Library/Management/<rdnn>/dor-aggressive-kill` exists; the next run re-evaluates once support removes it.
+    - Logged as `[NOTICE] Scheduled next daemon reminder for … (…: aggressive-mode start (<n> hour(s) past effective deadline))` or `(Quiet-period bypass for aggressive-mode start …)`.
+    - No changes to preferences, defaults, DDM trust rules, or suppression rules.
+- Fixed: a pre-deadline threshold reminder was recorded as delivered even when swiftDialog never showed it to the user (for example, `Return Code: 1` while macOS was shutting down), so a reminder the user never saw used up that threshold for the deadline
+    - Only user-interaction return codes (`0`, `2`, `3`, `4`, `10`, the same codes that start the quiet period) and the open-dialog refresh now add a threshold to `PreDeadlineThresholdDelivered`.
+    - Any other return code logs `[NOTICE] Pre-deadline threshold <n>-minute reminder not marked delivered; return code <code> is not a user interaction.` The next run shows that threshold if it is still the latest one due, or records it in `PreDeadlineThresholdSkipped` once a later threshold is due.
+- Fixed: when a Mac woke from sleep after the effective deadline with a threshold reminder still open, the open-dialog check closed that reminder and nothing replaced it until the next scheduled run
+    - Once the effective deadline has passed, the open reminder now stays on screen, logged as `[NOTICE] Pre-deadline threshold <n>-minute reminder became due while a reminder dialog was open, but the effective deadline has passed; leaving the open dialog in place.`
+    - Before the deadline, a newly due threshold still closes the open dialog and shows the newer threshold reminder.
+
 ### Version 5.2.0 (20-Oct-2026)
 - New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)
     - New `MinimumBatteryPercentage` preference: integer `0`–`100`, default `50`; `0` disables. Invalid values log `[WARNING]` and fall back to `50`.

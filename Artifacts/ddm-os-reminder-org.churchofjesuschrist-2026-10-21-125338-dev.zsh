@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0"
+scriptVersion="5.2.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -681,7 +681,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0"
+scriptVersion="5.2.1b1"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -1870,6 +1870,23 @@ function resolveNextPendingPreDeadlineThresholdEpoch() {
     return 1
 }
 
+function resolveAggressiveModeStartEpoch() {
+    # Silent by design: callers use command substitution and notice() writes to stdout
+    local nowEpoch="${1:-$(date +%s)}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local aggressiveStartEpoch=""
+
+    [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || return 1
+    [[ -e "${aggressiveModeKillSwitchPath}" ]] && return 1
+
+    aggressiveStartEpoch=$(( deadlineReferenceEpoch + (aggressiveModePastDeadlineHours * 3600) ))
+    (( aggressiveStartEpoch > nowEpoch )) || return 1
+
+    echo "${aggressiveStartEpoch}"
+}
+
 function setNextReminderScheduleForPendingThresholdOrBaseline() {
     local scheduleReason="${1:-Pre-deadline threshold or baseline schedule}"
     local nowEpoch="$(date +%s)"
@@ -1877,6 +1894,7 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     local thresholdEpoch=""
     local thresholdMinutes=""
     local baselineEpoch=""
+    local aggressiveStartEpoch=""
 
     shouldManageDaemonScheduling || return 0
 
@@ -1887,8 +1905,13 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     fi
 
     baselineEpoch="$(resolveNextBaselineReminderEpoch "${nowEpoch}")"
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
+    # Thresholds always precede the deadline, so they always precede the aggressive-mode start
     if [[ -n "${thresholdEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( thresholdEpoch < baselineEpoch )); }; then
         setNextReminderScheduleExactEpoch "${thresholdEpoch}" "${scheduleReason}: ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( aggressiveStartEpoch < baselineEpoch )); }; then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "${scheduleReason}: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleBaseline "${scheduleReason}: baseline"
     fi
@@ -1901,6 +1924,7 @@ function setNextReminderScheduleForQuietOrThreshold() {
     local thresholdResult=""
     local thresholdEpoch=""
     local thresholdMinutes=""
+    local aggressiveStartEpoch=""
 
     shouldManageDaemonScheduling || return 0
 
@@ -1910,8 +1934,12 @@ function setNextReminderScheduleForQuietOrThreshold() {
         thresholdMinutes="${thresholdResult##*|}"
     fi
 
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
     if [[ -n "${thresholdEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( thresholdEpoch < quietTargetEpoch )); then
         setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Quiet-period bypass for ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( aggressiveStartEpoch < quietTargetEpoch )); then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "Quiet-period bypass for aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleExactEpoch "${quietTargetEpoch}" "${scheduleReason}"
     fi
@@ -2012,6 +2040,7 @@ function shouldAutoRefreshOpenDialogAtPreDeadlineThreshold() {
 function monitorOpenDialogForPreDeadlineThreshold() {
     local dialogPid="${1}"
     local refreshMarkerPath="${2}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
     local thresholdResult=""
     local watchedThresholdEpoch=""
     local watchedThresholdMinutes=""
@@ -2025,15 +2054,22 @@ function monitorOpenDialogForPreDeadlineThreshold() {
         nowEpoch="$(date +%s)"
 
         if [[ -n "${watchedThresholdEpoch}" && "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= watchedThresholdEpoch )); then
-            notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
-            printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
-            kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
-            sleep 2
-            if kill -0 "${dialogPid}" >/dev/null 2>&1; then
-                warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
-                kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+            # A wake from sleep can also cross the deadline; no refreshed threshold dialog would replace this one
+            if [[ "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= deadlineReferenceEpoch )); then
+                notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open, but the effective deadline has passed; leaving the open dialog in place."
+                watchedThresholdEpoch=""
+                watchedThresholdMinutes=""
+            else
+                notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
+                printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
+                kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
+                sleep 2
+                if kill -0 "${dialogPid}" >/dev/null 2>&1; then
+                    warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
+                    kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+                fi
+                return 0
             fi
-            return 0
         fi
 
         thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
@@ -5697,7 +5733,17 @@ function displayReminderDialog() {
         esac
     fi
 
-    completePreDeadlineThresholdReminderDelivery
+    # Only user-interaction return codes confirm the threshold reminder was seen
+    case ${returncode} in
+        0|2|3|4|10)
+            completePreDeadlineThresholdReminderDelivery
+            ;;
+        *)
+            if isPreDeadlineThresholdReminderMode; then
+                notice "Pre-deadline threshold ${preDeadlineThresholdMinutes}-minute reminder not marked delivered; return code ${returncode} is not a user interaction."
+            fi
+            ;;
+    esac
 
     if isPastDeadlineForceMode; then
         while true; do

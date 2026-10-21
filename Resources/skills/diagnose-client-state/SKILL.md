@@ -76,14 +76,14 @@ If the helper cannot run, read the three files and build the report from the tem
 - `--aggressive-kill yes`, or a `present` row checked on the Mac with `--rdnn`, means `/Library/Management/<rdnn>/dor-aggressive-kill` existed, so aggressive mode uses the normal cadence until that file is removed.
 - Files-table statuses: `supplied` (named on the command line), `not in upload`, and with `--rdnn` also `inferred (--rdnn)`, `not present on this Mac`, and `unreadable on this Mac`. Report an `unreadable on this Mac` file as missing evidence, not as absent.
 - Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.3.0b1. If the version differs, say the checklist is best-effort.
-- The helper redacts usernames, first names, `/Users/…` paths, install.log computer names, and labeled serial numbers in the fact sheet. Keep RDNN, versions, deadlines, and preference keys. Attach the redacted report. Keep raw uploads and the fact sheet out of public issues.
+- The helper redacts usernames, first names, `/Users/…` paths, install.log computer names, and labeled serial numbers in the fact sheet. Keep RDNN, versions, deadlines, and preference keys. Attach the redacted report. Keep raw client files and the fact sheet out of public issues.
 
 ## Report
 
 Every report uses one format. Do not add, drop, rename, merge, or reorder sections.
 
 1. Copy the helper's `## Report skeleton` block, from `<!-- report-skeleton:begin -->` to `<!-- report-skeleton:end -->`. Drop the two marker lines.
-2. Fill only the `<!-- agent: … -->` slots: sections 1, 7, and 8, plus optional extra bullets in section 5. Replace each slot; do not leave comments behind.
+2. Fill only the `<!-- agent: … -->` slots: sections 1, 7, and 8, plus optional extra bullets in section 5. Replace each slot; do not leave comments behind. In section 7, base the answer on the helper's comparison table; it lists facts only and does not decide agreement. In section 8, base the cause and next steps on the helper's recorded evidence; when the runtime logged a `Next step:`, keep it as the first next step.
 3. Do not reformat, re-sort, trim, or re-word helper tables, bullets, or the section 9 sentence. If a helper row is wrong, say so in section 8; do not edit the row.
 
 Template (helper-filled parts shown as `…`):
@@ -128,11 +128,11 @@ Window: … Corroboration: …
 | First seen | Last seen | Version | Build | EnforcedInstallDate | Source types | Corroborated |
 |---|---|---|---|---|---|---|
 …
-- Invalid declarations: …
-- No updates found for DDM to enforce: …
-- Recovery markers: …
-- No-match markers: …
-- Update Tonight softwareupdated lines: …
+- Invalid declarations (`Failed to add declaration: … Invalid declaration:` lines): …
+- `No updates found for DDM to enforce` lines: …
+- Recovery markers (`Found product with requested PMV` or `Armed DDM activity scheduler` lines): …
+- No-match markers (`MADownloadNoMatchFound`, `pallasNoPMVMatchFound=true`, or `No available updates found` lines): …
+- Update Tonight (`SUOSUInstallTonightManager:` or `SUOSUScheduler:` softwareupdated lines): …
 - (optional agent bullets)
 
 ## 6. Client-log runs
@@ -150,9 +150,17 @@ Last run (YYYY-MM-DD HH:MM:SS):
 
 ## 7. Do the client log and `install.log` agree?
 
-**Yes.** | **No.** | **Not comparable.** Up to three sentences.
+| Field | Client log (last `DDM update check:`) | `install.log` (latest declaration span) |
+|---|---|---|
+…  helper rows: Logged, Version, Declared deadline, Resolver status, Source, Corroborated
+
+**Yes.** | **No.** | **Not comparable.** Up to three sentences, below the helper table.
 
 ## 8. Likely cause and next steps
+
+Recorded evidence (helper-filled from the last run; interpret it below):
+
+…  helper bullets: Last run, No reminder shown, Next step, User action, Scheduling, `NextScheduledReminder`
 
 ### Likely cause
 
@@ -165,7 +173,7 @@ One short paragraph.
 
 ## 9. Redaction
 
-This report is redacted: usernames, first names, `/Users` paths, `install.log` computer names, and labeled serial numbers are removed. Keep the raw uploads and the helper fact sheet out of any public issue.
+This report is redacted: usernames, first names, `/Users` paths, `install.log` computer names, and labeled serial numbers are removed. Keep the raw client files and the helper fact sheet out of any public issue.
 ````
 
 Verdict categories (pick exactly one, bold, sentence case): **Resolver suppression**, **Fallback selected**, **Already compliant**, **Outside the display window**, **Quiet period**, **Update Tonight**, **Meeting or Focus delay**, **Threshold dialog**, **Aggressive dialog**, **Dialog shown**, **Fatal setup error**, **Not enough evidence**. Follow with the recorded resolver status in backticks when the last run has one, for example **Resolver suppression** (`conflict`).

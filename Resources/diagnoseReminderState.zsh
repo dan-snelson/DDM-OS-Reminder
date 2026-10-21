@@ -61,7 +61,10 @@ typeset -a unknownPlistKeys=()
 typeset -a deprecatedPlistKeys=()
 typeset -a preferenceRows=()
 typeset -a latestRunDecisionLines=()
-typeset -a installLogCandidates=()
+typeset -a installLogCandidateKeys=()
+typeset -A installLogCandidateFirst=()
+typeset -A installLogCandidateLast=()
+typeset -A installLogCandidateCount=()
 typeset -a installLogInvalidDeclarations=()
 typeset -a installLogNoUpdatesLines=()
 typeset -a installLogRecoveryLines=()
@@ -190,6 +193,9 @@ logOrganizationScriptName=""
 installedMacOSVersion=""
 installedMacOSBuild=""
 resolverStatusLine=""
+resolverStatusTimestamp=""
+legacyResolvedVersion=""
+legacyResolvedDeadline=""
 installLogLineCount=0
 installLogWindowCount=0
 latestRunLineCount=0
@@ -1629,6 +1635,13 @@ for logLine in "${latestRunLines[@]}"; do
         # 5.2.0+ "DDM update check: … (status=…; …)"; earlier "Normal DDM resolver result: status=…"
         if [[ "${logMessage}" == "DDM update check: "*"(status="* || "${logMessage}" == "Normal DDM resolver result:"* ]]; then
             resolverStatusLine="${logMessage}"
+            resolverStatusTimestamp="${match[3]}"
+        fi
+        # Pre-5.2.0 logged the resolved declaration on separate lines
+        if [[ "${logMessage}" == "Resolved DDM declaration version: "* ]]; then
+            legacyResolvedVersion="${logMessage#Resolved DDM declaration version: }"
+        elif [[ "${logMessage}" == "Resolved DDM declaration enforcement date: "* ]]; then
+            legacyResolvedDeadline="${logMessage#Resolved DDM declaration enforcement date: }"
         fi
         if [[ "${logLevel}" == "QUIT" || "${logLevel}" == "FATAL ERROR" || "${logLevel}" == "ERROR" || "${logLevel}" == "WARNING" ]]; then
             latestRunDecisionLines+=("${logLine}")
@@ -1732,7 +1745,7 @@ done < <(tail -n "${ddmResolverLookbackLines}" "${installLogPath}")
 installLogWindowCount="${#installLogWindow[@]}"
 
 if (( installLogLineCount < ddmResolverLookbackLines )); then
-    inputNotes+=("install.log has ${installLogLineCount} line(s); runtime lookback is ${ddmResolverLookbackLines}. Analysis used the entire upload.")
+    inputNotes+=("install.log has ${installLogLineCount} line(s); runtime lookback is ${ddmResolverLookbackLines}. Analysis used the entire file.")
 fi
 
 if [[ -n "${persistencePlistPath}" ]]; then
@@ -1759,7 +1772,17 @@ for logLine in "${installLogWindow[@]}"; do
         versionValid="yes"
         [[ "${parsedDDMVersionString}" =~ ${ddmVersionRegex} ]] || versionValid="no"
         corroboration="$(corroborationLabelForCandidate "${parsedDDMVersionString}" "${parsedDDMEnforcedInstallDate}")"
-        installLogCandidates+=("${parsedDDMLogTimestamp} | ${parsedDDMSourceType} | ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | versionValid=${versionValid}; corroborated=${corroboration}")
+        # Identical candidates (all fields except timestamp) group into one fact-sheet row
+        candidateRowKey="${parsedDDMSourceType} | ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | versionValid=${versionValid}; corroborated=${corroboration}"
+        if (( ${+installLogCandidateCount[${candidateRowKey}]} )); then
+            installLogCandidateLast[${candidateRowKey}]="${parsedDDMLogTimestamp}"
+            installLogCandidateCount[${candidateRowKey}]=$(( ${installLogCandidateCount[${candidateRowKey}]} + 1 ))
+        else
+            installLogCandidateKeys+=("${candidateRowKey}")
+            installLogCandidateFirst[${candidateRowKey}]="${parsedDDMLogTimestamp}"
+            installLogCandidateLast[${candidateRowKey}]="${parsedDDMLogTimestamp}"
+            installLogCandidateCount[${candidateRowKey}]=1
+        fi
         candidateSpanKey="${parsedDDMVersionString}|${parsedDDMEnforcedInstallDate}|${parsedDDMBuildVersionString}"
         if [[ "${candidateSpanKey}" == "${spanKey:-}" ]]; then
             spanLast="${parsedDDMLogTimestamp}"
@@ -1807,7 +1830,7 @@ flushDeclarationSpan
 #
 ####################################################################################################
 
-echo "# DDM OS Reminder client-state fact sheet"
+echo "# [DDM OS Reminder](https://snelson.us/ddm) client-state fact sheet"
 echo ""
 echo "- Helper: ${scriptRelativePath} (${scriptVersion})"
 echo "- Checklist: reminderDialog.zsh ${checklistScriptVersion} preference defaults and log phrases"
@@ -1959,26 +1982,35 @@ fi
 
 echo "## install.log evidence"
 echo ""
-echo "- Lines in upload: ${installLogLineCount}"
+echo "- Lines in install.log: ${installLogLineCount}"
 echo "- Window used: last ${installLogWindowCount} line(s) (runtime lookback ${ddmResolverLookbackLines})"
 echo "- Corroboration: ${ddmStatePersistenceStatus}"
 echo ""
 
 echo "### Declaration candidates"
 echo ""
-if (( ${#installLogCandidates[@]} == 0 )); then
+if (( ${#installLogCandidateKeys[@]} == 0 )); then
     echo "None in the lookback window."
     echo ""
 else
-    echo "| Timestamp | Source type | Version | EnforcedInstallDate | Build | Flags |"
-    echo "|---|---|---|---|---|---|"
-    for row in "${installLogCandidates[@]}"; do
-        echo "| ${row} |"
+    echo "Identical candidates are grouped, in order of first appearance."
+    echo ""
+    echo "| First seen | Last seen | Count | Source type | Version | EnforcedInstallDate | Build | Flags |"
+    echo "|---|---|---|---|---|---|---|---|"
+    for candidateRowKey in "${installLogCandidateKeys[@]}"; do
+        echo "| ${installLogCandidateFirst[${candidateRowKey}]} | ${installLogCandidateLast[${candidateRowKey}]} | ${installLogCandidateCount[${candidateRowKey}]} | ${candidateRowKey} |"
     done
     echo ""
 fi
 
-echo "### Invalid declarations"
+# Marker labels quote the install.log text they match; shared by fact-sheet headings and skeleton bullets
+invalidDeclarationsLabel="Invalid declarations (\`Failed to add declaration: … Invalid declaration:\` lines)"
+noUpdatesLabel="\`No updates found for DDM to enforce\` lines"
+recoveryMarkersLabel="Recovery markers (\`Found product with requested PMV\` or \`Armed DDM activity scheduler\` lines)"
+noMatchMarkersLabel="No-match markers (\`MADownloadNoMatchFound\`, \`pallasNoPMVMatchFound=true\`, or \`No available updates found\` lines)"
+updateTonightLabel="Update Tonight (\`SUOSUInstallTonightManager:\` or \`SUOSUScheduler:\` softwareupdated lines)"
+
+echo "### ${invalidDeclarationsLabel}"
 echo ""
 if (( ${#installLogInvalidDeclarations[@]} == 0 )); then
     echo "None."
@@ -1990,7 +2022,7 @@ else
     echo ""
 fi
 
-echo "### No updates found for DDM to enforce"
+echo "### ${noUpdatesLabel}"
 echo ""
 if (( ${#installLogNoUpdatesLines[@]} == 0 )); then
     echo "None."
@@ -2004,7 +2036,7 @@ else
     echo ""
 fi
 
-echo "### Recovery markers"
+echo "### ${recoveryMarkersLabel}"
 echo ""
 if (( ${#installLogRecoveryLines[@]} == 0 )); then
     echo "None."
@@ -2018,7 +2050,7 @@ else
     echo ""
 fi
 
-echo "### No-match markers"
+echo "### ${noMatchMarkersLabel}"
 echo ""
 if (( ${#installLogNoMatchLines[@]} == 0 )); then
     echo "None."
@@ -2032,7 +2064,7 @@ else
     echo ""
 fi
 
-echo "### Update Tonight softwareupdated lines"
+echo "### ${updateTonightLabel}"
 echo ""
 if (( ${#installLogTonightLines[@]} == 0 )); then
     echo "None."
@@ -2339,11 +2371,11 @@ else
     done
 fi
 echo ""
-skeletonMarkerBullet "Invalid declarations" "${installLogInvalidDeclarations[@]}"
-skeletonMarkerBullet "No updates found for DDM to enforce" "${installLogNoUpdatesLines[@]}"
-skeletonMarkerBullet "Recovery markers" "${installLogRecoveryLines[@]}"
-skeletonMarkerBullet "No-match markers" "${installLogNoMatchLines[@]}"
-skeletonMarkerBullet "Update Tonight softwareupdated lines" "${installLogTonightLines[@]}"
+skeletonMarkerBullet "${invalidDeclarationsLabel}" "${installLogInvalidDeclarations[@]}"
+skeletonMarkerBullet "${noUpdatesLabel}" "${installLogNoUpdatesLines[@]}"
+skeletonMarkerBullet "${recoveryMarkersLabel}" "${installLogRecoveryLines[@]}"
+skeletonMarkerBullet "${noMatchMarkersLabel}" "${installLogNoMatchLines[@]}"
+skeletonMarkerBullet "${updateTonightLabel}" "${installLogTonightLines[@]}"
 echo "<!-- agent: optional extra install.log observations as bullets; delete this line if none. -->"
 echo ""
 
@@ -2389,11 +2421,103 @@ echo ""
 
 echo "## 7. Do the client log and \`install.log\` agree?"
 echo ""
+
+# Side-by-side facts only; the agent decides agreement
+compareClientLogged="no \`DDM update check:\` line in latest run"
+compareClientVersion="n/a"
+compareClientDeadline="n/a"
+compareClientStatus="n/a"
+compareClientSource="n/a"
+if [[ -n "${resolverStatusLine}" ]]; then
+    compareClientLogged="${resolverStatusTimestamp}"
+    compareClientVersion="${legacyResolvedVersion:-not logged}"
+    compareClientDeadline="${legacyResolvedDeadline:-not logged}"
+    if [[ "${resolverStatusLine}" =~ 'found DDM-enforced macOS ([^,]+), declared deadline ([^ ]+) \(' ]]; then
+        compareClientVersion="${match[1]}"
+        compareClientDeadline="${match[2]}"
+    fi
+    [[ "${resolverStatusLine}" =~ 'status=([^;)]+)' ]] && compareClientStatus="\`${match[1]}\`"
+    [[ "${resolverStatusLine}" =~ 'source=([^;)]+)' ]] && compareClientSource="${match[1]}"
+fi
+
+compareInstallLogged="no declaration in lookback window"
+compareInstallVersion="n/a"
+compareInstallDeadline="n/a"
+compareInstallSource="n/a"
+compareInstallCorroborated="n/a"
+if (( ${#installLogDeclarationSpans[@]} > 0 )); then
+    typeset -a latestSpanFields=("${(@s: | :)installLogDeclarationSpans[-1]}")
+    compareInstallLogged="${latestSpanFields[1]} to ${latestSpanFields[2]}"
+    (( ${#installLogDeclarationSpans[@]} > 1 )) && compareInstallLogged+=" (latest of ${#installLogDeclarationSpans[@]} spans)"
+    compareInstallVersion="${latestSpanFields[3]}"
+    compareInstallDeadline="${latestSpanFields[5]}"
+    compareInstallSource="${latestSpanFields[6]}"
+    compareInstallCorroborated="${latestSpanFields[7]}"
+fi
+
+echo "| Field | Client log (last \`DDM update check:\`) | \`install.log\` (latest declaration span) |"
+echo "|---|---|---|"
+echo "| Logged | ${compareClientLogged} | ${compareInstallLogged} |"
+echo "| Version | $(escapeTableCell "${compareClientVersion}") | $(escapeTableCell "${compareInstallVersion}") |"
+echo "| Declared deadline | $(escapeTableCell "${compareClientDeadline}") | $(escapeTableCell "${compareInstallDeadline}") |"
+echo "| Resolver status | ${compareClientStatus} | n/a |"
+echo "| Source | $(escapeTableCell "${compareClientSource}") | $(escapeTableCell "${compareInstallSource}") |"
+echo "| Corroborated | n/a | ${compareInstallCorroborated} |"
+echo ""
 echo "<!-- agent: start with **Yes.**, **No.**, or **Not comparable.**, then up to three sentences. If they disagree, quote both. -->"
 echo ""
 
 echo "## 8. Likely cause and next steps"
 echo ""
+
+# Recorded evidence only; the agent writes the cause and next steps
+function causeEvidenceValue() {
+    local message="${1}"
+
+    if [[ -z "${message}" ]]; then
+        echo "none in the last run"
+        return 0
+    fi
+    message="$(redactSensitiveText "${message}")"
+    echo "\`${message//\`/}\`"
+}
+
+causeNoReminderMessage=""
+causeNextStepMessage=""
+causeUserActionMessage=""
+causeScheduleMessage=""
+for logLine in "${latestRunDecisionLines[@]}"; do
+    [[ "${logLine}" =~ ${clientLogLineRegex} ]] || continue
+    case "${match[5]}" in
+        "No reminder shown: "*)              causeNoReminderMessage="${match[5]#No reminder shown: }" ;;
+        "Next step: "*)                      causeNextStepMessage="${match[5]#Next step: }" ;;
+        "Scheduled next daemon reminder "*)  causeScheduleMessage="${match[5]}" ;;
+        *" clicked "*)                       causeUserActionMessage="${match[5]}" ;;
+    esac
+done
+
+echo "Recorded evidence (helper-filled from the last run; interpret it below):"
+echo ""
+if (( runHistoryTotal > 0 )); then
+    IFS=$'\t' read -r runStart runScript runStatus runOutcome <<< "${runHistoryRows[-1]}"
+    [[ "${runStatus}" == "no resolver line" ]] || runStatus="\`${runStatus}\`"
+    echo "- Last run: ${runStart} · \`${runScript}\` · resolver ${runStatus} · $(redactSensitiveText "${runOutcome}")"
+else
+    echo "- Last run: no runtime run in client log"
+fi
+echo "- No reminder shown: $(causeEvidenceValue "${causeNoReminderMessage}")"
+echo "- Next step: $(causeEvidenceValue "${causeNextStepMessage}")"
+echo "- User action: $(causeEvidenceValue "${causeUserActionMessage}")"
+echo "- Scheduling: $(causeEvidenceValue "${causeScheduleMessage}")"
+if [[ -n "${statePlistPath}" ]] && plistKeyExists "${statePlistPath}" "NextScheduledReminder"; then
+    echo "- \`NextScheduledReminder\`: \`$(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "NextScheduledReminder")")\`"
+elif [[ -n "${statePlistPath}" ]]; then
+    echo "- \`NextScheduledReminder\`: absent (starter may launch)"
+else
+    echo "- \`NextScheduledReminder\`: \`dor-state.plist\` $(inputStatusLabel "statePlist")"
+fi
+echo ""
+
 echo "### Likely cause"
 echo ""
 echo "<!-- agent: one short paragraph; mark inferences as inferences. -->"
@@ -2405,5 +2529,5 @@ echo ""
 
 echo "## 9. Redaction"
 echo ""
-echo "This report is redacted: usernames, first names, \`/Users\` paths, \`install.log\` computer names, and labeled serial numbers are removed. Keep the raw uploads and the helper fact sheet out of any public issue."
+echo "This report is redacted: usernames, first names, \`/Users\` paths, \`install.log\` computer names, and labeled serial numbers are removed. Keep the raw client files and the helper fact sheet out of any public issue."
 echo "<!-- report-skeleton:end -->"

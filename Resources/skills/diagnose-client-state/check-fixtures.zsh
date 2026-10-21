@@ -43,6 +43,17 @@ function runHelper() {
     zsh "${helperPath}" "$@"
 }
 
+function requireExitStatus() {
+    local label="${1}"
+    local expectedStatus="${2}"
+    local actualStatus=0
+
+    shift 2
+    zsh "${helperPath}" "$@" >/dev/null 2>&1
+    actualStatus=$?
+    (( actualStatus == expectedStatus )) || failCheck "${label}: exit ${actualStatus}, expected ${expectedStatus}"
+}
+
 function requireSkeletonHeadings() {
     local label="${1}"
     local haystack="${2}"
@@ -236,7 +247,41 @@ requireText "state false" "NextScheduledReminder: FALSE" "${stateSheet}"
 requireText "threshold delivered" "PreDeadlineThresholdDelivered: 45" "${stateSheet}"
 requireText "threshold skipped" "PreDeadlineThresholdSkipped: 30" "${stateSheet}"
 requireText "starter rule" "Starter exits quietly" "${stateSheet}"
-requireText "skeleton state received" '| `dor-state.plist` | received | `NextScheduledReminder`: FALSE |' "${stateSheet}"
+requireText "skeleton state supplied" '| `dor-state.plist` | supplied | `NextScheduledReminder`: FALSE |' "${stateSheet}"
+
+# --rdnn reads live paths; this RDNN must never be deployed, so inferred inputs stay "not present on this Mac"
+fixtureRdnn="com.example.diagnosefixture"
+requireExitStatus "rdnn without a dot" 64 --rdnn "nodots"
+requireExitStatus "rdnn with a space" 64 --rdnn "bad rdnn"
+requireExitStatus "rdnn without a value" 64 --rdnn
+
+rdnnPrecedence="$(runHelper \
+    --rdnn "${fixtureRdnn}" \
+    --client-log "${fixtureRoot}/compliant/client.log" \
+    --install-log "${fixtureRoot}/compliant/install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --state-plist "${workDirectory}/state.plist" \
+    --aggressive-kill yes)"
+requireSkeletonHeadings "rdnn-precedence" "${rdnnPrecedence}"
+requireText "rdnn input row" "| --rdnn | ${fixtureRdnn} | supplied |" "${rdnnPrecedence}"
+requireText "rdnn identity" "| RDNN | ${fixtureRdnn} |" "${rdnnPrecedence}"
+requireText "rdnn explicit client log" "| Client log | supplied |" "${rdnnPrecedence}"
+requireText "rdnn explicit state plist" '| `dor-state.plist` | supplied | `NextScheduledReminder`: FALSE |' "${rdnnPrecedence}"
+requireText "rdnn inferred local plist absent" "| Local plist | not present on this Mac |" "${rdnnPrecedence}"
+requireText "rdnn inferred fallback absent" '| `dor-fallback-declaration.plist` | not present on this Mac |' "${rdnnPrecedence}"
+requireText "rdnn explicit aggressive kill" '| `dor-aggressive-kill` | present | aggressive mode uses the normal cadence until removed |' "${rdnnPrecedence}"
+rejectText "rdnn explicit aggressive kill not inferred" "checked on this Mac (--rdnn)" "${rdnnPrecedence}"
+requireText "rdnn ScriptLog default" "| ScriptLog | /var/log/${fixtureRdnn}.log | default |" "${rdnnPrecedence}"
+
+rdnnConflict="$(runHelper \
+    --rdnn "${fixtureRdnn}" \
+    --client-log "${fixtureRoot}/missing/client.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/missing/managed.dorm.plist")"
+requireText "rdnn conflict" "| RDNN | conflict: " "${rdnnConflict}"
+requireText "rdnn conflict supplied" "${fixtureRdnn}" "${rdnnConflict}"
+requireText "rdnn conflict log" "us.snelson" "${rdnnConflict}"
+requireText "rdnn conflict report filename" "Suggested report filename: \`ddm-os-reminder-rdnn-conflict-" "${rdnnConflict}"
 
 /usr/bin/plutil -create xml1 "${workDirectory}/fallback-good.plist"
 /usr/bin/plutil -insert SchemaVersion -integer 1 "${workDirectory}/fallback-good.plist"

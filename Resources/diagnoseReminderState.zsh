@@ -7,6 +7,7 @@
 #
 # Read-only extractor for Mac Admin uploads:
 #   client-side log, /var/log/install.log, and client-side .plist
+# or, on the affected Mac, the same files read from their live paths (--rdnn)
 #
 # Prints a structured fact sheet that ends with a pre-filled report skeleton.
 # Does not write files, change preferences, mutate scheduler state, or
@@ -19,6 +20,7 @@
 #       --client-log /path/to/<rdnn>.log \
 #       --install-log /path/to/install.log \
 #       --plist /path/to/<rdnn>.dorm.plist
+#   sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>
 #
 # http://snelson.us/ddm
 #
@@ -28,8 +30,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.4.0"
-checklistScriptVersion="5.2.0"
+scriptVersion="1.5.0"
+checklistScriptVersion="5.3.0b1"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -47,7 +49,12 @@ fallbackPlistPath=""
 persistencePlistPath=""
 launchDaemonPlistPath=""
 aggressiveKillState="unknown"
+rdnnOption=""
+inferredInputPath=""
 
+# Per-input source: supplied | inferred | absent | unreadable (empty = not in upload)
+typeset -A inputSource=()
+typeset -A inputCandidatePath=()
 typeset -a extraPlistPaths=()
 typeset -a rdnnCandidates=()
 typeset -a unknownPlistKeys=()
@@ -208,8 +215,9 @@ function printUsage() {
     echo "Usage:"
     echo "  zsh ${scriptRelativePath} --help"
     echo "  zsh ${scriptRelativePath} --client-log <path> --install-log <path> --plist <path>"
+    echo "  sudo zsh ${scriptRelativePath} --rdnn <rdnn>"
     echo ""
-    echo "Required:"
+    echo "Required (uploaded files):"
     echo "  --client-log <path>         Client-side DDM OS Reminder log (/var/log/<rdnn>.log)"
     echo "  --install-log <path>        Copy of /var/log/install.log"
     echo "  --plist <path>              Client-side .plist (repeatable; layer inferred from path/name)"
@@ -223,7 +231,18 @@ function printUsage() {
     echo "  --launch-daemon-plist <path> /Library/LaunchDaemons/<rdnn>.dor.plist"
     echo "  --aggressive-kill yes|no    Whether dor-aggressive-kill existed on the Mac"
     echo ""
-    echo "At least one of --plist, --managed-plist, or --local-plist is required."
+    echo "On the affected Mac (alternative to the required files):"
+    echo "  --rdnn <rdnn>               Read each input not supplied above from its live path:"
+    echo "                                client log: effective ScriptLog (Managed, then Local), else /var/log/<rdnn>.log"
+    echo "                                install.log: /var/log/install.log"
+    echo "                                plists: /Library/Managed Preferences/<rdnn>.dorm.plist and /Library/Preferences/<rdnn>.dorm.plist"
+    echo "                                state, fallback, dor-aggressive-kill: /Library/Management/<rdnn>/"
+    echo "                                softwareupdate DDM state: /var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
+    echo "                                LaunchDaemon: /Library/LaunchDaemons/<rdnn>.dor.plist"
+    echo "                              Explicit flags win. Run with sudo so root-only files can be read."
+    echo ""
+    echo "Without --rdnn, at least one of --plist, --managed-plist, or --local-plist is required."
+    echo "With --rdnn, a Mac with no preference plist is reported with script defaults."
     echo "Read-only: prints a fact sheet to stdout and writes nothing."
     echo "The fact sheet ends with a pre-filled report skeleton for the agent to complete."
 }
@@ -320,6 +339,7 @@ function inferPlistLayer() {
 function assignPlistPath() {
     local layer="${1}"
     local plistPath="${2}"
+    local plistSource="${3:-supplied}"
 
     requireReadableFile "Plist" "${plistPath}"
     rdnnFromPlistFileName "${plistPath}"
@@ -328,14 +348,26 @@ function assignPlistPath() {
         managed)
             [[ -z "${managedPlistPath}" ]] || failUsage "Multiple managed plists supplied"
             managedPlistPath="${plistPath}"
+            inputSource[managedPlist]="${plistSource}"
             ;;
         local)
             [[ -z "${localPlistPath}" ]] || failUsage "Multiple local plists supplied"
             localPlistPath="${plistPath}"
+            inputSource[localPlist]="${plistSource}"
             ;;
         unknown)
             extraPlistPaths+=("${plistPath}")
             ;;
+    esac
+}
+
+function inputStatusLabel() {
+    case "${inputSource[${1}]:-}" in
+        supplied)   echo "supplied" ;;
+        inferred)   echo "inferred (--rdnn)" ;;
+        absent)     echo "not present on this Mac" ;;
+        unreadable) echo "unreadable on this Mac" ;;
+        *)          echo "not in upload" ;;
     esac
 }
 
@@ -983,11 +1015,13 @@ while [[ "$#" -gt 0 ]]; do
         --client-log)
             [[ -n "${2:-}" ]] || failUsage "--client-log requires a path"
             clientLogPath="${2}"
+            inputSource[clientLog]="supplied"
             shift 2
             ;;
         --install-log)
             [[ -n "${2:-}" ]] || failUsage "--install-log requires a path"
             installLogPath="${2}"
+            inputSource[installLog]="supplied"
             shift 2
             ;;
         --plist)
@@ -1008,21 +1042,25 @@ while [[ "$#" -gt 0 ]]; do
         --state-plist)
             [[ -n "${2:-}" ]] || failUsage "--state-plist requires a path"
             statePlistPath="${2}"
+            inputSource[statePlist]="supplied"
             shift 2
             ;;
         --fallback-plist)
             [[ -n "${2:-}" ]] || failUsage "--fallback-plist requires a path"
             fallbackPlistPath="${2}"
+            inputSource[fallbackPlist]="supplied"
             shift 2
             ;;
         --persistence-plist)
             [[ -n "${2:-}" ]] || failUsage "--persistence-plist requires a path"
             persistencePlistPath="${2}"
+            inputSource[persistencePlist]="supplied"
             shift 2
             ;;
         --launch-daemon-plist)
             [[ -n "${2:-}" ]] || failUsage "--launch-daemon-plist requires a path"
             launchDaemonPlistPath="${2}"
+            inputSource[launchDaemonPlist]="supplied"
             shift 2
             ;;
         --aggressive-kill)
@@ -1032,6 +1070,13 @@ while [[ "$#" -gt 0 ]]; do
                 no|false|absent|0)  aggressiveKillState="no" ;;
                 *) failUsage "--aggressive-kill must be yes or no" ;;
             esac
+            inputSource[aggressiveKill]="supplied"
+            shift 2
+            ;;
+        --rdnn)
+            [[ -n "${2:-}" ]] || failUsage "--rdnn requires an RDNN"
+            [[ "${2}" =~ ${rdnnRegex} ]] || failUsage "--rdnn must be a reverse-domain name such as org.example: '${2}'"
+            rdnnOption="${2}"
             shift 2
             ;;
         *)
@@ -1040,6 +1085,138 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+
+
+####################################################################################################
+#
+# RDNN path inference (--rdnn; explicit flags win)
+#
+####################################################################################################
+
+function isSafeScriptLogPath() {
+    local candidatePath="${1}"
+
+    # Same rule as assemble.zsh: ScriptLog comes from a plist and may be read as root
+    [[ "${candidatePath}" =~ ^/[A-Za-z0-9._/-]+$ ]] || return 1
+    [[ "${candidatePath}" != *'/../'* && "${candidatePath}" != *'/./'* && "${candidatePath}" != *'//'* ]]
+}
+
+function inferOptionalInput() {
+    local inputKey="${1}"
+    local label="${2}"
+    local candidatePath="${3}"
+
+    inferredInputPath=""
+    inputCandidatePath[${inputKey}]="${candidatePath}"
+    if [[ -f "${candidatePath}" && -r "${candidatePath}" ]]; then
+        inputSource[${inputKey}]="inferred"
+        inferredInputPath="${candidatePath}"
+    elif [[ -e "${candidatePath}" ]] || [[ -d "${candidatePath:h}" && ! -x "${candidatePath:h}" ]]; then
+        inputSource[${inputKey}]="unreadable"
+        inputNotes+=("${label} could not be read at ${candidatePath}; rerun with sudo to include it")
+    else
+        inputSource[${inputKey}]="absent"
+    fi
+}
+
+if [[ -n "${rdnnOption}" ]]; then
+    addUniqueRdnnCandidate "${rdnnOption}"
+    rdnnManagementDirectory="/Library/Management/${rdnnOption}"
+    rdnnDefaultClientLogPath="/var/log/${rdnnOption}.log"
+    preferenceConfiguration[scriptLog]="string|${rdnnDefaultClientLogPath}"
+
+    # ---------------------------------------------------------------------------------------------
+    # Preference plists (before the client log, which may follow ScriptLog)
+    # ---------------------------------------------------------------------------------------------
+
+    if (( ${#extraPlistPaths[@]} > 0 )); then
+        inputNotes+=("An unlabeled --plist was supplied, so --rdnn did not infer managed or local preference plists")
+    else
+        if [[ -z "${managedPlistPath}" ]]; then
+            inferOptionalInput "managedPlist" "Managed plist" "/Library/Managed Preferences/${rdnnOption}.dorm.plist"
+            [[ -n "${inferredInputPath}" ]] && assignPlistPath "managed" "${inferredInputPath}" "inferred"
+        fi
+        if [[ -z "${localPlistPath}" ]]; then
+            inferOptionalInput "localPlist" "Local plist" "/Library/Preferences/${rdnnOption}.dorm.plist"
+            [[ -n "${inferredInputPath}" ]] && assignPlistPath "local" "${inferredInputPath}" "inferred"
+        fi
+    fi
+
+    # ---------------------------------------------------------------------------------------------
+    # Client log: effective ScriptLog (Managed -> Local), else /var/log/<rdnn>.log
+    # ---------------------------------------------------------------------------------------------
+
+    if [[ -z "${clientLogPath}" ]]; then
+        inferredClientLogPath="${rdnnDefaultClientLogPath}"
+        configuredScriptLog=""
+        configuredScriptLogLayer=""
+        if [[ -n "${managedPlistPath}" ]] && plistKeyExists "${managedPlistPath}" "ScriptLog"; then
+            configuredScriptLog="$(plistKeyValue "${managedPlistPath}" "ScriptLog")"
+            configuredScriptLogLayer="managed"
+        elif [[ -n "${localPlistPath}" ]] && plistKeyExists "${localPlistPath}" "ScriptLog"; then
+            configuredScriptLog="$(plistKeyValue "${localPlistPath}" "ScriptLog")"
+            configuredScriptLogLayer="local"
+        fi
+
+        if [[ -n "${configuredScriptLogLayer}" ]]; then
+            if isSafeScriptLogPath "${configuredScriptLog}"; then
+                inferredClientLogPath="${configuredScriptLog}"
+                if [[ "${configuredScriptLog}" != "${rdnnDefaultClientLogPath}" && -e "${rdnnDefaultClientLogPath}" ]]; then
+                    inputNotes+=("Effective ScriptLog (${configuredScriptLogLayer}) is ${configuredScriptLog}, but ${rdnnDefaultClientLogPath} also exists. The runtime logs '[PRE-FLIGHT] Initiating …' to its built-in log path before it reads ScriptLog, so runs may be split across both files; rerun with --client-log ${rdnnDefaultClientLogPath} to compare.")
+                fi
+            else
+                inputNotes+=("Ignored ScriptLog from the ${configuredScriptLogLayer} plist because it is not a plain absolute path; using ${rdnnDefaultClientLogPath}")
+            fi
+        fi
+
+        [[ -e "${inferredClientLogPath}" ]] || failMissing "Client log not found on this Mac: ${inferredClientLogPath} (inferred from --rdnn ${rdnnOption}; supply --client-log)"
+        [[ -r "${inferredClientLogPath}" ]] || failMissing "Client log is not readable: ${inferredClientLogPath} (inferred from --rdnn ${rdnnOption}; rerun with sudo)"
+        clientLogPath="${inferredClientLogPath}"
+        inputSource[clientLog]="inferred"
+    fi
+
+    # ---------------------------------------------------------------------------------------------
+    # install.log and optional runtime assets
+    # ---------------------------------------------------------------------------------------------
+
+    if [[ -z "${installLogPath}" ]]; then
+        [[ -e "/var/log/install.log" ]] || failMissing "install.log not found on this Mac: /var/log/install.log (supply --install-log)"
+        [[ -r "/var/log/install.log" ]] || failMissing "install.log is not readable: /var/log/install.log (inferred from --rdnn ${rdnnOption}; rerun with sudo)"
+        installLogPath="/var/log/install.log"
+        inputSource[installLog]="inferred"
+    fi
+
+    if [[ -z "${statePlistPath}" ]]; then
+        inferOptionalInput "statePlist" "State plist" "${rdnnManagementDirectory}/dor-state.plist"
+        statePlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${fallbackPlistPath}" ]]; then
+        inferOptionalInput "fallbackPlist" "Fallback plist" "${rdnnManagementDirectory}/dor-fallback-declaration.plist"
+        fallbackPlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${persistencePlistPath}" ]]; then
+        inferOptionalInput "persistencePlist" "softwareupdate DDM state plist" "/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
+        persistencePlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${launchDaemonPlistPath}" ]]; then
+        inferOptionalInput "launchDaemonPlist" "LaunchDaemon plist" "/Library/LaunchDaemons/${rdnnOption}.dor.plist"
+        launchDaemonPlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${inputSource[aggressiveKill]:-}" ]]; then
+        if [[ -e "${rdnnManagementDirectory}/dor-aggressive-kill" ]]; then
+            aggressiveKillState="yes"
+        else
+            aggressiveKillState="no"
+        fi
+        inputSource[aggressiveKill]="inferred"
+    fi
+
+    if (( EUID != 0 )); then
+        inputNotes+=("--rdnn ran without root: SoftwareUpdateDDMStatePersistence.plist (and possibly install.log) may be unreadable, so install.log corroboration can differ from what the runtime saw. Rerun with sudo.")
+    fi
+fi
+
+[[ -n "${clientLogPath}" ]] || failUsage "Client log (--client-log) is required (or use --rdnn <rdnn>)"
 requireReadableFile "Client log (--client-log)" "${clientLogPath}"
 requireReadableFile "install.log (--install-log)" "${installLogPath}"
 
@@ -1055,7 +1232,11 @@ if (( ${#extraPlistPaths[@]} == 1 )); then
 fi
 
 if [[ -z "${managedPlistPath}" && -z "${localPlistPath}" && -z "${unknownPlistPath}" ]]; then
-    failUsage "At least one plist is required (--plist, --managed-plist, or --local-plist)"
+    if [[ -n "${rdnnOption}" ]]; then
+        inputNotes+=("No preference plist was read on this Mac; the runtime uses script-defined defaults when neither preference plist exists")
+    else
+        failUsage "At least one plist is required (--plist, --managed-plist, or --local-plist)"
+    fi
 fi
 
 for optionalPathLabel in \
@@ -1636,45 +1817,40 @@ echo "- This helper lists install.log evidence; it does not re-decide resolver s
 echo "- Usernames, first names, /Users paths, install.log computer names, and labeled serial numbers are redacted below"
 echo ""
 
+function inputRow() {
+    local label="${1}"
+    local inputKey="${2}"
+    local inputPath="${3:-${inputCandidatePath[${2}]:-}}"
+
+    echo "| ${label} | $(redactSensitiveText "${inputPath:-n/a}") | $(inputStatusLabel "${inputKey}") |"
+}
+
 echo "## Inputs"
 echo ""
-echo "| Input | Path |"
-echo "|---|---|"
+echo "| Input | Path or value | Status |"
+echo "|---|---|---|"
 collectIdentityTokens
 
-echo "| Client log | $(redactSensitiveText "${clientLogPath}") |"
-echo "| install.log | $(redactSensitiveText "${installLogPath}") |"
-if [[ -n "${managedPlistPath}" ]]; then
-    echo "| Managed plist | $(redactSensitiveText "${managedPlistPath}") |"
+if [[ -n "${rdnnOption}" ]]; then
+    echo "| --rdnn | ${rdnnOption} | supplied |"
 fi
-if [[ -n "${localPlistPath}" ]]; then
-    echo "| Local plist | $(redactSensitiveText "${localPlistPath}") |"
+inputRow "Client log" "clientLog" "${clientLogPath}"
+inputRow "install.log" "installLog" "${installLogPath}"
+if [[ -n "${managedPlistPath}" || -n "${inputSource[managedPlist]:-}" ]]; then
+    inputRow "Managed plist" "managedPlist" "${managedPlistPath}"
+fi
+if [[ -n "${localPlistPath}" || -n "${inputSource[localPlist]:-}" ]]; then
+    inputRow "Local plist" "localPlist" "${localPlistPath}"
 fi
 if [[ -n "${unknownPlistPath}" ]]; then
-    echo "| Supplied plist (layer unknown) | $(redactSensitiveText "${unknownPlistPath}") |"
+    echo "| Supplied plist (layer unknown) | $(redactSensitiveText "${unknownPlistPath}") | supplied |"
 fi
-if [[ -n "${statePlistPath}" ]]; then
-    echo "| State plist | $(redactSensitiveText "${statePlistPath}") |"
-else
-    echo "| State plist | not supplied |"
-fi
-if [[ -n "${fallbackPlistPath}" ]]; then
-    echo "| Fallback plist | $(redactSensitiveText "${fallbackPlistPath}") |"
-else
-    echo "| Fallback plist | not supplied |"
-fi
-if [[ -n "${persistencePlistPath}" ]]; then
-    echo "| softwareupdate DDM state plist | $(redactSensitiveText "${persistencePlistPath}") |"
-else
-    echo "| softwareupdate DDM state plist | not supplied |"
-fi
-if [[ -n "${launchDaemonPlistPath}" ]]; then
-    echo "| LaunchDaemon plist | $(redactSensitiveText "${launchDaemonPlistPath}") |"
-else
-    echo "| LaunchDaemon plist | not supplied |"
-fi
-echo "| dor-aggressive-kill | ${aggressiveKillState} |"
-echo "| Plist lint | ${plistLintStatus} |"
+inputRow "State plist" "statePlist" "${statePlistPath}"
+inputRow "Fallback plist" "fallbackPlist" "${fallbackPlistPath}"
+inputRow "softwareupdate DDM state plist" "persistencePlist" "${persistencePlistPath}"
+inputRow "LaunchDaemon plist" "launchDaemonPlist" "${launchDaemonPlistPath}"
+echo "| dor-aggressive-kill | ${aggressiveKillState} | $(inputStatusLabel "aggressiveKill") |"
+echo "| Plist lint | ${plistLintStatus} | |"
 echo ""
 
 if (( ${#inputNotes[@]} > 0 )); then
@@ -1713,6 +1889,9 @@ fi
 
 if [[ -n "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
     echo "Preference precedence: a single unlabeled plist was supplied. Defaults apply only for keys missing from that file. Managed vs local precedence could not be evaluated."
+    echo ""
+elif [[ -z "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
+    echo "Preference precedence: no preference plist was read on this Mac, so every setting below is a script default."
     echo ""
 fi
 
@@ -1882,7 +2061,7 @@ if [[ -n "${statePlistPath}" ]]; then
     done
     echo ""
 else
-    echo "dor-state.plist not supplied. NextScheduledReminder cannot be reported from this upload."
+    echo "dor-state.plist $(inputStatusLabel "statePlist"). NextScheduledReminder cannot be reported."
     echo ""
 fi
 
@@ -1949,13 +2128,14 @@ function skeletonFileRow() {
 
 function skeletonPlistRow() {
     local label="${1}"
-    local plistPath="${2}"
-    local missingNote="${3}"
+    local inputKey="${2}"
+    local plistPath="${3}"
+    local missingNote="${4}"
 
     if [[ -n "${plistPath}" ]]; then
-        skeletonFileRow "${label}" "received" "\`$(redactSensitiveText "${plistPath:t}")\`; $(plistLintLabel "${plistPath}")"
+        skeletonFileRow "${label}" "$(inputStatusLabel "${inputKey}")" "\`$(redactSensitiveText "${plistPath:t}")\`; $(plistLintLabel "${plistPath}")"
     else
-        skeletonFileRow "${label}" "not in upload" "${missingNote}"
+        skeletonFileRow "${label}" "$(inputStatusLabel "${inputKey}")" "${missingNote}"
     fi
 }
 
@@ -2013,7 +2193,7 @@ case "${ddmStatePersistenceStatus}" in
     available)    skeletonCorroboration="checked against \`SoftwareUpdateDDMStatePersistence.plist\`" ;;
     unrecognized) skeletonCorroboration="\`SoftwareUpdateDDMStatePersistence.plist\` unrecognized; install.log-only" ;;
     unavailable)  skeletonCorroboration="\`SoftwareUpdateDDMStatePersistence.plist\` unreadable; install.log-only" ;;
-    *)            skeletonCorroboration="not checked; \`SoftwareUpdateDDMStatePersistence.plist\` not in upload" ;;
+    *)            skeletonCorroboration="not checked; \`SoftwareUpdateDDMStatePersistence.plist\` $(inputStatusLabel "persistencePlist")" ;;
 esac
 
 skeletonResolverHint="none recorded"
@@ -2043,44 +2223,46 @@ echo "## 2. Files"
 echo ""
 echo "| File | Status | Note |"
 echo "|---|---|---|"
-skeletonFileRow "Client log" "received" "\`$(redactSensitiveText "${clientLogPath:t}")\`"
-skeletonFileRow "\`install.log\`" "received" "${installLogLineCount} line(s); last ${installLogWindowCount} analyzed"
+skeletonFileRow "Client log" "$(inputStatusLabel "clientLog")" "\`$(redactSensitiveText "${clientLogPath:t}")\`"
+skeletonFileRow "\`install.log\`" "$(inputStatusLabel "installLog")" "${installLogLineCount} line(s); last ${installLogWindowCount} analyzed"
 if [[ -n "${unknownPlistPath}" ]]; then
-    skeletonFileRow "Supplied plist (layer unknown)" "received" "\`$(redactSensitiveText "${unknownPlistPath:t}")\`; $(plistLintLabel "${unknownPlistPath}"); managed versus local precedence not evaluated"
+    skeletonFileRow "Supplied plist (layer unknown)" "supplied" "\`$(redactSensitiveText "${unknownPlistPath:t}")\`; $(plistLintLabel "${unknownPlistPath}"); managed versus local precedence not evaluated"
 fi
 if [[ -n "${managedPlistPath}" || -z "${unknownPlistPath}" ]]; then
-    skeletonPlistRow "Managed plist" "${managedPlistPath}" ""
+    skeletonPlistRow "Managed plist" "managedPlist" "${managedPlistPath}" ""
 fi
 if [[ -n "${localPlistPath}" || -z "${unknownPlistPath}" ]]; then
-    skeletonPlistRow "Local plist" "${localPlistPath}" ""
+    skeletonPlistRow "Local plist" "localPlist" "${localPlistPath}" ""
 fi
 if [[ -n "${statePlistPath}" ]]; then
     if plistKeyExists "${statePlistPath}" "NextScheduledReminder"; then
-        skeletonFileRow "\`dor-state.plist\`" "received" "\`NextScheduledReminder\`: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "NextScheduledReminder")")"
+        skeletonFileRow "\`dor-state.plist\`" "$(inputStatusLabel "statePlist")" "\`NextScheduledReminder\`: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "NextScheduledReminder")")"
     else
-        skeletonFileRow "\`dor-state.plist\`" "received" "\`NextScheduledReminder\`: absent (starter may launch)"
+        skeletonFileRow "\`dor-state.plist\`" "$(inputStatusLabel "statePlist")" "\`NextScheduledReminder\`: absent (starter may launch)"
     fi
 else
-    skeletonFileRow "\`dor-state.plist\`" "not in upload" "\`NextScheduledReminder\` cannot be reported"
+    skeletonFileRow "\`dor-state.plist\`" "$(inputStatusLabel "statePlist")" "\`NextScheduledReminder\` cannot be reported"
 fi
 if [[ -n "${fallbackPlistPath}" ]]; then
-    skeletonFileRow "\`dor-fallback-declaration.plist\`" "received" "runtime fallback gate: ${fallbackGate}"
+    skeletonFileRow "\`dor-fallback-declaration.plist\`" "$(inputStatusLabel "fallbackPlist")" "runtime fallback gate: ${fallbackGate}"
 else
-    skeletonFileRow "\`dor-fallback-declaration.plist\`" "not in upload" "fallback gate cannot be evaluated"
+    skeletonFileRow "\`dor-fallback-declaration.plist\`" "$(inputStatusLabel "fallbackPlist")" "fallback gate cannot be evaluated"
 fi
 if [[ -n "${persistencePlistPath}" ]]; then
-    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "received" "corroboration: ${ddmStatePersistenceStatus}"
+    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "$(inputStatusLabel "persistencePlist")" "corroboration: ${ddmStatePersistenceStatus}"
 else
-    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "not in upload" "declarations not cross-checked"
+    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "$(inputStatusLabel "persistencePlist")" "declarations not cross-checked"
 fi
 if [[ -n "${launchDaemonPlistPath}" ]]; then
-    skeletonFileRow "LaunchDaemon plist" "received" "Label: $(plistKeyValue "${launchDaemonPlistPath}" "Label"); StartInterval: $(plistKeyValue "${launchDaemonPlistPath}" "StartInterval")"
+    skeletonFileRow "LaunchDaemon plist" "$(inputStatusLabel "launchDaemonPlist")" "Label: $(plistKeyValue "${launchDaemonPlistPath}" "Label"); StartInterval: $(plistKeyValue "${launchDaemonPlistPath}" "StartInterval")"
 else
-    skeletonFileRow "LaunchDaemon plist" "not in upload" ""
+    skeletonFileRow "LaunchDaemon plist" "$(inputStatusLabel "launchDaemonPlist")" ""
 fi
+aggressiveKillNote=""
+[[ "${inputSource[aggressiveKill]:-}" == "inferred" ]] && aggressiveKillNote="checked on this Mac (--rdnn)"
 case "${aggressiveKillState}" in
-    yes) skeletonFileRow "\`dor-aggressive-kill\`" "present" "aggressive mode uses the normal cadence until removed" ;;
-    no)  skeletonFileRow "\`dor-aggressive-kill\`" "absent" "" ;;
+    yes) skeletonFileRow "\`dor-aggressive-kill\`" "present" "${aggressiveKillNote:+${aggressiveKillNote}; }aggressive mode uses the normal cadence until removed" ;;
+    no)  skeletonFileRow "\`dor-aggressive-kill\`" "absent" "${aggressiveKillNote}" ;;
     *)   skeletonFileRow "\`dor-aggressive-kill\`" "unknown" "not reported with the upload" ;;
 esac
 echo ""
@@ -2108,6 +2290,8 @@ echo "## 4. Effective settings"
 echo ""
 if [[ -n "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
     echo "Precedence: single unlabeled plist -> script defaults (${checklistScriptVersion}). Managed versus local precedence could not be evaluated."
+elif [[ -z "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
+    echo "Precedence: no preference plist on this Mac -> script defaults (${checklistScriptVersion})."
 else
     echo "Precedence: Managed Preferences -> Local Preferences -> script defaults (${checklistScriptVersion})."
 fi

@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.2.1b1)
+# DDM OS Reminder (5.3.0b1)
 
 > Another welcome tune-up to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a **low-battery warning**, **plain-language** client-side logs (with clear next steps), and re-assembly from **hand-edited** Configuration Profiles
 
@@ -410,7 +410,7 @@ Region-aware Configuration Profile example:
 
 Community-supplied, best-effort support is available on the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel, or you can open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).
 
-To triage a missing or unexpected reminder from uploaded client files, see [Diagnose client state](Resources/README.md#7-diagnose-client-state). Upload the client-side log (`/var/log/<rdnn>.log`), `/var/log/install.log`, and the client-side `.plist`. Keep those files out of public issues; attach a redacted report instead.
+To triage a missing or unexpected reminder from uploaded client files, see [Diagnose client state](Resources/README.md#7-diagnose-client-state). Upload the client-side log (`/var/log/<rdnn>.log`), `/var/log/install.log`, and the client-side `.plist`. On the affected Mac itself, run `sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>` and the helper reads those files from their live paths. Keep those files out of public issues; attach a redacted report instead.
 
 See also: [Diagrams/README.md](Diagrams/README.md) for architecture and sequence diagrams.
 

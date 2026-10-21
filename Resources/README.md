@@ -616,6 +616,31 @@ zsh Resources/diagnoseReminderState.zsh \
 
 Optional extra files, when the admin has them: `/Library/Management/<rdnn>/dor-state.plist`, `dor-fallback-declaration.plist`, `/Library/LaunchDaemons/<rdnn>.dor.plist`, `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist`, and whether `dor-aggressive-kill` existed.
 
+On the affected Mac, `--rdnn` (helper `1.5.0`) reads every input you do not supply from its live path, so you don't have to type each one:
+
+```zsh
+sudo zsh Resources/diagnoseReminderState.zsh --rdnn us.snelson
+```
+
+| Input | Live path | If absent |
+|---|---|---|
+| `--client-log` | Effective `ScriptLog` (Managed, then Local), else `/var/log/<rdnn>.log` | Fails (exit `66`) |
+| `--install-log` | `/var/log/install.log` | Fails (exit `66`) |
+| `--managed-plist` | `/Library/Managed Preferences/<rdnn>.dorm.plist` | Reported; script defaults apply when neither preference plist exists |
+| `--local-plist` | `/Library/Preferences/<rdnn>.dorm.plist` | Reported; script defaults apply when neither preference plist exists |
+| `--state-plist` | `/Library/Management/<rdnn>/dor-state.plist` | Reported |
+| `--fallback-plist` | `/Library/Management/<rdnn>/dor-fallback-declaration.plist` | Reported |
+| `--persistence-plist` | `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` | Reported |
+| `--launch-daemon-plist` | `/Library/LaunchDaemons/<rdnn>.dor.plist` | Reported |
+| `--aggressive-kill` | Whether `/Library/Management/<rdnn>/dor-aggressive-kill` exists | n/a |
+
+- Explicit flags always win, so `--rdnn` can be mixed with any other option. An unlabeled `--plist` turns off managed/local plist inference.
+- An invalid RDNN fails with exit `64`. A supplied RDNN that disagrees with file names or log paths is reported as an RDNN `conflict`.
+- The fact sheet and report skeleton mark each file `supplied`, `inferred (--rdnn)`, `not present on this Mac`, or `unreadable on this Mac`. Upload runs show missing files as `not in upload`.
+- Run with `sudo`. The client-side log is usually `root:admin` `0640`, and without root `SoftwareUpdateDDMStatePersistence.plist` (and possibly `install.log`) may be unreadable, so `install.log` corroboration can differ from what the runtime saw.
+- When the effective `ScriptLog` differs from `/var/log/<rdnn>.log` and both exist, the helper adds a note. The runtime logs `[PRE-FLIGHT] Initiating …` to its built-in log before it reads `ScriptLog`, so runs can be split across both files.
+- The RDNN is never auto-discovered; a run with no arguments prints usage. `--rdnn` mode is still read-only.
+
 The helper redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers in the fact sheet. Attach the redacted agent report, and keep the raw uploads and the fact sheet out of public issues.
 
 Maintainers can re-check the bundled fixtures with `zsh Resources/skills/diagnose-client-state/check-fixtures.zsh`.

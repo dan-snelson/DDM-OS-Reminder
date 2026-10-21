@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 5.2.1b1 (21-Oct-2026)
+### Version 5.3.0b1 (21-Oct-2026)
 - Fixed: past-deadline aggressive mode was never scheduled when the next `DailyReminderTimes` slot came after the aggressive-mode start, leaving a Mac past its deadline without reminders until the next baseline slot (for example, overnight after a final pre-deadline threshold reminder at 16:25 for a 16:29 deadline) ([Issue #164](https://github.com/dan-snelson/DDM-OS-Reminder/issues/164))
     - The aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`) is now a scheduling candidate alongside pending pre-deadline thresholds and baseline slots. The earliest wins.
     - Applies after pre-deadline threshold reminders, after regular reminders shown between the deadline and the aggressive-mode start, and to quiet-period and Update Tonight scheduling, which aggressive mode already bypasses at runtime.
@@ -15,6 +15,13 @@
 - Fixed: when a Mac woke from sleep after the effective deadline with a threshold reminder still open, the open-dialog check closed that reminder and nothing replaced it until the next scheduled run
     - Once the effective deadline has passed, the open reminder now stays on screen, logged as `[NOTICE] Pre-deadline threshold <n>-minute reminder became due while a reminder dialog was open, but the effective deadline has passed; leaving the open dialog in place.`
     - Before the deadline, a newly due threshold still closes the open dialog and shows the newer threshold reminder.
+- `Resources/diagnoseReminderState.zsh` (`1.5.0`) adds `--rdnn <rdnn>`, so a Mac Admin running the helper on the affected Mac no longer types up to nine paths ([Issue #166](https://github.com/dan-snelson/DDM-OS-Reminder/issues/166))
+    - Each input that is not supplied is read from its live path: the effective `ScriptLog` (Managed, then Local) or `/var/log/<rdnn>.log`, `/var/log/install.log`, both `<rdnn>.dorm.plist` preference layers, `dor-state.plist`, `dor-fallback-declaration.plist`, `SoftwareUpdateDDMStatePersistence.plist`, the LaunchDaemon plist, and whether `dor-aggressive-kill` exists.
+    - Explicit flags always win. An invalid RDNN exits `64`; a missing client log or `install.log` exits `66` and names the path. The supplied RDNN joins RDNN detection, so a mismatch is still reported as a `conflict`.
+    - Missing optional files are reported as `not present on this Mac` (or `unreadable on this Mac`). A Mac with neither preference plist is reported with script defaults, which matches the runtime.
+    - Fact-sheet and report-skeleton file statuses now read `supplied` (was `received`), `not in upload`, `inferred (--rdnn)`, `not present on this Mac`, or `unreadable on this Mac`.
+    - Non-root runs add a note that root-only files may be unreadable; run with `sudo`. The helper stays read-only, the RDNN is never auto-discovered, and redaction is unchanged.
+    - Checklist updated to `reminderDialog.zsh` `5.3.0b1`; preference defaults are unchanged.
 
 ### Version 5.2.0 (20-Oct-2026)
 - New low-battery warning: when a Mac is running on its internal battery below `MinimumBatteryPercentage`, the reminder dialog asks the user to connect power and leave it plugged in until the macOS update completes ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157); thanks, ebbg!)

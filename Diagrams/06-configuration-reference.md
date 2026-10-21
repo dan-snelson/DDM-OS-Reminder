@@ -583,7 +583,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Behavior**:
 - `2` = aggressive mode starts after two hours past the effective deadline (default)
 - `0` = eligible as soon as the effective deadline is past
-- Daemon runs schedule an exact `NextScheduledReminder` at the aggressive-mode start (effective deadline plus this value) when it comes before the next baseline slot or quiet-period time (`5.2.1b1`)
+- Daemon runs schedule an exact `NextScheduledReminder` at the aggressive-mode start (effective deadline plus this value) when it comes before the next baseline slot or quiet-period time (`5.3.0b1`)
 - High values such as `720` effectively suppress aggressive mode without changing post-deadline restart policy
 - Do not set this too low in production unless the organization intentionally wants near-immediate post-deadline escalation
 - `/Library/Management/<rdnn>/dor-aggressive-kill` suppresses aggressive mode for support assistance and returns to normal non-aggressive cadence
@@ -808,7 +808,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Runtime compares the calculated signature with the value already stored in `dor-state.plist`
 - When the signature matches, `PreDeadlineThresholdDelivered` and `PreDeadlineThresholdSkipped` remain associated with that declaration
 - When the version, build, or effective enforcement epoch changes, runtime writes the new signature and deletes both threshold lists
-- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`; starting with `5.2.1b1`, a threshold is recorded only after a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh, so a dialog that swiftDialog never showed (for example, `Return Code: 1` during shutdown) stays pending
+- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`; starting with `5.3.0b1`, a threshold is recorded only after a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh, so a dialog that swiftDialog never showed (for example, `Return Code: 1` during shutdown) stays pending
 - `PreDeadlineThresholdSkipped` is a descending, de-duplicated CSV of earlier thresholds crossed before the nearest due threshold could be displayed
 - Together, these values ensure each configured threshold is handled at most once for one resolved deadline/version signature
 

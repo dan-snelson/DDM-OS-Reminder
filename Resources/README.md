@@ -40,6 +40,7 @@ zsh assemble.zsh /path/to/previous-profile.mobileconfig
 > You can also launch with just a dragged `.plist` or `.mobileconfig` path; `assemble.zsh` auto-enables interactive mode and infers the RDNN plus deployment mode only when the filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`).
 > Older supported files without that exact suffix can still import successfully, but `assemble.zsh` prompts for deployment mode.
 > Near-miss filenames like `org.churchofjesuschrist.ics.dorm-prod-3.1.0.plist` emit an explicit warning and recommend either `--lane prod` or renaming the file to an exact supported suffix.
+> To promote a `-dev` or `-test` file, pass `--lane prod`. Imported string values that start with a lane marker (`Assembled`, legacy `Sample`, or `TEST`, optionally after leading `<br>` tags) are rewritten to match the selected lane, and `assemble.zsh` logs `🧹 Normalized lane marker in <n> imported value(s) for '<lane>' lane`.
 
 The artifacts will be saved as shown below:
 

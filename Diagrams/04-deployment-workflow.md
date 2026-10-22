@@ -124,7 +124,7 @@ zsh assemble.zsh /path/to/previous-profile.mobileconfig
 
 Unsigned and CMS-signed profiles are supported. The profile must contain exactly one DDM OS Reminder (`*.dorm`) preferences payload; `Forced` settings are preferred. Supply only one prior `.plist` or `.mobileconfig`.
 
-Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`).
+Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`). To promote a dev or test file, pass `--lane prod`; imported string values that start with a lane marker (`Assembled`, legacy `Sample`, or `TEST`) are rewritten to match the selected lane.
 
 ### Non-interactive options
 

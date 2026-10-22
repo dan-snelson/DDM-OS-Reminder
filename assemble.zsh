@@ -43,7 +43,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.3.0b2"
+scriptVersion="5.3.0b3"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -1144,6 +1144,51 @@ function extractPlistKeys() {
   sed -n 's/^[[:space:]]*<key>\([^<]*\)<\/key>[[:space:]]*$/\1/p' "${plistPath}"
 }
 
+# Added in 5.3.0b3; rewrite only assemble.zsh's own leading lane marker so imported dev / test copy matches the selected lane
+function normalizeImportedLaneMarker() {
+  local importedValue="${1}"
+  local targetLane="${2}"
+  local leadingBreaks=""
+  local remainder="${importedValue}"
+  local candidateMarker=""
+  local laneMarker=""
+
+  while [[ "${remainder}" == "<br>"* ]]; do
+    leadingBreaks+="<br>"
+    remainder="${remainder#<br>}"
+  done
+
+  for candidateMarker in "${placeholderMarker}" "${legacyPlaceholderMarker}" "TEST"; do
+    if [[ "${remainder}" == "${candidateMarker}" || "${remainder}" == "${candidateMarker}"[[:space:]:\<]* ]]; then
+      laneMarker="${candidateMarker}"
+      break
+    fi
+  done
+
+  if [[ -z "${laneMarker}" ]]; then
+    printf "%s\n" "${importedValue}"
+    return 0
+  fi
+
+  remainder="${remainder#${laneMarker}}"
+
+  case "${targetLane}" in
+    dev)
+      printf "%s\n" "${leadingBreaks}${placeholderMarker}${remainder}"
+      ;;
+    test)
+      printf "%s\n" "${leadingBreaks}TEST${remainder}"
+      ;;
+    *)
+      remainder="${remainder#:}"
+      while [[ "${remainder}" == [[:space:]]* ]]; do
+        remainder="${remainder#?}"
+      done
+      printf "%s\n" "${leadingBreaks}${remainder}"
+      ;;
+  esac
+}
+
 function writePreferenceOverride() {
   local plistPath="${1}"
   local plistKey="${2}"
@@ -1266,6 +1311,8 @@ function applyImportedPreferences() {
   local -a skippedLocalizedImportedKeys
   local resolvedMinimumDiskFreeGB=""
   local importedMinimumDiskFreeGB=""
+  local normalizedValue=""
+  local normalizedLaneMarkerCount=0
 
   if ! emittedPreferenceTypes="$(emitSupportedPlistPreferenceTypes)"; then
     echo "    ❌ Failed to determine supported preference types; aborting preference import."
@@ -1349,8 +1396,20 @@ function applyImportedPreferences() {
       continue
     fi
 
+    if [[ "${preferenceType}" == "string" ]]; then
+      normalizedValue="$(normalizeImportedLaneMarker "${importedValue}" "${deploymentMode}")"
+      if [[ "${normalizedValue}" != "${importedValue}" ]]; then
+        importedValue="${normalizedValue}"
+        normalizedLaneMarkerCount=$(( normalizedLaneMarkerCount + 1 ))
+      fi
+    fi
+
     writePreferenceOverride "${targetPlist}" "${importedKey}" "${preferenceType}" "${importedValue}"
   done
+
+  if (( normalizedLaneMarkerCount > 0 )); then
+    echo "    🧹 Normalized lane marker in ${normalizedLaneMarkerCount} imported value(s) for '${deploymentMode}' lane"
+  fi
 
   if [[ -n "${importedLegacyMinimumDiskFreePercentage}" ]]; then
     resolvedMinimumDiskFreeGB="$(

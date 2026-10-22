@@ -1,6 +1,6 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.3.0b2)
+# DDM OS Reminder (5.3.0b3)
 
 > Another welcome tune-up to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a **low-battery warning**, **plain-language** client-side logs (with clear next steps), and re-assembly from **hand-edited** Configuration Profiles
 
@@ -106,6 +106,8 @@ Controlled `All`, `Script`, and `Uninstall` deployments unload the heartbeat Lau
 
 If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist` (or, for a prior profile, `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`), `assemble.zsh` infers the deployment lane automatically. Older plists without that exact suffix still import supported values, but continue to prompt for deployment mode.
 Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.
+
+To promote a dev or test configuration, pass the target lane explicitly (for example, `zsh assemble.zsh /path/to/<rdnn>.dorm-<timestamp>-dev.plist --lane prod`); otherwise the filename suffix keeps the source lane. Starting with `5.3.0b3`, `assemble.zsh` rewrites its own leading lane marker (`Assembled`, legacy `Sample`, or `TEST`, optionally after leading `<br>` tags) in imported string values to match the selected lane: removed for `prod`, `TEST` for `test`, and `Assembled` for `dev`. Matching is case-sensitive and anchored to the start of each value, so admin-authored copy is otherwise unchanged.
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
 

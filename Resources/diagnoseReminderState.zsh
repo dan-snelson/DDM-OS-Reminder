@@ -32,8 +32,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.6.0"
-checklistScriptVersion="5.3.0b1"
+scriptVersion="1.6.1"
+checklistScriptVersion="5.3.0b2"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -2230,7 +2230,7 @@ echo ""
 if [[ -n "${statePlistPath}" ]]; then
     echo "### dor-state.plist"
     echo ""
-    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
+    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered LastBootReevaluation PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
         if plistKeyExists "${statePlistPath}" "${stateKey}"; then
             echo "- ${stateKey}: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "${stateKey}")")"
         else
@@ -2243,7 +2243,7 @@ else
     echo ""
 fi
 
-echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. A missing NextScheduledReminder key lets the starter launch."
+echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0b2 and later). A missing NextScheduledReminder key lets the starter launch."
 echo ""
 
 if [[ -n "${fallbackPlistPath}" ]]; then

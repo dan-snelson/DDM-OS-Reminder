@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b1"
+scriptVersion="5.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -681,7 +681,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b1"
+scriptVersion="5.3.0b2"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -762,6 +762,9 @@ isDemoModeRequested="NO"
 [[ "${1:-}" == "demo" ]] && isDemoModeRequested="YES"
 schedulerEnabledForCurrentRun="NO"
 [[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
+launchReason="${DOR_LAUNCH_REASON:-}"
+postBootReevaluationRun="NO"
+[[ "${schedulerEnabledForCurrentRun}" == "YES" && "${launchReason}" == "postBoot" ]] && postBootReevaluationRun="YES"
 activeDialogPid=""
 activeDialogMonitorPid=""
 dialogRuntimeDirectory=""
@@ -1914,6 +1917,39 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
         setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "${scheduleReason}: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleBaseline "${scheduleReason}: baseline"
+    fi
+}
+
+function setNextReminderScheduleForPostBootReevaluation() {
+    local nowEpoch="$(date +%s)"
+    local storedSchedule=""
+    local storedEpoch=""
+    local thresholdResult=""
+    local thresholdEpoch=""
+    local thresholdMinutes=""
+    local aggressiveStartEpoch=""
+
+    shouldManageDaemonScheduling || return 1
+
+    storedSchedule="$(readReminderStateKey "NextScheduledReminder")"
+    storedEpoch="$(epochFromScheduleTimestamp "${storedSchedule}")"
+    [[ "${storedEpoch}" =~ ^[0-9]+$ ]] && (( storedEpoch > nowEpoch )) || return 1
+
+    thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdResult}" ]]; then
+        thresholdEpoch="${thresholdResult%%|*}"
+        thresholdMinutes="${thresholdResult##*|}"
+    fi
+
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
+    # Pull the stored schedule earlier when the re-resolved deadline needs it; never push it later
+    if [[ -n "${thresholdEpoch}" ]] && (( thresholdEpoch < storedEpoch )); then
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Post-boot re-evaluation: ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" ]] && (( aggressiveStartEpoch < storedEpoch )); then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "Post-boot re-evaluation: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
+    else
+        setNextReminderScheduleExactEpoch "${storedEpoch}" "Post-boot re-evaluation kept existing schedule"
     fi
 }
 
@@ -6060,6 +6096,21 @@ reconcileUpdateTonightSuppressionState
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # -------------------------------------------------------------------------
+    # Post-boot re-evaluation: reschedule only, unless a reminder is due now
+    # -------------------------------------------------------------------------
+
+    if [[ "${postBootReevaluationRun}" == "YES" ]]; then
+        if isPastDeadlineForceMode || isAggressiveModeActive || isPreDeadlineThresholdReminderMode; then
+            notice "Post-boot re-evaluation: reminder due now; continuing normal reminder flow."
+        elif setNextReminderScheduleForPostBootReevaluation; then
+            logNoReminder "post-boot re-evaluation found no reminder due" "None; the next reminder appears at the scheduled time."
+            quitScript "0"
+        else
+            notice "Post-boot re-evaluation: stored schedule is now due; continuing normal reminder flow."
+        fi
+    fi
+
+    # -------------------------------------------------------------------------
     # Deadline window and periodic reminder logic (thanks for the suggestion, @kristian!)
     # -------------------------------------------------------------------------
 
@@ -6439,6 +6490,13 @@ function epochFromScheduleTimestamp() {
     echo "${scheduleEpoch}"
 }
 
+function consoleUserReady() {
+    local consoleUser=""
+
+    consoleUser="$(stat -f %Su /dev/console 2>/dev/null)"
+    [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]
+}
+
 if [[ ! -x "${mainScriptPath}" ]]; then
     error "Missing deployed main script: ${mainScriptPath}"
     exit 1
@@ -6466,16 +6524,30 @@ if [[ "${nextScheduledReminder:l}" == "false" ]]; then
     exit 0
 fi
 
+launchReason="scheduled"
+bootEpoch="$( sysctl kern.boottime 2>/dev/null | awk -F'[ |,]' '{print $5}' )"
+postBootReevaluationReady="NO"
+[[ "${bootEpoch}" =~ ^[0-9]+$ ]] && consoleUserReady && postBootReevaluationReady="YES"
+
 if [[ -n "${nextScheduledReminder}" ]]; then
     nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
     if [[ -n "${nextScheduledReminderEpoch}" ]]; then
         nowEpoch="$(date +%s)"
         if (( nextScheduledReminderEpoch > nowEpoch )); then
-            exit 0
+            # macOS may re-pad a past-due deadline at login; re-evaluate once per boot after a user logs in
+            if [[ "${postBootReevaluationReady}" != "YES" || "$(readStateValue "LastBootReevaluation")" == "${bootEpoch}" ]]; then
+                exit 0
+            fi
+            launchReason="postBoot"
         fi
     else
         warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
     fi
+fi
+
+if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootReevaluation" "${bootEpoch}"; then
+    error "Unable to update post-boot re-evaluation state; not launching main script."
+    exit 1
 fi
 
 if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
@@ -6483,8 +6555,12 @@ if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
     exit 1
 fi
 
-notice "Heartbeat launch triggered '${mainScriptPath}'."
-DOR_LAUNCH_SOURCE="starter" "${mainScriptPath}" &
+if [[ "${launchReason}" == "postBoot" ]]; then
+    notice "Starter launch after boot; re-evaluating deadline (NextScheduledReminder: ${nextScheduledReminder})."
+else
+    notice "Heartbeat launch triggered '${mainScriptPath}'."
+fi
+DOR_LAUNCH_SOURCE="starter" DOR_LAUNCH_REASON="${launchReason}" "${mainScriptPath}" &
 disown
 
 exit 0

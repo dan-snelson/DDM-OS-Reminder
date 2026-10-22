@@ -432,7 +432,7 @@ Use [`reminderDialogPreferenceTest.zsh`](reminderDialogPreferenceTest.zsh) when 
    - `/Library/Managed Preferences/<rdnn>.dorm.plist`
    - `/Library/Preferences/<rdnn>.dorm.plist`
 - If both exist, the script follows the same precedence as the main reminder workflow: managed preferences first, then local preferences, then built-in defaults
-- Runtime scheduler state, when present, is stored separately at `/Library/Management/<rdnn>/dor-state.plist`
+- Runtime scheduler state, when present, is stored separately at `/Library/Management/<rdnn>/dor-state.plist` (for example, `NextScheduledReminder`, `DaemonLastTriggered`, and `LastBootReevaluation`, the boot whose post-boot deadline re-evaluation has already run)
 - Baseline reminder slots are driven by `DailyReminderTimes` in the deployed preference plist/profile (for example, `08:00,12:00,16:00`)
 - Final-minute threshold reminders are driven by `MinutesBeforeDeadlineReminderSchedule` (default `45,30,15,10,5`)
 - Quiet-period suppression, outside-window periodic reminders, secondary-button disable/hide behavior, and Force-mode restart timing are driven by `QuietPeriodMinutes`, `OutsideDisplayWindowPeriodicReminderDays`, `DisableButton2InsteadOfHide`, `PastDeadlineRestartMinimumUptimeMinutes`, `PastDeadlineForceTimerSeconds`, and `PastDeadlineForceRedisplayDelaySeconds`

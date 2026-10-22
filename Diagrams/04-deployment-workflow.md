@@ -213,8 +213,8 @@ At load and approximately every 60 seconds, the LaunchDaemon runs `dor-starter.z
 - Active matching `dor.pid`: starter exits to prevent overlap.
 - Stale PID: starter removes it and continues.
 - `NextScheduledReminder=FALSE`: starter exits quietly.
-- Future `NextScheduledReminder`: starter exits quietly.
-- Due, empty, or invalid schedule: starter records `DaemonLastTriggered` and launches `dor.zsh`.
+- Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`).
+- Due, empty, or invalid schedule: starter records `DaemonLastTriggered` (and, with a console user, `LastBootReevaluation`) and launches `dor.zsh`.
 
 A quiet heartbeat is not evidence of failure. Inspect `dor-state.plist` before changing the LaunchDaemon or forcing another run.
 
@@ -249,7 +249,7 @@ zsh Resources/monitorRemoteSession.zsh --rdnn example.org --watch 5
 Validate:
 
 - `DaemonLastTriggered` changes when the starter launches the main script.
-- A future schedule remains intact across heartbeat cycles and reboot.
+- A future schedule remains intact across heartbeat cycles and reboot; after reboot and login, one post-boot re-evaluation may move it earlier, never later.
 - `Remind Me Later` starts the quiet period from interaction time.
 - A pending final-minute threshold can schedule earlier than quiet-period expiry.
 - Aggressive mode uses exact redisplay scheduling after its configured post-deadline threshold.

@@ -11,8 +11,10 @@ flowchart TD
     PID -->|No or stale| ReadState[Read dor-state.plist<br/>NextScheduledReminder]
     ReadState --> Due{Schedule state}
     Due -->|FALSE| StarterNoop
-    Due -->|Future| StarterNoop
-    Due -->|Due, empty, or invalid| Trigger[Write DaemonLastTriggered<br/>launch dor.zsh as starter]
+    Due -->|Future| PostBoot{Console user logged in and<br/>no re-evaluation yet this boot?}
+    PostBoot -->|No| StarterNoop
+    PostBoot -->|Yes| Trigger
+    Due -->|Due, empty, or invalid| Trigger[Write DaemonLastTriggered and,<br/>with a console user, LastBootReevaluation<br/>launch dor.zsh as starter]
 
     Trigger --> Root{Running as root?}
     Root -->|No| FatalRoot[Fatal error]
@@ -37,7 +39,12 @@ flowchart TD
     RestartMode --> Threshold[Evaluate next pre-deadline<br/>minute threshold]
     Threshold --> Aggressive[Evaluate aggressive mode<br/>deadline + configured hours<br/>unless kill switch exists]
 
-    Aggressive --> Force{Force restart<br/>mode active?}
+    Aggressive --> PostBootRun{Post-boot<br/>re-evaluation run?}
+    PostBootRun -->|No| Force
+    PostBootRun -->|Yes| PostBootDue{Force, aggressive, or threshold<br/>due now, or stored schedule due?}
+    PostBootDue -->|Yes| Force
+    PostBootDue -->|No| SchedulePostBoot[Move NextScheduledReminder earlier<br/>for a threshold or aggressive start,<br/>never later, and exit]
+    Force{Force restart<br/>mode active?}
     Force -->|Yes| Build
     Force -->|No| ThresholdDue{Threshold reminder<br/>due now?}
     ThresholdDue -->|Yes| Build
@@ -109,7 +116,7 @@ flowchart TD
 
 - `dor.pid` prevents overlap. A stale or malformed PID is removed without terminating unrelated processes.
 - `NextScheduledReminder=FALSE` disables daemon-driven reminders.
-- A future `NextScheduledReminder` produces an expected quiet no-op, including after reboot.
+- A future `NextScheduledReminder` produces an expected quiet no-op, with one exception: after each boot, the first heartbeat that finds a console user other than `loginwindow`, `_mbsetupuser`, or `root` launches `dor.zsh` once to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login. The starter records the boot in `LastBootReevaluation` (the `kern.boottime` epoch) and logs `[NOTICE] Starter launch after boot; re-evaluating deadline …`. That run shows a reminder only when a threshold, aggressive mode, or Force mode is due; otherwise it moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start (never later) and exits with `No reminder shown: post-boot re-evaluation found no reminder due`.
 - Due, empty, missing, or invalid scheduler state causes the starter to run the full workflow so it can repair or advance scheduling.
 - Manual and demo runs bypass scheduler writes; only starter-launched runs own `dor.pid` and mutate `dor-state.plist`.
 

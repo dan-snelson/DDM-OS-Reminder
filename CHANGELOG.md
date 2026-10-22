@@ -2,6 +2,15 @@
 
 ## Changelog
 
+### Version 5.3.0b2 (22-Oct-2026)
+- Fixed: after a reboot, macOS can re-pad a past-due deadline to about one hour after login (`setPastDuePaddedEnforcementDate … (usersLoggedIn=1)`), but `dor-starter.zsh` kept exiting quietly until the stored `NextScheduledReminder`, so the new deadline and its pre-deadline thresholds could pass with no reminder ([Issue #165](https://github.com/dan-snelson/DDM-OS-Reminder/issues/165))
+    - Once per boot, the first heartbeat that finds a console user other than `loginwindow`, `_mbsetupuser`, or `root` launches `dor.zsh` even when `NextScheduledReminder` is in the future. Heartbeats before login exit quietly, so the re-evaluation is not used up at the login window.
+    - The starter records the boot in the new runtime-only `dor-state.plist` key `LastBootReevaluation` (the `kern.boottime` epoch) on any launch with a console user, and logs `[NOTICE] Starter launch after boot; re-evaluating deadline (NextScheduledReminder: …).`
+    - The post-boot run re-resolves the deadline, including the existing wait of up to 5 minutes for a refreshed padded date. It then shows a reminder only when a pre-deadline threshold, aggressive mode, or Force mode is due, or when the stored schedule has come due. Otherwise it moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start, never later, and logs `No reminder shown: post-boot re-evaluation found no reminder due`.
+    - `NextScheduledReminder=FALSE`, `dor.pid` overlap protection, manual runs, and demo runs are unchanged. No changes to preferences, defaults, or DDM trust rules.
+    - Not covered: logging out and back in without a reboot.
+    - `Resources/diagnoseReminderState.zsh` (`1.6.1`) reports `LastBootReevaluation` and describes the post-boot exception in its starter rule. Checklist updated to `reminderDialog.zsh` `5.3.0b2`.
+
 ### Version 5.3.0b1 (21-Oct-2026)
 - Fixed: past-deadline aggressive mode was never scheduled when the next `DailyReminderTimes` slot came after the aggressive-mode start, leaving a Mac past its deadline without reminders until the next baseline slot (for example, overnight after a final pre-deadline threshold reminder at 16:25 for a 16:29 deadline) ([Issue #164](https://github.com/dan-snelson/DDM-OS-Reminder/issues/164))
     - The aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`) is now a scheduling candidate alongside pending pre-deadline thresholds and baseline slots. The earliest wins.

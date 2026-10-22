@@ -273,7 +273,7 @@ Here, `26.6` is the target `VersionString`, `(null)` means Apple did not supply 
 **Runtime Notes**:
 - If restart mode is eligible by days but uptime is below `PastDeadlineRestartMinimumUptimeMinutes`, restart mode is temporarily suppressed and update-focused flow continues
 - Aggressive `Open Software Update` / dismissal / close / keyboard quit / timer interactions schedule an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
-- A reboot does not clear a future `NextScheduledReminder`; the `RunAtLoad` heartbeat still exits quietly until that stored due time arrives
+- A reboot does not clear a future `NextScheduledReminder`. Once per boot, the first heartbeat that finds a console user launches `dor.zsh` to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login (`setPastDuePaddedEnforcementDate … usersLoggedIn=1`). That run moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start, never later, and shows a reminder only when a threshold, aggressive mode, or Force mode is due
 - The support kill switch logs a notice and falls back to normal non-aggressive cadence
 - Force mode bypasses quiet-period suppression and meeting-delay checks
 

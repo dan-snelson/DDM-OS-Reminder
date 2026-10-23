@@ -8,7 +8,9 @@
     - Matching is case-sensitive and anchored to the start of each value, so admin copy such as `Latest`, `Testing`, or `sample` elsewhere in a string is never changed.
     - Logged as `🧹 Normalized lane marker in <n> imported value(s) for '<lane>' lane`.
     - A prior file ending in `-dev.plist` or `-test.plist` still selects that lane automatically; pass `--lane prod` to promote it.
+    - A valid `--lane` now skips filename lane inference regardless of argument order, so `--lane prod` after the file path no longer logs `🔎 Inferred deployment mode from prior plist: 'dev'` before `📦 Deployment Mode: prod`.
     - No changes to preference keys, defaults, or runtime behavior.
+- Fixed: a missing or invalid `--lane` value (for example, `--lane production`) printed `Defaulting to interactive prompt.`, then re-parsed that value as a positional RDNN, so `assemble.zsh` could exit `0` with artifacts named for RDNN `production`. `assemble.zsh` now exits `1` with `❌ Invalid lane: '<value>'. Valid options: dev, test, prod` before importing or generating anything.
 
 ### Version 5.3.0b2 (22-Oct-2026)
 - Fixed: after a reboot, macOS can re-pad a past-due deadline to about one hour after login (`setPastDuePaddedEnforcementDate … (usersLoggedIn=1)`), but `dor-starter.zsh` kept exiting quietly until the stored `NextScheduledReminder`, so the new deadline and its pre-deadline thresholds could pass with no reminder ([Issue #165](https://github.com/dan-snelson/DDM-OS-Reminder/issues/165))

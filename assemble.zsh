@@ -154,12 +154,18 @@ for argument in "$@"; do
   esac
 done
 
+# Changed in 5.3.0b3; fail closed on a missing or invalid --lane value so it is never re-parsed as a positional RDNN
 for (( argumentIndex=1; argumentIndex <= $#; argumentIndex++ )); do
-  if [[ "${@[argumentIndex]}" == "--lane" ]] && (( argumentIndex < $# )); then
-    if [[ "${@[$((argumentIndex + 1))]}" =~ ^(dev|test|prod)$ ]]; then
-      validLaneArgumentProvided=true
-      break
+  if [[ "${@[argumentIndex]}" == "--lane" ]]; then
+    laneArgument=""
+    if (( argumentIndex < $# )); then
+      laneArgument="${@[$((argumentIndex + 1))]}"
     fi
+    if [[ ! "${laneArgument}" =~ ^(dev|test|prod)$ ]]; then
+      echo "❌ Invalid lane: '${laneArgument}'. Valid options: dev, test, prod"
+      exit 1
+    fi
+    validLaneArgumentProvided=true
   fi
 done
 
@@ -738,7 +744,8 @@ function applyPriorPlistSelections() {
     fi
   fi
 
-  if [[ "${skipModePrompt}" == false ]]; then
+  # Changed in 5.3.0b3; a valid --lane anywhere on the command line wins, so skip filename inference (and its log line) regardless of argument order
+  if [[ "${skipModePrompt}" == false && "${validLaneArgumentProvided}" == false ]]; then
     inferredDeploymentMode="$(inferDeploymentModeFromPriorPlist "${priorConfigSourcePath}")"
     if [[ -n "${inferredDeploymentMode}" ]]; then
       deploymentMode="${inferredDeploymentMode}"
@@ -746,7 +753,7 @@ function applyPriorPlistSelections() {
       modeInferredFromPriorPlist=true
       nearMissDeploymentModeToken=""
       echo "🔎 Inferred deployment mode from prior ${priorConfigLabel}: '${deploymentMode}'"
-    elif [[ "${validLaneArgumentProvided}" == false ]]; then
+    else
       nearMissModeToken="$(detectNearMissDeploymentModeTokenFromPriorPlist "${priorConfigSourcePath}")"
       if [[ -n "${nearMissModeToken}" ]]; then
         nearMissDeploymentModeToken="${nearMissModeToken}"
@@ -797,9 +804,8 @@ while [[ $# -gt 0 ]]; do
         modeInferredFromPriorPlist=false
         shift 2
       else
-        echo "⚠️  Invalid lane: '${2:-}'. Valid options: dev, test, prod"
-        echo "    Defaulting to interactive prompt."
-        shift
+        echo "❌ Invalid lane: '${2:-}'. Valid options: dev, test, prod"
+        exit 1
       fi
       ;;
     -*)

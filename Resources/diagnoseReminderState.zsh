@@ -32,8 +32,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.6.1"
-checklistScriptVersion="5.3.0b2"
+scriptVersion="1.6.2"
+checklistScriptVersion="5.3.0b4"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -1692,7 +1692,7 @@ while IFS= read -r logLine; do
 done < <(tail -n +"${latestRunStart}" "${clientLogPath}")
 latestRunLineCount="${#latestRunLines[@]}"
 
-decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|return code:| clicked )'
+decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|darkwake|return code:| clicked )'
 clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) - \[([A-Z -]+)\][[:space:]]+(.*)$'
 
 for logLine in "${latestRunLines[@]}"; do
@@ -1702,7 +1702,7 @@ for logLine in "${latestRunLines[@]}"; do
         if [[ "${logMessage}" == *"Initiating"* ]]; then
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
-        elif [[ -z "${logScriptVersion}" && "${logMessage}" != *"Heartbeat launch triggered"* ]]; then
+        elif [[ -z "${logScriptVersion}" && "${logMessage}" != *"Heartbeat launch triggered"* && "${logMessage}" != *"DarkWake detected"* ]]; then
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
         fi
@@ -2243,7 +2243,7 @@ else
     echo ""
 fi
 
-echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0b2 and later). A missing NextScheduledReminder key lets the starter launch."
+echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0b2 and later). During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0b4 and later). A missing NextScheduledReminder key lets the starter launch."
 echo ""
 
 if [[ -n "${fallbackPlistPath}" ]]; then

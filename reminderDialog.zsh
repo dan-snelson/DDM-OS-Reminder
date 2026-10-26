@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b3"
+scriptVersion="5.3.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -4514,6 +4514,21 @@ function checkUserDisplaySleepAssertions() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Check for Maintenance DarkWake
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isSystemInDarkWake() {
+
+    # DarkWake omits the Graphics capability; unrecognized output fails open so reminders still display
+    systemCapabilities="$( /usr/bin/pmset -g systemstate 2>/dev/null | /usr/bin/awk -F 'are:' '/^Current System Capabilities are:/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit }' )"
+
+    [[ " ${systemCapabilities} " == *" CPU "* && " ${systemCapabilities} " != *" Graphics "* ]]
+
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -4551,16 +4566,104 @@ function ensureDialogRuntimeDirectory() {
     info "Using private dialog runtime directory '${dialogRuntimeDirectory}'"
 }
 
+function isImageFile() {
+    [[ -f "${1}" && "$( /usr/bin/file -b --mime-type "${1}" 2>/dev/null )" == image/* ]]
+}
+
+function waitForIconNetworkReachability() {
+    local iconURL="${1}"
+    local iconHost="${${iconURL#*://}%%[/:?]*}"
+    local reachabilityWaitSeconds=5
+    local elapsedSeconds=0
+
+    [[ -n "${iconHost}" ]] || return 1
+
+    # Wi-Fi may still be associating after wake; a short wait beats two full curl timeouts
+    until [[ "$( /usr/sbin/scutil -r "${iconHost}" 2>/dev/null )" == Reachable* ]]; do
+        if (( elapsedSeconds >= reachabilityWaitSeconds )); then
+            return 1
+        fi
+        sleep 1
+        elapsedSeconds=$(( elapsedSeconds + 1 ))
+    done
+
+    (( elapsedSeconds > 0 )) && info "Network became reachable for '${iconHost}' after ${elapsedSeconds} second(s)"
+    return 0
+}
+
+function downloadBrandingIcon() {
+    local iconURL="${1}"
+    local destinationPath="${2}"
+
+    /usr/bin/curl -o "${destinationPath}" "${iconURL}" --silent --show-error --fail --connect-timeout 4 --max-time 10 --retry 1 --retry-delay 1 2> "${destinationPath}.curl.log"
+}
+
+function brandingIconDownloadFailureDetail() {
+    local destinationPath="${1}"
+    local curlErrorText=""
+
+    curlErrorText="$( /usr/bin/tail -n 1 "${destinationPath}.curl.log" 2>/dev/null )"
+    if [[ -n "${curlErrorText}" ]]; then
+        echo " (${curlErrorText})"
+    elif [[ -s "${destinationPath}" ]]; then
+        echo " (downloaded content is not an image)"
+    fi
+}
+
+function storeBrandingIconInCache() {
+    local sourcePath="${1}"
+    local cachePath="${deploymentScriptDirectory}/dor-icon-${2}.png"
+    local temporaryPath=""
+
+    [[ "${isDemoModeRequested}" == "YES" ]] && return 0
+    [[ -d "${deploymentScriptDirectory}" && ! -L "${deploymentScriptDirectory}" ]] || return 0
+
+    temporaryPath="$( /usr/bin/mktemp "${cachePath}.tmp.XXXXXX" 2>/dev/null )"
+    if [[ -z "${temporaryPath}" ]]; then
+        warning "Unable to create temporary icon cache file beside '${cachePath}'"
+        return 1
+    fi
+
+    if /bin/cp "${sourcePath}" "${temporaryPath}" && chown root:wheel "${temporaryPath}" && chmod 644 "${temporaryPath}" && /bin/mv -f "${temporaryPath}" "${cachePath}"; then
+        info "Cached icon as '${cachePath}'"
+    else
+        rm -f "${temporaryPath}" 2>/dev/null
+        warning "Unable to cache icon as '${cachePath}'"
+        return 1
+    fi
+}
+
+function restoreBrandingIconFromCache() {
+    local cachePath="${deploymentScriptDirectory}/dor-icon-${1}.png"
+    local destinationPath="${2}"
+
+    # Trust only a root-owned regular file; swiftDialog reads the per-run copy as the console user
+    [[ -f "${cachePath}" && ! -L "${cachePath}" ]] || return 1
+    [[ "$( /usr/bin/stat -f %u "${cachePath}" 2>/dev/null )" == "0" ]] || return 1
+    isImageFile "${cachePath}" || return 1
+
+    /bin/cp "${cachePath}" "${destinationPath}" 2>/dev/null && chmod 644 "${destinationPath}" 2>/dev/null
+}
+
 function downloadBrandingAssets() {
     ensureDialogRuntimeDirectory
 
     # Detect dark mode and choose appropriate icon URL
     local appearanceMode=$(detectDarkMode)
     local overlayIconURL="${organizationOverlayiconURL}"
-    
+    local overlayCacheName="overlay-light"
+    local overlayIsRemote="NO"
+    local overlayDownloadPath="${dialogRuntimeDirectory}/overlayicon.png"
+    local overlayDownloadPid=""
+    local iconCacheName=""
+    local iconDownloadPath="${dialogRuntimeDirectory}/icon.png"
+    local iconDownloadPid=""
+    local softwareUpdateAppPath="/System/Library/CoreServices/Software Update.app"
+
     if [[ "${appearanceMode}" == "Dark" && -n "${organizationOverlayiconURLdark}" ]]; then
         notice "Dark mode detected; using dark mode overlay icon"
         overlayIconURL="${organizationOverlayiconURLdark}"
+        overlayCacheName="overlay-dark"
     else
         if [[ "${appearanceMode}" == "Dark" ]]; then
             notice "Dark mode detected but no dark mode icon URL configured; using standard overlay icon"
@@ -4568,17 +4671,18 @@ function downloadBrandingAssets() {
             notice "Light mode detected; using standard overlay icon"
         fi
     fi
-    
-    # Download overlay icon
+
+    # Resolve local overlay icons now; remote ones download alongside the macOS icon
+    overlayicon=""
     if [[ -n "${overlayIconURL}" ]]; then
         notice "Processing overlay icon from '${overlayIconURL}'"
-        
+
         # Check if it's a local file path (file or directory/bundle)
         if [[ -e "${overlayIconURL}" ]]; then
             info "Overlay icon is a local path; using directly"
             overlayicon="${overlayIconURL}"
             info "Successfully configured overlay icon"
-        
+
         # Check if it's a file:// URI
         elif [[ "${overlayIconURL}" =~ ^file:// ]]; then
             info "Overlay icon is a file:// URI; converting to path"
@@ -4587,25 +4691,15 @@ function downloadBrandingAssets() {
                 overlayicon="${filePath}"
                 info "Successfully configured overlay icon from file:// URI"
             else
-                error "Path not found: '${filePath}' (from URI '${overlayIconURL}')"
-                overlayicon="/System/Library/CoreServices/Finder.app"
+                error "Path not found: '${filePath}' (from URI '${overlayIconURL}'); showing the dialog without an overlay icon"
             fi
-        
+
         # Assume it's a remote URL
         else
-            info "Overlay icon appears to be a remote URL; downloading with curl"
-            if curl -o "${dialogRuntimeDirectory}/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
-                overlayicon="${dialogRuntimeDirectory}/overlayicon.png"
-                info "Successfully downloaded overlay icon"
-            else
-                error "Failed to download overlay icon from '${overlayIconURL}'"
-                overlayicon="/System/Library/CoreServices/Finder.app"
-            fi
+            overlayIsRemote="YES"
         fi
-    else
-        overlayicon="/System/Library/CoreServices/Finder.app"
     fi
-    
+
     # Download macOS icon based on version
     local majorDDM="${ddmVersionString%%.*}"
     case ${majorDDM} in
@@ -4615,19 +4709,64 @@ function downloadBrandingAssets() {
         27) macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_4c0a23608740fba163bb2716f0d0b761f0ba57efd94b2de5e266fe7fca3b2c42" ;;
         *)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
     esac
-    
-    if curl -o "${dialogRuntimeDirectory}/icon.png" "${macOSIconURL}" --silent --show-error --fail --max-time 10; then
-        icon="${dialogRuntimeDirectory}/icon.png"
+    iconCacheName="macos-default"
+    [[ "${majorDDM}" =~ ^[0-9]+$ ]] && iconCacheName="macos-${majorDDM}"
+
+    if waitForIconNetworkReachability "${macOSIconURL}"; then
+        if [[ "${overlayIsRemote}" == "YES" ]]; then
+            info "Overlay icon appears to be a remote URL; downloading with curl"
+            downloadBrandingIcon "${overlayIconURL}" "${overlayDownloadPath}" &
+            overlayDownloadPid=$!
+        fi
+        downloadBrandingIcon "${macOSIconURL}" "${iconDownloadPath}" &
+        iconDownloadPid=$!
     else
-        error "Failed to download icon from '${macOSIconURL}'"
-        icon="/System/Library/CoreServices/Finder.app"
+        warning "Network is not reachable after 5 seconds; skipping icon downloads and using local fallbacks"
     fi
-    
+
+    if [[ "${overlayIsRemote}" == "YES" ]]; then
+        if [[ -n "${overlayDownloadPid}" ]] && wait "${overlayDownloadPid}" && isImageFile "${overlayDownloadPath}"; then
+            overlayicon="${overlayDownloadPath}"
+            info "Successfully downloaded overlay icon"
+            storeBrandingIconInCache "${overlayDownloadPath}" "${overlayCacheName}"
+        else
+            [[ -n "${overlayDownloadPid}" ]] && error "Failed to download overlay icon from '${overlayIconURL}'$( brandingIconDownloadFailureDetail "${overlayDownloadPath}" )"
+            if restoreBrandingIconFromCache "${overlayCacheName}" "${overlayDownloadPath}"; then
+                overlayicon="${overlayDownloadPath}"
+                notice "Using cached overlay icon 'dor-icon-${overlayCacheName}.png'"
+            else
+                notice "No cached overlay icon available; showing the dialog without an overlay icon"
+            fi
+        fi
+    fi
+
+    if [[ -n "${iconDownloadPid}" ]] && wait "${iconDownloadPid}" && isImageFile "${iconDownloadPath}"; then
+        icon="${iconDownloadPath}"
+        info "Successfully downloaded macOS icon"
+        storeBrandingIconInCache "${iconDownloadPath}" "${iconCacheName}"
+    else
+        [[ -n "${iconDownloadPid}" ]] && error "Failed to download icon from '${macOSIconURL}'$( brandingIconDownloadFailureDetail "${iconDownloadPath}" )"
+        if restoreBrandingIconFromCache "${iconCacheName}" "${iconDownloadPath}"; then
+            icon="${iconDownloadPath}"
+            notice "Using cached macOS icon 'dor-icon-${iconCacheName}.png'"
+        elif [[ -d "${softwareUpdateAppPath}" ]]; then
+            icon="${softwareUpdateAppPath}"
+            notice "No cached macOS icon available; using '${softwareUpdateAppPath}'"
+        else
+            icon="/System/Library/CoreServices/Finder.app"
+            notice "No cached macOS icon or Software Update app available; using '${icon}'"
+        fi
+    fi
+
     # Swap icons if requested
     if [[ "${swapOverlayAndLogo}" == "YES" ]]; then
-        local tmp="$icon"
-        icon="$overlayicon"
-        overlayicon="$tmp"
+        if [[ -n "${overlayicon}" ]]; then
+            local tmp="$icon"
+            icon="$overlayicon"
+            overlayicon="$tmp"
+        else
+            info "SwapOverlayAndLogo is enabled, but no overlay icon is available; keeping the macOS icon as the primary icon"
+        fi
     fi
 }
 
@@ -5033,7 +5172,6 @@ function displayReminderDialog() {
         --message "${message}"
         --icon "${icon}"
         --iconsize 250
-        --overlayicon "${overlayicon}"
         --infobox "${infobox}"
         --button1text "${button1text}"
         --messagefont "size=14"
@@ -5045,6 +5183,7 @@ function displayReminderDialog() {
         "${additionalDialogOptions[@]}"
     )
 
+    [[ -n "${overlayicon}" ]] && dialogArgs+=(--overlayicon "${overlayicon}")
     [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
     [[ "${hideSecondaryButton}" == "DISABLED" ]] && dialogArgs+=(--button2disabled)
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
@@ -5777,6 +5916,18 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
             info "Pausing for ${humanReadablePause} …"
             sleep "${sleepSeconds}"
         fi
+    fi
+
+
+
+    # -------------------------------------------------------------------------
+    # Maintenance DarkWake: nobody can see the dialog; retry on the next heartbeat
+    # -------------------------------------------------------------------------
+
+    if isSystemInDarkWake; then
+        setNextReminderScheduleInSeconds "60" "DarkWake deferral; retry on next heartbeat"
+        logNoReminder "the Mac is in a Maintenance DarkWake (system capabilities: ${systemCapabilities})" "None; the first heartbeat after a full wake shows the reminder." "notice"
+        quitScript "0"
     fi
 
 

@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b3"
+scriptVersion="5.3.0b4"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -135,7 +135,8 @@ function removeDeployedRuntimeAssets() {
             notice "Preserving aggressive-mode support kill switch '${dorAggressiveKillSwitchPath}'; aggressive mode stays suppressed until support removes it."
         fi
     else
-        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" )
+        # Cached branding icons are only an offline fallback; redeploys keep them
+        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" "${organizationDirectory}"/dor-icon-*(N) )
     fi
 
     stopActiveReminderRuntime
@@ -835,6 +836,13 @@ function consoleUserReady() {
     [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]
 }
 
+function systemInDarkWake() {
+    # DarkWake omits the Graphics capability; unrecognized output fails open so the main script still launches
+    systemCapabilities="$( /usr/bin/pmset -g systemstate 2>/dev/null | /usr/bin/awk -F 'are:' '/^Current System Capabilities are:/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit }' )"
+
+    [[ " ${systemCapabilities} " == *" CPU "* && " ${systemCapabilities} " != *" Graphics "* ]]
+}
+
 if [[ ! -x "${mainScriptPath}" ]]; then
     error "Missing deployed main script: ${mainScriptPath}"
     exit 1
@@ -881,6 +889,12 @@ if [[ -n "${nextScheduledReminder}" ]]; then
     else
         warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
     fi
+fi
+
+# Leave scheduler state untouched so the due reminder (and any post-boot re-evaluation) runs after a full wake
+if systemInDarkWake; then
+    notice "DarkWake detected (system capabilities: ${systemCapabilities}); deferring reminder launch to the next heartbeat."
+    exit 0
 fi
 
 if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootReevaluation" "${bootEpoch}"; then

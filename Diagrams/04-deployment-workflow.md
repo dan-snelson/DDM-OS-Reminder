@@ -215,6 +215,7 @@ At load and approximately every 60 seconds, the LaunchDaemon runs `dor-starter.z
 - `NextScheduledReminder=FALSE`: starter exits quietly.
 - Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`).
 - Due, empty, or invalid schedule: starter records `DaemonLastTriggered` (and, with a console user, `LastBootReevaluation`) and launches `dor.zsh`.
+- Maintenance DarkWake (`5.3.0b4` and later): when a launch would otherwise happen but `pmset -g systemstate` lists `CPU` without `Graphics`, the starter logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and exits without writing state. The reminder runs on the first heartbeat after a full wake.
 
 A quiet heartbeat is not evidence of failure. Inspect `dor-state.plist` before changing the LaunchDaemon or forcing another run.
 

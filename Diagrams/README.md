@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.26 | 26-Oct-2026 | `5.3.0b4` pre-release review: 02 notes the 60-second DarkWake retry applies to starter-launched runs only; 04 and 06 add the `dor-icon-*` cache to the files `All` / `Script` keep and `Uninstall` removes; 06 adds the `SwapOverlayAndLogo` no-overlay rule, notes the reachability wait checks the macOS icon host, and adds a `5.3.0b4` Version History row; prose only, no PNG/SVG changes |
 | 1.0.25 | 26-Oct-2026 | Documented the `5.3.0b4` Maintenance DarkWake deferral and branding-icon fallback ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172)): 02 adds the starter DarkWake exit and the runtime DarkWake check before dialog build (60-second exact retry; no mode bypasses it); 04 adds the starter DarkWake bullet; 06 documents overlay download retry, the `dor-icon-overlay-*` cache, and no-overlay fallback; re-rendered `02-runtime-decision-tree` PNG/SVG exports with `mmdc` 12.0.0, which also picks up the `5.3.0b2` post-boot changes |
 | 1.0.24 | 22-Oct-2026 | Documented the `5.3.0b3` lane-marker normalization for prior-plist / prior-profile import ([Issue #168](https://github.com/dan-snelson/DDM-OS-Reminder/issues/168)): 04 notes that promoting a dev or test file needs `--lane prod` and that imported values starting with `Assembled`, `Sample`, or `TEST` are rewritten to match the selected lane |
 | 1.0.23 | 22-Oct-2026 | Documented the `5.3.0b2` post-boot re-evaluation ([Issue #165](https://github.com/dan-snelson/DDM-OS-Reminder/issues/165)): 02 adds the starter's once-per-boot branch (console user present, `LastBootReevaluation` not yet this boot) and the runtime's reschedule-only gate; 03/04 replace "a future `NextScheduledReminder` survives reboot and `RunAtLoad` exits quietly" with the once-per-boot exception; 05/06 list `LastBootReevaluation` as runtime-only scheduler state; `02-runtime-decision-tree` PNG/SVG exports still need re-rendering with `mmdc` |
@@ -530,5 +531,5 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 ---
 
-**Last Updated**: 21-Oct-2026
+**Last Updated**: 26-Oct-2026
 **DDM OS Reminder Version**: 5.2.0

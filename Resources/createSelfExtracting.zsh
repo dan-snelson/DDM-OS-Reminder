@@ -6,8 +6,8 @@
 #
 # Updated by: Dan K. Snelson
 # For DDM OS Reminder v2.0.0+
-# Version: 2.4.0
-# Date: 02-Oct-2026
+# Version: 2.4.1
+# Date: 26-Oct-2026
 #
 # Creates a self-extracting, base64-encoded shell script from
 # the newest "ddm-os-reminder-*.zsh" file found in the
@@ -23,8 +23,9 @@ datestamp=$(date '+%Y-%m-%d-%H%M%S')
 
 echo "🔍 Searching for the newest ddm-os-reminder-*.zsh file in ${ARTIFACTS_DIR}..."
 
-# Find the newest assembled file in the Artifacts directory
-latest_file=$(ls -t "${ARTIFACTS_DIR}"/ddm-os-reminder-*.zsh(N) 2>/dev/null | head -n 1)
+# Find the newest assembled file in the Artifacts directory (an empty glob must not fall through to a bare `ls`)
+artifact_files=( "${ARTIFACTS_DIR}"/ddm-os-reminder-*.zsh(N.om) )
+latest_file="${artifact_files[1]:-}"
 
 # Validate presence
 if [[ -z "$latest_file" ]]; then

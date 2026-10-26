@@ -32,7 +32,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.6.2"
+scriptVersion="1.6.3"
 checklistScriptVersion="5.3.0b4"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -1667,7 +1667,7 @@ deploymentInitiatingLine="$(awk '
 
 if (( latestRuntimeInitiating > 0 )); then
     heartbeatLine="$(awk -v rangeStart="${previousRuntimeInitiating}" -v rangeEnd="${latestRuntimeInitiating}" '
-        NR > rangeStart && NR < rangeEnd && /Heartbeat launch triggered/ { hit=NR }
+        NR > rangeStart && NR < rangeEnd && /Heartbeat launch triggered|Starter launch after boot/ { hit=NR }
         END { print hit+0 }
     ' "${clientLogPath}")"
     if (( heartbeatLine > 0 )); then
@@ -1692,7 +1692,7 @@ while IFS= read -r logLine; do
 done < <(tail -n +"${latestRunStart}" "${clientLogPath}")
 latestRunLineCount="${#latestRunLines[@]}"
 
-decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|darkwake|return code:| clicked )'
+decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|starter launch after boot|post-boot re-evaluation|darkwake|return code:| clicked )'
 clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) - \[([A-Z -]+)\][[:space:]]+(.*)$'
 
 for logLine in "${latestRunLines[@]}"; do
@@ -1702,7 +1702,7 @@ for logLine in "${latestRunLines[@]}"; do
         if [[ "${logMessage}" == *"Initiating"* ]]; then
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
-        elif [[ -z "${logScriptVersion}" && "${logMessage}" != *"Heartbeat launch triggered"* && "${logMessage}" != *"DarkWake detected"* ]]; then
+        elif [[ -z "${logScriptVersion}" && "${logMessage}" != *"Heartbeat launch triggered"* && "${logMessage}" != *"Starter launch after boot"* && "${logMessage}" != *"DarkWake detected"* ]]; then
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
         fi

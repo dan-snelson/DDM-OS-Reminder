@@ -595,7 +595,7 @@ Required uploads:
   - `/Library/Managed Preferences/<rdnn>.dorm.plist`
   - `/Library/Preferences/<rdnn>.dorm.plist`
 
-The helper is read-only. It prints a fact sheet to stdout and writes nothing. The client log's `DDM update check:` line (`Normal DDM resolver result` before `5.2.0`) is what that Mac did; `install.log` is evidence that explains it. The fact sheet ends with a pre-filled report skeleton (files, identity, effective settings, declaration spans, and recent runtime runs); the agent completes only the verdict, agreement, and cause/next-steps sections, so every report shares one format.
+The helper is read-only. It prints a fact sheet to stdout and writes nothing, except the opt-in `--rdnn --no-redaction` save described below. The client log's `DDM update check:` line (`Normal DDM resolver result` before `5.2.0`) is what that Mac did; `install.log` is evidence that explains it. The fact sheet ends with a pre-filled report skeleton (files, identity, effective settings, declaration spans, and recent runtime runs); the agent completes only the verdict, agreement, and cause/next-steps sections, so every report shares one format.
 
 ```zsh
 zsh Resources/diagnoseReminderState.zsh --help
@@ -640,7 +640,7 @@ sudo zsh Resources/diagnoseReminderState.zsh --rdnn us.snelson
 - The fact sheet and report skeleton mark each file `supplied`, `inferred (--rdnn)`, `not present on this Mac`, or `unreadable on this Mac`. Upload runs show missing files as `not in upload`.
 - Run with `sudo`. The client-side log is usually `root:admin` `0640`, and without root `SoftwareUpdateDDMStatePersistence.plist` (and possibly `install.log`) may be unreadable, so `install.log` corroboration can differ from what the runtime saw.
 - When the effective `ScriptLog` differs from `/var/log/<rdnn>.log` and both exist, the helper adds a note. The runtime logs `[PRE-FLIGHT] Initiating …` to its built-in log before it reads `ScriptLog`, so runs can be split across both files.
-- The RDNN is never auto-discovered; a run with no arguments prints usage. `--rdnn` mode is still read-only.
+- The RDNN is never auto-discovered; a run with no arguments prints usage. `--rdnn` mode is still read-only unless you add `--no-redaction`.
 
 The helper redacts usernames, `/Users` paths, install.log computer names, and labeled serial numbers in the fact sheet. Attach the redacted agent report, and keep the raw uploads and the fact sheet out of public issues.
 

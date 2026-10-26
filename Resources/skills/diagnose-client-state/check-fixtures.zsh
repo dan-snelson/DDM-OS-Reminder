@@ -423,4 +423,24 @@ rejectText "battery localized known" "BatteryWarningMessageLocalized_de (battery
 requireText "battery decision line" "Battery: power source Battery Power; internal battery 18%" "${battery}"
 requireText "disk decision line" "Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB" "${battery}"
 
+cat > "${workDirectory}/post-boot.log" <<'EOF'
+dorm (5.3.0b4): 2026-10-25 16:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0b4): 2026-10-25 16:00:06 - [QUIT]            Exiting …
+dor (5.3.0b4): 2026-10-26 08:05:00 - [NOTICE]          Starter launch after boot; re-evaluating deadline (NextScheduledReminder: 2026-10-26:12:00:00).
+dorm (5.3.0b4): 2026-10-26 08:05:01 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0b4): 2026-10-26 08:05:02 - [NOTICE]          Post-boot re-evaluation: reminder due now; continuing normal reminder flow.
+dorm (5.3.0b4): 2026-10-26 08:05:03 - [NOTICE]          No reminder shown: the Mac is in a Maintenance DarkWake (system capabilities: CPU Network Disk)
+dorm (5.3.0b4): 2026-10-26 08:05:03 - [QUIT]            Exiting …
+dor (5.3.0b4): 2026-10-26 08:06:00 - [NOTICE]          DarkWake detected (system capabilities: CPU Network Disk); deferring reminder launch to the next heartbeat.
+EOF
+postBoot="$(runHelper \
+    --client-log "${workDirectory}/post-boot.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
+requireText "post-boot starter line" "Starter launch after boot; re-evaluating deadline" "${postBoot}"
+requireText "post-boot runtime line" "Post-boot re-evaluation: reminder due now" "${postBoot}"
+requireText "runtime DarkWake line" "the Mac is in a Maintenance DarkWake" "${postBoot}"
+requireText "starter DarkWake line" "DarkWake detected (system capabilities: CPU Network Disk)" "${postBoot}"
+requireText "post-boot script name" "| Log script name | dorm |" "${postBoot}"
+
 echo "diagnose fixture checks passed"

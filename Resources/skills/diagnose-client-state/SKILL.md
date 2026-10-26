@@ -63,7 +63,7 @@ To track several Macs internally, the Mac Admin may add `--no-redaction`. With `
 
 Treat the resulting fact sheet exactly like one built from uploads. Uploads stay the default; do not ask for live access.
 
-The helper is read-only. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.6.2 report skeleton.
+The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.6.3 report skeleton.
 
 If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
@@ -74,7 +74,7 @@ If the helper cannot run, read the three files and build the report from the tem
 - If the log and `install.log` evidence disagree, say they disagree and quote both.
 - Without `SoftwareUpdateDDMStatePersistence.plist`, do not drop `install.log` candidates as uncorroborated. Quote client-log warnings about uncorroborated trust when present.
 - `NextScheduledReminder` lives in `dor-state.plist`. If that file is missing, say it was not in the upload.
-- `dor-starter.zsh` exits 0 with no new `dorm` run and no new log line in three cases: `NextScheduledReminder` is `FALSE`; `NextScheduledReminder` is `YYYY-MM-DD:HH:MM:SS` and that local time is still in the future; `dor.pid` names a live process. Starting with `5.3.0b4`, a due starter during a Maintenance DarkWake also launches no `dorm` run, but logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged; the reminder runs at the first heartbeat after a full wake. A missing `NextScheduledReminder` key lets the starter launch. An older healthy `dorm` run does not mean the heartbeat launched again.
+- `dor-starter.zsh` exits 0 with no new `dorm` run and no new log line in three cases: `NextScheduledReminder` is `FALSE`; `NextScheduledReminder` is `YYYY-MM-DD:HH:MM:SS` and that local time is still in the future; `dor.pid` names a live process. Exception (`5.3.0b2` and later): once per boot, the first heartbeat that finds a console user other than `loginwindow`, `_mbsetupuser`, or `root` launches a post-boot re-evaluation even when `NextScheduledReminder` is still in the future. It logs `Starter launch after boot; re-evaluating deadline (NextScheduledReminder: …).` and records the `kern.boottime` epoch in `LastBootReevaluation`. That run shows a reminder only when a pre-deadline threshold, aggressive mode, or Force mode is due, or when the stored schedule has come due; otherwise it logs `No reminder shown: post-boot re-evaluation found no reminder due` and may move `NextScheduledReminder` earlier, never later. Starting with `5.3.0b4`, a due starter during a Maintenance DarkWake also launches no `dorm` run, but logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged; the reminder runs at the first heartbeat after a full wake. A missing `NextScheduledReminder` key lets the starter launch. An older healthy `dorm` run does not mean the heartbeat launched again.
 - `--aggressive-kill yes`, or a `present` row checked on the Mac with `--rdnn`, means `/Library/Management/<rdnn>/dor-aggressive-kill` existed, so aggressive mode uses the normal cadence until that file is removed.
 - Files-table statuses: `supplied` (named on the command line), `not in upload`, and with `--rdnn` also `inferred (--rdnn)`, `not present on this Mac`, and `unreadable on this Mac`. Report an `unreadable on this Mac` file as missing evidence, not as absent.
 - Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.3.0b4. If the version differs, say the checklist is best-effort.
@@ -94,7 +94,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.6.2) · Checklist: `reminderDialog.zsh` 5.3.0b4
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.6.3) · Checklist: `reminderDialog.zsh` 5.3.0b4
 
 ## 1. Verdict
 

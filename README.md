@@ -2,7 +2,7 @@
 
 # DDM OS Reminder (5.3.0b4)
 
-> Another welcome tune-up to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a **low-battery warning**, **plain-language** client-side logs (with clear next steps), and re-assembly from **hand-edited** Configuration Profiles
+> More racing stripes for Mac Admins' favorite "set-it-and-forget-it" macOS update reminder: reminders now **wait out Maintenance DarkWake**, **re-check deadlines after reboot**, and keep your branding when the network lags, thanks to **cached icons**
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 

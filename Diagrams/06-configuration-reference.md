@@ -969,6 +969,11 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - ICNS
 - Local paths: `file:///path/to/icon.png`
 
+**Download Behavior** (`5.3.0b4` and later):
+- Remote URLs download after a short network-reachability wait (up to 5 seconds), with one retry; only image content counts as success
+- The last good download is cached as `/Library/Management/<rdnn>/dor-icon-overlay-light.png` (or `dor-icon-overlay-dark.png` for `organizationOverlayiconURLdark`) and used when a later download fails
+- With no download and no cache, or with an empty value, the dialog shows no overlay icon (earlier versions showed the Finder icon)
+
 **Recommendations**:
 - Size: 256x256px or larger
 - Transparent background (PNG)

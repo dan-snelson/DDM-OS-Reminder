@@ -32,8 +32,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.6.4"
-checklistScriptVersion="5.3.0b5"
+scriptVersion="1.6.5"
+checklistScriptVersion="5.3.0b6"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -73,6 +73,10 @@ typeset -a installLogNoUpdatesLines=()
 typeset -a installLogRecoveryLines=()
 typeset -a installLogNoMatchLines=()
 typeset -a installLogTonightLines=()
+typeset -a installLogDescriptorKeys=()
+typeset -A installLogDescriptorFirst=()
+typeset -A installLogDescriptorLast=()
+typeset -A installLogDescriptorCount=()
 typeset -a inputNotes=()
 typeset -a identityNotes=()
 typeset -a rejectedLocalizedKeys=()
@@ -1922,6 +1926,32 @@ for logLine in "${installLogWindow[@]}"; do
     if [[ "${logLine}" == *"softwareupdated["* ]] && [[ "${logLine}" == *"SUOSUInstallTonightManager:"* || "${logLine}" == *"SUOSUScheduler:"* ]]; then
         installLogTonightLines+=("${logLine}")
     fi
+    # Same descriptor parse as reminderDialog.zsh parseDDMDescriptorVersionFromLine; grouped because scans repeat them
+    if [[ "${logLine}" == *"PrimaryDescriptor:"* && "${logLine}" != *"PrimaryDescriptor: (null)"* && "${logLine}" == *" SU:"* ]] && extractDDMLogTimestamp "${logLine}"; then
+        descriptorRole="primary"
+        [[ "${logLine}" == *"majorPrimaryDescriptor:"* ]] && descriptorRole="major"
+        [[ "${logLine}" == *"minorPrimaryDescriptor:"* ]] && descriptorRole="minor"
+        descriptorVersion=""
+        descriptorBuild=""
+        descriptorTokens=( ${=${logLine##* SU:}} )
+        for (( tokenIndex = 1; tokenIndex <= ${#descriptorTokens[@]}; tokenIndex++ )); do
+            if [[ "${descriptorTokens[$tokenIndex]}" =~ ${ddmVersionRegex} ]]; then
+                descriptorVersion="${descriptorTokens[$tokenIndex]}"
+                descriptorBuild="${descriptorTokens[$(( tokenIndex + 1 ))]:-}"
+                break
+            fi
+        done
+        if [[ -n "${descriptorVersion}" ]]; then
+            descriptorKey="${descriptorRole}|${descriptorVersion}|${descriptorBuild}"
+            if [[ -z "${installLogDescriptorCount[${descriptorKey}]:-}" ]]; then
+                installLogDescriptorKeys+=("${descriptorKey}")
+                installLogDescriptorFirst[${descriptorKey}]="${parsedDDMLogTimestamp}"
+                installLogDescriptorCount[${descriptorKey}]=0
+            fi
+            installLogDescriptorLast[${descriptorKey}]="${parsedDDMLogTimestamp}"
+            (( installLogDescriptorCount[${descriptorKey}]++ ))
+        fi
+    fi
 done
 flushDeclarationSpan
 
@@ -2175,6 +2205,7 @@ noUpdatesLabel="\`No updates found for DDM to enforce\` lines"
 recoveryMarkersLabel="Recovery markers (\`Found product with requested PMV\` or \`Armed DDM activity scheduler\` lines)"
 noMatchMarkersLabel="No-match markers (\`MADownloadNoMatchFound\`, \`pallasNoPMVMatchFound=true\`, or \`No available updates found\` lines)"
 updateTonightLabel="Update Tonight (\`SUOSUInstallTonightManager:\` or \`SUOSUScheduler:\` softwareupdated lines)"
+descriptorsLabel="Offered updates (\`PrimaryDescriptor: … SU:\` lines)"
 
 echo "### ${invalidDeclarationsLabel}"
 echo ""
@@ -2199,6 +2230,23 @@ else
         echo "$(redactInstallLogLine "${row}")"
     done
     echo '```'
+    echo ""
+fi
+
+echo "### ${descriptorsLabel}"
+echo ""
+if (( ${#installLogDescriptorKeys[@]} == 0 )); then
+    echo "None."
+    echo ""
+else
+    echo "Identical descriptors are grouped, in order of first appearance. The runtime rates \`conflict\` (\`Available descriptor <offered> disagrees with DDM declaration <version>\`) when a descriptor logged after the declaration names a different macOS version."
+    echo ""
+    echo "| First seen | Last seen | Count | Descriptor | Version | Build |"
+    echo "|---|---|---|---|---|---|"
+    for descriptorKey in "${installLogDescriptorKeys[@]}"; do
+        IFS='|' read -r descriptorRole descriptorVersion descriptorBuild <<< "${descriptorKey}"
+        echo "| ${installLogDescriptorFirst[${descriptorKey}]} | ${installLogDescriptorLast[${descriptorKey}]} | ${installLogDescriptorCount[${descriptorKey}]} | ${descriptorRole} | ${descriptorVersion} | ${descriptorBuild:-unknown} |"
+    done
     echo ""
 fi
 
@@ -2531,6 +2579,16 @@ fi
 echo ""
 skeletonMarkerBullet "${invalidDeclarationsLabel}" "${installLogInvalidDeclarations[@]}"
 skeletonMarkerBullet "${noUpdatesLabel}" "${installLogNoUpdatesLines[@]}"
+if (( ${#installLogDescriptorKeys[@]} == 0 )); then
+    echo "- ${descriptorsLabel}: none"
+else
+    typeset -a descriptorSummaries=()
+    for descriptorKey in "${installLogDescriptorKeys[@]}"; do
+        IFS='|' read -r descriptorRole descriptorVersion descriptorBuild <<< "${descriptorKey}"
+        descriptorSummaries+=("${descriptorVersion} (${descriptorRole}, ${installLogDescriptorCount[${descriptorKey}]}x, last ${installLogDescriptorLast[${descriptorKey}]})")
+    done
+    echo "- ${descriptorsLabel}: ${(j:; :)descriptorSummaries}"
+fi
 skeletonMarkerBullet "${recoveryMarkersLabel}" "${installLogRecoveryLines[@]}"
 skeletonMarkerBullet "${noMatchMarkersLabel}" "${installLogNoMatchLines[@]}"
 skeletonMarkerBullet "${updateTonightLabel}" "${installLogTonightLines[@]}"

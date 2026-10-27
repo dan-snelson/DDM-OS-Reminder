@@ -250,9 +250,17 @@ jphc (0.0.10): 2026-10-27 12:35:18 - [QUIT]            Exiting …
 RCPE (0.0.4): 2026-10-27 13:14:21 - [PRE-FLIGHT]      Initiating …
 RCPE (0.0.4): 2026-10-27 13:14:26 - [QUIT]            FIXED: backup: /etc/ssl/cert.pem.bak.20261027-131424 (exit 0)
 EOF
+{
+    cat "${fixtureRoot}/conflict/install.log"
+    cat <<'EOF'
+2026-10-27 11:21:40-04 DescriptorHost softwareupdated[617]: 	majorPrimaryDescriptor: (null)
+2026-10-27 11:23:13-04 DescriptorHost softwareupdated[617]: 	majorPrimaryDescriptor: SUMacControllerDescriptor(UUID:F22178C0-D78B-5284-9361-C87780D05B87 SU:macOS 27.2 26B123 (Customer)(SU) SFR:(null) BRAIN:26B123 BRIDGEOS:NO((null)) ROSETTA:YES((null)) RECOVERYOS:YES SPLAT:(null))
+2026-10-27 11:43:13-04 DescriptorHost softwareupdated[617]: 	majorPrimaryDescriptor: SUMacControllerDescriptor(UUID:F22178C0-D78B-5284-9361-C87780D05B87 SU:macOS 27.2 26B123 (Customer)(SU) SFR:(null) BRAIN:26B123 BRIDGEOS:NO((null)) ROSETTA:YES((null)) RECOVERYOS:YES SPLAT:(null))
+EOF
+} > "${workDirectory}/descriptor-install.log"
 sharedScriptLog="$(runHelper \
     --client-log "${workDirectory}/shared-script-log.log" \
-    --install-log "${fixtureRoot}/conflict/install.log" \
+    --install-log "${workDirectory}/descriptor-install.log" \
     --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
 requireText "shared log runtime script name" "| Log script name | dorm |" "${sharedScriptLog}"
 requireText "shared log runtime version" "| Log scriptVersion | 5.3.0b5 |" "${sharedScriptLog}"
@@ -264,6 +272,9 @@ requireText "shared log last run" '- Last run: 2026-10-27 12:00:16 · `dorm (5.3
 rejectText "shared log foreign script name" "| Log script name | RCPE |" "${sharedScriptLog}"
 rejectText "shared log foreign run row" '`RCPE (0.0.4)`' "${sharedScriptLog}"
 rejectText "shared log foreign return code" "jphc (0.0.10): 2026-10-27 12:35:17 - [INFO]            Return Code: 0" "${sharedScriptLog}"
+requireText "descriptor table row" "| 2026-10-27 11:23:13-04 | 2026-10-27 11:43:13-04 | 2 | major | 27.2 | 26B123 |" "${sharedScriptLog}"
+requireText "descriptor skeleton bullet" '- Offered updates (`PrimaryDescriptor: … SU:` lines): 27.2 (major, 2x, last 2026-10-27 11:43:13-04)' "${sharedScriptLog}"
+rejectText "descriptor host" "DescriptorHost" "${sharedScriptLog}"
 requireSkeletonHeadings "shared-script-log" "${sharedScriptLog}"
 
 cat > "${workDirectory}/legacy-missing.log" <<'EOF'

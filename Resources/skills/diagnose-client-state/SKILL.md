@@ -63,7 +63,7 @@ To track several Macs internally, the Mac Admin may add `--no-redaction`. With `
 
 Treat the resulting fact sheet exactly like one built from uploads. Uploads stay the default; do not ask for live access.
 
-The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.6.4 report skeleton.
+The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.6.5 report skeleton.
 
 If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
@@ -77,7 +77,7 @@ If the helper cannot run, read the three files and build the report from the tem
 - `dor-starter.zsh` exits 0 with no new `dorm` run and no new log line in three cases: `NextScheduledReminder` is `FALSE`; `NextScheduledReminder` is `YYYY-MM-DD:HH:MM:SS` and that local time is still in the future; `dor.pid` names a live process. Exception (`5.3.0b2` and later): once per boot, the first heartbeat that finds a console user other than `loginwindow`, `_mbsetupuser`, or `root` launches a post-boot re-evaluation even when `NextScheduledReminder` is still in the future. It logs `Starter launch after boot; re-evaluating deadline (NextScheduledReminder: …).` and records the `kern.boottime` epoch in `LastBootReevaluation`. That run shows a reminder only when a pre-deadline threshold, aggressive mode, or Force mode is due, or when the stored schedule has come due; otherwise it logs `No reminder shown: post-boot re-evaluation found no reminder due` and may move `NextScheduledReminder` earlier, never later. Starting with `5.3.0b4`, a due starter during a Maintenance DarkWake also launches no `dorm` run, but logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged; the reminder runs at the first heartbeat after a full wake. A missing `NextScheduledReminder` key lets the starter launch. An older healthy `dorm` run does not mean the heartbeat launched again.
 - `--aggressive-kill yes`, or a `present` row checked on the Mac with `--rdnn`, means `/Library/Management/<rdnn>/dor-aggressive-kill` existed, so aggressive mode uses the normal cadence until that file is removed.
 - Files-table statuses: `supplied` (named on the command line), `not in upload`, and with `--rdnn` also `inferred (--rdnn)`, `not present on this Mac`, and `unreadable on this Mac`. Report an `unreadable on this Mac` file as missing evidence, not as absent.
-- Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.3.0b5. If the version differs, say the checklist is best-effort. A shared `ScriptLog` can also hold other scripts' runs in the same `<name> (<version>): … Initiating` format; the helper (`1.6.4` and later) excludes them from run detection and names them in an identity note.
+- Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.3.0b6. If the version differs, say the checklist is best-effort. A shared `ScriptLog` can also hold other scripts' runs in the same `<name> (<version>): … Initiating` format; the helper (`1.6.4` and later) excludes them from run detection and names them in an identity note.
 - The helper redacts usernames, first names, `/Users/…` paths, install.log computer names, and labeled serial numbers in the fact sheet. Keep RDNN, versions, deadlines, and preference keys. Attach the redacted report. Keep raw client files and the fact sheet out of public issues.
 - With `--no-redaction`, the fact sheet says `Redaction is off`, values appear as logged, section 3 adds `Computer name` and `Serial number` rows, section 9 says the report is not redacted, and the suggested report filename carries the computer name and `-unredacted`. Do not redact such a report by hand. Never attach an unredacted report to a public issue.
 
@@ -94,7 +94,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.6.4) · Checklist: `reminderDialog.zsh` 5.3.0b5
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.6.5) · Checklist: `reminderDialog.zsh` 5.3.0b6
 
 ## 1. Verdict
 
@@ -133,6 +133,7 @@ Window: … Corroboration: …
 …
 - Invalid declarations (`Failed to add declaration: … Invalid declaration:` lines): …
 - `No updates found for DDM to enforce` lines: …
+- Offered updates (`PrimaryDescriptor: … SU:` lines): …
 - Recovery markers (`Found product with requested PMV` or `Armed DDM activity scheduler` lines): …
 - No-match markers (`MADownloadNoMatchFound`, `pallasNoPMVMatchFound=true`, or `No available updates found` lines): …
 - Update Tonight (`SUOSUInstallTonightManager:` or `SUOSUScheduler:` softwareupdated lines): …
@@ -183,7 +184,7 @@ With `--no-redaction`, the helper writes the section 9 sentence as `This report 
 
 Verdict categories (pick exactly one, bold, sentence case): **Resolver suppression**, **Fallback selected**, **Already compliant**, **Outside the display window**, **Quiet period**, **Update Tonight**, **Meeting or Focus delay**, **Threshold dialog**, **Aggressive dialog**, **Dialog shown**, **Fatal setup error**, **Not enough evidence**. Follow with the recorded resolver status in backticks when the last run has one, for example **Resolver suppression** (`conflict`).
 
-A `conflict` from `Declaration persisted after 'No updates found for DDM to enforce'` on a Mac that already meets the declaration is **Already compliant** (`conflict`). Before `5.3.0b5` that run evaluated the DDM Emergency Fallback and could end with `No reminder shown: macOS <installed> already meets DDM Emergency Fallback macOS <version>`; `5.3.0b5` and later skip the fallback and end with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>`.
+A `conflict` from `Declaration persisted after 'No updates found for DDM to enforce'` or `Available descriptor <offered> disagrees with DDM declaration <version>`, on a Mac that already meets the declaration, is **Already compliant** (`conflict`). Earlier versions evaluated the DDM Emergency Fallback when one was configured and could end with `No reminder shown: macOS <installed> already meets DDM Emergency Fallback macOS <version>`. The fallback is skipped, ending with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; …`, starting with `5.3.0b5` for `Declaration persisted after` and `5.3.0b6` for `Available descriptor`.
 
 Style:
 

@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 5.3.0b6 (27-Oct-2026)
+- Fixed: `5.3.0b5` skipped the DDM Emergency Fallback only for a leftover declaration. A Mac that already met its DDM declaration while `softwareupdated` offered a newer macOS (`Available descriptor <offered> disagrees with DDM declaration <version>`), for example macOS 27.0.1 with a 27.0.1 declaration while 27.2 is available, still logged a `[WARNING]` and evaluated the fallback. A fallback targeting a newer macOS could then show a reminder for a version DDM does not enforce.
+    - That case now logs at `[NOTICE]` (`…; macOS <installed> already meets it`), skips fallback evaluation, logs `DDM Emergency Fallback not evaluated: macOS <installed> already meets DDM-enforced macOS <version> (DDM status=conflict)` when a fallback plist exists, and ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; the different update softwareupdated offers (macOS <offered>) is not enforced by DDM (status=conflict)`. This outcome was previously logged only when no fallback was configured.
+    - Resolver status stays `conflict`, so the `DDM update check:` line and both Pending-OS Extension Attributes are unchanged. A `conflict` between two different declarations, and `missing`, `noMatch`, and `invalidVersion`, still evaluate fallback.
+    - No changes to preference keys, defaults, or scheduling.
+- Improved: `Resources/diagnoseReminderState.zsh` (`1.6.5`) lists the macOS updates `softwareupdated` offered (`PrimaryDescriptor: … SU:` install.log lines), grouped by descriptor, version, and build with first seen, last seen, and count. A `conflict` from `Available descriptor <offered> disagrees with DDM declaration <version>` previously had no matching evidence in the fact sheet. Checklist updated to `reminderDialog.zsh` `5.3.0b6`.
+
 ### Version 5.3.0b5 (27-Oct-2026)
 - Fixed: after a Mac installed its DDM-enforced update, `softwareupdated` can log `No updates found for DDM to enforce` while install.log still shows the met declaration. The resolver rates this `conflict`. The run logged a `[WARNING]` and, when `dor-fallback-declaration.plist` existed, evaluated the DDM Emergency Fallback for a Mac that was already compliant. A fallback targeting a newer macOS could then show a reminder for a version DDM does not enforce.
     - When the conflict is only `Declaration persisted after 'No updates found for DDM to enforce'` and the installed macOS meets that declaration, the resolver logs at `[NOTICE]` (`…; macOS <installed> already meets it`) instead of `[WARNING]`.

@@ -132,7 +132,7 @@ Normal DDM resolution always runs first. When the root-owned `/var/db/softwareup
 
 - `resolved`: confirmed DDM wins and persisted fallback stays inactive.
 - `missing`, `conflict`, `noMatch`, or `invalidVersion`: runtime may select a valid emergency fallback.
-- Exception (`5.3.0b5` and later): a `conflict` caused only by a leftover declaration the Mac already meets (`No updates found for DDM to enforce` logged after it) skips fallback and ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; softwareupdated has nothing left to enforce`.
+- Exception (`5.3.0b5` and later): a `conflict` caused only by a leftover declaration the Mac already meets (`No updates found for DDM to enforce` logged after it) skips fallback and ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; softwareupdated has nothing left to enforce`. Starting with `5.3.0b6`, the same applies when `softwareupdated` offers a different macOS (`Available descriptor <offered> disagrees with DDM declaration <version>`) and the Mac already meets the declaration; that run ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; the different update softwareupdated offers (macOS <offered>) is not enforced by DDM`.
 - Missing, corrupt, incomplete, wrong-type, or invalid fallback data preserves the original suppression result.
 - Unknown resolver states fail closed without fallback selection.
 

@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.28 | 27-Oct-2026 | `5.3.0b6`: 02 and 05 note that a `conflict` from a different offered update (`Available descriptor`), on a Mac that already meets the declaration, also skips DDM Emergency Fallback; prose only, no PNG/SVG changes |
 | 1.0.27 | 27-Oct-2026 | `5.3.0b5`: 02 and 05 note that a `conflict` from a leftover declaration the Mac already meets skips DDM Emergency Fallback; prose only, no PNG/SVG changes |
 | 1.0.26 | 26-Oct-2026 | `5.3.0b4` pre-release review: 02 notes the 60-second DarkWake retry applies to starter-launched runs only; 04 and 06 add the `dor-icon-*` cache to the files `All` / `Script` keep and `Uninstall` removes; 06 adds the `SwapOverlayAndLogo` no-overlay rule, notes the reachability wait checks the macOS icon host, and adds a `5.3.0b4` Version History row; prose only, no PNG/SVG changes |
 | 1.0.25 | 26-Oct-2026 | Documented the `5.3.0b4` Maintenance DarkWake deferral and branding-icon fallback ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172)): 02 adds the starter DarkWake exit and the runtime DarkWake check before dialog build (60-second exact retry; no mode bypasses it); 04 adds the starter DarkWake bullet; 06 documents overlay download retry, the `dor-icon-overlay-*` cache, and no-overlay fallback; re-rendered `02-runtime-decision-tree` PNG/SVG exports with `mmdc` 12.0.0, which also picks up the `5.3.0b2` post-boot changes |

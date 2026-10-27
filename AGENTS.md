@@ -144,7 +144,7 @@ Out of scope:
 
 ## Current Runtime Hotspots
 - Deadline resolution must fail safely when declaration state is missing, conflicting, invalid, or stale. Recognized unresolved states suppress reminder dialog unless a validated DDM Emergency Fallback is selected.
-- DDM Emergency Fallback is eligible for resolver statuses `missing`, `conflict`, `noMatch`, and `invalidVersion`; confirmed DDM always wins, absent or invalid fallback preserves suppression, and unknown states fail closed.
+- DDM Emergency Fallback is eligible for resolver statuses `missing`, `conflict`, `noMatch`, and `invalidVersion`; confirmed DDM always wins, absent or invalid fallback preserves suppression, and unknown states fail closed. Exception: a `conflict` from a leftover declaration (`Declaration persisted after 'No updates found for DDM to enforce'`) that the installed macOS already meets skips fallback and logs at `[NOTICE]`, not `[WARNING]`.
 - Fallback configuration stays in `dor-fallback-declaration.plist`, never managed/local preferences or `dor-state.plist`. Past fallback deadlines use their supplied timestamp and never wait for `setPastDuePaddedEnforcementDate`.
 - Post-deadline restart workflow gates on effective post-deadline epoch when safely resolved, not raw `EnforcedInstallDate` alone.
 - Quiet period starts after user interaction, not when dialog first appears.

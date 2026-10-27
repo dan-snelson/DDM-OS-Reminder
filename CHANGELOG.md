@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 5.3.0b5 (27-Oct-2026)
+- Fixed: after a Mac installed its DDM-enforced update, `softwareupdated` can log `No updates found for DDM to enforce` while install.log still shows the met declaration. The resolver rates this `conflict`. The run logged a `[WARNING]` and, when `dor-fallback-declaration.plist` existed, evaluated the DDM Emergency Fallback for a Mac that was already compliant. A fallback targeting a newer macOS could then show a reminder for a version DDM does not enforce.
+    - When the conflict is only `Declaration persisted after 'No updates found for DDM to enforce'` and the installed macOS meets that declaration, the resolver logs at `[NOTICE]` (`…; macOS <installed> already meets it`) instead of `[WARNING]`.
+    - That case now skips fallback evaluation, logs `DDM Emergency Fallback not evaluated: macOS <installed> already meets DDM-enforced macOS <version> (DDM status=conflict)` when a fallback plist exists, and ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; softwareupdated has nothing left to enforce (status=conflict)`.
+    - Resolver status stays `conflict`, so the `DDM update check:` line and both Pending-OS Extension Attributes are unchanged. Other `conflict` causes, and `missing`, `noMatch`, and `invalidVersion`, still evaluate fallback.
+    - No changes to preference keys, defaults, or scheduling.
+
 ### Version 5.3.0b4 (26-Oct-2026)
 - :new: A reminder that came due while the Mac slept could launch during a Maintenance DarkWake, before the network was ready. Both icon downloads then timed out (about 20 seconds), both icons fell back to the Finder icon, and the dialog waited on a sleeping or locked display until the user returned ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172); thanks, James Anzaldua!)
     - **DarkWake deferral:** `dor-starter.zsh` no longer launches `dor.zsh` while `pmset -g systemstate` lists `CPU` without `Graphics`. It logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation`, so the due reminder runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.

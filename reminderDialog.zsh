@@ -20,7 +20,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b4"
+scriptVersion="5.3.0b5"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -4046,7 +4046,12 @@ function resolveDDMEnforcementFromInstallLog() {
                 ddmResolverNextStep="Scope this Mac to a single DDM software-update declaration in your MDM, or configure a DDM Emergency Fallback (Parameters 5 and 6)."
                 ;;
         esac
-        warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
+        # A leftover declaration this Mac already meets is expected after an update; keep it out of [WARNING]
+        if [[ "${ddmResolverConflictSummary}" == "Declaration persisted after"* ]] && currentMacSatisfiesResolvedDeclaration; then
+            notice "${ddmResolverReason}: ${ddmResolverConflictSummary}; macOS ${installedmacOSVersion} already meets it"
+        else
+            warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
+        fi
 
         if [[ -n "${ddmResolverConflictContext}" ]]; then
             info "install.log context: $(installLogEvidence "${ddmResolverConflictContext}")"
@@ -4260,14 +4265,19 @@ installedOSvsDDMenforcedOS() {
             fi
             ;;
         missing|conflict|noMatch|invalidVersion)
+            if [[ "${normalDDMResolverStatus}" == "conflict" && "${ddmResolverConflictSummary}" == "Declaration persisted after"* ]] && currentMacSatisfiesResolvedDeclaration; then
+                # softwareupdated and the declaration agree this Mac is compliant; a fallback must not raise the target
+                if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
+                    notice "DDM Emergency Fallback not evaluated: macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString} (DDM status=${normalDDMResolverStatus})"
+                fi
+                versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
+                setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; softwareupdated has nothing left to enforce (status=${normalDDMResolverStatus})" "None; this Mac is up to date. The leftover declaration in install.log should clear after a later softwareupdate scan."
+                return
+            fi
             if ! selectMDMFallbackRequirement "${normalDDMResolverStatus}"; then
                 if [[ "${normalDDMResolverStatus}" == "missing" ]]; then
                     versionComparisonResult="No DDM update (status=missing)"
                     setNoReminderOutcome "notice" "this Mac has no DDM-enforced macOS update pending (${normalDDMResolverReason})" "${ddmResolverNextStep:-${missingDDMNextStep}}"
-                elif [[ "${ddmResolverConflictSummary}" == "Declaration persisted after"* ]] && currentMacSatisfiesResolvedDeclaration; then
-                    # Logging only: suppression is unchanged, but the admin's question is "is this Mac compliant?"
-                    versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
-                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; softwareupdated has nothing left to enforce (status=${normalDDMResolverStatus})" "None; this Mac is up to date. The leftover declaration in install.log should clear after a later softwareupdate scan."
                 elif [[ "${ddmResolverConflictSummary}" == "Available descriptor"* ]] && currentMacSatisfiesResolvedDeclaration; then
                     versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
                     setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; the different update softwareupdated offers (macOS ${${ddmResolverConflictSummary#Available descriptor }%% *}) is not enforced by DDM (status=${normalDDMResolverStatus})" "None; this Mac meets its DDM declaration. To enforce a newer macOS, update the DDM software-update declaration in your MDM."

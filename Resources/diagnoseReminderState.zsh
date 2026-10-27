@@ -32,8 +32,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.6.3"
-checklistScriptVersion="5.3.0b4"
+scriptVersion="1.6.4"
+checklistScriptVersion="5.3.0b5"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -1654,8 +1654,26 @@ else
     identityNotes+=("Multiple RDNN candidates: ${(j:, :)rdnnCandidates}")
 fi
 
-runtimeInitiatingLines="$(awk '
-    /^[^ ]+ \([^)]+\): .*\[PRE-FLIGHT\].*Initiating/ { previous=last; last=NR }
+# A shared ScriptLog can hold other scripts' runs in the same "<name> (<version>): … Initiating" format
+runtimeScriptName="$(awk '
+    /^[^ ]+ \([^)]+\): [0-9-]+ [0-9:]+ - \[/ && (/ DDM update check: / || / Normal DDM resolver result: / || /Reading preference overrides from .*\.dorm/) { name=$1 }
+    END { print name }
+' "${clientLogPath}")"
+if [[ -z "${runtimeScriptName}" ]] && grep -q -E '^dorm \([^)]+\): .*\[PRE-FLIGHT\].*Initiating' "${clientLogPath}"; then
+    runtimeScriptName="dorm"
+fi
+if [[ -n "${runtimeScriptName}" ]]; then
+    otherScriptNames="$(awk -v runtimeName="${runtimeScriptName}" '
+        /^[^ ]+ +\([^)]+\): [0-9-]+ [0-9:]+ - \[/ && $1 != runtimeName && $1 != "dor" && !seen[$1]++ { names = names (names == "" ? "" : ", ") $1 }
+        END { print names }
+    ' "${clientLogPath}")"
+    if [[ -n "${otherScriptNames}" ]]; then
+        identityNotes+=("Client log also has lines from other scripts sharing ScriptLog (${otherScriptNames}); they are excluded from run detection.")
+    fi
+fi
+
+runtimeInitiatingLines="$(awk -v runtimeName="${runtimeScriptName}" '
+    /^[^ ]+ \([^)]+\): .*\[PRE-FLIGHT\].*Initiating/ && (runtimeName == "" || $1 == runtimeName) { previous=last; last=NR }
     END { printf "%s %s\n", previous+0, last+0 }
 ' "${clientLogPath}")"
 previousRuntimeInitiating="${runtimeInitiatingLines%% *}"
@@ -1697,6 +1715,7 @@ clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[
 
 for logLine in "${latestRunLines[@]}"; do
     if [[ "${logLine}" =~ ${clientLogLineRegex} ]]; then
+        [[ -n "${runtimeScriptName}" && "${match[1]}" != "${runtimeScriptName}" && "${match[1]}" != "dor" ]] && continue
         logLevel="${match[4]}"
         logMessage="${match[5]}"
         if [[ "${logMessage}" == *"Initiating"* ]]; then
@@ -1734,7 +1753,7 @@ for logLine in "${latestRunLines[@]}"; do
     fi
 done
 
-lastQuietPeriodReturnCodeRecord="$(grep -n -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${clientLogPath}" | tail -1)"
+lastQuietPeriodReturnCodeRecord="$(grep -n -E "^${runtimeScriptName:-[^ ]+} \\([^)]+\\): .*\\[INFO\\].*Return Code: (0|2|3|4|10)" "${clientLogPath}" | tail -1)"
 if [[ -n "${lastQuietPeriodReturnCodeRecord}" ]]; then
     quietPeriodReturnCodeLineNumber="${lastQuietPeriodReturnCodeRecord%%:*}"
     quietPeriodReturnCodeLine="${lastQuietPeriodReturnCodeRecord#*:}"
@@ -1761,7 +1780,7 @@ deploymentScriptVersion="$(awk '
 typeset -a allRunHistoryRows=()
 while IFS= read -r logLine; do
     [[ -n "${logLine}" ]] && allRunHistoryRows+=("${logLine}")
-done < <(awk '
+done < <(awk -v runtimeName="${runtimeScriptName}" '
     function outcome() {
         if (dialog) return (rc != "" ? "dialog shown; " rc : "dialog shown; no Return Code logged")
         if (fatal != "") return "fatal: " fatal
@@ -1775,6 +1794,7 @@ done < <(awk '
         if (started) printf "%s\t%s\t%s\t%s\n", start, script, status, outcome()
     }
     /^[^ ]+ \([^)]+\): [0-9-]+ [0-9:]+ - \[/ {
+        if (runtimeName != "" && $1 != runtimeName) next
         if ($0 ~ /\[PRE-FLIGHT\].*Initiating/) {
             flush()
             started=1; start=$3 " " $4; script=$1 " " $2; sub(/:$/, "", script)

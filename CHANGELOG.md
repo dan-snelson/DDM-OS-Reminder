@@ -2,6 +2,12 @@
 
 ## Changelog
 
+### Version 5.3.0b7 (28-Oct-2026)
+- Fixed: when swiftDialog exited with code `9`, the runtime logged `swiftDialog exited with code 9; confirm your .plist or .mobileconfig is installed:` and the expected preference paths. Code `9` does not mean missing preferences: `dialogcli` relays the signal number when `Dialog` is killed, so `9` is `SIGKILL`, usually from a code-signature or endpoint-security block. Admins with valid preferences were sent in the wrong direction.
+    - The `[WARNING]` now reads `swiftDialog exited with code 9; Dialog was killed (SIGKILL) before <user> could respond, usually by a code-signature or endpoint-security block. Next step: …`, naming a `codesign --verify` check on `Dialog.app` and security or allowlisting tools. The `Expected managedPreferencesPlist` / `Expected localPreferencesPlist` `[INFO]` lines are removed from this path.
+    - Exit handling is unchanged: the run still ends with code `9`, and the reminder is not marked as a user interaction.
+    - No changes to preference keys, defaults, or scheduling.
+
 ### Version 5.3.0b6 (27-Oct-2026)
 - Fixed: `5.3.0b5` skipped the DDM Emergency Fallback only for a leftover declaration. A Mac that already met its DDM declaration while `softwareupdated` offered a newer macOS (`Available descriptor <offered> disagrees with DDM declaration <version>`), for example macOS 27.0.1 with a 27.0.1 declaration while 27.2 is available, still logged a `[WARNING]` and evaluated the fallback. A fallback targeting a newer macOS could then show a reminder for a version DDM does not enforce.
     - That case now logs at `[NOTICE]` (`…; macOS <installed> already meets it`), skips fallback evaluation, logs `DDM Emergency Fallback not evaluated: macOS <installed> already meets DDM-enforced macOS <version> (DDM status=conflict)` when a fallback plist exists, and ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; the different update softwareupdated offers (macOS <offered>) is not enforced by DDM (status=conflict)`. This outcome was previously logged only when no fallback was configured.

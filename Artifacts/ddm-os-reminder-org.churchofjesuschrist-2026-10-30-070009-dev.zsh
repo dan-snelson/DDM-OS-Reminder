@@ -2061,6 +2061,8 @@ function completePreDeadlineThresholdReminderDelivery() {
     markPreDeadlineThresholdDelivered "${deliveredThresholdMinutes}"
     if resolveDuePreDeadlineThresholdReminder; then
         setNextReminderScheduleImmediate "Scheduled after pre-deadline threshold dialog remained open: ${preDeadlineThresholdMinutes}-minute pre-deadline threshold already due"
+    elif isAggressiveModeActive; then
+        setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after late ${deliveredThresholdMinutes}-minute pre-deadline threshold acknowledgment"
     else
         setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after ${deliveredThresholdMinutes}-minute pre-deadline threshold reminder"
     fi
@@ -5903,6 +5905,11 @@ function displayReminderDialog() {
 
     info "Return Code: ${returncode}"
 
+    # A dialog left open past the aggressive-mode start must not schedule from stale run-start state
+    if ! isAggressiveModeActive && ! isPastDeadlineForceMode; then
+        evaluateAggressiveModeState
+    fi
+
     # Aggressive mode keeps exact redisplay scheduling until compliance, including
     # the Open Software Update path. Quiet-period exact reschedules remain limited
     # to dismissal-style return codes in non-aggressive update flows.
@@ -5928,6 +5935,11 @@ function displayReminderDialog() {
         *)
             if isPreDeadlineThresholdReminderMode; then
                 notice "Pre-deadline threshold ${preDeadlineThresholdMinutes}-minute reminder not marked delivered; return code ${returncode} is not a user interaction."
+                # Retry only before the deadline; code 9 (SIGKILL) is a persistent block, not a transient failure
+                local thresholdDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+                if [[ "${returncode}" != "9" && "${thresholdDeadlineEpoch}" =~ ^[0-9]+$ ]] && (( $(date +%s) + 60 < thresholdDeadlineEpoch )); then
+                    setNextReminderScheduleInSeconds "60" "Pre-deadline threshold ${preDeadlineThresholdMinutes}-minute reminder retry after return code ${returncode}"
+                fi
             fi
             ;;
     esac
@@ -7011,9 +7023,18 @@ function dialogInstall() {
     # Install the package if Team ID validates
     if [[ "$expectedDialogTeamID" == "$teamID" ]]; then
 
-        installer -pkg "$tempDirectory/Dialog.pkg" -target /
+        if ! installer -pkg "$tempDirectory/Dialog.pkg" -target /; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog installer failed for ${dialogURL}"
+        fi
         sleep 2
+
+        # A failed upgrade can leave the previous binary in place; confirm the minimum version landed
         dialogVersion=$( "${dialogBinary}" --version 2>/dev/null )
+        if [[ ! -x "${dialogBinary}" || -z "${dialogVersion}" ]] || ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog version '${dialogVersion:-unknown}' after install; swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required."
+        fi
         preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
 
     else

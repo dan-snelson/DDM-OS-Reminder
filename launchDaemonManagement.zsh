@@ -1189,9 +1189,18 @@ function dialogInstall() {
     # Install the package if Team ID validates
     if [[ "$expectedDialogTeamID" == "$teamID" ]]; then
 
-        installer -pkg "$tempDirectory/Dialog.pkg" -target /
+        if ! installer -pkg "$tempDirectory/Dialog.pkg" -target /; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog installer failed for ${dialogURL}"
+        fi
         sleep 2
+
+        # A failed upgrade can leave the previous binary in place; confirm the minimum version landed
         dialogVersion=$( "${dialogBinary}" --version 2>/dev/null )
+        if [[ ! -x "${dialogBinary}" || -z "${dialogVersion}" ]] || ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog version '${dialogVersion:-unknown}' after install; swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required."
+        fi
         preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
 
     else

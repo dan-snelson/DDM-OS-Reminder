@@ -237,13 +237,13 @@ rejectText "plain-language boilerplate outcome" "| quit: Ticking away" "${plainL
 requireSkeletonHeadings "plain-language" "${plainLanguage}"
 
 cat > "${workDirectory}/shared-script-log.log" <<'EOF'
-dorm (5.3.0b5): 2026-10-27 12:00:16 - [PRE-FLIGHT]      Initiating …
-dorm (5.3.0b5): 2026-10-27 12:00:17 - [NOTICE]          Currently installed macOS 27.0.1 (27A400)
-dorm (5.3.0b5): 2026-10-27 12:00:18 - [NOTICE]          Conflicting DDM state in install.log: Declaration persisted after 'No updates found for DDM to enforce'; macOS 27.0.1 already meets it
-dorm (5.3.0b5): 2026-10-27 12:00:18 - [NOTICE]          DDM update check: found DDM-enforced macOS 27.0.1, declared deadline 2026-10-13T18:00:00 (status=conflict; source=defaultApplicableDeclaration; reason=Conflicting DDM state in install.log)
-dorm (5.3.0b5): 2026-10-27 12:00:18 - [NOTICE]          DDM Emergency Fallback not evaluated: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1 (DDM status=conflict)
-dorm (5.3.0b5): 2026-10-27 12:00:18 - [NOTICE]          No reminder shown: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1; softwareupdated has nothing left to enforce (status=conflict)
-dorm (5.3.0b5): 2026-10-27 12:00:18 - [QUIT]            Exiting …
+dorm (5.3.0): 2026-10-27 12:00:16 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0): 2026-10-27 12:00:17 - [NOTICE]          Currently installed macOS 27.0.1 (27A400)
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          Conflicting DDM state in install.log: Declaration persisted after 'No updates found for DDM to enforce'; macOS 27.0.1 already meets it
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          DDM update check: found DDM-enforced macOS 27.0.1, declared deadline 2026-10-13T18:00:00 (status=conflict; source=defaultApplicableDeclaration; reason=Conflicting DDM state in install.log)
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          DDM Emergency Fallback not evaluated: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1 (DDM status=conflict)
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          No reminder shown: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1; softwareupdated has nothing left to enforce (status=conflict)
+dorm (5.3.0): 2026-10-27 12:00:18 - [QUIT]            Exiting …
 jphc (0.0.10): 2026-10-27 12:35:16 - [PRE-FLIGHT]      Initiating …
 jphc (0.0.10): 2026-10-27 12:35:17 - [INFO]            Return Code: 0
 jphc (0.0.10): 2026-10-27 12:35:18 - [QUIT]            Exiting …
@@ -263,12 +263,12 @@ sharedScriptLog="$(runHelper \
     --install-log "${workDirectory}/descriptor-install.log" \
     --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
 requireText "shared log runtime script name" "| Log script name | dorm |" "${sharedScriptLog}"
-requireText "shared log runtime version" "| Log scriptVersion | 5.3.0b5 |" "${sharedScriptLog}"
+requireText "shared log runtime version" "| Log scriptVersion | 5.3.0 |" "${sharedScriptLog}"
 requireText "shared log installed version" "| Installed macOS version | 27.0.1 |" "${sharedScriptLog}"
 requireText "shared log other scripts note" "Client log also has lines from other scripts sharing ScriptLog (jphc, RCPE); they are excluded from run detection." "${sharedScriptLog}"
 requireText "shared log fallback skipped" "DDM Emergency Fallback not evaluated: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1" "${sharedScriptLog}"
-requireText "shared log run row" '| 2026-10-27 12:00:16 | `dorm (5.3.0b5)` | `conflict` | No reminder shown: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1' "${sharedScriptLog}"
-requireText "shared log last run" '- Last run: 2026-10-27 12:00:16 · `dorm (5.3.0b5)` · resolver `conflict`' "${sharedScriptLog}"
+requireText "shared log run row" '| 2026-10-27 12:00:16 | `dorm (5.3.0)` | `conflict` | No reminder shown: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1' "${sharedScriptLog}"
+requireText "shared log last run" '- Last run: 2026-10-27 12:00:16 · `dorm (5.3.0)` · resolver `conflict`' "${sharedScriptLog}"
 rejectText "shared log foreign script name" "| Log script name | RCPE |" "${sharedScriptLog}"
 rejectText "shared log foreign run row" '`RCPE (0.0.4)`' "${sharedScriptLog}"
 rejectText "shared log foreign return code" "jphc (0.0.10): 2026-10-27 12:35:17 - [INFO]            Return Code: 0" "${sharedScriptLog}"
@@ -465,14 +465,14 @@ requireText "battery decision line" "Battery: power source Battery Power; intern
 requireText "disk decision line" "Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB" "${battery}"
 
 cat > "${workDirectory}/post-boot.log" <<'EOF'
-dorm (5.3.0b4): 2026-10-25 16:00:05 - [PRE-FLIGHT]      Initiating …
-dorm (5.3.0b4): 2026-10-25 16:00:06 - [QUIT]            Exiting …
-dor (5.3.0b4): 2026-10-26 08:05:00 - [NOTICE]          Starter launch after boot; re-evaluating deadline (NextScheduledReminder: 2026-10-26:12:00:00).
-dorm (5.3.0b4): 2026-10-26 08:05:01 - [PRE-FLIGHT]      Initiating …
-dorm (5.3.0b4): 2026-10-26 08:05:02 - [NOTICE]          Post-boot re-evaluation: reminder due now; continuing normal reminder flow.
-dorm (5.3.0b4): 2026-10-26 08:05:03 - [NOTICE]          No reminder shown: the Mac is in a Maintenance DarkWake (system capabilities: CPU Network Disk)
-dorm (5.3.0b4): 2026-10-26 08:05:03 - [QUIT]            Exiting …
-dor (5.3.0b4): 2026-10-26 08:06:00 - [NOTICE]          DarkWake detected (system capabilities: CPU Network Disk); deferring reminder launch to the next heartbeat.
+dorm (5.3.0): 2026-10-25 16:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0): 2026-10-25 16:00:06 - [QUIT]            Exiting …
+dor (5.3.0): 2026-10-26 08:05:00 - [NOTICE]          Starter launch after boot; re-evaluating deadline (NextScheduledReminder: 2026-10-26:12:00:00).
+dorm (5.3.0): 2026-10-26 08:05:01 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0): 2026-10-26 08:05:02 - [NOTICE]          Post-boot re-evaluation: reminder due now; continuing normal reminder flow.
+dorm (5.3.0): 2026-10-26 08:05:03 - [NOTICE]          No reminder shown: the Mac is in a Maintenance DarkWake (system capabilities: CPU Network Disk)
+dorm (5.3.0): 2026-10-26 08:05:03 - [QUIT]            Exiting …
+dor (5.3.0): 2026-10-26 08:06:00 - [NOTICE]          DarkWake detected (system capabilities: CPU Network Disk); deferring reminder launch to the next heartbeat.
 EOF
 postBoot="$(runHelper \
     --client-log "${workDirectory}/post-boot.log" \

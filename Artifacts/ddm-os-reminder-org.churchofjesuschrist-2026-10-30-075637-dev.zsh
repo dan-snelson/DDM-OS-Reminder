@@ -2142,6 +2142,8 @@ function handlePreDeadlineThresholdDialogAutoRefresh() {
         completePreDeadlineThresholdReminderDelivery
     elif resolveDuePreDeadlineThresholdReminder; then
         setNextReminderScheduleImmediate "Scheduled after open reminder dialog crossed ${preDeadlineThresholdMinutes}-minute pre-deadline threshold"
+    elif isAggressiveModeActive; then
+        setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after dialog auto-refresh for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold"
     else
         warning "Dialog auto-refresh requested for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold, but no threshold is currently due; falling back to pending threshold or baseline schedule."
         setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after threshold dialog auto-refresh fallback"
@@ -5201,6 +5203,15 @@ function isSystemInDarkWake() {
 
 }
 
+# Force redisplays and timer restarts happen inside one run, after the pre-build DarkWake check
+function deferForceRestartForDarkWake() {
+    local forceRestartStep="${1:-redisplay}"
+
+    setNextReminderScheduleInSeconds "60" "DarkWake deferral of Force restart dialog; retry on next heartbeat"
+    notice "Force restart ${forceRestartStep} deferred: the Mac is in a Maintenance DarkWake (system capabilities: ${systemCapabilities}); no restart requested."
+    quitScript "0"
+}
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -5897,6 +5908,11 @@ function displayReminderDialog() {
     fi
     rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
 
+    # A dialog left open past the aggressive-mode start must not schedule from stale run-start state
+    if ! isAggressiveModeActive && ! isPastDeadlineForceMode; then
+        evaluateAggressiveModeState
+    fi
+
     if [[ "${dialogAutoRefreshTriggered}" == "YES" ]]; then
         notice "swiftDialog was closed automatically because the ${dialogAutoRefreshThresholdMinutes:-next}-minute pre-deadline threshold became due."
         handlePreDeadlineThresholdDialogAutoRefresh "${dialogAutoRefreshThresholdMinutes}"
@@ -5904,11 +5920,6 @@ function displayReminderDialog() {
     fi
 
     info "Return Code: ${returncode}"
-
-    # A dialog left open past the aggressive-mode start must not schedule from stale run-start state
-    if ! isAggressiveModeActive && ! isPastDeadlineForceMode; then
-        evaluateAggressiveModeState
-    fi
 
     # Aggressive mode keeps exact redisplay scheduling until compliance, including
     # the Open Software Update path. Quiet-period exact reschedules remain limited
@@ -5954,6 +5965,7 @@ function displayReminderDialog() {
                     fi
                     ;;
                 4)
+                    isSystemInDarkWake && deferForceRestartForDarkWake "timer expiry"
                     notice "User allowed timer to expire; forcing restart."
                     if executeRestartAction "Restart"; then
                         quitScript "0"
@@ -5965,6 +5977,7 @@ function displayReminderDialog() {
             esac
 
             sleep "${pastDeadlineForceRedisplayDelaySeconds}"
+            isSystemInDarkWake && deferForceRestartForDarkWake "redisplay"
             "${dialogBinary}" "${dialogArgs[@]}"
             returncode=$?
             info "Return Code: ${returncode}"

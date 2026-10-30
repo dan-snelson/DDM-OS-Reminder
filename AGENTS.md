@@ -41,6 +41,9 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 ## Skills
 Invoke relevant skill name during planning.
 
+### Pre-release Review Skill
+Use [`pre-release-review`](Resources/skills/pre-release-review/SKILL.md) for an independent, read-only release-readiness audit. Supply the target version; branches default to `development` and `main`. Keep the detailed review workflow in that canonical skill.
+
 ### Reminder Runtime Change Skill
 1. Start from nearest owning function or decision path in `reminderDialog.zsh`.
 2. Preserve DDM trust rules, suppression semantics, and structured logging.
@@ -219,6 +222,8 @@ These rules override ad-hoc prompting. Match established shipped-script style un
 
 ## Release Checklist
 Apply only for release or packaging prep.
+
+For a pre-release review, follow [`Resources/skills/pre-release-review/SKILL.md`](Resources/skills/pre-release-review/SKILL.md). The audit does not authorize packaging or artifact regeneration.
 
 1. Keep `scriptVersion` aligned across shipped scripts when release-affecting changes touch versioned artifacts.
 2. Confirm `README.md` and `CHANGELOG.md` match current behavior, defaults, and deployment workflow.

@@ -48,6 +48,14 @@ checks as evidence to verify.
   versioned helpers, unrelated historical versions, and Git history.
 - Identify linked fixture input and expected-output changes together. Report
   corrections needed; do not make replacements during the audit.
+- Base relabeling advice on the previous stable tag (`git grep` and `git show`
+  at `v<previous>`). At 5.2.0, the `Diagrams/06-configuration-reference.md`
+  Version History merged target beta rows into one release row dated with the
+  CHANGELOG release date. `Diagrams/README.md` rows kept their own dates and
+  changed only the label. Beta rows from older releases stay.
+- If a fixture client log moves from a beta to the release version, it can match
+  `checklistScriptVersion` in `Resources/diagnoseReminderState.zsh`, which drops
+  the version-mismatch identity note. Confirm that no assertion depends on it.
 
 ## Review repository contracts
 
@@ -68,6 +76,20 @@ boundary, support suppression, failed installations, and installed versions belo
 the required minimum. Do not assume a scheduled time remains valid after a dialog
 or other long-running operation returns.
 
+- Mode state evaluated at run start (`aggressiveModeActive`, threshold mode,
+  `pastDeadlineRestartEffective`) can be hours stale when a dialog returns. When
+  one post-return path is wrong, check every path that reads the same state:
+  quiet period, `Open Software Update`, threshold completion, and auto-refresh
+  fallback.
+- Every proposed retry needs bounds. It must not cross the effective deadline,
+  because a post-deadline retry becomes a new reminder. It must not spin on
+  persistent failures such as return code `9` (`SIGKILL`). Thresholds accept
+  1–999 minutes, so an unbounded per-minute retry can run for hours.
+- Before proposing a fail-closed fix, find failures that already stop earlier.
+  For example, an empty swiftDialog download URL is already fatal. Also find
+  where the check runs relative to `resetConfiguration`. Then state the real
+  behavior change.
+
 ## Validate safely
 
 - Run `zsh -n` on every tracked Zsh script. Check extracted embedded runtime and
@@ -76,9 +98,20 @@ or other long-running operation returns.
   mobileconfig files. Check the branch diff with `git diff --check`.
 - Compare generated content with its source using documented assembly
   transformations. Do not regenerate tracked `Artifacts/` during this review.
+- In agent shells, `zsh -n reminderDialog.zsh` and `zsh reminderDialog.zsh demo`
+  can be killed (exit `137`) with no output. Use `/bin/zsh -n < <file>`. The demo
+  then needs the maintainer's GUI session.
 - Use isolated temporary fixtures and mocked commands to reproduce material
   failures. Exercise actual owning functions when practical, and identify mocked
   assumptions. Keep test behavior outside default production paths.
+- For runtime reproductions, use `awk` to copy the owning functions, every helper
+  they call, and any inline post-return block into a scratch file. Source it
+  under `zsh -f`, and stub `date +%s`, scheduler state reads and writes, and
+  logging.
+- A missing helper (for example, `trimSurroundingWhitespace`) fails silently
+  when stderr is discarded, so check the probe setup first. Run the same probes
+  against the unfixed code (`git show <ref>:reminderDialog.zsh`) to show that
+  they reproduce the defect.
 - Inspect side effects before demo or build validation. Run only within existing
   authorization; avoid live deployment, installation, restart, or production-state
   changes. Report any required validation that could not be run.
@@ -98,6 +131,13 @@ branch is ready for the requested pull request and identify blockers. If fixes a
 needed, provide a concrete correction and validation plan; the audit does not
 authorize implementing it. If no actionable findings remain, say so without
 implying unrun checks passed.
+
+A correction plan names every document to update: `CHANGELOG.md`, the `README.md`
+highlights, affected `Diagrams/` pages and the `Diagrams/README.md` version row,
+and the `AGENTS.md` hotspots. It says whether Mermaid source changes need
+re-rendered exports. It also warns that runtime fixes make tracked `Artifacts/`
+stale, and that reassembly needs maintainer approval: new timestamped files
+replace the old ones.
 
 Prioritize correctness and release risk. Omit cosmetic findings, speculative
 defects, and unrelated refactoring. Syntax success alone does not establish

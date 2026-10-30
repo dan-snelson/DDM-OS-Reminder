@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.31 | 30-Oct-2026 | `5.3.0` pre-release fixes: 02 notes that Force mode re-checks Maintenance DarkWake before each same-run redisplay and before a timer-driven restart (60-second retry, no restart); prose only, no PNG/SVG changes |
 | 1.0.30 | 30-Oct-2026 | `5.3.0` pre-release fixes: 02, 03, and 06 note that a threshold reminder without a user-interaction return code retries 60 seconds later when that retry still comes before the effective deadline (never for return code `9`), and that a reminder answered after the aggressive-mode start uses the aggressive cadence from that answer; 06 relabels its `5.3.0` Version History row; prose only, no PNG/SVG changes |
 | 1.0.29 | 29-Oct-2026 | `5.3.0` release: 02, 04, and 06 cite `5.3.0` instead of beta versions; prose only, no PNG/SVG changes |
 | 1.0.28 | 27-Oct-2026 | `5.3.0`: 02 and 05 note that a `conflict` from a different offered update (`Available descriptor`), on a Mac that already meets the declaration, also skips DDM Emergency Fallback; prose only, no PNG/SVG changes |

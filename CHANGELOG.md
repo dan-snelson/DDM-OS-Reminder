@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 5.3.0 (29-Oct-2026)
+### Version 5.3.0 (30-Oct-2026)
 - :new: A reminder that came due while the Mac slept could launch during a Maintenance DarkWake, before the network was ready. Both icon downloads then timed out (about 20 seconds), both icons fell back to the Finder icon, and the dialog waited on a sleeping or locked display until the user returned ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172); thanks, James Anzaldua!)
     - **DarkWake deferral:** `dor-starter.zsh` no longer launches `dor.zsh` while `pmset -g systemstate` lists `CPU` without `Graphics`. It logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation`, so the due reminder runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.
     - `dor.zsh` repeats the check just before it builds the dialog (after any `MeetingDelay` wait). A DarkWake run logs `[NOTICE] No reminder shown: the Mac is in a Maintenance DarkWake (system capabilities: …)` and, for starter-launched runs, schedules an exact `NextScheduledReminder` 60 seconds later instead of the next `DailyReminderTimes` slot. No mode bypasses this check, so pre-deadline threshold, aggressive, and Force reminders appear at the first full wake; a Force-mode timer can no longer count down to a restart on a display nobody can see. Demo mode is unchanged.

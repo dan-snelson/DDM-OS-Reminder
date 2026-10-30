@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b6"
+scriptVersion="5.3.0b7"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -682,7 +682,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.3.0b6"
+scriptVersion="5.3.0b7"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -6037,10 +6037,8 @@ function displayReminderDialog() {
             quitScript "0"
             ;;
 
-        9)  ## Process exit code 9 scenario here
-            warning "swiftDialog exited with code 9; confirm your .plist or .mobileconfig is installed:"
-            info "Expected managedPreferencesPlist: ${managedPreferencesPlist}"
-            info "Expected localPreferencesPlist: ${localPreferencesPlist}"
+        9)  ## dialogcli relays a signal number when Dialog is killed; 9 is SIGKILL, not a preference problem
+            warning "swiftDialog exited with code 9; Dialog was killed (SIGKILL) before ${loggedInUser} could respond, usually by a code-signature or endpoint-security block. Next step: run 'codesign --verify --deep --strict \"/Library/Application Support/Dialog/Dialog.app\"' and check security or allowlisting tools for blocked swiftDialog launches."
             quitScript "${returncode}"
             ;;
 

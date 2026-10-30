@@ -43,6 +43,17 @@ function runHelper() {
     zsh "${helperPath}" "$@"
 }
 
+function requireExitStatus() {
+    local label="${1}"
+    local expectedStatus="${2}"
+    local actualStatus=0
+
+    shift 2
+    zsh "${helperPath}" "$@" >/dev/null 2>&1
+    actualStatus=$?
+    (( actualStatus == expectedStatus )) || failCheck "${label}: exit ${actualStatus}, expected ${expectedStatus}"
+}
+
 function requireSkeletonHeadings() {
     local label="${1}"
     local haystack="${2}"
@@ -109,6 +120,7 @@ cat > "${workDirectory}/offsets.log" <<'EOF'
 EOF
 cat > "${workDirectory}/runtime.log" <<'EOF'
 dorm (5.1.0): 2026-10-12 10:00:00 - [INFO]            Return Code: 2
+dorm (5.1.0): 2026-10-12 10:00:01 - [INFO]            Serial Number: ZZSERIAL123
 dor (5.1.0): 2026-10-12 10:15:19 - [NOTICE]          Heartbeat launch triggered '/Library/Management/us.snelson/dor.zsh'.
 dorm (5.1.0): 2026-10-12 10:15:20 - [PRE-FLIGHT]      Initiating …
 dorm (5.1.0): 2026-10-12 10:15:21 - [NOTICE]          Display Reminder Dialog to zzuniqueuser with additional options: --ontop
@@ -131,6 +143,9 @@ rejectText "dialog username" "zzuniqueuser" "${offsetAndDeploy}"
 requireText "next schedule" "Scheduled next daemon reminder for 2026-10-12:16:00:00" "${offsetAndDeploy}"
 requireText "deployment window" "A deployment Initiating line follows the latest runtime run." "${offsetAndDeploy}"
 requireText "resolver kept" "status=resolved" "${offsetAndDeploy}"
+requireText "no-updates heading quotes marker" '### `No updates found for DDM to enforce` lines' "${offsetAndDeploy}"
+requireText "no-updates bullet quotes marker" '- `No updates found for DDM to enforce` lines: 1 line(s); latest:' "${offsetAndDeploy}"
+requireText "recovery bullet quotes markers" '- Recovery markers (`Found product with requested PMV` or `Armed DDM activity scheduler` lines): none' "${offsetAndDeploy}"
 requireText "earlier return code" "Return Code: 2" "${offsetAndDeploy}"
 requireText "earlier return code note" "Last quiet-period Return Code is from an earlier run." "${offsetAndDeploy}"
 requireText "heartbeat line" "Heartbeat launch triggered" "${offsetAndDeploy}"
@@ -139,6 +154,43 @@ requireText "skeleton files table" "| File | Status | Note |" "${offsetAndDeploy
 requireText "skeleton state missing" '| `dor-state.plist` | not in upload |' "${offsetAndDeploy}"
 requireText "skeleton run row" '| 2026-10-12 10:15:20 | `dorm (5.1.0)` | `resolved` | dialog shown; no Return Code logged |' "${offsetAndDeploy}"
 requireText "skeleton deployment version" '| Deployment version | `5.1.0` (deployment output, not a runtime run) |' "${offsetAndDeploy}"
+rejectText "serial number" "ZZSERIAL123" "${offsetAndDeploy}"
+rejectText "redacted computer name row" "| Computer name |" "${offsetAndDeploy}"
+requireText "redacted read-only" "- Read-only: no files were written" "${offsetAndDeploy}"
+
+unredacted="$(runHelper \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --no-redaction 2>/dev/null)"
+requireSkeletonHeadings "unredacted" "${unredacted}"
+rejectText "unredacted placeholder" "<redacted" "${unredacted}"
+requireText "unredacted install.log computer name" "SecretHost softwareupdated" "${unredacted}"
+requireText "unredacted dialog line" "Display Reminder Dialog to zzuniqueuser" "${unredacted}"
+requireText "unredacted computer name row" "| Computer name | SecretHost (install.log) |" "${unredacted}"
+requireText "unredacted serial number row" "| Serial number | ZZSERIAL123 (client log) |" "${unredacted}"
+requireText "unredacted report filename" "-SecretHost-unredacted-" "${unredacted}"
+requireText "unredacted section 9" "This report is not redacted (\`--no-redaction\`)" "${unredacted}"
+requireText "unredacted without --rdnn writes nothing" "- Read-only: no files were written" "${unredacted}"
+requireExitStatus "unredacted without --rdnn" 0 \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --no-redaction
+requireExitStatus "unredacted save directory absent" 73 \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --rdnn zz.fixture.invalid \
+    --no-redaction
+unsaved="$(runHelper \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --rdnn zz.fixture.invalid \
+    --no-redaction 2>/dev/null)"
+requireSkeletonHeadings "unsaved" "${unsaved}"
+requireText "unsaved writes nothing" "- Read-only: no files were written" "${unsaved}"
 
 cat > "${workDirectory}/plain-language.log" <<'EOF'
 dorm (5.2.0): 2026-10-16 10:31:05 - [PRE-FLIGHT]      Initiating …
@@ -166,6 +218,15 @@ plainLanguage="$(runHelper \
 requireText "plain-language missing row" '| 2026-10-16 10:31:05 | `dorm (5.2.0)` | `missing` | No reminder shown: this Mac has no DDM-enforced macOS update pending' "${plainLanguage}"
 requireText "plain-language resolved row" '| 2026-10-16 12:00:05 | `dorm (5.2.0)` | `resolved` | No reminder shown: deadline is 5 days away' "${plainLanguage}"
 requireText "plain-language recorded result" "DDM update check: found DDM-enforced macOS 15.7.2" "${plainLanguage}"
+requireText "agree table client logged" "| Logged | 2026-10-16 12:00:06 | no declaration in lookback window |" "${plainLanguage}"
+requireText "agree table client version" "| Version | 15.7.2 | n/a |" "${plainLanguage}"
+requireText "agree table client deadline" "| Declared deadline | 2026-10-21T09:00:00 | n/a |" "${plainLanguage}"
+requireText "agree table client status" '| Resolver status | `resolved` | n/a |' "${plainLanguage}"
+requireText "cause last run" '- Last run: 2026-10-16 12:00:05 · `dorm (5.2.0)` · resolver `resolved` · No reminder shown: deadline is 5 days away' "${plainLanguage}"
+requireText "cause no reminder" '- No reminder shown: `deadline is 5 days away, beyond DaysBeforeDeadlineDisplayReminder (3)' "${plainLanguage}"
+requireText "cause next step" '- Next step: `None; the next reminder appears after 28 day(s)' "${plainLanguage}"
+requireText "cause no user action" "- User action: none in the last run" "${plainLanguage}"
+requireText "cause state not in upload" '- `NextScheduledReminder`: `dor-state.plist` not in upload' "${plainLanguage}"
 requireText "plain-language installed version" "| Installed macOS version | 15.6.1 |" "${plainLanguage}"
 requireText "plain-language installed build" "| Installed macOS build | 24G84 |" "${plainLanguage}"
 requireText "plain-language user redacted" "Opening Software Update for <redacted> to install macOS 15.7.2" "${plainLanguage}"
@@ -174,6 +235,47 @@ rejectText "plain-language first name" "Zzplainfirst" "${plainLanguage}"
 requireText "plain-language next step" "Next step: None; the next reminder appears after 28 day(s)" "${plainLanguage}"
 rejectText "plain-language boilerplate outcome" "| quit: Ticking away" "${plainLanguage}"
 requireSkeletonHeadings "plain-language" "${plainLanguage}"
+
+cat > "${workDirectory}/shared-script-log.log" <<'EOF'
+dorm (5.3.0): 2026-10-27 12:00:16 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0): 2026-10-27 12:00:17 - [NOTICE]          Currently installed macOS 27.0.1 (27A400)
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          Conflicting DDM state in install.log: Declaration persisted after 'No updates found for DDM to enforce'; macOS 27.0.1 already meets it
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          DDM update check: found DDM-enforced macOS 27.0.1, declared deadline 2026-10-13T18:00:00 (status=conflict; source=defaultApplicableDeclaration; reason=Conflicting DDM state in install.log)
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          DDM Emergency Fallback not evaluated: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1 (DDM status=conflict)
+dorm (5.3.0): 2026-10-27 12:00:18 - [NOTICE]          No reminder shown: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1; softwareupdated has nothing left to enforce (status=conflict)
+dorm (5.3.0): 2026-10-27 12:00:18 - [QUIT]            Exiting …
+jphc (0.0.10): 2026-10-27 12:35:16 - [PRE-FLIGHT]      Initiating …
+jphc (0.0.10): 2026-10-27 12:35:17 - [INFO]            Return Code: 0
+jphc (0.0.10): 2026-10-27 12:35:18 - [QUIT]            Exiting …
+RCPE (0.0.4): 2026-10-27 13:14:21 - [PRE-FLIGHT]      Initiating …
+RCPE (0.0.4): 2026-10-27 13:14:26 - [QUIT]            FIXED: backup: /etc/ssl/cert.pem.bak.20261027-131424 (exit 0)
+EOF
+{
+    cat "${fixtureRoot}/conflict/install.log"
+    cat <<'EOF'
+2026-10-27 11:21:40-04 DescriptorHost softwareupdated[617]: 	majorPrimaryDescriptor: (null)
+2026-10-27 11:23:13-04 DescriptorHost softwareupdated[617]: 	majorPrimaryDescriptor: SUMacControllerDescriptor(UUID:F22178C0-D78B-5284-9361-C87780D05B87 SU:macOS 27.2 26B123 (Customer)(SU) SFR:(null) BRAIN:26B123 BRIDGEOS:NO((null)) ROSETTA:YES((null)) RECOVERYOS:YES SPLAT:(null))
+2026-10-27 11:43:13-04 DescriptorHost softwareupdated[617]: 	majorPrimaryDescriptor: SUMacControllerDescriptor(UUID:F22178C0-D78B-5284-9361-C87780D05B87 SU:macOS 27.2 26B123 (Customer)(SU) SFR:(null) BRAIN:26B123 BRIDGEOS:NO((null)) ROSETTA:YES((null)) RECOVERYOS:YES SPLAT:(null))
+EOF
+} > "${workDirectory}/descriptor-install.log"
+sharedScriptLog="$(runHelper \
+    --client-log "${workDirectory}/shared-script-log.log" \
+    --install-log "${workDirectory}/descriptor-install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
+requireText "shared log runtime script name" "| Log script name | dorm |" "${sharedScriptLog}"
+requireText "shared log runtime version" "| Log scriptVersion | 5.3.0 |" "${sharedScriptLog}"
+requireText "shared log installed version" "| Installed macOS version | 27.0.1 |" "${sharedScriptLog}"
+requireText "shared log other scripts note" "Client log also has lines from other scripts sharing ScriptLog (jphc, RCPE); they are excluded from run detection." "${sharedScriptLog}"
+requireText "shared log fallback skipped" "DDM Emergency Fallback not evaluated: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1" "${sharedScriptLog}"
+requireText "shared log run row" '| 2026-10-27 12:00:16 | `dorm (5.3.0)` | `conflict` | No reminder shown: macOS 27.0.1 already meets DDM-enforced macOS 27.0.1' "${sharedScriptLog}"
+requireText "shared log last run" '- Last run: 2026-10-27 12:00:16 · `dorm (5.3.0)` · resolver `conflict`' "${sharedScriptLog}"
+rejectText "shared log foreign script name" "| Log script name | RCPE |" "${sharedScriptLog}"
+rejectText "shared log foreign run row" '`RCPE (0.0.4)`' "${sharedScriptLog}"
+rejectText "shared log foreign return code" "jphc (0.0.10): 2026-10-27 12:35:17 - [INFO]            Return Code: 0" "${sharedScriptLog}"
+requireText "descriptor table row" "| 2026-10-27 11:23:13-04 | 2026-10-27 11:43:13-04 | 2 | major | 27.2 | 26B123 |" "${sharedScriptLog}"
+requireText "descriptor skeleton bullet" '- Offered updates (`PrimaryDescriptor: … SU:` lines): 27.2 (major, 2x, last 2026-10-27 11:43:13-04)' "${sharedScriptLog}"
+rejectText "descriptor host" "DescriptorHost" "${sharedScriptLog}"
+requireSkeletonHeadings "shared-script-log" "${sharedScriptLog}"
 
 cat > "${workDirectory}/legacy-missing.log" <<'EOF'
 dorm (5.0.0): 2026-10-15 10:31:05 - [PRE-FLIGHT]      Initiating …
@@ -196,6 +298,11 @@ for fixtureName in compliant conflict invalid-times missing; do
         --install-log "${fixtureRoot}/${fixtureName}/install.log" \
         --plist "${fixtureRoot}/${fixtureName}/managed.dorm.plist")"
     requireSkeletonHeadings "${fixtureName}" "${fixtureSheet}"
+    requireText "${fixtureName} agree table" "| Field | Client log (last \`DDM update check:\`) | \`install.log\` (latest declaration span) |" "${fixtureSheet}"
+    if [[ "${fixtureName}" == "compliant" ]]; then
+        requireText "legacy agree version" "| Version | 15.7.1 | 15.7.1 |" "${fixtureSheet}"
+        requireText "legacy agree deadline" "| Declared deadline | 2026-10-20T09:00:00 | 2026-10-20T09:00:00 |" "${fixtureSheet}"
+    fi
 done
 requireSkeletonHeadings "managed-over-local" "${managedOverLocal}"
 requireSkeletonHeadings "offset-and-deploy" "${offsetAndDeploy}"
@@ -218,6 +325,10 @@ deployOnly="$(runHelper \
 requireSkeletonHeadings "deploy-only" "${deployOnly}"
 requireText "span collapses repeats" "| 2026-10-12 10:14:01-07:00 | 2026-10-12 11:14:01-07:00 | 15.7.1 | 24G231 | 2025-10-02T14:10:00 | defaultApplicableDeclaration | not checked |" "${deployOnly}"
 requireText "span transition" "| 2026-10-14 15:48:00-07:00 | 2026-10-14 15:48:00-07:00 | 15.8.1 |" "${deployOnly}"
+requireText "candidates grouped" "| 2026-10-12 10:14:01-07:00 | 2026-10-12 11:14:01-07:00 | 2 | defaultApplicableDeclaration | 15.7.1 | 2025-10-02T14:10:00 | 24G231 |" "${deployOnly}"
+requireText "candidate single" "| 2026-10-14 15:48:00-07:00 | 2026-10-14 15:48:00-07:00 | 1 | currentApplicableDeclaration | 15.8.1 |" "${deployOnly}"
+requireText "fact sheet title" "# [DDM OS Reminder](https://snelson.us/ddm) client-state fact sheet" "${deployOnly}"
+requireText "redaction sentence" "Keep the raw client files and the helper fact sheet out of any public issue." "${deployOnly}"
 requireText "no runtime run row" "| n/a | n/a | no runtime run in client log | n/a |" "${deployOnly}"
 requireText "unprefixed lines" "Lines without a DDM OS Reminder prefix: 2; most frequent (2x): \`updateScriptLog:1: no such file or directory:" "${deployOnly}"
 requireText "deploy-only runtime version" "| Runtime version | no runtime run in client log |" "${deployOnly}"
@@ -236,7 +347,43 @@ requireText "state false" "NextScheduledReminder: FALSE" "${stateSheet}"
 requireText "threshold delivered" "PreDeadlineThresholdDelivered: 45" "${stateSheet}"
 requireText "threshold skipped" "PreDeadlineThresholdSkipped: 30" "${stateSheet}"
 requireText "starter rule" "Starter exits quietly" "${stateSheet}"
-requireText "skeleton state received" '| `dor-state.plist` | received | `NextScheduledReminder`: FALSE |' "${stateSheet}"
+requireText "skeleton state supplied" '| `dor-state.plist` | supplied | `NextScheduledReminder`: FALSE |' "${stateSheet}"
+requireText "cause state value" '- `NextScheduledReminder`: `FALSE`' "${stateSheet}"
+requireText "cause schedule line" '- Scheduling: `Scheduled next daemon reminder for 2026-10-12:16:00:00 (baseline).`' "${offsetAndDeploy}"
+
+# --rdnn reads live paths; this RDNN must never be deployed, so inferred inputs stay "not present on this Mac"
+fixtureRdnn="com.example.diagnosefixture"
+requireExitStatus "rdnn without a dot" 64 --rdnn "nodots"
+requireExitStatus "rdnn with a space" 64 --rdnn "bad rdnn"
+requireExitStatus "rdnn without a value" 64 --rdnn
+
+rdnnPrecedence="$(runHelper \
+    --rdnn "${fixtureRdnn}" \
+    --client-log "${fixtureRoot}/compliant/client.log" \
+    --install-log "${fixtureRoot}/compliant/install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --state-plist "${workDirectory}/state.plist" \
+    --aggressive-kill yes)"
+requireSkeletonHeadings "rdnn-precedence" "${rdnnPrecedence}"
+requireText "rdnn input row" "| --rdnn | ${fixtureRdnn} | supplied |" "${rdnnPrecedence}"
+requireText "rdnn identity" "| RDNN | ${fixtureRdnn} |" "${rdnnPrecedence}"
+requireText "rdnn explicit client log" "| Client log | supplied |" "${rdnnPrecedence}"
+requireText "rdnn explicit state plist" '| `dor-state.plist` | supplied | `NextScheduledReminder`: FALSE |' "${rdnnPrecedence}"
+requireText "rdnn inferred local plist absent" "| Local plist | not present on this Mac |" "${rdnnPrecedence}"
+requireText "rdnn inferred fallback absent" '| `dor-fallback-declaration.plist` | not present on this Mac |' "${rdnnPrecedence}"
+requireText "rdnn explicit aggressive kill" '| `dor-aggressive-kill` | present | aggressive mode uses the normal cadence until removed |' "${rdnnPrecedence}"
+rejectText "rdnn explicit aggressive kill not inferred" "checked on this Mac (--rdnn)" "${rdnnPrecedence}"
+requireText "rdnn ScriptLog default" "| ScriptLog | /var/log/${fixtureRdnn}.log | default |" "${rdnnPrecedence}"
+
+rdnnConflict="$(runHelper \
+    --rdnn "${fixtureRdnn}" \
+    --client-log "${fixtureRoot}/missing/client.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/missing/managed.dorm.plist")"
+requireText "rdnn conflict" "| RDNN | conflict: " "${rdnnConflict}"
+requireText "rdnn conflict supplied" "${fixtureRdnn}" "${rdnnConflict}"
+requireText "rdnn conflict log" "us.snelson" "${rdnnConflict}"
+requireText "rdnn conflict report filename" "Suggested report filename: \`ddm-os-reminder-rdnn-conflict-" "${rdnnConflict}"
 
 /usr/bin/plutil -create xml1 "${workDirectory}/fallback-good.plist"
 /usr/bin/plutil -insert SchemaVersion -integer 1 "${workDirectory}/fallback-good.plist"
@@ -316,5 +463,25 @@ rejectText "battery message known" "BatteryWarningMessage (battery.plist)" "${ba
 rejectText "battery localized known" "BatteryWarningMessageLocalized_de (battery.plist)" "${battery}"
 requireText "battery decision line" "Battery: power source Battery Power; internal battery 18%" "${battery}"
 requireText "disk decision line" "Disk space: 120.5 GB free; MinimumDiskFreeGB threshold 35 GB" "${battery}"
+
+cat > "${workDirectory}/post-boot.log" <<'EOF'
+dorm (5.3.0): 2026-10-25 16:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0): 2026-10-25 16:00:06 - [QUIT]            Exiting …
+dor (5.3.0): 2026-10-26 08:05:00 - [NOTICE]          Starter launch after boot; re-evaluating deadline (NextScheduledReminder: 2026-10-26:12:00:00).
+dorm (5.3.0): 2026-10-26 08:05:01 - [PRE-FLIGHT]      Initiating …
+dorm (5.3.0): 2026-10-26 08:05:02 - [NOTICE]          Post-boot re-evaluation: reminder due now; continuing normal reminder flow.
+dorm (5.3.0): 2026-10-26 08:05:03 - [NOTICE]          No reminder shown: the Mac is in a Maintenance DarkWake (system capabilities: CPU Network Disk)
+dorm (5.3.0): 2026-10-26 08:05:03 - [QUIT]            Exiting …
+dor (5.3.0): 2026-10-26 08:06:00 - [NOTICE]          DarkWake detected (system capabilities: CPU Network Disk); deferring reminder launch to the next heartbeat.
+EOF
+postBoot="$(runHelper \
+    --client-log "${workDirectory}/post-boot.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
+requireText "post-boot starter line" "Starter launch after boot; re-evaluating deadline" "${postBoot}"
+requireText "post-boot runtime line" "Post-boot re-evaluation: reminder due now" "${postBoot}"
+requireText "runtime DarkWake line" "the Mac is in a Maintenance DarkWake" "${postBoot}"
+requireText "starter DarkWake line" "DarkWake detected (system capabilities: CPU Network Disk)" "${postBoot}"
+requireText "post-boot script name" "| Log script name | dorm |" "${postBoot}"
 
 echo "diagnose fixture checks passed"

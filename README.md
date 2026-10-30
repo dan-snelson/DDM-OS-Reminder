@@ -1,8 +1,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag) ![GitHub pre-release (latest by date)](https://img.shields.io/github/v/release/dan-snelson/DDM-OS-Reminder?display_name=tag&include_prereleases) ![GitHub issues](https://img.shields.io/github/issues-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/dan-snelson/DDM-OS-Reminder) ![GitHub pull requests](https://img.shields.io/github/issues-pr-raw/dan-snelson/DDM-OS-Reminder) ![GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/dan-snelson/DDM-OS-Reminder) [![swiftDialog](https://img.shields.io/badge/swiftDialog-Enabled-blue)](https://swiftdialog.app) [![Semgrep Security Scan](https://img.shields.io/badge/security%20scanned%20by-Semgrep-00C7B7?style=flat&logo=semgrep&logoColor=white)](https://semgrep.dev)
 
-# DDM OS Reminder (5.2.0)
+# DDM OS Reminder (5.3.0)
 
-> Another welcome tune-up to Mac Admins' favorite "set-it-and-forget-it" macOS update reminder, featuring a **low-battery warning**, **plain-language** client-side logs (with clear next steps), and re-assembly from **hand-edited** Configuration Profiles
+> More racing stripes for Mac Admins' favorite "set-it-and-forget-it" macOS update reminder: reminders now **wait out Maintenance DarkWake**, **re-check deadlines after reboot**, and keep your branding when the network lags, thanks to **cached icons**
 
 <img src="images/after.jpg" alt="Mac Admins’ new favorite for “set-it-and-forget-it” end-user messaging of Apple’s Declarative Device Management-enforced macOS update deadlines" width="800"/>
 
@@ -34,6 +34,8 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 - **Default-on Past-Deadline Aggressive Mode**: Macs past the effective DDM deadline and still below the required macOS version switch to an urgent cadence after `AggressiveModePastDeadlineHours` (default `2`) and redisplay every `AggressiveModeFrequencyMinutes` (default `20`) until the Mac updates, restarts, or support temporarily suppresses the cadence with `/Library/Management/<rdnn>/dor-aggressive-kill` — including after the user clicks **Open Software Update**.
 - **Update Tonight awareness**: When a user schedules the required macOS update with **Update Tonight** and `install.log` confirms that `softwareupdated` queued the target version and armed the overnight scheduler, normal reminders pause until local midnight. Pre-deadline thresholds, aggressive mode, and Force mode still apply, and suppression never applies on deadline day.
 - **Final-minute deadline reminders**: Use `MinutesBeforeDeadlineReminderSchedule` to display discrete reminders at configured minute thresholds before the effective DDM enforcement deadline; default thresholds are `45,30,15,10,5`, and any open daemon-managed reminder refreshes when the next threshold becomes due. `{minutesBeforeDeadline}` shows the minutes actually remaining, never more than the crossed threshold.
+- **Post-boot deadline re-evaluation**: macOS can move a past-due DDM deadline to about one hour after the next login. Once per boot, the first heartbeat that finds a logged-in user re-evaluates the deadline even when the next reminder is scheduled later. It moves the next reminder earlier for a final-minute threshold or aggressive-mode start, and shows a dialog right away only when one of those reminders is already due.
+- **DarkWake-aware reminders and offline-safe icons**: A reminder that comes due while the Mac is in a Maintenance DarkWake waits for the first heartbeat after a full wake instead of appearing on a sleeping display; final-minute, aggressive, and Force reminders still appear at that first full wake. Icon downloads wait briefly for the network and retry once, then fall back to the last good download cached in `/Library/Management/<rdnn>/`, then to the built-in Software Update icon (macOS icon) or no overlay icon, instead of the Finder icon.
 - **Low-battery and low-disk-space warnings**: When a Mac is running on its internal battery below `MinimumBatteryPercentage` (default `50`; `0` disables), the dialog asks the user to connect power through `{batteryWarningMessage}`; desktops, Macs on AC or UPS power, and unreadable battery states never show it. When available disk space is below `MinimumDiskFreeGB` (sample default `35`; `0` disables), `{diskSpaceWarningMessage}` warns that low free space may prevent the update. Both warnings are messaging only.
 - **Upgrade-friendly:** `assemble.zsh` can now import supported settings from a previously generated DDM OS Reminder `.plist` or `.mobileconfig` (unsigned or signed), infer the `RDNN` and, when the filename is unambiguous, the deployment lane (dev, test, prod), and generate a matched assembled script, organizational `.plist`, and unsigned `.mobileconfig` in a single pass.
 - **Full Multi-language Experience**: Beginning with version `3.1.0`, English dialog defaults are provided in-script, with `.plist` support for: German, French, Spanish, Italian, Dutch, Portuguese, and Japanese. Additional languages through localized `*Localized_<code>` preference keys, with locale-aware dialog content, support messaging, human-readable deadline dates, and past-deadline restart copy that match the resolved language.
@@ -44,7 +46,22 @@ While Apple’s Declarative Device Management (DDM) provides Mac Admins with a p
 
 ---
 
-## :new: 5.2.0 Highlights
+## :new: 5.3.0 Highlights
+
+- **Waits out Maintenance DarkWake**: A reminder that comes due while the Mac sleeps no longer launches during a Maintenance DarkWake (`pmset -g systemstate` lists `CPU` without `Graphics`). `dor-starter.zsh` defers to the next heartbeat, and `dor.zsh` re-checks before building the dialog, so pre-deadline threshold, aggressive, and Force reminders appear at the first full wake instead of on a sleeping display.
+- **Cached branding icons**: Icon downloads wait up to 5 seconds for the network, run in parallel with one retry, and accept only image content. The last good downloads are cached in `/Library/Management/<rdnn>/dor-icon-*` and survive `All` / `Script` redeployments; with no download and no cache, the macOS icon falls back to `Software Update.app` and the overlay icon is omitted instead of showing the Finder icon.
+- **Post-boot deadline re-check**: Once per boot, the first heartbeat with a console user re-evaluates the deadline even when `NextScheduledReminder` is in the future, so a deadline macOS re-pads after a reboot no longer passes without a reminder. The boot is recorded in the new runtime-only `dor-state.plist` key `LastBootReevaluation`.
+- **Aggressive mode on time**: The aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`) is now a scheduling candidate, so a Mac past its deadline no longer waits for the next `DailyReminderTimes` slot (for example, overnight). A reminder answered after the aggressive-mode start also uses the aggressive cadence.
+- **Already-compliant Macs skip DDM Emergency Fallback**: A `conflict` from a leftover declaration (`No updates found for DDM to enforce`) or from a different offered update (`Available descriptor`), on a Mac that already meets its DDM declaration, logs at `[NOTICE]` and no longer evaluates the fallback, so a newer fallback target cannot show a reminder DDM does not enforce.
+- **Threshold reminders count only when seen**: A pre-deadline threshold is marked delivered only after a user-interaction return code. An unseen threshold retries 60 seconds later while the deadline is still ahead, and an open threshold reminder now stays on screen when the Mac wakes after the effective deadline.
+- **Clearer swiftDialog code `9` message**: Exit code `9` (`SIGKILL`) now points to a code-signature or endpoint-security block instead of missing preferences.
+- **swiftDialog install failures stop deployment**: `launchDaemonManagement.zsh` now exits `1` when the swiftDialog `installer` fails or the installed version is still below `3.1.0.4994`, instead of reporting success.
+- **Cleaner lane promotion**: `assemble.zsh` rewrites its own leading `Assembled` / `TEST` lane marker in imported values to match `--lane`, and a missing or invalid `--lane` value now exits `1` instead of being re-parsed as an RDNN.
+- **Diagnose on the affected Mac**: `Resources/diagnoseReminderState.zsh` (`1.6.5`) adds `--rdnn <rdnn>` to read live paths, opt-in `--no-redaction`, an offered-updates table for `Available descriptor` conflicts, and DarkWake and post-boot run lines.
+
+---
+
+## 5.2.0 Highlights
 
 - **Low-battery warning**: When a Mac is running on its internal battery below `MinimumBatteryPercentage` (`0`–`100`; default `50`; `0` disables), the dialog adds `BatteryWarningMessage` (localized for `en`, `de`, `fr`, `es`, `pt`, `ja`, `nl`, and `it`) through the new `{batteryWarningMessage}` placeholder, asking the user to plug in until the update completes. It is messaging only, never gates `Prompt` / `Force` restarts, and also appears in the restart dialogs because a restart does not charge the battery.
 - **Plain-language client-side logs**: `DDM update check: <outcome> (status=…; source=…; reason=…)` replaces `Normal DDM resolver result: …`, and every run that shows no reminder ends with `No reminder shown: …` and `Next step: …`. The `status=`, `source=`, and `reason=` tokens, reminder timing, and suppression decisions are unchanged.
@@ -87,7 +104,7 @@ Review the [5.0.0 upgrade notes](#500-upgrade-notes) before rollout.
 
 Use this opt-in path when managed Macs remain reachable but normal DDM software-update resolution is unavailable or unreliable. In Jamf Pro, set Parameter 5 to the required macOS version (`26.6`) and Parameter 6 to a timezone-bearing deadline (`2026-08-04T22:00:00Z` or an explicit offset such as `+05:30`).
 
-Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it and evaluates it for normal resolver states `missing`, `conflict`, `noMatch`, and `invalidVersion`. Evaluation is logged at `[NOTICE]`; `[WARNING]` activation is reserved for a fallback requirement that actually reaches reminder display. Missing or invalid fallback data preserves the original suppression state. A confirmed Apple DDM declaration supersedes persisted fallback automatically, and unknown resolver states fail closed without fallback evaluation.
+Both values must be valid. Blank values intentionally disable fallback; partial or malformed values remove stale fallback data. Runtime validates the deployment-owned plist without repairing it and evaluates it for normal resolver states `missing`, `conflict`, `noMatch`, and `invalidVersion`. Evaluation is logged at `[NOTICE]`; `[WARNING]` activation is reserved for a fallback requirement that actually reaches reminder display. Missing or invalid fallback data preserves the original suppression state. A confirmed Apple DDM declaration supersedes persisted fallback automatically, and unknown resolver states fail closed without fallback evaluation. A `conflict` caused only by a leftover declaration the Mac already meets (`softwareupdated` logged `No updates found for DDM to enforce`), or by `softwareupdated` offering a different macOS than the declaration the Mac already meets, skips fallback evaluation and reports the Mac as up to date.
 
 Fallback is separate from managed/local preferences and `dor-state.plist`. Existing compliance checks, reminder windows, pre-deadline thresholds, restart workflow, aggressive mode, and starter-only scheduler ownership remain unchanged. Past fallback deadlines use their supplied timestamp directly because no Apple declaration exists to correlate with `setPastDuePaddedEnforcementDate`.
 
@@ -105,6 +122,8 @@ Controlled `All`, `Script`, and `Uninstall` deployments unload the heartbeat Lau
 
 If the prior plist filename ends exactly with `-dev.plist`, `-test.plist`, or `-prod.plist` (or, for a prior profile, `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`), `assemble.zsh` infers the deployment lane automatically. Older plists without that exact suffix still import supported values, but continue to prompt for deployment mode.
 Near-miss filenames like `org.churchofjesuschrist.dorm-prod-2.2.0.plist` now print an explicit warning so the extra version suffix does not look like a failed auto-detection.
+
+To promote a dev or test configuration, pass the target lane explicitly (for example, `zsh assemble.zsh /path/to/<rdnn>.dorm-<timestamp>-dev.plist --lane prod`); otherwise the filename suffix keeps the source lane. Starting with `5.3.0`, `assemble.zsh` rewrites its own leading lane marker (`Assembled`, legacy `Sample`, or `TEST`, optionally after leading `<br>` tags) in imported string values to match the selected lane: removed for `prod`, `TEST` for `test`, and `Assembled` for `dev`. Matching is case-sensitive and anchored to the start of each value, so admin-authored copy is otherwise unchanged. Values without a leading marker, such as those imported from a `-prod` file, are kept as-is, so re-assembling a production file with `--lane test` or `--lane dev` does not add `TEST` or `Assembled` text.
 
 When prior-plist import and localization filtering are used together, `assemble.zsh` intentionally prunes imported localized keys that fall outside selected artifact mode. `--minimal` keeps base keys plus exact `_Localized_en` keys only; English region variants such as `en_GB` stay out unless explicitly requested through `--languages <csv>`.
 
@@ -142,7 +161,7 @@ Use [`Resources/monitorRemoteSession.zsh`](Resources/monitorRemoteSession.zsh) f
 zsh assemble.zsh '/Users/dan/Downloads/DDM-OS-Reminder-5.1.0/Artifacts/us.snelson.dorm-2026-10-13-073608.plist'
 
 =====================================================================================
-🧩 Assemble DDM OS Reminder (5.2.0)
+🧩 Assemble DDM OS Reminder (5.3.0)
 =====================================================================================
 
 📍 Full Paths:
@@ -410,7 +429,7 @@ Region-aware Configuration Profile example:
 
 Community-supplied, best-effort support is available on the [Mac Admins Slack](https://www.macadmins.org/) (free, registration required) [#ddm-os-reminders](https://slack.com/app_redirect?channel=C09LVE2NVML) channel, or you can open an [issue](https://github.com/dan-snelson/DDM-OS-Reminder/issues).
 
-To triage a missing or unexpected reminder from uploaded client files, see [Diagnose client state](Resources/README.md#7-diagnose-client-state). Upload the client-side log (`/var/log/<rdnn>.log`), `/var/log/install.log`, and the client-side `.plist`. Keep those files out of public issues; attach a redacted report instead.
+To triage a missing or unexpected reminder from uploaded client files, see [Diagnose client state](Resources/README.md#7-diagnose-client-state). Upload the client-side log (`/var/log/<rdnn>.log`), `/var/log/install.log`, and the client-side `.plist`. On the affected Mac itself, run `sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>` and the helper reads those files from their live paths. Keep those files out of public issues; attach a redacted report instead. To track several Macs internally, add `--no-redaction`; with `--rdnn`, the unredacted fact sheet is also saved to `/Library/Management/<rdnn>/`.
 
 See also: [Diagrams/README.md](Diagrams/README.md) for architecture and sequence diagrams.
 

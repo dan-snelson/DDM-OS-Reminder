@@ -583,6 +583,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Behavior**:
 - `2` = aggressive mode starts after two hours past the effective deadline (default)
 - `0` = eligible as soon as the effective deadline is past
+- Daemon runs schedule an exact `NextScheduledReminder` at the aggressive-mode start (effective deadline plus this value) when it comes before the next baseline slot or quiet-period time (`5.3.0`)
 - High values such as `720` effectively suppress aggressive mode without changing post-deadline restart policy
 - Do not set this too low in production unless the organization intentionally wants near-immediate post-deadline escalation
 - `/Library/Management/<rdnn>/dor-aggressive-kill` suppresses aggressive mode for support assistance and returns to normal non-aggressive cadence
@@ -620,6 +621,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Direct, manual, and demo runs do not mutate daemon scheduler state
 - Invalid values and `0` fall back to `20` with warning logging
 - `Open Software Update` keeps exact aggressive-mode redisplay scheduling until compliance or support suppression
+- Runtime re-checks aggressive mode when the dialog returns, so a reminder shown before the aggressive-mode start and answered after it (including a pre-deadline threshold reminder) also uses this interval from the answer
 
 **Script Default**:
 ```bash
@@ -700,8 +702,9 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Deploy and manage `DailyReminderTimes` through managed preferences or local preferences
 - Do **not** deploy runtime scheduler state through preference payloads
 - Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
-- Runtime-only keys currently include `NextScheduledReminder`, `DaemonLastTriggered`, and `UpdateTonightSuppressionUntil`
+- Runtime-only keys currently include `NextScheduledReminder`, `DaemonLastTriggered`, `LastBootReevaluation`, and `UpdateTonightSuppressionUntil`
 - The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`; `All` and `Script` redeployments keep it, and only `Uninstall` removes it
+- Cached branding icons (`/Library/Management/<rdnn>/dor-icon-*.png`) follow the same rule: `All` and `Script` keep them, and only `Uninstall` removes them
 - Direct/manual/demo runs do not mutate this daemon scheduler state
 
 **Script Default**:
@@ -726,6 +729,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 /Library/Management/<rdnn>/dor-state.plist
   - NextScheduledReminder
   - DaemonLastTriggered
+  - LastBootReevaluation
   - PreDeadlineThresholdSignature
   - PreDeadlineThresholdDelivered
   - PreDeadlineThresholdSkipped
@@ -807,7 +811,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Runtime compares the calculated signature with the value already stored in `dor-state.plist`
 - When the signature matches, `PreDeadlineThresholdDelivered` and `PreDeadlineThresholdSkipped` remain associated with that declaration
 - When the version, build, or effective enforcement epoch changes, runtime writes the new signature and deletes both threshold lists
-- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`
+- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`; starting with `5.3.0`, a threshold is recorded only after a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh, so a dialog that swiftDialog never showed (for example, `Return Code: 1` during shutdown) stays pending. A starter-launched run then schedules an exact `NextScheduledReminder` 60 seconds later when that retry still comes before the effective deadline; return code `9` (`SIGKILL`) never retries
 - `PreDeadlineThresholdSkipped` is a descending, de-duplicated CSV of earlier thresholds crossed before the nearest due threshold could be displayed
 - Together, these values ensure each configured threshold is handled at most once for one resolved deadline/version signature
 
@@ -967,6 +971,11 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - ICNS
 - Local paths: `file:///path/to/icon.png`
 
+**Download Behavior** (`5.3.0` and later):
+- Remote URLs download after a short network-reachability wait (up to 5 seconds, checked against the macOS icon host), with one retry; only image content counts as success. If that host never becomes reachable, the download is skipped and the cache is used
+- The last good download is cached as `/Library/Management/<rdnn>/dor-icon-overlay-light.png` (or `dor-icon-overlay-dark.png` for `organizationOverlayiconURLdark`) and used when a later download fails
+- With no download and no cache, or with an empty value, the dialog shows no overlay icon (earlier versions showed the Finder icon)
+
 **Recommendations**:
 - Size: 256x256px or larger
 - Transparent background (PNG)
@@ -1052,6 +1061,8 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Values**:
 - `NO` / `false` / `0` = Default position
 - `YES` / `true` / `1` = Swapped position
+
+Starting with `5.3.0`, when no overlay icon is available (empty `OrganizationOverlayIconURL`, failed download with no cache, or a missing `file://` path), `YES` keeps the macOS icon as the primary icon instead of swapping in an empty value.
 
 **Script Default**:
 ```bash
@@ -2680,6 +2691,7 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 5.3.0 | 30-Oct-2026 | Daemon runs schedule the aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`) when it comes before the next baseline slot or quiet-period time ([Issue #164](https://github.com/dan-snelson/DDM-OS-Reminder/issues/164)); `PreDeadlineThresholdDelivered` records a threshold only after a user-interaction return code; new runtime-only `dor-state.plist` key `LastBootReevaluation` ([Issue #165](https://github.com/dan-snelson/DDM-OS-Reminder/issues/165)); `OrganizationOverlayIconURL` / `OrganizationOverlayIconURLdark` downloads retry once and cache as `dor-icon-overlay-*`, an empty value or failed download with no cache shows no overlay icon, and `SwapOverlayAndLogo` keeps the macOS icon as primary when no overlay is available ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172)); a threshold reminder without a user-interaction return code retries 60 seconds later when that retry still comes before the effective deadline (never for return code `9`); a reminder answered after the aggressive-mode start uses `AggressiveModeFrequencyMinutes` from that answer; no preference keys, defaults, or precedence rules changed |
 | 5.2.0 | 20-Oct-2026 | Added `MinimumBatteryPercentage` (0-100; default 50; 0 disables) and `BatteryWarningMessage` (plus `BatteryWarningMessageLocalized_<code>`) with `{batteryWarningMessage}` / `{batteryPercentage}` placeholders; `{batteryWarningMessage}` added to `message`, `aggressiveModeMessage`, `preDeadlineThresholdMessage`, `pastDeadlinePromptMessage`, and `pastDeadlineForceMessage` ([Issue #157](https://github.com/dan-snelson/DDM-OS-Reminder/issues/157)); `{minutesBeforeDeadline}` now shows minutes remaining until the effective deadline (rounded up, capped at the crossed pre-deadline threshold) instead of the crossed threshold ([Issue #160](https://github.com/dan-snelson/DDM-OS-Reminder/issues/160)); `Resources/sample.plist` `MinimumDiskFreeGB` raised from 26 to 35 (script default 999 and imported values unchanged); `assemble.zsh` accepts a prior `.mobileconfig` as well as a prior `.plist` ([Issue #153](https://github.com/dan-snelson/DDM-OS-Reminder/issues/153)); client-log lines now use `DDM update check:`, `No reminder shown:`, and `Next step:` ([Issue #154](https://github.com/dan-snelson/DDM-OS-Reminder/issues/154)); restart gating and precedence rules unchanged |
 | 5.1.0 | 13-Oct-2026 | Added `MinimumDiskFreeGB` (script default 999; sample default 26; 0 disables), replacing deprecated `MinimumDiskFreePercentage` (honored only when `MinimumDiskFreeGB` is unset; removed in 6.0.0) ([Issue #146](https://github.com/dan-snelson/DDM-OS-Reminder/issues/146)); `All` / `Script` redeployments keep `dor-state.plist` and clear only `NextScheduledReminder` ([Issue #149](https://github.com/dan-snelson/DDM-OS-Reminder/issues/149)); no precedence rules changed |
 | 5.0.0 | 04-Oct-2026 | `assemble.zsh` keeps an imported prior-plist `ScriptLog` only when it is a plain absolute path with a `<rdnn>.log` basename, otherwise falls back to `/var/log/<rdnn>.log`; the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite; uncorroborated `install.log` trust (softwareupdate DDM state missing or unrecognized) logs `[WARNING]`; console-user waits also reject `_mbsetupuser` and `root`; no preference keys, defaults, or precedence rules changed |
@@ -2714,5 +2726,5 @@ cat /Library/Managed\ Preferences/org.churchofjesuschrist.dorm.plist
 | 3.2.0 | 06-Apr-2026 | Clarified final-release metadata and documented that runtime plus bundled pending-update EAs treat a matching or trailing `VersionString` as compliant when Apple omits a usable `BuildVersionString`; no new preference keys were added in this release |
 ---
 
-**Last Updated**: 20-Oct-2026
+**Last Updated**: 26-Oct-2026
 **DDM OS Reminder Version**: 5.2.0

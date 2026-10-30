@@ -32,6 +32,7 @@ Icon?
 !.codex/skills/
 .codex/skills/*
 !.codex/skills/diagnose-client-state
+!.codex/skills/pre-release-review
 !.codex/skills/README.md
 .envrc
 

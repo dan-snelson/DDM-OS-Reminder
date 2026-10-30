@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0"
+scriptVersion="5.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -135,7 +135,8 @@ function removeDeployedRuntimeAssets() {
             notice "Preserving aggressive-mode support kill switch '${dorAggressiveKillSwitchPath}'; aggressive mode stays suppressed until support removes it."
         fi
     else
-        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" )
+        # Cached branding icons are only an offline fallback; redeploys keep them
+        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" "${organizationDirectory}"/dor-icon-*(N) )
     fi
 
     stopActiveReminderRuntime
@@ -681,7 +682,7 @@ cat <<'ENDOFSCRIPT'
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0"
+scriptVersion="5.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -762,6 +763,9 @@ isDemoModeRequested="NO"
 [[ "${1:-}" == "demo" ]] && isDemoModeRequested="YES"
 schedulerEnabledForCurrentRun="NO"
 [[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
+launchReason="${DOR_LAUNCH_REASON:-}"
+postBootReevaluationRun="NO"
+[[ "${schedulerEnabledForCurrentRun}" == "YES" && "${launchReason}" == "postBoot" ]] && postBootReevaluationRun="YES"
 activeDialogPid=""
 activeDialogMonitorPid=""
 dialogRuntimeDirectory=""
@@ -1870,6 +1874,23 @@ function resolveNextPendingPreDeadlineThresholdEpoch() {
     return 1
 }
 
+function resolveAggressiveModeStartEpoch() {
+    # Silent by design: callers use command substitution and notice() writes to stdout
+    local nowEpoch="${1:-$(date +%s)}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+    local aggressiveStartEpoch=""
+
+    [[ "${versionComparisonResult}" == "Update Required" ]] || return 1
+    [[ -n "${deadlineReferenceEpoch}" && "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${aggressiveModePastDeadlineHours}" =~ ^[0-9]+$ ]] || return 1
+    [[ -e "${aggressiveModeKillSwitchPath}" ]] && return 1
+
+    aggressiveStartEpoch=$(( deadlineReferenceEpoch + (aggressiveModePastDeadlineHours * 3600) ))
+    (( aggressiveStartEpoch > nowEpoch )) || return 1
+
+    echo "${aggressiveStartEpoch}"
+}
+
 function setNextReminderScheduleForPendingThresholdOrBaseline() {
     local scheduleReason="${1:-Pre-deadline threshold or baseline schedule}"
     local nowEpoch="$(date +%s)"
@@ -1877,6 +1898,7 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     local thresholdEpoch=""
     local thresholdMinutes=""
     local baselineEpoch=""
+    local aggressiveStartEpoch=""
 
     shouldManageDaemonScheduling || return 0
 
@@ -1887,10 +1909,48 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     fi
 
     baselineEpoch="$(resolveNextBaselineReminderEpoch "${nowEpoch}")"
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
+    # Thresholds always precede the deadline, so they always precede the aggressive-mode start
     if [[ -n "${thresholdEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( thresholdEpoch < baselineEpoch )); }; then
         setNextReminderScheduleExactEpoch "${thresholdEpoch}" "${scheduleReason}: ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" ]] && { [[ -z "${baselineEpoch}" ]] || (( aggressiveStartEpoch < baselineEpoch )); }; then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "${scheduleReason}: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleBaseline "${scheduleReason}: baseline"
+    fi
+}
+
+function setNextReminderScheduleForPostBootReevaluation() {
+    local nowEpoch="$(date +%s)"
+    local storedSchedule=""
+    local storedEpoch=""
+    local thresholdResult=""
+    local thresholdEpoch=""
+    local thresholdMinutes=""
+    local aggressiveStartEpoch=""
+
+    shouldManageDaemonScheduling || return 1
+
+    storedSchedule="$(readReminderStateKey "NextScheduledReminder")"
+    storedEpoch="$(epochFromScheduleTimestamp "${storedSchedule}")"
+    [[ "${storedEpoch}" =~ ^[0-9]+$ ]] && (( storedEpoch > nowEpoch )) || return 1
+
+    thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
+    if [[ -n "${thresholdResult}" ]]; then
+        thresholdEpoch="${thresholdResult%%|*}"
+        thresholdMinutes="${thresholdResult##*|}"
+    fi
+
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
+    # Pull the stored schedule earlier when the re-resolved deadline needs it; never push it later
+    if [[ -n "${thresholdEpoch}" ]] && (( thresholdEpoch < storedEpoch )); then
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Post-boot re-evaluation: ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" ]] && (( aggressiveStartEpoch < storedEpoch )); then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "Post-boot re-evaluation: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
+    else
+        setNextReminderScheduleExactEpoch "${storedEpoch}" "Post-boot re-evaluation kept existing schedule"
     fi
 }
 
@@ -1901,6 +1961,7 @@ function setNextReminderScheduleForQuietOrThreshold() {
     local thresholdResult=""
     local thresholdEpoch=""
     local thresholdMinutes=""
+    local aggressiveStartEpoch=""
 
     shouldManageDaemonScheduling || return 0
 
@@ -1910,8 +1971,12 @@ function setNextReminderScheduleForQuietOrThreshold() {
         thresholdMinutes="${thresholdResult##*|}"
     fi
 
+    aggressiveStartEpoch="$(resolveAggressiveModeStartEpoch "${nowEpoch}")"
+
     if [[ -n "${thresholdEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( thresholdEpoch < quietTargetEpoch )); then
         setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Quiet-period bypass for ${thresholdMinutes}-minute pre-deadline threshold"
+    elif [[ -n "${aggressiveStartEpoch}" && -n "${quietTargetEpoch}" && "${quietTargetEpoch}" =~ ^[0-9]+$ ]] && (( aggressiveStartEpoch < quietTargetEpoch )); then
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "Quiet-period bypass for aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
         setNextReminderScheduleExactEpoch "${quietTargetEpoch}" "${scheduleReason}"
     fi
@@ -1996,6 +2061,8 @@ function completePreDeadlineThresholdReminderDelivery() {
     markPreDeadlineThresholdDelivered "${deliveredThresholdMinutes}"
     if resolveDuePreDeadlineThresholdReminder; then
         setNextReminderScheduleImmediate "Scheduled after pre-deadline threshold dialog remained open: ${preDeadlineThresholdMinutes}-minute pre-deadline threshold already due"
+    elif isAggressiveModeActive; then
+        setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after late ${deliveredThresholdMinutes}-minute pre-deadline threshold acknowledgment"
     else
         setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after ${deliveredThresholdMinutes}-minute pre-deadline threshold reminder"
     fi
@@ -2012,6 +2079,7 @@ function shouldAutoRefreshOpenDialogAtPreDeadlineThreshold() {
 function monitorOpenDialogForPreDeadlineThreshold() {
     local dialogPid="${1}"
     local refreshMarkerPath="${2}"
+    local deadlineReferenceEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
     local thresholdResult=""
     local watchedThresholdEpoch=""
     local watchedThresholdMinutes=""
@@ -2025,15 +2093,22 @@ function monitorOpenDialogForPreDeadlineThreshold() {
         nowEpoch="$(date +%s)"
 
         if [[ -n "${watchedThresholdEpoch}" && "${watchedThresholdEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= watchedThresholdEpoch )); then
-            notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
-            printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
-            kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
-            sleep 2
-            if kill -0 "${dialogPid}" >/dev/null 2>&1; then
-                warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
-                kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+            # A wake from sleep can also cross the deadline; no refreshed threshold dialog would replace this one
+            if [[ "${deadlineReferenceEpoch}" =~ ^[0-9]+$ ]] && (( nowEpoch >= deadlineReferenceEpoch )); then
+                notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open, but the effective deadline has passed; leaving the open dialog in place."
+                watchedThresholdEpoch=""
+                watchedThresholdMinutes=""
+            else
+                notice "Pre-deadline threshold ${watchedThresholdMinutes}-minute reminder became due while a reminder dialog was open; refreshing dialog."
+                printf "%s|%s\n" "${watchedThresholdMinutes}" "${watchedThresholdEpoch}" > "${refreshMarkerPath}" 2>/dev/null || true
+                kill -TERM "${dialogPid}" >/dev/null 2>&1 || return 0
+                sleep 2
+                if kill -0 "${dialogPid}" >/dev/null 2>&1; then
+                    warning "swiftDialog process ${dialogPid} did not exit after threshold auto-refresh request; forcing termination."
+                    kill -KILL "${dialogPid}" >/dev/null 2>&1 || true
+                fi
+                return 0
             fi
-            return 0
         fi
 
         thresholdResult="$(resolveNextPendingPreDeadlineThresholdEpoch "${nowEpoch}")"
@@ -2067,6 +2142,8 @@ function handlePreDeadlineThresholdDialogAutoRefresh() {
         completePreDeadlineThresholdReminderDelivery
     elif resolveDuePreDeadlineThresholdReminder; then
         setNextReminderScheduleImmediate "Scheduled after open reminder dialog crossed ${preDeadlineThresholdMinutes}-minute pre-deadline threshold"
+    elif isAggressiveModeActive; then
+        setNextReminderScheduleInSeconds "$(( aggressiveModeFrequencyMinutes * 60 ))" "Scheduled aggressive-mode redisplay after dialog auto-refresh for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold"
     else
         warning "Dialog auto-refresh requested for ${triggeredThresholdMinutes:-unknown}-minute pre-deadline threshold, but no threshold is currently due; falling back to pending threshold or baseline schedule."
         setNextReminderScheduleForPendingThresholdOrBaseline "Scheduled after threshold dialog auto-refresh fallback"
@@ -4635,7 +4712,12 @@ function resolveDDMEnforcementFromInstallLog() {
                 ddmResolverNextStep="Scope this Mac to a single DDM software-update declaration in your MDM, or configure a DDM Emergency Fallback (Parameters 5 and 6)."
                 ;;
         esac
-        warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
+        # A leftover declaration, or a newer offered update, on a Mac that meets the declaration is expected; keep it out of [WARNING]
+        if [[ "${ddmResolverConflictSummary}" == ("Declaration persisted after"|"Available descriptor")* ]] && currentMacSatisfiesResolvedDeclaration; then
+            notice "${ddmResolverReason}: ${ddmResolverConflictSummary}; macOS ${installedmacOSVersion} already meets it"
+        else
+            warning "${ddmResolverReason}: ${ddmResolverConflictSummary}"
+        fi
 
         if [[ -n "${ddmResolverConflictContext}" ]]; then
             info "install.log context: $(installLogEvidence "${ddmResolverConflictContext}")"
@@ -4849,17 +4931,23 @@ installedOSvsDDMenforcedOS() {
             fi
             ;;
         missing|conflict|noMatch|invalidVersion)
+            if [[ "${normalDDMResolverStatus}" == "conflict" && "${ddmResolverConflictSummary}" == ("Declaration persisted after"|"Available descriptor")* ]] && currentMacSatisfiesResolvedDeclaration; then
+                # softwareupdated and the declaration agree this Mac is compliant; a fallback must not raise the target
+                if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
+                    notice "DDM Emergency Fallback not evaluated: macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString} (DDM status=${normalDDMResolverStatus})"
+                fi
+                versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
+                if [[ "${ddmResolverConflictSummary}" == "Available descriptor"* ]]; then
+                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; the different update softwareupdated offers (macOS ${${ddmResolverConflictSummary#Available descriptor }%% *}) is not enforced by DDM (status=${normalDDMResolverStatus})" "None; this Mac meets its DDM declaration. To enforce a newer macOS, update the DDM software-update declaration in your MDM."
+                else
+                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; softwareupdated has nothing left to enforce (status=${normalDDMResolverStatus})" "None; this Mac is up to date. The leftover declaration in install.log should clear after a later softwareupdate scan."
+                fi
+                return
+            fi
             if ! selectMDMFallbackRequirement "${normalDDMResolverStatus}"; then
                 if [[ "${normalDDMResolverStatus}" == "missing" ]]; then
                     versionComparisonResult="No DDM update (status=missing)"
                     setNoReminderOutcome "notice" "this Mac has no DDM-enforced macOS update pending (${normalDDMResolverReason})" "${ddmResolverNextStep:-${missingDDMNextStep}}"
-                elif [[ "${ddmResolverConflictSummary}" == "Declaration persisted after"* ]] && currentMacSatisfiesResolvedDeclaration; then
-                    # Logging only: suppression is unchanged, but the admin's question is "is this Mac compliant?"
-                    versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
-                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; softwareupdated has nothing left to enforce (status=${normalDDMResolverStatus})" "None; this Mac is up to date. The leftover declaration in install.log should clear after a later softwareupdate scan."
-                elif [[ "${ddmResolverConflictSummary}" == "Available descriptor"* ]] && currentMacSatisfiesResolvedDeclaration; then
-                    versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
-                    setNoReminderOutcome "notice" "macOS ${installedmacOSVersion} already meets DDM-enforced macOS ${ddmVersionString}; the different update softwareupdated offers (macOS ${${ddmResolverConflictSummary#Available descriptor }%% *}) is not enforced by DDM (status=${normalDDMResolverStatus})" "None; this Mac meets its DDM declaration. To enforce a newer macOS, update the DDM software-update declaration in your MDM."
                 else
                     versionComparisonResult="Unresolved DDM state (status=${normalDDMResolverStatus})"
                     setNoReminderOutcome "warning" "DDM update state is unclear, so no deadline can be trusted (${normalDDMResolverReason}; status=${normalDDMResolverStatus})" "${ddmResolverNextStep:-Review DDM software-update declarations for this Mac in your MDM.}"
@@ -5103,6 +5191,30 @@ function checkUserDisplaySleepAssertions() {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Check for Maintenance DarkWake
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function isSystemInDarkWake() {
+
+    # DarkWake omits the Graphics capability; unrecognized output fails open so reminders still display
+    systemCapabilities="$( /usr/bin/pmset -g systemstate 2>/dev/null | /usr/bin/awk -F 'are:' '/^Current System Capabilities are:/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit }' )"
+
+    [[ " ${systemCapabilities} " == *" CPU "* && " ${systemCapabilities} " != *" Graphics "* ]]
+
+}
+
+# Force redisplays and timer restarts happen inside one run, after the pre-build DarkWake check
+function deferForceRestartForDarkWake() {
+    local forceRestartStep="${1:-redisplay}"
+
+    setNextReminderScheduleInSeconds "60" "DarkWake deferral of Force restart dialog; retry on next heartbeat"
+    notice "Force restart ${forceRestartStep} deferred: the Mac is in a Maintenance DarkWake (system capabilities: ${systemCapabilities}); no restart requested."
+    quitScript "0"
+}
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Update Required Variables
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -5140,16 +5252,104 @@ function ensureDialogRuntimeDirectory() {
     info "Using private dialog runtime directory '${dialogRuntimeDirectory}'"
 }
 
+function isImageFile() {
+    [[ -f "${1}" && "$( /usr/bin/file -b --mime-type "${1}" 2>/dev/null )" == image/* ]]
+}
+
+function waitForIconNetworkReachability() {
+    local iconURL="${1}"
+    local iconHost="${${iconURL#*://}%%[/:?]*}"
+    local reachabilityWaitSeconds=5
+    local elapsedSeconds=0
+
+    [[ -n "${iconHost}" ]] || return 1
+
+    # Wi-Fi may still be associating after wake; a short wait beats two full curl timeouts
+    until [[ "$( /usr/sbin/scutil -r "${iconHost}" 2>/dev/null )" == Reachable* ]]; do
+        if (( elapsedSeconds >= reachabilityWaitSeconds )); then
+            return 1
+        fi
+        sleep 1
+        elapsedSeconds=$(( elapsedSeconds + 1 ))
+    done
+
+    (( elapsedSeconds > 0 )) && info "Network became reachable for '${iconHost}' after ${elapsedSeconds} second(s)"
+    return 0
+}
+
+function downloadBrandingIcon() {
+    local iconURL="${1}"
+    local destinationPath="${2}"
+
+    /usr/bin/curl -o "${destinationPath}" "${iconURL}" --silent --show-error --fail --connect-timeout 4 --max-time 10 --retry 1 --retry-delay 1 2> "${destinationPath}.curl.log"
+}
+
+function brandingIconDownloadFailureDetail() {
+    local destinationPath="${1}"
+    local curlErrorText=""
+
+    curlErrorText="$( /usr/bin/tail -n 1 "${destinationPath}.curl.log" 2>/dev/null )"
+    if [[ -n "${curlErrorText}" ]]; then
+        echo " (${curlErrorText})"
+    elif [[ -s "${destinationPath}" ]]; then
+        echo " (downloaded content is not an image)"
+    fi
+}
+
+function storeBrandingIconInCache() {
+    local sourcePath="${1}"
+    local cachePath="${deploymentScriptDirectory}/dor-icon-${2}.png"
+    local temporaryPath=""
+
+    [[ "${isDemoModeRequested}" == "YES" ]] && return 0
+    [[ -d "${deploymentScriptDirectory}" && ! -L "${deploymentScriptDirectory}" ]] || return 0
+
+    temporaryPath="$( /usr/bin/mktemp "${cachePath}.tmp.XXXXXX" 2>/dev/null )"
+    if [[ -z "${temporaryPath}" ]]; then
+        warning "Unable to create temporary icon cache file beside '${cachePath}'"
+        return 1
+    fi
+
+    if /bin/cp "${sourcePath}" "${temporaryPath}" && chown root:wheel "${temporaryPath}" && chmod 644 "${temporaryPath}" && /bin/mv -f "${temporaryPath}" "${cachePath}"; then
+        info "Cached icon as '${cachePath}'"
+    else
+        rm -f "${temporaryPath}" 2>/dev/null
+        warning "Unable to cache icon as '${cachePath}'"
+        return 1
+    fi
+}
+
+function restoreBrandingIconFromCache() {
+    local cachePath="${deploymentScriptDirectory}/dor-icon-${1}.png"
+    local destinationPath="${2}"
+
+    # Trust only a root-owned regular file; swiftDialog reads the per-run copy as the console user
+    [[ -f "${cachePath}" && ! -L "${cachePath}" ]] || return 1
+    [[ "$( /usr/bin/stat -f %u "${cachePath}" 2>/dev/null )" == "0" ]] || return 1
+    isImageFile "${cachePath}" || return 1
+
+    /bin/cp "${cachePath}" "${destinationPath}" 2>/dev/null && chmod 644 "${destinationPath}" 2>/dev/null
+}
+
 function downloadBrandingAssets() {
     ensureDialogRuntimeDirectory
 
     # Detect dark mode and choose appropriate icon URL
     local appearanceMode=$(detectDarkMode)
     local overlayIconURL="${organizationOverlayiconURL}"
-    
+    local overlayCacheName="overlay-light"
+    local overlayIsRemote="NO"
+    local overlayDownloadPath="${dialogRuntimeDirectory}/overlayicon.png"
+    local overlayDownloadPid=""
+    local iconCacheName=""
+    local iconDownloadPath="${dialogRuntimeDirectory}/icon.png"
+    local iconDownloadPid=""
+    local softwareUpdateAppPath="/System/Library/CoreServices/Software Update.app"
+
     if [[ "${appearanceMode}" == "Dark" && -n "${organizationOverlayiconURLdark}" ]]; then
         notice "Dark mode detected; using dark mode overlay icon"
         overlayIconURL="${organizationOverlayiconURLdark}"
+        overlayCacheName="overlay-dark"
     else
         if [[ "${appearanceMode}" == "Dark" ]]; then
             notice "Dark mode detected but no dark mode icon URL configured; using standard overlay icon"
@@ -5157,17 +5357,18 @@ function downloadBrandingAssets() {
             notice "Light mode detected; using standard overlay icon"
         fi
     fi
-    
-    # Download overlay icon
+
+    # Resolve local overlay icons now; remote ones download alongside the macOS icon
+    overlayicon=""
     if [[ -n "${overlayIconURL}" ]]; then
         notice "Processing overlay icon from '${overlayIconURL}'"
-        
+
         # Check if it's a local file path (file or directory/bundle)
         if [[ -e "${overlayIconURL}" ]]; then
             info "Overlay icon is a local path; using directly"
             overlayicon="${overlayIconURL}"
             info "Successfully configured overlay icon"
-        
+
         # Check if it's a file:// URI
         elif [[ "${overlayIconURL}" =~ ^file:// ]]; then
             info "Overlay icon is a file:// URI; converting to path"
@@ -5176,25 +5377,15 @@ function downloadBrandingAssets() {
                 overlayicon="${filePath}"
                 info "Successfully configured overlay icon from file:// URI"
             else
-                error "Path not found: '${filePath}' (from URI '${overlayIconURL}')"
-                overlayicon="/System/Library/CoreServices/Finder.app"
+                error "Path not found: '${filePath}' (from URI '${overlayIconURL}'); showing the dialog without an overlay icon"
             fi
-        
+
         # Assume it's a remote URL
         else
-            info "Overlay icon appears to be a remote URL; downloading with curl"
-            if curl -o "${dialogRuntimeDirectory}/overlayicon.png" "${overlayIconURL}" --silent --show-error --fail --max-time 10; then
-                overlayicon="${dialogRuntimeDirectory}/overlayicon.png"
-                info "Successfully downloaded overlay icon"
-            else
-                error "Failed to download overlay icon from '${overlayIconURL}'"
-                overlayicon="/System/Library/CoreServices/Finder.app"
-            fi
+            overlayIsRemote="YES"
         fi
-    else
-        overlayicon="/System/Library/CoreServices/Finder.app"
     fi
-    
+
     # Download macOS icon based on version
     local majorDDM="${ddmVersionString%%.*}"
     case ${majorDDM} in
@@ -5204,19 +5395,64 @@ function downloadBrandingAssets() {
         27) macOSIconURL="https://usw2.ics.services.jamfcloud.com/icon/hash_4c0a23608740fba163bb2716f0d0b761f0ba57efd94b2de5e266fe7fca3b2c42" ;;
         *)  macOSIconURL="https://ics.services.jamfcloud.com/icon/hash_4555d9dc8fecb4e2678faffa8bdcf43cba110e81950e07a4ce3695ec2d5579ee" ;;
     esac
-    
-    if curl -o "${dialogRuntimeDirectory}/icon.png" "${macOSIconURL}" --silent --show-error --fail --max-time 10; then
-        icon="${dialogRuntimeDirectory}/icon.png"
+    iconCacheName="macos-default"
+    [[ "${majorDDM}" =~ ^[0-9]+$ ]] && iconCacheName="macos-${majorDDM}"
+
+    if waitForIconNetworkReachability "${macOSIconURL}"; then
+        if [[ "${overlayIsRemote}" == "YES" ]]; then
+            info "Overlay icon appears to be a remote URL; downloading with curl"
+            downloadBrandingIcon "${overlayIconURL}" "${overlayDownloadPath}" &
+            overlayDownloadPid=$!
+        fi
+        downloadBrandingIcon "${macOSIconURL}" "${iconDownloadPath}" &
+        iconDownloadPid=$!
     else
-        error "Failed to download icon from '${macOSIconURL}'"
-        icon="/System/Library/CoreServices/Finder.app"
+        warning "Network is not reachable after 5 seconds; skipping icon downloads and using local fallbacks"
     fi
-    
+
+    if [[ "${overlayIsRemote}" == "YES" ]]; then
+        if [[ -n "${overlayDownloadPid}" ]] && wait "${overlayDownloadPid}" && isImageFile "${overlayDownloadPath}"; then
+            overlayicon="${overlayDownloadPath}"
+            info "Successfully downloaded overlay icon"
+            storeBrandingIconInCache "${overlayDownloadPath}" "${overlayCacheName}"
+        else
+            [[ -n "${overlayDownloadPid}" ]] && error "Failed to download overlay icon from '${overlayIconURL}'$( brandingIconDownloadFailureDetail "${overlayDownloadPath}" )"
+            if restoreBrandingIconFromCache "${overlayCacheName}" "${overlayDownloadPath}"; then
+                overlayicon="${overlayDownloadPath}"
+                notice "Using cached overlay icon 'dor-icon-${overlayCacheName}.png'"
+            else
+                notice "No cached overlay icon available; showing the dialog without an overlay icon"
+            fi
+        fi
+    fi
+
+    if [[ -n "${iconDownloadPid}" ]] && wait "${iconDownloadPid}" && isImageFile "${iconDownloadPath}"; then
+        icon="${iconDownloadPath}"
+        info "Successfully downloaded macOS icon"
+        storeBrandingIconInCache "${iconDownloadPath}" "${iconCacheName}"
+    else
+        [[ -n "${iconDownloadPid}" ]] && error "Failed to download icon from '${macOSIconURL}'$( brandingIconDownloadFailureDetail "${iconDownloadPath}" )"
+        if restoreBrandingIconFromCache "${iconCacheName}" "${iconDownloadPath}"; then
+            icon="${iconDownloadPath}"
+            notice "Using cached macOS icon 'dor-icon-${iconCacheName}.png'"
+        elif [[ -d "${softwareUpdateAppPath}" ]]; then
+            icon="${softwareUpdateAppPath}"
+            notice "No cached macOS icon available; using '${softwareUpdateAppPath}'"
+        else
+            icon="/System/Library/CoreServices/Finder.app"
+            notice "No cached macOS icon or Software Update app available; using '${icon}'"
+        fi
+    fi
+
     # Swap icons if requested
     if [[ "${swapOverlayAndLogo}" == "YES" ]]; then
-        local tmp="$icon"
-        icon="$overlayicon"
-        overlayicon="$tmp"
+        if [[ -n "${overlayicon}" ]]; then
+            local tmp="$icon"
+            icon="$overlayicon"
+            overlayicon="$tmp"
+        else
+            info "SwapOverlayAndLogo is enabled, but no overlay icon is available; keeping the macOS icon as the primary icon"
+        fi
     fi
 }
 
@@ -5622,7 +5858,6 @@ function displayReminderDialog() {
         --message "${message}"
         --icon "${icon}"
         --iconsize 250
-        --overlayicon "${overlayicon}"
         --infobox "${infobox}"
         --button1text "${button1text}"
         --messagefont "size=14"
@@ -5634,6 +5869,7 @@ function displayReminderDialog() {
         "${additionalDialogOptions[@]}"
     )
 
+    [[ -n "${overlayicon}" ]] && dialogArgs+=(--overlayicon "${overlayicon}")
     [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
     [[ "${hideSecondaryButton}" == "DISABLED" ]] && dialogArgs+=(--button2disabled)
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")
@@ -5672,6 +5908,11 @@ function displayReminderDialog() {
     fi
     rm -f "${dialogAutoRefreshMarkerPath}" 2>/dev/null || true
 
+    # A dialog left open past the aggressive-mode start must not schedule from stale run-start state
+    if ! isAggressiveModeActive && ! isPastDeadlineForceMode; then
+        evaluateAggressiveModeState
+    fi
+
     if [[ "${dialogAutoRefreshTriggered}" == "YES" ]]; then
         notice "swiftDialog was closed automatically because the ${dialogAutoRefreshThresholdMinutes:-next}-minute pre-deadline threshold became due."
         handlePreDeadlineThresholdDialogAutoRefresh "${dialogAutoRefreshThresholdMinutes}"
@@ -5697,7 +5938,22 @@ function displayReminderDialog() {
         esac
     fi
 
-    completePreDeadlineThresholdReminderDelivery
+    # Only user-interaction return codes confirm the threshold reminder was seen
+    case ${returncode} in
+        0|2|3|4|10)
+            completePreDeadlineThresholdReminderDelivery
+            ;;
+        *)
+            if isPreDeadlineThresholdReminderMode; then
+                notice "Pre-deadline threshold ${preDeadlineThresholdMinutes}-minute reminder not marked delivered; return code ${returncode} is not a user interaction."
+                # Retry only before the deadline; code 9 (SIGKILL) is a persistent block, not a transient failure
+                local thresholdDeadlineEpoch="${ddmEnforcedInstallDateEpoch:-${deadlineEpoch}}"
+                if [[ "${returncode}" != "9" && "${thresholdDeadlineEpoch}" =~ ^[0-9]+$ ]] && (( $(date +%s) + 60 < thresholdDeadlineEpoch )); then
+                    setNextReminderScheduleInSeconds "60" "Pre-deadline threshold ${preDeadlineThresholdMinutes}-minute reminder retry after return code ${returncode}"
+                fi
+            fi
+            ;;
+    esac
 
     if isPastDeadlineForceMode; then
         while true; do
@@ -5709,6 +5965,7 @@ function displayReminderDialog() {
                     fi
                     ;;
                 4)
+                    isSystemInDarkWake && deferForceRestartForDarkWake "timer expiry"
                     notice "User allowed timer to expire; forcing restart."
                     if executeRestartAction "Restart"; then
                         quitScript "0"
@@ -5720,6 +5977,7 @@ function displayReminderDialog() {
             esac
 
             sleep "${pastDeadlineForceRedisplayDelaySeconds}"
+            isSystemInDarkWake && deferForceRestartForDarkWake "redisplay"
             "${dialogBinary}" "${dialogArgs[@]}"
             returncode=$?
             info "Return Code: ${returncode}"
@@ -5804,10 +6062,8 @@ function displayReminderDialog() {
             quitScript "0"
             ;;
 
-        9)  ## Process exit code 9 scenario here
-            warning "swiftDialog exited with code 9; confirm your .plist or .mobileconfig is installed:"
-            info "Expected managedPreferencesPlist: ${managedPreferencesPlist}"
-            info "Expected localPreferencesPlist: ${localPreferencesPlist}"
+        9)  ## dialogcli relays a signal number when Dialog is killed; 9 is SIGKILL, not a preference problem
+            warning "swiftDialog exited with code 9; Dialog was killed (SIGKILL) before ${loggedInUser} could respond, usually by a code-signature or endpoint-security block. Next step: run 'codesign --verify --deep --strict \"/Library/Application Support/Dialog/Dialog.app\"' and check security or allowlisting tools for blocked swiftDialog launches."
             quitScript "${returncode}"
             ;;
 
@@ -6014,6 +6270,21 @@ reconcileUpdateTonightSuppressionState
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # -------------------------------------------------------------------------
+    # Post-boot re-evaluation: reschedule only, unless a reminder is due now
+    # -------------------------------------------------------------------------
+
+    if [[ "${postBootReevaluationRun}" == "YES" ]]; then
+        if isPastDeadlineForceMode || isAggressiveModeActive || isPreDeadlineThresholdReminderMode; then
+            notice "Post-boot re-evaluation: reminder due now; continuing normal reminder flow."
+        elif setNextReminderScheduleForPostBootReevaluation; then
+            logNoReminder "post-boot re-evaluation found no reminder due" "None; the next reminder appears at the scheduled time."
+            quitScript "0"
+        else
+            notice "Post-boot re-evaluation: stored schedule is now due; continuing normal reminder flow."
+        fi
+    fi
+
+    # -------------------------------------------------------------------------
     # Deadline window and periodic reminder logic (thanks for the suggestion, @kristian!)
     # -------------------------------------------------------------------------
 
@@ -6213,6 +6484,18 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
 
     # -------------------------------------------------------------------------
+    # Maintenance DarkWake: nobody can see the dialog; retry on the next heartbeat
+    # -------------------------------------------------------------------------
+
+    if isSystemInDarkWake; then
+        setNextReminderScheduleInSeconds "60" "DarkWake deferral; retry on next heartbeat"
+        logNoReminder "the Mac is in a Maintenance DarkWake (system capabilities: ${systemCapabilities})" "None; the first heartbeat after a full wake shows the reminder." "notice"
+        quitScript "0"
+    fi
+
+
+
+    # -------------------------------------------------------------------------
     # Continue with normal processing
     # -------------------------------------------------------------------------
 
@@ -6393,6 +6676,20 @@ function epochFromScheduleTimestamp() {
     echo "${scheduleEpoch}"
 }
 
+function consoleUserReady() {
+    local consoleUser=""
+
+    consoleUser="$(stat -f %Su /dev/console 2>/dev/null)"
+    [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]
+}
+
+function systemInDarkWake() {
+    # DarkWake omits the Graphics capability; unrecognized output fails open so the main script still launches
+    systemCapabilities="$( /usr/bin/pmset -g systemstate 2>/dev/null | /usr/bin/awk -F 'are:' '/^Current System Capabilities are:/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit }' )"
+
+    [[ " ${systemCapabilities} " == *" CPU "* && " ${systemCapabilities} " != *" Graphics "* ]]
+}
+
 if [[ ! -x "${mainScriptPath}" ]]; then
     error "Missing deployed main script: ${mainScriptPath}"
     exit 1
@@ -6420,16 +6717,36 @@ if [[ "${nextScheduledReminder:l}" == "false" ]]; then
     exit 0
 fi
 
+launchReason="scheduled"
+bootEpoch="$( sysctl kern.boottime 2>/dev/null | awk -F'[ |,]' '{print $5}' )"
+postBootReevaluationReady="NO"
+[[ "${bootEpoch}" =~ ^[0-9]+$ ]] && consoleUserReady && postBootReevaluationReady="YES"
+
 if [[ -n "${nextScheduledReminder}" ]]; then
     nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
     if [[ -n "${nextScheduledReminderEpoch}" ]]; then
         nowEpoch="$(date +%s)"
         if (( nextScheduledReminderEpoch > nowEpoch )); then
-            exit 0
+            # macOS may re-pad a past-due deadline at login; re-evaluate once per boot after a user logs in
+            if [[ "${postBootReevaluationReady}" != "YES" || "$(readStateValue "LastBootReevaluation")" == "${bootEpoch}" ]]; then
+                exit 0
+            fi
+            launchReason="postBoot"
         fi
     else
         warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
     fi
+fi
+
+# Leave scheduler state untouched so the due reminder (and any post-boot re-evaluation) runs after a full wake
+if systemInDarkWake; then
+    notice "DarkWake detected (system capabilities: ${systemCapabilities}); deferring reminder launch to the next heartbeat."
+    exit 0
+fi
+
+if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootReevaluation" "${bootEpoch}"; then
+    error "Unable to update post-boot re-evaluation state; not launching main script."
+    exit 1
 fi
 
 if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
@@ -6437,8 +6754,12 @@ if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
     exit 1
 fi
 
-notice "Heartbeat launch triggered '${mainScriptPath}'."
-DOR_LAUNCH_SOURCE="starter" "${mainScriptPath}" &
+if [[ "${launchReason}" == "postBoot" ]]; then
+    notice "Starter launch after boot; re-evaluating deadline (NextScheduledReminder: ${nextScheduledReminder})."
+else
+    notice "Heartbeat launch triggered '${mainScriptPath}'."
+fi
+DOR_LAUNCH_SOURCE="starter" DOR_LAUNCH_REASON="${launchReason}" "${mainScriptPath}" &
 disown
 
 exit 0
@@ -6715,9 +7036,18 @@ function dialogInstall() {
     # Install the package if Team ID validates
     if [[ "$expectedDialogTeamID" == "$teamID" ]]; then
 
-        installer -pkg "$tempDirectory/Dialog.pkg" -target /
+        if ! installer -pkg "$tempDirectory/Dialog.pkg" -target /; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog installer failed for ${dialogURL}"
+        fi
         sleep 2
+
+        # A failed upgrade can leave the previous binary in place; confirm the minimum version landed
         dialogVersion=$( "${dialogBinary}" --version 2>/dev/null )
+        if [[ ! -x "${dialogBinary}" || -z "${dialogVersion}" ]] || ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog version '${dialogVersion:-unknown}' after install; swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required."
+        fi
         preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
 
     else

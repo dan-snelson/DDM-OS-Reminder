@@ -68,7 +68,7 @@ Scheduler rules:
 - Baseline slots remain administrator-controlled preferences.
 - Thresholds can preempt a later baseline or quiet-period time and are delivered once per declaration signature.
 - Quiet time begins after recorded user interaction, not when the dialog first appears.
-- Aggressive mode starts only after the effective deadline plus `AggressiveModePastDeadlineHours`, unless the support kill switch exists.
+- Aggressive mode starts only after the effective deadline plus `AggressiveModePastDeadlineHours`, unless the support kill switch exists. When that start comes before the next baseline or quiet-period time, it becomes the exact `NextScheduledReminder`.
 - Mutable schedule values stay in `dor-state.plist`; they are never written into managed or local preferences.
 
 ## Timeline Phases
@@ -231,7 +231,8 @@ Scheduler rules:
 
 **Runtime State**:
 - `PreDeadlineThresholdSignature` identifies the threshold-delivery ledger for the resolved declaration using `<VersionString>|<BuildVersionString>|<effective-enforcement-epoch>`
-- `PreDeadlineThresholdDelivered` records configured minute thresholds already displayed for that signature
+- `PreDeadlineThresholdDelivered` records configured minute thresholds already displayed for that signature, confirmed by a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh
+- Any other return code leaves the threshold undelivered. A starter-launched run then schedules an exact `NextScheduledReminder` 60 seconds later when that retry still comes before the effective deadline. Return code `9` (`SIGKILL`) never retries.
 - `PreDeadlineThresholdSkipped` records older thresholds crossed before the most-recent due threshold could be displayed
 - When the version, build, or effective enforcement epoch changes, runtime replaces the signature and clears the delivered/skipped lists so the new declaration receives its own threshold sequence
 - These keys are mutable runtime state in `/Library/Management/<rdnn>/dor-state.plist`; they are not Configuration Profile preferences
@@ -273,7 +274,8 @@ Here, `26.6` is the target `VersionString`, `(null)` means Apple did not supply 
 **Runtime Notes**:
 - If restart mode is eligible by days but uptime is below `PastDeadlineRestartMinimumUptimeMinutes`, restart mode is temporarily suppressed and update-focused flow continues
 - Aggressive `Open Software Update` / dismissal / close / keyboard quit / timer interactions schedule an exact `NextScheduledReminder` at `now + AggressiveModeFrequencyMinutes * 60` when launched by `dor-starter.zsh`
-- A reboot does not clear a future `NextScheduledReminder`; the `RunAtLoad` heartbeat still exits quietly until that stored due time arrives
+- Runtime re-checks aggressive mode when the dialog returns. A reminder shown before the aggressive-mode start and answered after it (including a pre-deadline threshold reminder) uses the aggressive cadence from that answer, not the next baseline slot or quiet period, unless the support kill switch exists
+- A reboot does not clear a future `NextScheduledReminder`. Once per boot, the first heartbeat that finds a console user launches `dor.zsh` to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login (`setPastDuePaddedEnforcementDate … usersLoggedIn=1`). That run moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start, never later, and shows a reminder only when a threshold, aggressive mode, or Force mode is due
 - The support kill switch logs a notice and falls back to normal non-aggressive cadence
 - Force mode bypasses quiet-period suppression and meeting-delay checks
 

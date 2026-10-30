@@ -124,7 +124,7 @@ zsh assemble.zsh /path/to/previous-profile.mobileconfig
 
 Unsigned and CMS-signed profiles are supported. The profile must contain exactly one DDM OS Reminder (`*.dorm`) preferences payload; `Forced` settings are preferred. Supply only one prior `.plist` or `.mobileconfig`.
 
-Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`).
+Assembly imports supported values, infers RDNN when possible, and infers deployment lane only when the filename ends exactly in `-dev.plist`, `-test.plist`, or `-prod.plist` (for a profile: `-<lane>.mobileconfig`, `-<lane>-unsigned.mobileconfig`, or `-<lane>-signed.mobileconfig`). To promote a dev or test file, pass `--lane prod`; imported string values that start with a lane marker (`Assembled`, legacy `Sample`, or `TEST`) are rewritten to match the selected lane.
 
 ### Non-interactive options
 
@@ -213,8 +213,9 @@ At load and approximately every 60 seconds, the LaunchDaemon runs `dor-starter.z
 - Active matching `dor.pid`: starter exits to prevent overlap.
 - Stale PID: starter removes it and continues.
 - `NextScheduledReminder=FALSE`: starter exits quietly.
-- Future `NextScheduledReminder`: starter exits quietly.
-- Due, empty, or invalid schedule: starter records `DaemonLastTriggered` and launches `dor.zsh`.
+- Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`).
+- Due, empty, or invalid schedule: starter records `DaemonLastTriggered` (and, with a console user, `LastBootReevaluation`) and launches `dor.zsh`.
+- Maintenance DarkWake (`5.3.0` and later): when a launch would otherwise happen but `pmset -g systemstate` lists `CPU` without `Graphics`, the starter logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and exits without writing state. The reminder runs on the first heartbeat after a full wake.
 
 A quiet heartbeat is not evidence of failure. Inspect `dor-state.plist` before changing the LaunchDaemon or forcing another run.
 
@@ -249,7 +250,7 @@ zsh Resources/monitorRemoteSession.zsh --rdnn example.org --watch 5
 Validate:
 
 - `DaemonLastTriggered` changes when the starter launches the main script.
-- A future schedule remains intact across heartbeat cycles and reboot.
+- A future schedule remains intact across heartbeat cycles and reboot; after reboot and login, one post-boot re-evaluation may move it earlier, never later.
 - `Remind Me Later` starts the quiet period from interaction time.
 - A pending final-minute threshold can schedule earlier than quiet-period expiry.
 - Aggressive mode uses exact redisplay scheduling after its configured post-deadline threshold.
@@ -322,7 +323,7 @@ Review the [5.0.0 upgrade notes](../README.md#500-upgrade-notes): self-extractin
 
 ## 11. Uninstall
 
-Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets (including `dor-aggressive-kill` and `dor-state.plist`, which `All` and `Script` keep), and leaves preference removal under administrator control.
+Use the assembled deployment wrapper's `Uninstall` reset action through the same root-level deployment channel. It unloads matching DDM OS Reminder LaunchDaemons, stops only a PID-validated active runtime and its owned children, removes runtime assets (including `dor-aggressive-kill`, `dor-state.plist`, and the `dor-icon-*` icon cache, which `All` and `Script` keep), and leaves preference removal under administrator control.
 
 ## Deployment Checklist
 

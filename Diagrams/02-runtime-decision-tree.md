@@ -11,8 +11,12 @@ flowchart TD
     PID -->|No or stale| ReadState[Read dor-state.plist<br/>NextScheduledReminder]
     ReadState --> Due{Schedule state}
     Due -->|FALSE| StarterNoop
-    Due -->|Future| StarterNoop
-    Due -->|Due, empty, or invalid| Trigger[Write DaemonLastTriggered<br/>launch dor.zsh as starter]
+    Due -->|Future| PostBoot{Console user logged in and<br/>no re-evaluation yet this boot?}
+    PostBoot -->|No| StarterNoop
+    PostBoot -->|Yes| StarterDarkWake
+    Due -->|Due, empty, or invalid| StarterDarkWake{Maintenance DarkWake?<br/>pmset -g systemstate<br/>lacks Graphics}
+    StarterDarkWake -->|Yes| StarterDefer[Log DarkWake NOTICE and exit<br/>scheduler state unchanged]
+    StarterDarkWake -->|No| Trigger[Write DaemonLastTriggered and,<br/>with a console user, LastBootReevaluation<br/>launch dor.zsh as starter]
 
     Trigger --> Root{Running as root?}
     Root -->|No| FatalRoot[Fatal error]
@@ -37,10 +41,15 @@ flowchart TD
     RestartMode --> Threshold[Evaluate next pre-deadline<br/>minute threshold]
     Threshold --> Aggressive[Evaluate aggressive mode<br/>deadline + configured hours<br/>unless kill switch exists]
 
-    Aggressive --> Force{Force restart<br/>mode active?}
-    Force -->|Yes| Build
+    Aggressive --> PostBootRun{Post-boot<br/>re-evaluation run?}
+    PostBootRun -->|No| Force
+    PostBootRun -->|Yes| PostBootDue{Force, aggressive, or threshold<br/>due now, or stored schedule due?}
+    PostBootDue -->|Yes| Force
+    PostBootDue -->|No| SchedulePostBoot[Move NextScheduledReminder earlier<br/>for a threshold or aggressive start,<br/>never later, and exit]
+    Force{Force restart<br/>mode active?}
+    Force -->|Yes| DarkWake
     Force -->|No| ThresholdDue{Threshold reminder<br/>due now?}
-    ThresholdDue -->|Yes| Build
+    ThresholdDue -->|Yes| DarkWake
     ThresholdDue -->|No| Window{Inside display window?}
     Window -->|No| Periodic{Outside-window periodic<br/>reminder due?}
     Periodic -->|No| ScheduleBaseline[Schedule next baseline or threshold<br/>and exit]
@@ -48,13 +57,15 @@ flowchart TD
     Window -->|Yes| UpdateTonight{Update Tonight confirmed today<br/>for target version, aggressive inactive,<br/>and deadline after midnight?}
     UpdateTonight -->|Yes| ScheduleTonight[Schedule first baseline slot<br/>after midnight or earlier threshold and exit]
     UpdateTonight -->|No| QuietBypass{Aggressive mode<br/>active?}
-    QuietBypass -->|Yes| Build
+    QuietBypass -->|Yes| DarkWake
     QuietBypass -->|No| Quiet{Within interaction<br/>quiet period?}
     Quiet -->|Yes| ScheduleQuiet[Schedule exact quiet expiry<br/>or earlier threshold and exit]
     Quiet -->|No| Meeting{At least 36 hours remain<br/>and allowed meeting active?}
     Meeting -->|Yes| MeetingWait[Check every 5 minutes<br/>until clear or MeetingDelay reached]
-    Meeting -->|No| Build
-    MeetingWait --> Build[Build localized dialog,<br/>disk-space and battery warnings,<br/>and apply active mode]
+    Meeting -->|No| DarkWake
+    MeetingWait --> DarkWake{Maintenance DarkWake?<br/>no Graphics capability}
+    DarkWake -->|Yes| ScheduleDarkWake[Schedule now + 60 seconds<br/>and exit]
+    DarkWake -->|No| Build[Build localized dialog,<br/>icons with cached fallback,<br/>disk-space and battery warnings,<br/>and apply active mode]
 
     Build --> Mode{Dialog mode}
     Mode -->|Update| UpdateDialog[Standard, blur, urgent,<br/>or aggressive update dialog]
@@ -92,6 +103,7 @@ flowchart TD
 
     style Heartbeat fill:#e3f2fd
     style StarterNoop fill:#cfd8dc
+    style StarterDefer fill:#cfd8dc
     style Trigger fill:#e1f5ff
     style Status fill:#ffecb3
     style ReadFallback fill:#ffe0b2
@@ -109,8 +121,9 @@ flowchart TD
 
 - `dor.pid` prevents overlap. A stale or malformed PID is removed without terminating unrelated processes.
 - `NextScheduledReminder=FALSE` disables daemon-driven reminders.
-- A future `NextScheduledReminder` produces an expected quiet no-op, including after reboot.
+- A future `NextScheduledReminder` produces an expected quiet no-op, with one exception: after each boot, the first heartbeat that finds a console user other than `loginwindow`, `_mbsetupuser`, or `root` launches `dor.zsh` once to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login. The starter records the boot in `LastBootReevaluation` (the `kern.boottime` epoch) and logs `[NOTICE] Starter launch after boot; re-evaluating deadline …`. That run shows a reminder only when a threshold, aggressive mode, or Force mode is due; otherwise it moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start (never later) and exits with `No reminder shown: post-boot re-evaluation found no reminder due`.
 - Due, empty, missing, or invalid scheduler state causes the starter to run the full workflow so it can repair or advance scheduling.
+- Starting with `5.3.0`, a heartbeat during a Maintenance DarkWake (`pmset -g systemstate` lists `CPU` but not `Graphics`) does not launch `dor.zsh`, even when a reminder is due. The starter logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation`, so the due reminder (or post-boot re-evaluation) runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.
 - Manual and demo runs bypass scheduler writes; only starter-launched runs own `dor.pid` and mutate `dor-state.plist`.
 
 ## DDM and Fallback Decisions
@@ -119,6 +132,7 @@ Normal DDM resolution always runs first. When the root-owned `/var/db/softwareup
 
 - `resolved`: confirmed DDM wins and persisted fallback stays inactive.
 - `missing`, `conflict`, `noMatch`, or `invalidVersion`: runtime may select a valid emergency fallback.
+- Exception (`5.3.0` and later): a `conflict` caused only by a leftover declaration the Mac already meets (`No updates found for DDM to enforce` logged after it) skips fallback and ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; softwareupdated has nothing left to enforce`. The same applies when `softwareupdated` offers a different macOS (`Available descriptor <offered> disagrees with DDM declaration <version>`) and the Mac already meets the declaration; that run ends with `No reminder shown: macOS <installed> already meets DDM-enforced macOS <version>; the different update softwareupdated offers (macOS <offered>) is not enforced by DDM`.
 - Missing, corrupt, incomplete, wrong-type, or invalid fallback data preserves the original suppression result.
 - Unknown resolver states fail closed without fallback selection.
 
@@ -135,7 +149,11 @@ Scheduling combines four sources:
 
 The earliest applicable exact time wins. Threshold reminders bypass quiet-period suppression. Force restart mode bypasses quiet-period and meeting checks.
 
-**Update Tonight suppression** is runtime-only and has no preference key. When `/var/log/install.log` shows lines logged by `softwareupdated` itself confirming that it queued the required version (`SUOSUInstallTonightManager: Queued … macOS <version>`) and armed the scheduler (`SUOSUScheduler: ARMED (… simulated=NO)`), normal reminders stop until local midnight. The evidence must be from today, newer than the last boot, and not followed by a disarm, dequeue, or `enabled = false` line. The next run is scheduled for the first `DailyReminderTimes` slot after midnight, or for an earlier pending threshold. Threshold, aggressive, and Force reminders bypass this suppression, and it never applies when the effective deadline is at or before local midnight. Daemon runs record the expiry as `UpdateTonightSuppressionUntil` in `dor-state.plist` and log it as expired or cleared on the next run.
+Runtime re-checks aggressive mode when the dialog returns, so a reminder answered after the aggressive-mode start uses the aggressive cadence even when the run began before it. A threshold reminder that ends without a user-interaction return code (`0`, `2`, `3`, `4`, `10`) stays undelivered and retries 60 seconds later (starter-launched runs only) when that retry still comes before the effective deadline. Return code `9` (`SIGKILL`) never retries.
+
+No mode bypasses the Maintenance DarkWake check, because nobody can see a dialog drawn during DarkWake. A run that reaches the dialog during DarkWake (for example, after a `MeetingDelay` wait) schedules an exact retry 60 seconds later (starter-launched runs only) and logs `[NOTICE] No reminder shown: the Mac is in a Maintenance DarkWake …`, so threshold, aggressive, and Force reminders appear at the first full wake instead of moving to a later baseline slot. Force mode checks again before each same-run redisplay and before a timer-driven restart; during DarkWake it logs `[NOTICE] Force restart redisplay deferred: …` (or `Force restart timer expiry deferred: …`), requests no restart, and uses the same 60-second retry.
+
+**Update Tonight suppression** is runtime-only and has no preference key. When `/var/log/install.log` shows lines logged by `softwareupdated` itself confirming that it queued the required version (`SUOSUInstallTonightManager: Queued … macOS <version>`) and armed the scheduler (`SUOSUScheduler: ARMED (… simulated=NO)`), normal reminders stop until local midnight. The evidence must be from today, newer than the last boot, and not followed by a disarm, dequeue, or `enabled = false` line. The next run is scheduled for the first `DailyReminderTimes` slot after midnight, or for an earlier pending threshold or aggressive-mode start (effective deadline plus `AggressiveModePastDeadlineHours`, kill switch absent). Threshold, aggressive, and Force reminders bypass this suppression, and it never applies when the effective deadline is at or before local midnight. Daemon runs record the expiry as `UpdateTonightSuppressionUntil` in `dor-state.plist` and log it as expired or cleared on the next run.
 
 ## Dialog Modes
 
@@ -151,7 +169,7 @@ The earliest applicable exact time wins. Threshold reminders bypass quiet-period
 
 ## Observable Exit Paths
 
-Every meaningful branch logs through the existing structured log format. Common quiet exits include active PID, future or disabled schedule, unresolved requirement without valid fallback, compliance, outside-window suppression, Update Tonight suppression, active quiet period, and DND/Focus return. Use `dor-state.plist` before treating a heartbeat no-op as failure.
+Every meaningful branch logs through the existing structured log format. Common quiet exits include active PID, future or disabled schedule, unresolved requirement without valid fallback, compliance, outside-window suppression, Update Tonight suppression, active quiet period, Maintenance DarkWake deferral, and DND/Focus return. Use `dor-state.plist` before treating a heartbeat no-op as failure.
 
 Starting with `5.2.0`, client-log entries name the outcome and the next step:
 

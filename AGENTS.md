@@ -41,6 +41,9 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 ## Skills
 Invoke relevant skill name during planning.
 
+### Pre-release Review Skill
+Use [`pre-release-review`](Resources/skills/pre-release-review/SKILL.md) for an independent, read-only release-readiness audit. Supply the target version; branches default to `development` and `main`. Keep the detailed review workflow in that canonical skill.
+
 ### Reminder Runtime Change Skill
 1. Start from nearest owning function or decision path in `reminderDialog.zsh`.
 2. Preserve DDM trust rules, suppression semantics, and structured logging.
@@ -137,14 +140,14 @@ Out of scope:
 - `Resources/README.md`: assembly, packaging, plist/mobileconfig, EA, preference-test, and client-state diagnosis instructions
 - `Resources/sample.plist`: canonical localization and preference surface for generated configs
 - `Resources/reminderDialogPreferenceTest.zsh`: preference-driven dialog validation helper
-- `Resources/diagnoseReminderState.zsh`: read-only fact sheet from uploaded client log, `install.log`, and plist
+- `Resources/diagnoseReminderState.zsh`: read-only, redacted fact sheet from uploaded client log, `install.log`, and plist, or from live paths on the affected Mac via `--rdnn`; opt-in `--no-redaction` with `--rdnn` also saves the unredacted fact sheet to `/Library/Management/<rdnn>/`
 - `Resources/skills/diagnose-client-state/SKILL.md`: agent instructions for client-state diagnosis
 - `CHANGELOG.md`: release history and shipped behavior summary
 - `Artifacts/`: generated build outputs that may be tracked; do not refresh casually
 
 ## Current Runtime Hotspots
 - Deadline resolution must fail safely when declaration state is missing, conflicting, invalid, or stale. Recognized unresolved states suppress reminder dialog unless a validated DDM Emergency Fallback is selected.
-- DDM Emergency Fallback is eligible for resolver statuses `missing`, `conflict`, `noMatch`, and `invalidVersion`; confirmed DDM always wins, absent or invalid fallback preserves suppression, and unknown states fail closed.
+- DDM Emergency Fallback is eligible for resolver statuses `missing`, `conflict`, `noMatch`, and `invalidVersion`; confirmed DDM always wins, absent or invalid fallback preserves suppression, and unknown states fail closed. Exception: a `conflict` from a leftover declaration (`Declaration persisted after 'No updates found for DDM to enforce'`) or a different offered update (`Available descriptor <version> disagrees with DDM declaration <version>`) that the installed macOS already meets skips fallback and logs at `[NOTICE]`, not `[WARNING]`.
 - Fallback configuration stays in `dor-fallback-declaration.plist`, never managed/local preferences or `dor-state.plist`. Past fallback deadlines use their supplied timestamp and never wait for `setPastDuePaddedEnforcementDate`.
 - Post-deadline restart workflow gates on effective post-deadline epoch when safely resolved, not raw `EnforcedInstallDate` alone.
 - Quiet period starts after user interaction, not when dialog first appears.
@@ -153,15 +156,18 @@ Out of scope:
 - Past-deadline aggressive cadence resolves from `AggressiveModePastDeadlineHours` (`2` by default) and `AggressiveModeFrequencyMinutes` (`20` by default). Mac Admins can effectively suppress it with a high hour value such as `720`; support can temporarily suppress it with `/Library/Management/<rdnn>/dor-aggressive-kill`.
 - Low-battery warning (`MinimumBatteryPercentage`, `0`–`100`, default `50`; `0` disables) is messaging-only: warn only on positive `pmset -g ps` evidence (`Battery Power` + parsed `-InternalBattery-` charge below threshold), never on AC/UPS/no-battery/unreadable states, never gate `Prompt`/`Force`, keep `{batteryWarningMessage}` in restart mode, and never simulate power state in production (preview via `reminderDialogPreferenceTest.zsh --battery-percentage`).
 - Update Tonight suppression is runtime-only (no preference key). Same-day, post-boot `SUOSUInstallTonightManager: Queued` + `SUOSUScheduler: ARMED (… simulated=NO)` evidence for the target version suppresses normal reminders until local midnight. Threshold, aggressive, and Force bypass it, and it never applies when the effective deadline is at or before midnight. `UpdateTonightSuppressionUntil` lives only in `dor-state.plist`.
-- `dor-starter.zsh` is expected to exit quietly when `NextScheduledReminder` is `FALSE` or future-dated. Check `dor-state.plist` before treating a no-op heartbeat as failure.
+- `dor-starter.zsh` is expected to exit quietly when `NextScheduledReminder` is `FALSE` or future-dated. Exception: once per boot, the first heartbeat with a console user launches `DOR_LAUNCH_REASON=postBoot` (marker `LastBootReevaluation` = `kern.boottime` epoch); that run only moves the schedule earlier unless a threshold, aggressive, or Force reminder is due. During a Maintenance DarkWake (`pmset -g systemstate` lists `CPU` but not `Graphics`), a due starter logs `[NOTICE] DarkWake detected …` and exits without launching or writing state; unrecognized `pmset` output fails open. Check `dor-state.plist` before treating a no-op heartbeat as failure.
+- No reminder mode bypasses the runtime DarkWake check before dialog build: a DarkWake run schedules an exact retry 60 seconds later (starter runs only) and logs `No reminder shown: the Mac is in a Maintenance DarkWake …`, so threshold, aggressive, and Force reminders never slip to a later baseline slot. The Force loop in `displayReminderDialog` re-checks before each redisplay and before a timer (`4`) restart via `deferForceRestartForDarkWake` (60-second retry, no restart); a `0` click still restarts.
 - Only starter-launched runs should mutate `dor-state.plist` or `dor.pid`; direct/manual/demo runs bypass daemon scheduler writes.
-- Once aggressive mode is active, `Open Software Update` and dismissal paths should keep exact-time redisplay scheduling; non-aggressive update flows still return to the next baseline reminder slot unless a configured pre-deadline minute threshold is earlier.
+- Once aggressive mode is active, `Open Software Update` and dismissal paths should keep exact-time redisplay scheduling; non-aggressive update flows still return to the next baseline reminder slot unless a configured pre-deadline minute threshold or the aggressive-mode start (effective deadline + `AggressiveModePastDeadlineHours`, kill switch absent) is earlier.
+- `displayReminderDialog` re-runs `evaluateAggressiveModeState` when the dialog returns, before the threshold auto-refresh dispatch, so a reminder (threshold or not) answered after the aggressive-mode start schedules `AggressiveModeFrequencyMinutes` from the answer. A threshold dialog ending without a user-interaction return code stays undelivered and retries in 60 seconds only when that retry is before the effective deadline; return code `9` never retries.
 - When `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` is readable, `install.log` declaration candidates must match one of its active `Declarations` (`TargetOSVersion` + `TargetLocalDateTime`); runtime and both Pending-OS EAs share this rule. Missing or unrecognized plist keeps `install.log`-only behavior with runtime `[WARNING]` (accepted residual risk documented in `SECURITY.md`). Update Tonight positive evidence must come from `softwareupdated[pid]`.
 - `assemble.zsh` splices `ScriptLog` into generated Zsh; imported values must pass `isSafeScriptLogPath` (plain absolute path, `<rdnn>.log` basename) and the assembled script is re-checked with `zsh -n` after the final `scriptLog` rewrite.
 - Console-user resolution rejects `loginwindow`, `_mbsetupuser`, and `root` before building per-user dialog context.
 - Root runtime temp files (icons, swiftDialog `--commandfile`, threshold marker) live only in per-run `mktemp -d` `/var/tmp/<organizationScriptName>.XXXXXX` (root `0755`, files `0644`; swiftDialog 3 reads them as console user). Never write fixed `/var/tmp` names as root.
+- Branding icons: one reachability wait (up to 5 seconds), then parallel `curl` with one retry; only image MIME types count as success. Last good downloads cache as root-owned `/Library/Management/<rdnn>/dor-icon-macos-<major|default>.png` and `dor-icon-overlay-<light|dark>.png` (not written in demo mode), copied into the per-run directory before use. Fallback: macOS icon to cache, then `Software Update.app`, then `Finder.app`; overlay to cache, then no `--overlayicon`.
 - swiftDialog runs from `/Library/Application Support/Dialog/Dialog.app/Contents/MacOS/dialogcli`; root `PATH` excludes `/usr/local`.
-- `All`/`Script` redeploys preserve `dor-aggressive-kill` and `dor-state.plist` (clearing only `NextScheduledReminder`); only `Uninstall` removes them. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
+- `All`/`Script` redeploys preserve `dor-aggressive-kill`, `dor-state.plist` (clearing only `NextScheduledReminder`), and `dor-icon-*` cache files; only `Uninstall` removes them. Deployed `dor.zsh`/`dor-starter.zsh` are written to adjacent temp files, `zsh -n` validated, then atomically moved.
 - `reminderDialog.zsh` changes are not live inside `launchDaemonManagement.zsh` until `zsh assemble.zsh` runs.
 
 ## Repository Rules
@@ -217,6 +223,8 @@ These rules override ad-hoc prompting. Match established shipped-script style un
 
 ## Release Checklist
 Apply only for release or packaging prep.
+
+For a pre-release review, follow [`Resources/skills/pre-release-review/SKILL.md`](Resources/skills/pre-release-review/SKILL.md). The audit does not authorize packaging or artifact regeneration.
 
 1. Keep `scriptVersion` aligned across shipped scripts when release-affecting changes touch versioned artifacts.
 2. Confirm `README.md` and `CHANGELOG.md` match current behavior, defaults, and deployment workflow.

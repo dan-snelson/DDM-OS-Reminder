@@ -134,7 +134,7 @@ fi
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="5.2.0"
+scriptVersion="5.3.0"
 humanReadableScriptName="DDM OS Reminder Dialog Preference Test"
 errorCount=0
 
@@ -1657,16 +1657,14 @@ function downloadBrandingAssets() {
         notice "${appearanceMode} mode detected; using standard overlay icon"
     fi
 
+    overlayicon=""
     if [[ -n "${overlayIconURL}" ]]; then
         overlayicon="$(resolveDialogIconValue "${overlayIconURL}")"
         if [[ -n "${overlayicon}" ]]; then
             info "Resolved overlay icon: ${overlayicon}"
         else
-            warning "Could not resolve overlay icon from '${overlayIconURL}'; using Finder icon."
-            overlayicon="/System/Library/CoreServices/Finder.app"
+            warning "Could not resolve overlay icon from '${overlayIconURL}'; showing the dialog without an overlay icon."
         fi
-    else
-        overlayicon="/System/Library/CoreServices/Finder.app"
     fi
 
     case "${majorDDM}" in
@@ -1678,13 +1676,20 @@ function downloadBrandingAssets() {
     esac
 
     icon="$(resolveDialogIconValue "${macOSIconURL}")"
-    [[ -z "${icon}" ]] && icon="/System/Library/CoreServices/Finder.app"
+    if [[ -z "${icon}" ]]; then
+        icon="/System/Library/CoreServices/Software Update.app"
+        [[ -d "${icon}" ]] || icon="/System/Library/CoreServices/Finder.app"
+    fi
 
     if [[ "${swapOverlayAndLogo}" == "YES" ]]; then
-        local tmp="${icon}"
-        icon="${overlayicon}"
-        overlayicon="${tmp}"
-        info "SwapOverlayAndLogo enabled; swapped primary and overlay icons."
+        if [[ -n "${overlayicon}" ]]; then
+            local tmp="${icon}"
+            icon="${overlayicon}"
+            overlayicon="${tmp}"
+            info "SwapOverlayAndLogo enabled; swapped primary and overlay icons."
+        else
+            info "SwapOverlayAndLogo enabled, but no overlay icon is available; keeping the macOS icon as the primary icon."
+        fi
     fi
 
     info "Using primary icon: ${icon}"
@@ -2130,7 +2135,7 @@ function printResolvedPreferenceSummary() {
     preFlight "Primary button: ${button1text}"
     preFlight "Secondary button: ${button2text:-<hidden>}"
     preFlight "Info button: ${infobuttontext:-<hidden>}"
-    preFlight "Overlay icon source: ${overlayicon}"
+    preFlight "Overlay icon source: ${overlayicon:-<none>}"
     preFlight "Main icon source: ${icon}"
     preFlight "Help image: ${helpimage}"
     preFlight "Infobox: ${infobox}"
@@ -2195,7 +2200,6 @@ function displayReminderDialog() {
         --message "${message}"
         --icon "${icon}"
         --iconsize 250
-        --overlayicon "${overlayicon}"
         --infobox "${infobox}"
         --button1text "${button1text}"
         --messagefont "size=14"
@@ -2205,6 +2209,7 @@ function displayReminderDialog() {
         "${blurscreen}"
     )
 
+    [[ -n "${overlayicon}" ]] && dialogArgs+=(--overlayicon "${overlayicon}")
     [[ -n "${button2text}" ]] && dialogArgs+=(--button2text "${button2text}")
     [[ "${hideSecondaryButton}" == "DISABLED" ]] && dialogArgs+=(--button2disabled)
     [[ -n "${infobuttontext}" ]] && dialogArgs+=(--infobuttontext "${infobuttontext}")

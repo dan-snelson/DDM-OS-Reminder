@@ -30,7 +30,7 @@
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Script Version
-scriptVersion="5.2.0"
+scriptVersion="5.3.0"
 
 # Client-side Log
 scriptLog="/var/log/org.churchofjesuschrist.log"
@@ -135,7 +135,8 @@ function removeDeployedRuntimeAssets() {
             notice "Preserving aggressive-mode support kill switch '${dorAggressiveKillSwitchPath}'; aggressive mode stays suppressed until support removes it."
         fi
     else
-        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" )
+        # Cached branding icons are only an offline fallback; redeploys keep them
+        runtimeAssetPaths+=( "${dorStatePlistPath}" "${dorAggressiveKillSwitchPath}" "${organizationDirectory}"/dor-icon-*(N) )
     fi
 
     stopActiveReminderRuntime
@@ -828,6 +829,20 @@ function epochFromScheduleTimestamp() {
     echo "${scheduleEpoch}"
 }
 
+function consoleUserReady() {
+    local consoleUser=""
+
+    consoleUser="$(stat -f %Su /dev/console 2>/dev/null)"
+    [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]
+}
+
+function systemInDarkWake() {
+    # DarkWake omits the Graphics capability; unrecognized output fails open so the main script still launches
+    systemCapabilities="$( /usr/bin/pmset -g systemstate 2>/dev/null | /usr/bin/awk -F 'are:' '/^Current System Capabilities are:/ { gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit }' )"
+
+    [[ " ${systemCapabilities} " == *" CPU "* && " ${systemCapabilities} " != *" Graphics "* ]]
+}
+
 if [[ ! -x "${mainScriptPath}" ]]; then
     error "Missing deployed main script: ${mainScriptPath}"
     exit 1
@@ -855,16 +870,36 @@ if [[ "${nextScheduledReminder:l}" == "false" ]]; then
     exit 0
 fi
 
+launchReason="scheduled"
+bootEpoch="$( sysctl kern.boottime 2>/dev/null | awk -F'[ |,]' '{print $5}' )"
+postBootReevaluationReady="NO"
+[[ "${bootEpoch}" =~ ^[0-9]+$ ]] && consoleUserReady && postBootReevaluationReady="YES"
+
 if [[ -n "${nextScheduledReminder}" ]]; then
     nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
     if [[ -n "${nextScheduledReminderEpoch}" ]]; then
         nowEpoch="$(date +%s)"
         if (( nextScheduledReminderEpoch > nowEpoch )); then
-            exit 0
+            # macOS may re-pad a past-due deadline at login; re-evaluate once per boot after a user logs in
+            if [[ "${postBootReevaluationReady}" != "YES" || "$(readStateValue "LastBootReevaluation")" == "${bootEpoch}" ]]; then
+                exit 0
+            fi
+            launchReason="postBoot"
         fi
     else
         warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
     fi
+fi
+
+# Leave scheduler state untouched so the due reminder (and any post-boot re-evaluation) runs after a full wake
+if systemInDarkWake; then
+    notice "DarkWake detected (system capabilities: ${systemCapabilities}); deferring reminder launch to the next heartbeat."
+    exit 0
+fi
+
+if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootReevaluation" "${bootEpoch}"; then
+    error "Unable to update post-boot re-evaluation state; not launching main script."
+    exit 1
 fi
 
 if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
@@ -872,8 +907,12 @@ if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
     exit 1
 fi
 
-notice "Heartbeat launch triggered '${mainScriptPath}'."
-DOR_LAUNCH_SOURCE="starter" "${mainScriptPath}" &
+if [[ "${launchReason}" == "postBoot" ]]; then
+    notice "Starter launch after boot; re-evaluating deadline (NextScheduledReminder: ${nextScheduledReminder})."
+else
+    notice "Heartbeat launch triggered '${mainScriptPath}'."
+fi
+DOR_LAUNCH_SOURCE="starter" DOR_LAUNCH_REASON="${launchReason}" "${mainScriptPath}" &
 disown
 
 exit 0
@@ -1150,9 +1189,18 @@ function dialogInstall() {
     # Install the package if Team ID validates
     if [[ "$expectedDialogTeamID" == "$teamID" ]]; then
 
-        installer -pkg "$tempDirectory/Dialog.pkg" -target /
+        if ! installer -pkg "$tempDirectory/Dialog.pkg" -target /; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog installer failed for ${dialogURL}"
+        fi
         sleep 2
+
+        # A failed upgrade can leave the previous binary in place; confirm the minimum version landed
         dialogVersion=$( "${dialogBinary}" --version 2>/dev/null )
+        if [[ ! -x "${dialogBinary}" || -z "${dialogVersion}" ]] || ! is-at-least "${swiftDialogMinimumRequiredVersion}" "${dialogVersion}"; then
+            rm -Rf "$tempDirectory"
+            fatal "swiftDialog version '${dialogVersion:-unknown}' after install; swiftDialog ${swiftDialogMinimumRequiredVersion} or newer is required."
+        fi
         preFlight "swiftDialog version ${dialogVersion} installed; proceeding..."
 
     else

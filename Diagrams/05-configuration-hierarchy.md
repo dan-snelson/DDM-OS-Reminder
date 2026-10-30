@@ -149,6 +149,7 @@ Managed localized keys retain per-key priority over matching local localized key
 
 - `NextScheduledReminder`
 - `DaemonLastTriggered`
+- `LastBootReevaluation`
 - `PreDeadlineThresholdSignature`
 - delivered and skipped threshold ledgers
 
@@ -156,7 +157,7 @@ Only starter-launched runtime runs should mutate this file. Never place schedule
 
 ### Emergency fallback
 
-`/Library/Management/<rdnn>/dor-fallback-declaration.plist` contains an optional deployment-owned version and deadline requirement. It is evaluated only after normal DDM resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`.
+`/Library/Management/<rdnn>/dor-fallback-declaration.plist` contains an optional deployment-owned version and deadline requirement. It is evaluated only after normal DDM resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`, except a `conflict` caused only by a leftover declaration, or a different offered update, when the Mac already meets the declaration.
 
 Confirmed DDM always wins. Invalid or absent fallback data preserves suppression, and unknown resolver states fail closed. Fallback keys are not preferences and do not belong in `Resources/sample.plist` or `dor-state.plist`.
 

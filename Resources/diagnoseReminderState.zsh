@@ -7,11 +7,13 @@
 #
 # Read-only extractor for Mac Admin uploads:
 #   client-side log, /var/log/install.log, and client-side .plist
+# or, on the affected Mac, the same files read from their live paths (--rdnn)
 #
 # Prints a structured fact sheet that ends with a pre-filled report skeleton.
-# Does not write files, change preferences, mutate scheduler state, or
-# re-decide resolver status. The client log's recorded resolver result is
-# authoritative for what that Mac did.
+# Does not change preferences, mutate scheduler state, or re-decide resolver
+# status. Writes nothing, except --no-redaction with --rdnn, which saves the
+# printed fact sheet to /Library/Management/<rdnn>/. The client log's recorded
+# resolver result is authoritative for what that Mac did.
 #
 # Usage:
 #   zsh Resources/diagnoseReminderState.zsh --help
@@ -19,6 +21,8 @@
 #       --client-log /path/to/<rdnn>.log \
 #       --install-log /path/to/install.log \
 #       --plist /path/to/<rdnn>.dorm.plist
+#   sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>
+#   sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn> --no-redaction
 #
 # http://snelson.us/ddm
 #
@@ -28,8 +32,8 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.4.0"
-checklistScriptVersion="5.2.0"
+scriptVersion="1.6.5"
+checklistScriptVersion="5.3.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -47,19 +51,32 @@ fallbackPlistPath=""
 persistencePlistPath=""
 launchDaemonPlistPath=""
 aggressiveKillState="unknown"
+rdnnOption=""
+redactionEnabled="true"
+inferredInputPath=""
 
+# Per-input source: supplied | inferred | absent | unreadable (empty = not in upload)
+typeset -A inputSource=()
+typeset -A inputCandidatePath=()
 typeset -a extraPlistPaths=()
 typeset -a rdnnCandidates=()
 typeset -a unknownPlistKeys=()
 typeset -a deprecatedPlistKeys=()
 typeset -a preferenceRows=()
 typeset -a latestRunDecisionLines=()
-typeset -a installLogCandidates=()
+typeset -a installLogCandidateKeys=()
+typeset -A installLogCandidateFirst=()
+typeset -A installLogCandidateLast=()
+typeset -A installLogCandidateCount=()
 typeset -a installLogInvalidDeclarations=()
 typeset -a installLogNoUpdatesLines=()
 typeset -a installLogRecoveryLines=()
 typeset -a installLogNoMatchLines=()
 typeset -a installLogTonightLines=()
+typeset -a installLogDescriptorKeys=()
+typeset -A installLogDescriptorFirst=()
+typeset -A installLogDescriptorLast=()
+typeset -A installLogDescriptorCount=()
 typeset -a inputNotes=()
 typeset -a identityNotes=()
 typeset -a rejectedLocalizedKeys=()
@@ -183,6 +200,9 @@ logOrganizationScriptName=""
 installedMacOSVersion=""
 installedMacOSBuild=""
 resolverStatusLine=""
+resolverStatusTimestamp=""
+legacyResolvedVersion=""
+legacyResolvedDeadline=""
 installLogLineCount=0
 installLogWindowCount=0
 latestRunLineCount=0
@@ -193,6 +213,12 @@ unprefixedLineCount=0
 unprefixedTopLine=""
 unprefixedTopCount=0
 fallbackGate=""
+identityComputerName=""
+identityComputerNameSource=""
+identitySerialNumber=""
+identitySerialNumberSource=""
+factSheetSavePath=""
+factSheetSaveError=""
 reportSkeletonRunLimit=5
 reportSkeletonSpanLimit=20
 
@@ -208,8 +234,9 @@ function printUsage() {
     echo "Usage:"
     echo "  zsh ${scriptRelativePath} --help"
     echo "  zsh ${scriptRelativePath} --client-log <path> --install-log <path> --plist <path>"
+    echo "  sudo zsh ${scriptRelativePath} --rdnn <rdnn>"
     echo ""
-    echo "Required:"
+    echo "Required (uploaded files):"
     echo "  --client-log <path>         Client-side DDM OS Reminder log (/var/log/<rdnn>.log)"
     echo "  --install-log <path>        Copy of /var/log/install.log"
     echo "  --plist <path>              Client-side .plist (repeatable; layer inferred from path/name)"
@@ -222,9 +249,24 @@ function printUsage() {
     echo "  --persistence-plist <path>  /var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
     echo "  --launch-daemon-plist <path> /Library/LaunchDaemons/<rdnn>.dor.plist"
     echo "  --aggressive-kill yes|no    Whether dor-aggressive-kill existed on the Mac"
+    echo "  --no-redaction              Print usernames, first names, /Users paths, computer names, and serial numbers as logged;"
+    echo "                              with --rdnn, also save the output to /Library/Management/<rdnn>/"
     echo ""
-    echo "At least one of --plist, --managed-plist, or --local-plist is required."
-    echo "Read-only: prints a fact sheet to stdout and writes nothing."
+    echo "On the affected Mac (alternative to the required files):"
+    echo "  --rdnn <rdnn>               Read each input not supplied above from its live path:"
+    echo "                                client log: effective ScriptLog (Managed, then Local), else /var/log/<rdnn>.log"
+    echo "                                install.log: /var/log/install.log"
+    echo "                                plists: /Library/Managed Preferences/<rdnn>.dorm.plist and /Library/Preferences/<rdnn>.dorm.plist"
+    echo "                                state, fallback, dor-aggressive-kill: /Library/Management/<rdnn>/"
+    echo "                                softwareupdate DDM state: /var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
+    echo "                                LaunchDaemon: /Library/LaunchDaemons/<rdnn>.dor.plist"
+    echo "                              Explicit flags win. Run with sudo so root-only files can be read."
+    echo ""
+    echo "Without --rdnn, at least one of --plist, --managed-plist, or --local-plist is required."
+    echo "With --rdnn, a Mac with no preference plist is reported with script defaults."
+    echo "Default: prints a redacted fact sheet to stdout and writes nothing."
+    echo "--no-redaction output identifies the Mac and its user; keep it out of public issues."
+    echo "--no-redaction with --rdnn also saves the fact sheet (mode 0600) and exits 73 if it cannot."
     echo "The fact sheet ends with a pre-filled report skeleton for the agent to complete."
 }
 
@@ -320,6 +362,7 @@ function inferPlistLayer() {
 function assignPlistPath() {
     local layer="${1}"
     local plistPath="${2}"
+    local plistSource="${3:-supplied}"
 
     requireReadableFile "Plist" "${plistPath}"
     rdnnFromPlistFileName "${plistPath}"
@@ -328,14 +371,26 @@ function assignPlistPath() {
         managed)
             [[ -z "${managedPlistPath}" ]] || failUsage "Multiple managed plists supplied"
             managedPlistPath="${plistPath}"
+            inputSource[managedPlist]="${plistSource}"
             ;;
         local)
             [[ -z "${localPlistPath}" ]] || failUsage "Multiple local plists supplied"
             localPlistPath="${plistPath}"
+            inputSource[localPlist]="${plistSource}"
             ;;
         unknown)
             extraPlistPaths+=("${plistPath}")
             ;;
+    esac
+}
+
+function inputStatusLabel() {
+    case "${inputSource[${1}]:-}" in
+        supplied)   echo "supplied" ;;
+        inferred)   echo "inferred (--rdnn)" ;;
+        absent)     echo "not present on this Mac" ;;
+        unreadable) echo "unreadable on this Mac" ;;
+        *)          echo "not in upload" ;;
     esac
 }
 
@@ -766,6 +821,10 @@ function collectIdentityTokens() {
     for logLine in "${installLogWindow[@]}"; do
         if [[ "${logLine}" =~ "^${installLogHostRegex}" ]]; then
             rememberRedactedHostToken "${match[1]}"
+            if [[ "${match[1]}" != "|"* ]]; then
+                identityComputerName="${match[1]}"
+                identityComputerNameSource="install.log"
+            fi
         fi
     done
 
@@ -791,8 +850,60 @@ function collectIdentityTokens() {
         fi
         if [[ "${logLine}" =~ 'Serial Number: ([A-Za-z0-9]+)' ]]; then
             rememberRedactedToken "${match[1]}"
+            identitySerialNumber="${match[1]}"
+            identitySerialNumberSource="client log"
         fi
     done < "${clientLogPath}"
+}
+
+function collectLiveIdentity() {
+    local liveValue=""
+
+    # --rdnn runs on the affected Mac, so its live identity wins over logged values
+    liveValue="$(/usr/sbin/scutil --get ComputerName 2>/dev/null)"
+    if [[ -n "${liveValue}" ]]; then
+        identityComputerName="${liveValue}"
+        identityComputerNameSource="this Mac"
+    fi
+
+    liveValue="$(/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice 2>/dev/null | /usr/bin/awk -F'"' '/IOPlatformSerialNumber/ { print $4; exit }')"
+    if [[ -n "${liveValue}" ]]; then
+        identitySerialNumber="${liveValue}"
+        identitySerialNumberSource="this Mac"
+    fi
+}
+
+function identityValueCell() {
+    local value="${1}"
+    local source="${2}"
+
+    if [[ -z "${value}" ]]; then
+        echo "not logged"
+        return 0
+    fi
+    echo "$(escapeTableCell "${value}") (${source})"
+}
+
+function factSheetSaveDirectoryProblem() {
+    local saveDirectory="${1}"
+
+    if [[ -L "${saveDirectory}" ]]; then
+        echo "${saveDirectory} is a symbolic link"
+    elif [[ ! -d "${saveDirectory}" ]]; then
+        echo "${saveDirectory} does not exist on this Mac"
+    elif [[ "$(/usr/bin/stat -f %u "${saveDirectory}" 2>/dev/null)" != "0" ]]; then
+        echo "${saveDirectory} is not owned by root"
+    elif [[ ! -w "${saveDirectory}" ]]; then
+        echo "${saveDirectory} is not writable (rerun with sudo)"
+    fi
+}
+
+function writeFactSheetOutput() {
+    if [[ -n "${factSheetSavePath}" ]]; then
+        ( umask 077; /usr/bin/tee "${factSheetSavePath}" )
+    else
+        /bin/cat
+    fi
 }
 
 function redactBoundedToken() {
@@ -837,6 +948,11 @@ function redactSensitiveText() {
     local value="${1}"
     local token=""
 
+    if [[ "${redactionEnabled}" != "true" ]]; then
+        echo "${value}"
+        return 0
+    fi
+
     value="$(redactUsersPaths "${value}")"
     if (( ${#redactedHostTokens[@]} > 0 )); then
         for token in "${redactedHostTokens[@]}"; do
@@ -858,6 +974,11 @@ function redactInstallLogLine() {
     local timeToken=""
     local hostToken=""
     local remainder=""
+
+    if [[ "${redactionEnabled}" != "true" ]]; then
+        echo "${line}"
+        return 0
+    fi
 
     line="$(redactSensitiveText "${line}")"
     dateToken="${line%% *}"
@@ -983,11 +1104,13 @@ while [[ "$#" -gt 0 ]]; do
         --client-log)
             [[ -n "${2:-}" ]] || failUsage "--client-log requires a path"
             clientLogPath="${2}"
+            inputSource[clientLog]="supplied"
             shift 2
             ;;
         --install-log)
             [[ -n "${2:-}" ]] || failUsage "--install-log requires a path"
             installLogPath="${2}"
+            inputSource[installLog]="supplied"
             shift 2
             ;;
         --plist)
@@ -1008,21 +1131,25 @@ while [[ "$#" -gt 0 ]]; do
         --state-plist)
             [[ -n "${2:-}" ]] || failUsage "--state-plist requires a path"
             statePlistPath="${2}"
+            inputSource[statePlist]="supplied"
             shift 2
             ;;
         --fallback-plist)
             [[ -n "${2:-}" ]] || failUsage "--fallback-plist requires a path"
             fallbackPlistPath="${2}"
+            inputSource[fallbackPlist]="supplied"
             shift 2
             ;;
         --persistence-plist)
             [[ -n "${2:-}" ]] || failUsage "--persistence-plist requires a path"
             persistencePlistPath="${2}"
+            inputSource[persistencePlist]="supplied"
             shift 2
             ;;
         --launch-daemon-plist)
             [[ -n "${2:-}" ]] || failUsage "--launch-daemon-plist requires a path"
             launchDaemonPlistPath="${2}"
+            inputSource[launchDaemonPlist]="supplied"
             shift 2
             ;;
         --aggressive-kill)
@@ -1032,7 +1159,18 @@ while [[ "$#" -gt 0 ]]; do
                 no|false|absent|0)  aggressiveKillState="no" ;;
                 *) failUsage "--aggressive-kill must be yes or no" ;;
             esac
+            inputSource[aggressiveKill]="supplied"
             shift 2
+            ;;
+        --rdnn)
+            [[ -n "${2:-}" ]] || failUsage "--rdnn requires an RDNN"
+            [[ "${2}" =~ ${rdnnRegex} ]] || failUsage "--rdnn must be a reverse-domain name such as org.example: '${2}'"
+            rdnnOption="${2}"
+            shift 2
+            ;;
+        --no-redaction)
+            redactionEnabled="false"
+            shift
             ;;
         *)
             failUsage "Unknown option '${1}'"
@@ -1040,6 +1178,138 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+
+
+####################################################################################################
+#
+# RDNN path inference (--rdnn; explicit flags win)
+#
+####################################################################################################
+
+function isSafeScriptLogPath() {
+    local candidatePath="${1}"
+
+    # Same rule as assemble.zsh: ScriptLog comes from a plist and may be read as root
+    [[ "${candidatePath}" =~ ^/[A-Za-z0-9._/-]+$ ]] || return 1
+    [[ "${candidatePath}" != *'/../'* && "${candidatePath}" != *'/./'* && "${candidatePath}" != *'//'* ]]
+}
+
+function inferOptionalInput() {
+    local inputKey="${1}"
+    local label="${2}"
+    local candidatePath="${3}"
+
+    inferredInputPath=""
+    inputCandidatePath[${inputKey}]="${candidatePath}"
+    if [[ -f "${candidatePath}" && -r "${candidatePath}" ]]; then
+        inputSource[${inputKey}]="inferred"
+        inferredInputPath="${candidatePath}"
+    elif [[ -e "${candidatePath}" ]] || [[ -d "${candidatePath:h}" && ! -x "${candidatePath:h}" ]]; then
+        inputSource[${inputKey}]="unreadable"
+        inputNotes+=("${label} could not be read at ${candidatePath}; rerun with sudo to include it")
+    else
+        inputSource[${inputKey}]="absent"
+    fi
+}
+
+if [[ -n "${rdnnOption}" ]]; then
+    addUniqueRdnnCandidate "${rdnnOption}"
+    rdnnManagementDirectory="/Library/Management/${rdnnOption}"
+    rdnnDefaultClientLogPath="/var/log/${rdnnOption}.log"
+    preferenceConfiguration[scriptLog]="string|${rdnnDefaultClientLogPath}"
+
+    # ---------------------------------------------------------------------------------------------
+    # Preference plists (before the client log, which may follow ScriptLog)
+    # ---------------------------------------------------------------------------------------------
+
+    if (( ${#extraPlistPaths[@]} > 0 )); then
+        inputNotes+=("An unlabeled --plist was supplied, so --rdnn did not infer managed or local preference plists")
+    else
+        if [[ -z "${managedPlistPath}" ]]; then
+            inferOptionalInput "managedPlist" "Managed plist" "/Library/Managed Preferences/${rdnnOption}.dorm.plist"
+            [[ -n "${inferredInputPath}" ]] && assignPlistPath "managed" "${inferredInputPath}" "inferred"
+        fi
+        if [[ -z "${localPlistPath}" ]]; then
+            inferOptionalInput "localPlist" "Local plist" "/Library/Preferences/${rdnnOption}.dorm.plist"
+            [[ -n "${inferredInputPath}" ]] && assignPlistPath "local" "${inferredInputPath}" "inferred"
+        fi
+    fi
+
+    # ---------------------------------------------------------------------------------------------
+    # Client log: effective ScriptLog (Managed -> Local), else /var/log/<rdnn>.log
+    # ---------------------------------------------------------------------------------------------
+
+    if [[ -z "${clientLogPath}" ]]; then
+        inferredClientLogPath="${rdnnDefaultClientLogPath}"
+        configuredScriptLog=""
+        configuredScriptLogLayer=""
+        if [[ -n "${managedPlistPath}" ]] && plistKeyExists "${managedPlistPath}" "ScriptLog"; then
+            configuredScriptLog="$(plistKeyValue "${managedPlistPath}" "ScriptLog")"
+            configuredScriptLogLayer="managed"
+        elif [[ -n "${localPlistPath}" ]] && plistKeyExists "${localPlistPath}" "ScriptLog"; then
+            configuredScriptLog="$(plistKeyValue "${localPlistPath}" "ScriptLog")"
+            configuredScriptLogLayer="local"
+        fi
+
+        if [[ -n "${configuredScriptLogLayer}" ]]; then
+            if isSafeScriptLogPath "${configuredScriptLog}"; then
+                inferredClientLogPath="${configuredScriptLog}"
+                if [[ "${configuredScriptLog}" != "${rdnnDefaultClientLogPath}" && -e "${rdnnDefaultClientLogPath}" ]]; then
+                    inputNotes+=("Effective ScriptLog (${configuredScriptLogLayer}) is ${configuredScriptLog}, but ${rdnnDefaultClientLogPath} also exists. The runtime logs '[PRE-FLIGHT] Initiating …' to its built-in log path before it reads ScriptLog, so runs may be split across both files; rerun with --client-log ${rdnnDefaultClientLogPath} to compare.")
+                fi
+            else
+                inputNotes+=("Ignored ScriptLog from the ${configuredScriptLogLayer} plist because it is not a plain absolute path; using ${rdnnDefaultClientLogPath}")
+            fi
+        fi
+
+        [[ -e "${inferredClientLogPath}" ]] || failMissing "Client log not found on this Mac: ${inferredClientLogPath} (inferred from --rdnn ${rdnnOption}; supply --client-log)"
+        [[ -r "${inferredClientLogPath}" ]] || failMissing "Client log is not readable: ${inferredClientLogPath} (inferred from --rdnn ${rdnnOption}; rerun with sudo)"
+        clientLogPath="${inferredClientLogPath}"
+        inputSource[clientLog]="inferred"
+    fi
+
+    # ---------------------------------------------------------------------------------------------
+    # install.log and optional runtime assets
+    # ---------------------------------------------------------------------------------------------
+
+    if [[ -z "${installLogPath}" ]]; then
+        [[ -e "/var/log/install.log" ]] || failMissing "install.log not found on this Mac: /var/log/install.log (inferred from --rdnn ${rdnnOption}; supply --install-log)"
+        [[ -r "/var/log/install.log" ]] || failMissing "install.log is not readable: /var/log/install.log (inferred from --rdnn ${rdnnOption}; rerun with sudo)"
+        installLogPath="/var/log/install.log"
+        inputSource[installLog]="inferred"
+    fi
+
+    if [[ -z "${statePlistPath}" ]]; then
+        inferOptionalInput "statePlist" "State plist" "${rdnnManagementDirectory}/dor-state.plist"
+        statePlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${fallbackPlistPath}" ]]; then
+        inferOptionalInput "fallbackPlist" "Fallback plist" "${rdnnManagementDirectory}/dor-fallback-declaration.plist"
+        fallbackPlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${persistencePlistPath}" ]]; then
+        inferOptionalInput "persistencePlist" "softwareupdate DDM state plist" "/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
+        persistencePlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${launchDaemonPlistPath}" ]]; then
+        inferOptionalInput "launchDaemonPlist" "LaunchDaemon plist" "/Library/LaunchDaemons/${rdnnOption}.dor.plist"
+        launchDaemonPlistPath="${inferredInputPath}"
+    fi
+    if [[ -z "${inputSource[aggressiveKill]:-}" ]]; then
+        if [[ -e "${rdnnManagementDirectory}/dor-aggressive-kill" ]]; then
+            aggressiveKillState="yes"
+        else
+            aggressiveKillState="no"
+        fi
+        inputSource[aggressiveKill]="inferred"
+    fi
+
+    if (( EUID != 0 )); then
+        inputNotes+=("--rdnn ran without root: SoftwareUpdateDDMStatePersistence.plist (and possibly install.log) may be unreadable, so install.log corroboration can differ from what the runtime saw. Rerun with sudo.")
+    fi
+fi
+
+[[ -n "${clientLogPath}" ]] || failUsage "Client log (--client-log) is required (or use --rdnn <rdnn>)"
 requireReadableFile "Client log (--client-log)" "${clientLogPath}"
 requireReadableFile "install.log (--install-log)" "${installLogPath}"
 
@@ -1055,7 +1325,11 @@ if (( ${#extraPlistPaths[@]} == 1 )); then
 fi
 
 if [[ -z "${managedPlistPath}" && -z "${localPlistPath}" && -z "${unknownPlistPath}" ]]; then
-    failUsage "At least one plist is required (--plist, --managed-plist, or --local-plist)"
+    if [[ -n "${rdnnOption}" ]]; then
+        inputNotes+=("No preference plist was read on this Mac; the runtime uses script-defined defaults when neither preference plist exists")
+    else
+        failUsage "At least one plist is required (--plist, --managed-plist, or --local-plist)"
+    fi
 fi
 
 for optionalPathLabel in \
@@ -1384,8 +1658,26 @@ else
     identityNotes+=("Multiple RDNN candidates: ${(j:, :)rdnnCandidates}")
 fi
 
-runtimeInitiatingLines="$(awk '
-    /^[^ ]+ \([^)]+\): .*\[PRE-FLIGHT\].*Initiating/ { previous=last; last=NR }
+# A shared ScriptLog can hold other scripts' runs in the same "<name> (<version>): … Initiating" format
+runtimeScriptName="$(awk '
+    /^[^ ]+ \([^)]+\): [0-9-]+ [0-9:]+ - \[/ && (/ DDM update check: / || / Normal DDM resolver result: / || /Reading preference overrides from .*\.dorm/) { name=$1 }
+    END { print name }
+' "${clientLogPath}")"
+if [[ -z "${runtimeScriptName}" ]] && grep -q -E '^dorm \([^)]+\): .*\[PRE-FLIGHT\].*Initiating' "${clientLogPath}"; then
+    runtimeScriptName="dorm"
+fi
+if [[ -n "${runtimeScriptName}" ]]; then
+    otherScriptNames="$(awk -v runtimeName="${runtimeScriptName}" '
+        /^[^ ]+ +\([^)]+\): [0-9-]+ [0-9:]+ - \[/ && $1 != runtimeName && $1 != "dor" && !seen[$1]++ { names = names (names == "" ? "" : ", ") $1 }
+        END { print names }
+    ' "${clientLogPath}")"
+    if [[ -n "${otherScriptNames}" ]]; then
+        identityNotes+=("Client log also has lines from other scripts sharing ScriptLog (${otherScriptNames}); they are excluded from run detection.")
+    fi
+fi
+
+runtimeInitiatingLines="$(awk -v runtimeName="${runtimeScriptName}" '
+    /^[^ ]+ \([^)]+\): .*\[PRE-FLIGHT\].*Initiating/ && (runtimeName == "" || $1 == runtimeName) { previous=last; last=NR }
     END { printf "%s %s\n", previous+0, last+0 }
 ' "${clientLogPath}")"
 previousRuntimeInitiating="${runtimeInitiatingLines%% *}"
@@ -1397,7 +1689,7 @@ deploymentInitiatingLine="$(awk '
 
 if (( latestRuntimeInitiating > 0 )); then
     heartbeatLine="$(awk -v rangeStart="${previousRuntimeInitiating}" -v rangeEnd="${latestRuntimeInitiating}" '
-        NR > rangeStart && NR < rangeEnd && /Heartbeat launch triggered/ { hit=NR }
+        NR > rangeStart && NR < rangeEnd && /Heartbeat launch triggered|Starter launch after boot/ { hit=NR }
         END { print hit+0 }
     ' "${clientLogPath}")"
     if (( heartbeatLine > 0 )); then
@@ -1422,17 +1714,18 @@ while IFS= read -r logLine; do
 done < <(tail -n +"${latestRunStart}" "${clientLogPath}")
 latestRunLineCount="${#latestRunLines[@]}"
 
-decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|return code:| clicked )'
+decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|starter launch after boot|post-boot re-evaluation|darkwake|return code:| clicked )'
 clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) - \[([A-Z -]+)\][[:space:]]+(.*)$'
 
 for logLine in "${latestRunLines[@]}"; do
     if [[ "${logLine}" =~ ${clientLogLineRegex} ]]; then
+        [[ -n "${runtimeScriptName}" && "${match[1]}" != "${runtimeScriptName}" && "${match[1]}" != "dor" ]] && continue
         logLevel="${match[4]}"
         logMessage="${match[5]}"
         if [[ "${logMessage}" == *"Initiating"* ]]; then
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
-        elif [[ -z "${logScriptVersion}" && "${logMessage}" != *"Heartbeat launch triggered"* ]]; then
+        elif [[ -z "${logScriptVersion}" && "${logMessage}" != *"Heartbeat launch triggered"* && "${logMessage}" != *"Starter launch after boot"* && "${logMessage}" != *"DarkWake detected"* ]]; then
             logOrganizationScriptName="${match[1]}"
             logScriptVersion="${match[2]}"
         fi
@@ -1448,6 +1741,13 @@ for logLine in "${latestRunLines[@]}"; do
         # 5.2.0+ "DDM update check: … (status=…; …)"; earlier "Normal DDM resolver result: status=…"
         if [[ "${logMessage}" == "DDM update check: "*"(status="* || "${logMessage}" == "Normal DDM resolver result:"* ]]; then
             resolverStatusLine="${logMessage}"
+            resolverStatusTimestamp="${match[3]}"
+        fi
+        # Pre-5.2.0 logged the resolved declaration on separate lines
+        if [[ "${logMessage}" == "Resolved DDM declaration version: "* ]]; then
+            legacyResolvedVersion="${logMessage#Resolved DDM declaration version: }"
+        elif [[ "${logMessage}" == "Resolved DDM declaration enforcement date: "* ]]; then
+            legacyResolvedDeadline="${logMessage#Resolved DDM declaration enforcement date: }"
         fi
         if [[ "${logLevel}" == "QUIT" || "${logLevel}" == "FATAL ERROR" || "${logLevel}" == "ERROR" || "${logLevel}" == "WARNING" ]]; then
             latestRunDecisionLines+=("${logLine}")
@@ -1457,7 +1757,7 @@ for logLine in "${latestRunLines[@]}"; do
     fi
 done
 
-lastQuietPeriodReturnCodeRecord="$(grep -n -E '\[INFO\].*Return Code: (0|2|3|4|10)' "${clientLogPath}" | tail -1)"
+lastQuietPeriodReturnCodeRecord="$(grep -n -E "^${runtimeScriptName:-[^ ]+} \\([^)]+\\): .*\\[INFO\\].*Return Code: (0|2|3|4|10)" "${clientLogPath}" | tail -1)"
 if [[ -n "${lastQuietPeriodReturnCodeRecord}" ]]; then
     quietPeriodReturnCodeLineNumber="${lastQuietPeriodReturnCodeRecord%%:*}"
     quietPeriodReturnCodeLine="${lastQuietPeriodReturnCodeRecord#*:}"
@@ -1484,7 +1784,7 @@ deploymentScriptVersion="$(awk '
 typeset -a allRunHistoryRows=()
 while IFS= read -r logLine; do
     [[ -n "${logLine}" ]] && allRunHistoryRows+=("${logLine}")
-done < <(awk '
+done < <(awk -v runtimeName="${runtimeScriptName}" '
     function outcome() {
         if (dialog) return (rc != "" ? "dialog shown; " rc : "dialog shown; no Return Code logged")
         if (fatal != "") return "fatal: " fatal
@@ -1498,6 +1798,7 @@ done < <(awk '
         if (started) printf "%s\t%s\t%s\t%s\n", start, script, status, outcome()
     }
     /^[^ ]+ \([^)]+\): [0-9-]+ [0-9:]+ - \[/ {
+        if (runtimeName != "" && $1 != runtimeName) next
         if ($0 ~ /\[PRE-FLIGHT\].*Initiating/) {
             flush()
             started=1; start=$3 " " $4; script=$1 " " $2; sub(/:$/, "", script)
@@ -1551,7 +1852,7 @@ done < <(tail -n "${ddmResolverLookbackLines}" "${installLogPath}")
 installLogWindowCount="${#installLogWindow[@]}"
 
 if (( installLogLineCount < ddmResolverLookbackLines )); then
-    inputNotes+=("install.log has ${installLogLineCount} line(s); runtime lookback is ${ddmResolverLookbackLines}. Analysis used the entire upload.")
+    inputNotes+=("install.log has ${installLogLineCount} line(s); runtime lookback is ${ddmResolverLookbackLines}. Analysis used the entire file.")
 fi
 
 if [[ -n "${persistencePlistPath}" ]]; then
@@ -1578,7 +1879,17 @@ for logLine in "${installLogWindow[@]}"; do
         versionValid="yes"
         [[ "${parsedDDMVersionString}" =~ ${ddmVersionRegex} ]] || versionValid="no"
         corroboration="$(corroborationLabelForCandidate "${parsedDDMVersionString}" "${parsedDDMEnforcedInstallDate}")"
-        installLogCandidates+=("${parsedDDMLogTimestamp} | ${parsedDDMSourceType} | ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | versionValid=${versionValid}; corroborated=${corroboration}")
+        # Identical candidates (all fields except timestamp) group into one fact-sheet row
+        candidateRowKey="${parsedDDMSourceType} | ${parsedDDMVersionString} | ${parsedDDMEnforcedInstallDate} | ${parsedDDMBuildVersionString} | versionValid=${versionValid}; corroborated=${corroboration}"
+        if (( ${+installLogCandidateCount[${candidateRowKey}]} )); then
+            installLogCandidateLast[${candidateRowKey}]="${parsedDDMLogTimestamp}"
+            installLogCandidateCount[${candidateRowKey}]=$(( ${installLogCandidateCount[${candidateRowKey}]} + 1 ))
+        else
+            installLogCandidateKeys+=("${candidateRowKey}")
+            installLogCandidateFirst[${candidateRowKey}]="${parsedDDMLogTimestamp}"
+            installLogCandidateLast[${candidateRowKey}]="${parsedDDMLogTimestamp}"
+            installLogCandidateCount[${candidateRowKey}]=1
+        fi
         candidateSpanKey="${parsedDDMVersionString}|${parsedDDMEnforcedInstallDate}|${parsedDDMBuildVersionString}"
         if [[ "${candidateSpanKey}" == "${spanKey:-}" ]]; then
             spanLast="${parsedDDMLogTimestamp}"
@@ -1615,8 +1926,84 @@ for logLine in "${installLogWindow[@]}"; do
     if [[ "${logLine}" == *"softwareupdated["* ]] && [[ "${logLine}" == *"SUOSUInstallTonightManager:"* || "${logLine}" == *"SUOSUScheduler:"* ]]; then
         installLogTonightLines+=("${logLine}")
     fi
+    # Same descriptor parse as reminderDialog.zsh parseDDMDescriptorVersionFromLine; grouped because scans repeat them
+    if [[ "${logLine}" == *"PrimaryDescriptor:"* && "${logLine}" != *"PrimaryDescriptor: (null)"* && "${logLine}" == *" SU:"* ]] && extractDDMLogTimestamp "${logLine}"; then
+        descriptorRole="primary"
+        [[ "${logLine}" == *"majorPrimaryDescriptor:"* ]] && descriptorRole="major"
+        [[ "${logLine}" == *"minorPrimaryDescriptor:"* ]] && descriptorRole="minor"
+        descriptorVersion=""
+        descriptorBuild=""
+        descriptorTokens=( ${=${logLine##* SU:}} )
+        for (( tokenIndex = 1; tokenIndex <= ${#descriptorTokens[@]}; tokenIndex++ )); do
+            if [[ "${descriptorTokens[$tokenIndex]}" =~ ${ddmVersionRegex} ]]; then
+                descriptorVersion="${descriptorTokens[$tokenIndex]}"
+                descriptorBuild="${descriptorTokens[$(( tokenIndex + 1 ))]:-}"
+                break
+            fi
+        done
+        if [[ -n "${descriptorVersion}" ]]; then
+            descriptorKey="${descriptorRole}|${descriptorVersion}|${descriptorBuild}"
+            if [[ -z "${installLogDescriptorCount[${descriptorKey}]:-}" ]]; then
+                installLogDescriptorKeys+=("${descriptorKey}")
+                installLogDescriptorFirst[${descriptorKey}]="${parsedDDMLogTimestamp}"
+                installLogDescriptorCount[${descriptorKey}]=0
+            fi
+            installLogDescriptorLast[${descriptorKey}]="${parsedDDMLogTimestamp}"
+            (( installLogDescriptorCount[${descriptorKey}]++ ))
+        fi
+    fi
 done
 flushDeclarationSpan
+
+
+
+####################################################################################################
+#
+# Identity, report filename, and save target
+#
+####################################################################################################
+
+collectIdentityTokens
+if [[ "${redactionEnabled}" != "true" && -n "${rdnnOption}" ]]; then
+    collectLiveIdentity
+fi
+
+if [[ -n "${detectedRdnn}" ]]; then
+    skeletonRdnn="\`${detectedRdnn}\`"
+    reportFileRdnn="${detectedRdnn//[^A-Za-z0-9._-]/-}"
+elif (( ${#rdnnCandidates[@]} == 0 )); then
+    skeletonRdnn="undetected"
+    reportFileRdnn="rdnn-undetected"
+else
+    skeletonRdnn="conflict: ${(j:, :)rdnnCandidates}"
+    reportFileRdnn="rdnn-conflict"
+fi
+runTimestamp="$(date +%Y-%m-%d-%H%M%S)"
+reportFileUnredacted=""
+if [[ "${redactionEnabled}" != "true" ]]; then
+    reportFileComputerName="${identityComputerName//[^A-Za-z0-9._-]/-}"
+    while [[ "${reportFileComputerName}" == *--* ]]; do
+        reportFileComputerName="${reportFileComputerName//--/-}"
+    done
+    reportFileComputerName="${${reportFileComputerName#-}%-}"
+    reportFileUnredacted="${reportFileComputerName:+-${reportFileComputerName}}-unredacted"
+fi
+reportFileName="ddm-os-reminder-${reportFileRdnn}${reportFileUnredacted}-${runTimestamp}.md"
+
+# ---------------------------------------------------------------------------------------------
+# --no-redaction saves only on the affected Mac (--rdnn), never into a directory it creates
+# ---------------------------------------------------------------------------------------------
+
+if [[ "${redactionEnabled}" != "true" ]]; then
+    if [[ -z "${rdnnOption}" ]]; then
+        echo "Note: --no-redaction without --rdnn prints to stdout only; nothing was saved." >&2
+    else
+        factSheetSaveError="$(factSheetSaveDirectoryProblem "${rdnnManagementDirectory}")"
+        if [[ -z "${factSheetSaveError}" ]]; then
+            factSheetSavePath="${rdnnManagementDirectory}/${reportFileName%.md}-fact-sheet.md"
+        fi
+    fi
+fi
 
 
 
@@ -1626,55 +2013,59 @@ flushDeclarationSpan
 #
 ####################################################################################################
 
-echo "# DDM OS Reminder client-state fact sheet"
+{
+
+echo "# [DDM OS Reminder](https://snelson.us/ddm) client-state fact sheet"
 echo ""
 echo "- Helper: ${scriptRelativePath} (${scriptVersion})"
 echo "- Checklist: reminderDialog.zsh ${checklistScriptVersion} preference defaults and log phrases"
-echo "- Read-only: no files were written"
+if [[ -n "${factSheetSavePath}" ]]; then
+    echo "- Wrote only this fact sheet: ${factSheetSavePath} (mode 0600); nothing else was written"
+else
+    echo "- Read-only: no files were written"
+fi
 echo "- Client log resolver result is authoritative for what this Mac did"
 echo "- This helper lists install.log evidence; it does not re-decide resolver status"
-echo "- Usernames, first names, /Users paths, install.log computer names, and labeled serial numbers are redacted below"
+if [[ "${redactionEnabled}" == "true" ]]; then
+    echo "- Usernames, first names, /Users paths, install.log computer names, and labeled serial numbers are redacted below"
+else
+    echo "- Redaction is off (--no-redaction): usernames, first names, /Users paths, install.log computer names, and serial numbers appear as logged. Keep this output out of public issues."
+fi
 echo ""
+
+function inputRow() {
+    local label="${1}"
+    local inputKey="${2}"
+    local inputPath="${3:-${inputCandidatePath[${2}]:-}}"
+
+    echo "| ${label} | $(redactSensitiveText "${inputPath:-n/a}") | $(inputStatusLabel "${inputKey}") |"
+}
 
 echo "## Inputs"
 echo ""
-echo "| Input | Path |"
-echo "|---|---|"
-collectIdentityTokens
+echo "| Input | Path or value | Status |"
+echo "|---|---|---|"
 
-echo "| Client log | $(redactSensitiveText "${clientLogPath}") |"
-echo "| install.log | $(redactSensitiveText "${installLogPath}") |"
-if [[ -n "${managedPlistPath}" ]]; then
-    echo "| Managed plist | $(redactSensitiveText "${managedPlistPath}") |"
+if [[ -n "${rdnnOption}" ]]; then
+    echo "| --rdnn | ${rdnnOption} | supplied |"
 fi
-if [[ -n "${localPlistPath}" ]]; then
-    echo "| Local plist | $(redactSensitiveText "${localPlistPath}") |"
+inputRow "Client log" "clientLog" "${clientLogPath}"
+inputRow "install.log" "installLog" "${installLogPath}"
+if [[ -n "${managedPlistPath}" || -n "${inputSource[managedPlist]:-}" ]]; then
+    inputRow "Managed plist" "managedPlist" "${managedPlistPath}"
+fi
+if [[ -n "${localPlistPath}" || -n "${inputSource[localPlist]:-}" ]]; then
+    inputRow "Local plist" "localPlist" "${localPlistPath}"
 fi
 if [[ -n "${unknownPlistPath}" ]]; then
-    echo "| Supplied plist (layer unknown) | $(redactSensitiveText "${unknownPlistPath}") |"
+    echo "| Supplied plist (layer unknown) | $(redactSensitiveText "${unknownPlistPath}") | supplied |"
 fi
-if [[ -n "${statePlistPath}" ]]; then
-    echo "| State plist | $(redactSensitiveText "${statePlistPath}") |"
-else
-    echo "| State plist | not supplied |"
-fi
-if [[ -n "${fallbackPlistPath}" ]]; then
-    echo "| Fallback plist | $(redactSensitiveText "${fallbackPlistPath}") |"
-else
-    echo "| Fallback plist | not supplied |"
-fi
-if [[ -n "${persistencePlistPath}" ]]; then
-    echo "| softwareupdate DDM state plist | $(redactSensitiveText "${persistencePlistPath}") |"
-else
-    echo "| softwareupdate DDM state plist | not supplied |"
-fi
-if [[ -n "${launchDaemonPlistPath}" ]]; then
-    echo "| LaunchDaemon plist | $(redactSensitiveText "${launchDaemonPlistPath}") |"
-else
-    echo "| LaunchDaemon plist | not supplied |"
-fi
-echo "| dor-aggressive-kill | ${aggressiveKillState} |"
-echo "| Plist lint | ${plistLintStatus} |"
+inputRow "State plist" "statePlist" "${statePlistPath}"
+inputRow "Fallback plist" "fallbackPlist" "${fallbackPlistPath}"
+inputRow "softwareupdate DDM state plist" "persistencePlist" "${persistencePlistPath}"
+inputRow "LaunchDaemon plist" "launchDaemonPlist" "${launchDaemonPlistPath}"
+echo "| dor-aggressive-kill | ${aggressiveKillState} | $(inputStatusLabel "aggressiveKill") |"
+echo "| Plist lint | ${plistLintStatus} | |"
 echo ""
 
 if (( ${#inputNotes[@]} > 0 )); then
@@ -1700,6 +2091,10 @@ echo "| Log script name | ${logOrganizationScriptName:-undetected} |"
 echo "| Log scriptVersion | ${logScriptVersion:-undetected} |"
 echo "| Installed macOS version | ${installedMacOSVersion:-not in latest run} |"
 echo "| Installed macOS build | ${installedMacOSBuild:-not in latest run} |"
+if [[ "${redactionEnabled}" != "true" ]]; then
+    echo "| Computer name | $(identityValueCell "${identityComputerName}" "${identityComputerNameSource}") |"
+    echo "| Serial number | $(identityValueCell "${identitySerialNumber}" "${identitySerialNumberSource}") |"
+fi
 echo "| Latest run lines | ${latestRunLineCount} (from last Initiating line) |"
 echo ""
 
@@ -1713,6 +2108,9 @@ fi
 
 if [[ -n "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
     echo "Preference precedence: a single unlabeled plist was supplied. Defaults apply only for keys missing from that file. Managed vs local precedence could not be evaluated."
+    echo ""
+elif [[ -z "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
+    echo "Preference precedence: no preference plist was read on this Mac, so every setting below is a script default."
     echo ""
 fi
 
@@ -1780,26 +2178,36 @@ fi
 
 echo "## install.log evidence"
 echo ""
-echo "- Lines in upload: ${installLogLineCount}"
+echo "- Lines in install.log: ${installLogLineCount}"
 echo "- Window used: last ${installLogWindowCount} line(s) (runtime lookback ${ddmResolverLookbackLines})"
 echo "- Corroboration: ${ddmStatePersistenceStatus}"
 echo ""
 
 echo "### Declaration candidates"
 echo ""
-if (( ${#installLogCandidates[@]} == 0 )); then
+if (( ${#installLogCandidateKeys[@]} == 0 )); then
     echo "None in the lookback window."
     echo ""
 else
-    echo "| Timestamp | Source type | Version | EnforcedInstallDate | Build | Flags |"
-    echo "|---|---|---|---|---|---|"
-    for row in "${installLogCandidates[@]}"; do
-        echo "| ${row} |"
+    echo "Identical candidates are grouped, in order of first appearance."
+    echo ""
+    echo "| First seen | Last seen | Count | Source type | Version | EnforcedInstallDate | Build | Flags |"
+    echo "|---|---|---|---|---|---|---|---|"
+    for candidateRowKey in "${installLogCandidateKeys[@]}"; do
+        echo "| ${installLogCandidateFirst[${candidateRowKey}]} | ${installLogCandidateLast[${candidateRowKey}]} | ${installLogCandidateCount[${candidateRowKey}]} | ${candidateRowKey} |"
     done
     echo ""
 fi
 
-echo "### Invalid declarations"
+# Marker labels quote the install.log text they match; shared by fact-sheet headings and skeleton bullets
+invalidDeclarationsLabel="Invalid declarations (\`Failed to add declaration: … Invalid declaration:\` lines)"
+noUpdatesLabel="\`No updates found for DDM to enforce\` lines"
+recoveryMarkersLabel="Recovery markers (\`Found product with requested PMV\` or \`Armed DDM activity scheduler\` lines)"
+noMatchMarkersLabel="No-match markers (\`MADownloadNoMatchFound\`, \`pallasNoPMVMatchFound=true\`, or \`No available updates found\` lines)"
+updateTonightLabel="Update Tonight (\`SUOSUInstallTonightManager:\` or \`SUOSUScheduler:\` softwareupdated lines)"
+descriptorsLabel="Offered updates (\`PrimaryDescriptor: … SU:\` lines)"
+
+echo "### ${invalidDeclarationsLabel}"
 echo ""
 if (( ${#installLogInvalidDeclarations[@]} == 0 )); then
     echo "None."
@@ -1811,7 +2219,7 @@ else
     echo ""
 fi
 
-echo "### No updates found for DDM to enforce"
+echo "### ${noUpdatesLabel}"
 echo ""
 if (( ${#installLogNoUpdatesLines[@]} == 0 )); then
     echo "None."
@@ -1825,7 +2233,24 @@ else
     echo ""
 fi
 
-echo "### Recovery markers"
+echo "### ${descriptorsLabel}"
+echo ""
+if (( ${#installLogDescriptorKeys[@]} == 0 )); then
+    echo "None."
+    echo ""
+else
+    echo "Identical descriptors are grouped, in order of first appearance. The runtime rates \`conflict\` (\`Available descriptor <offered> disagrees with DDM declaration <version>\`) when a descriptor logged after the declaration names a different macOS version."
+    echo ""
+    echo "| First seen | Last seen | Count | Descriptor | Version | Build |"
+    echo "|---|---|---|---|---|---|"
+    for descriptorKey in "${installLogDescriptorKeys[@]}"; do
+        IFS='|' read -r descriptorRole descriptorVersion descriptorBuild <<< "${descriptorKey}"
+        echo "| ${installLogDescriptorFirst[${descriptorKey}]} | ${installLogDescriptorLast[${descriptorKey}]} | ${installLogDescriptorCount[${descriptorKey}]} | ${descriptorRole} | ${descriptorVersion} | ${descriptorBuild:-unknown} |"
+    done
+    echo ""
+fi
+
+echo "### ${recoveryMarkersLabel}"
 echo ""
 if (( ${#installLogRecoveryLines[@]} == 0 )); then
     echo "None."
@@ -1839,7 +2264,7 @@ else
     echo ""
 fi
 
-echo "### No-match markers"
+echo "### ${noMatchMarkersLabel}"
 echo ""
 if (( ${#installLogNoMatchLines[@]} == 0 )); then
     echo "None."
@@ -1853,7 +2278,7 @@ else
     echo ""
 fi
 
-echo "### Update Tonight softwareupdated lines"
+echo "### ${updateTonightLabel}"
 echo ""
 if (( ${#installLogTonightLines[@]} == 0 )); then
     echo "None."
@@ -1873,7 +2298,7 @@ echo ""
 if [[ -n "${statePlistPath}" ]]; then
     echo "### dor-state.plist"
     echo ""
-    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
+    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered LastBootReevaluation PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
         if plistKeyExists "${statePlistPath}" "${stateKey}"; then
             echo "- ${stateKey}: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "${stateKey}")")"
         else
@@ -1882,11 +2307,11 @@ if [[ -n "${statePlistPath}" ]]; then
     done
     echo ""
 else
-    echo "dor-state.plist not supplied. NextScheduledReminder cannot be reported from this upload."
+    echo "dor-state.plist $(inputStatusLabel "statePlist"). NextScheduledReminder cannot be reported."
     echo ""
 fi
 
-echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. A missing NextScheduledReminder key lets the starter launch."
+echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0 and later). During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0 and later). A missing NextScheduledReminder key lets the starter launch."
 echo ""
 
 if [[ -n "${fallbackPlistPath}" ]]; then
@@ -1949,13 +2374,14 @@ function skeletonFileRow() {
 
 function skeletonPlistRow() {
     local label="${1}"
-    local plistPath="${2}"
-    local missingNote="${3}"
+    local inputKey="${2}"
+    local plistPath="${3}"
+    local missingNote="${4}"
 
     if [[ -n "${plistPath}" ]]; then
-        skeletonFileRow "${label}" "received" "\`$(redactSensitiveText "${plistPath:t}")\`; $(plistLintLabel "${plistPath}")"
+        skeletonFileRow "${label}" "$(inputStatusLabel "${inputKey}")" "\`$(redactSensitiveText "${plistPath:t}")\`; $(plistLintLabel "${plistPath}")"
     else
-        skeletonFileRow "${label}" "not in upload" "${missingNote}"
+        skeletonFileRow "${label}" "$(inputStatusLabel "${inputKey}")" "${missingNote}"
     fi
 }
 
@@ -1972,18 +2398,6 @@ function skeletonMarkerBullet() {
     latestLine="${latestLine//\`/}"
     echo "- ${label}: ${#} line(s); latest: \`${latestLine}\`"
 }
-
-if [[ -n "${detectedRdnn}" ]]; then
-    skeletonRdnn="\`${detectedRdnn}\`"
-    reportFileRdnn="${detectedRdnn//[^A-Za-z0-9._-]/-}"
-elif (( ${#rdnnCandidates[@]} == 0 )); then
-    skeletonRdnn="undetected"
-    reportFileRdnn="rdnn-undetected"
-else
-    skeletonRdnn="conflict: ${(j:, :)rdnnCandidates}"
-    reportFileRdnn="rdnn-conflict"
-fi
-reportFileName="ddm-os-reminder-${reportFileRdnn}-$(date +%Y-%m-%d-%H%M%S).md"
 
 if (( latestRuntimeInitiating > 0 )) && [[ -n "${logScriptVersion}" ]]; then
     skeletonRuntimeVersion="\`${logOrganizationScriptName} (${logScriptVersion})\`"
@@ -2013,7 +2427,7 @@ case "${ddmStatePersistenceStatus}" in
     available)    skeletonCorroboration="checked against \`SoftwareUpdateDDMStatePersistence.plist\`" ;;
     unrecognized) skeletonCorroboration="\`SoftwareUpdateDDMStatePersistence.plist\` unrecognized; install.log-only" ;;
     unavailable)  skeletonCorroboration="\`SoftwareUpdateDDMStatePersistence.plist\` unreadable; install.log-only" ;;
-    *)            skeletonCorroboration="not checked; \`SoftwareUpdateDDMStatePersistence.plist\` not in upload" ;;
+    *)            skeletonCorroboration="not checked; \`SoftwareUpdateDDMStatePersistence.plist\` $(inputStatusLabel "persistencePlist")" ;;
 esac
 
 skeletonResolverHint="none recorded"
@@ -2043,44 +2457,46 @@ echo "## 2. Files"
 echo ""
 echo "| File | Status | Note |"
 echo "|---|---|---|"
-skeletonFileRow "Client log" "received" "\`$(redactSensitiveText "${clientLogPath:t}")\`"
-skeletonFileRow "\`install.log\`" "received" "${installLogLineCount} line(s); last ${installLogWindowCount} analyzed"
+skeletonFileRow "Client log" "$(inputStatusLabel "clientLog")" "\`$(redactSensitiveText "${clientLogPath:t}")\`"
+skeletonFileRow "\`install.log\`" "$(inputStatusLabel "installLog")" "${installLogLineCount} line(s); last ${installLogWindowCount} analyzed"
 if [[ -n "${unknownPlistPath}" ]]; then
-    skeletonFileRow "Supplied plist (layer unknown)" "received" "\`$(redactSensitiveText "${unknownPlistPath:t}")\`; $(plistLintLabel "${unknownPlistPath}"); managed versus local precedence not evaluated"
+    skeletonFileRow "Supplied plist (layer unknown)" "supplied" "\`$(redactSensitiveText "${unknownPlistPath:t}")\`; $(plistLintLabel "${unknownPlistPath}"); managed versus local precedence not evaluated"
 fi
 if [[ -n "${managedPlistPath}" || -z "${unknownPlistPath}" ]]; then
-    skeletonPlistRow "Managed plist" "${managedPlistPath}" ""
+    skeletonPlistRow "Managed plist" "managedPlist" "${managedPlistPath}" ""
 fi
 if [[ -n "${localPlistPath}" || -z "${unknownPlistPath}" ]]; then
-    skeletonPlistRow "Local plist" "${localPlistPath}" ""
+    skeletonPlistRow "Local plist" "localPlist" "${localPlistPath}" ""
 fi
 if [[ -n "${statePlistPath}" ]]; then
     if plistKeyExists "${statePlistPath}" "NextScheduledReminder"; then
-        skeletonFileRow "\`dor-state.plist\`" "received" "\`NextScheduledReminder\`: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "NextScheduledReminder")")"
+        skeletonFileRow "\`dor-state.plist\`" "$(inputStatusLabel "statePlist")" "\`NextScheduledReminder\`: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "NextScheduledReminder")")"
     else
-        skeletonFileRow "\`dor-state.plist\`" "received" "\`NextScheduledReminder\`: absent (starter may launch)"
+        skeletonFileRow "\`dor-state.plist\`" "$(inputStatusLabel "statePlist")" "\`NextScheduledReminder\`: absent (starter may launch)"
     fi
 else
-    skeletonFileRow "\`dor-state.plist\`" "not in upload" "\`NextScheduledReminder\` cannot be reported"
+    skeletonFileRow "\`dor-state.plist\`" "$(inputStatusLabel "statePlist")" "\`NextScheduledReminder\` cannot be reported"
 fi
 if [[ -n "${fallbackPlistPath}" ]]; then
-    skeletonFileRow "\`dor-fallback-declaration.plist\`" "received" "runtime fallback gate: ${fallbackGate}"
+    skeletonFileRow "\`dor-fallback-declaration.plist\`" "$(inputStatusLabel "fallbackPlist")" "runtime fallback gate: ${fallbackGate}"
 else
-    skeletonFileRow "\`dor-fallback-declaration.plist\`" "not in upload" "fallback gate cannot be evaluated"
+    skeletonFileRow "\`dor-fallback-declaration.plist\`" "$(inputStatusLabel "fallbackPlist")" "fallback gate cannot be evaluated"
 fi
 if [[ -n "${persistencePlistPath}" ]]; then
-    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "received" "corroboration: ${ddmStatePersistenceStatus}"
+    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "$(inputStatusLabel "persistencePlist")" "corroboration: ${ddmStatePersistenceStatus}"
 else
-    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "not in upload" "declarations not cross-checked"
+    skeletonFileRow "\`SoftwareUpdateDDMStatePersistence.plist\`" "$(inputStatusLabel "persistencePlist")" "declarations not cross-checked"
 fi
 if [[ -n "${launchDaemonPlistPath}" ]]; then
-    skeletonFileRow "LaunchDaemon plist" "received" "Label: $(plistKeyValue "${launchDaemonPlistPath}" "Label"); StartInterval: $(plistKeyValue "${launchDaemonPlistPath}" "StartInterval")"
+    skeletonFileRow "LaunchDaemon plist" "$(inputStatusLabel "launchDaemonPlist")" "Label: $(plistKeyValue "${launchDaemonPlistPath}" "Label"); StartInterval: $(plistKeyValue "${launchDaemonPlistPath}" "StartInterval")"
 else
-    skeletonFileRow "LaunchDaemon plist" "not in upload" ""
+    skeletonFileRow "LaunchDaemon plist" "$(inputStatusLabel "launchDaemonPlist")" ""
 fi
+aggressiveKillNote=""
+[[ "${inputSource[aggressiveKill]:-}" == "inferred" ]] && aggressiveKillNote="checked on this Mac (--rdnn)"
 case "${aggressiveKillState}" in
-    yes) skeletonFileRow "\`dor-aggressive-kill\`" "present" "aggressive mode uses the normal cadence until removed" ;;
-    no)  skeletonFileRow "\`dor-aggressive-kill\`" "absent" "" ;;
+    yes) skeletonFileRow "\`dor-aggressive-kill\`" "present" "${aggressiveKillNote:+${aggressiveKillNote}; }aggressive mode uses the normal cadence until removed" ;;
+    no)  skeletonFileRow "\`dor-aggressive-kill\`" "absent" "${aggressiveKillNote}" ;;
     *)   skeletonFileRow "\`dor-aggressive-kill\`" "unknown" "not reported with the upload" ;;
 esac
 echo ""
@@ -2094,6 +2510,10 @@ echo "| Runtime version | ${skeletonRuntimeVersion} |"
 echo "| Deployment version | ${skeletonDeploymentVersion} |"
 echo "| Installed macOS | ${skeletonInstalledMacOS} |"
 echo "| Checklist match | ${skeletonChecklistMatch} |"
+if [[ "${redactionEnabled}" != "true" ]]; then
+    echo "| Computer name | $(identityValueCell "${identityComputerName}" "${identityComputerNameSource}") |"
+    echo "| Serial number | $(identityValueCell "${identitySerialNumber}" "${identitySerialNumberSource}") |"
+fi
 echo ""
 if (( ${#identityNotes[@]} == 0 )); then
     echo "- Helper notes: none"
@@ -2108,6 +2528,8 @@ echo "## 4. Effective settings"
 echo ""
 if [[ -n "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
     echo "Precedence: single unlabeled plist -> script defaults (${checklistScriptVersion}). Managed versus local precedence could not be evaluated."
+elif [[ -z "${unknownPlistPath}" && -z "${managedPlistPath}" && -z "${localPlistPath}" ]]; then
+    echo "Precedence: no preference plist on this Mac -> script defaults (${checklistScriptVersion})."
 else
     echo "Precedence: Managed Preferences -> Local Preferences -> script defaults (${checklistScriptVersion})."
 fi
@@ -2155,11 +2577,21 @@ else
     done
 fi
 echo ""
-skeletonMarkerBullet "Invalid declarations" "${installLogInvalidDeclarations[@]}"
-skeletonMarkerBullet "No updates found for DDM to enforce" "${installLogNoUpdatesLines[@]}"
-skeletonMarkerBullet "Recovery markers" "${installLogRecoveryLines[@]}"
-skeletonMarkerBullet "No-match markers" "${installLogNoMatchLines[@]}"
-skeletonMarkerBullet "Update Tonight softwareupdated lines" "${installLogTonightLines[@]}"
+skeletonMarkerBullet "${invalidDeclarationsLabel}" "${installLogInvalidDeclarations[@]}"
+skeletonMarkerBullet "${noUpdatesLabel}" "${installLogNoUpdatesLines[@]}"
+if (( ${#installLogDescriptorKeys[@]} == 0 )); then
+    echo "- ${descriptorsLabel}: none"
+else
+    typeset -a descriptorSummaries=()
+    for descriptorKey in "${installLogDescriptorKeys[@]}"; do
+        IFS='|' read -r descriptorRole descriptorVersion descriptorBuild <<< "${descriptorKey}"
+        descriptorSummaries+=("${descriptorVersion} (${descriptorRole}, ${installLogDescriptorCount[${descriptorKey}]}x, last ${installLogDescriptorLast[${descriptorKey}]})")
+    done
+    echo "- ${descriptorsLabel}: ${(j:; :)descriptorSummaries}"
+fi
+skeletonMarkerBullet "${recoveryMarkersLabel}" "${installLogRecoveryLines[@]}"
+skeletonMarkerBullet "${noMatchMarkersLabel}" "${installLogNoMatchLines[@]}"
+skeletonMarkerBullet "${updateTonightLabel}" "${installLogTonightLines[@]}"
 echo "<!-- agent: optional extra install.log observations as bullets; delete this line if none. -->"
 echo ""
 
@@ -2205,11 +2637,103 @@ echo ""
 
 echo "## 7. Do the client log and \`install.log\` agree?"
 echo ""
+
+# Side-by-side facts only; the agent decides agreement
+compareClientLogged="no \`DDM update check:\` line in latest run"
+compareClientVersion="n/a"
+compareClientDeadline="n/a"
+compareClientStatus="n/a"
+compareClientSource="n/a"
+if [[ -n "${resolverStatusLine}" ]]; then
+    compareClientLogged="${resolverStatusTimestamp}"
+    compareClientVersion="${legacyResolvedVersion:-not logged}"
+    compareClientDeadline="${legacyResolvedDeadline:-not logged}"
+    if [[ "${resolverStatusLine}" =~ 'found DDM-enforced macOS ([^,]+), declared deadline ([^ ]+) \(' ]]; then
+        compareClientVersion="${match[1]}"
+        compareClientDeadline="${match[2]}"
+    fi
+    [[ "${resolverStatusLine}" =~ 'status=([^;)]+)' ]] && compareClientStatus="\`${match[1]}\`"
+    [[ "${resolverStatusLine}" =~ 'source=([^;)]+)' ]] && compareClientSource="${match[1]}"
+fi
+
+compareInstallLogged="no declaration in lookback window"
+compareInstallVersion="n/a"
+compareInstallDeadline="n/a"
+compareInstallSource="n/a"
+compareInstallCorroborated="n/a"
+if (( ${#installLogDeclarationSpans[@]} > 0 )); then
+    typeset -a latestSpanFields=("${(@s: | :)installLogDeclarationSpans[-1]}")
+    compareInstallLogged="${latestSpanFields[1]} to ${latestSpanFields[2]}"
+    (( ${#installLogDeclarationSpans[@]} > 1 )) && compareInstallLogged+=" (latest of ${#installLogDeclarationSpans[@]} spans)"
+    compareInstallVersion="${latestSpanFields[3]}"
+    compareInstallDeadline="${latestSpanFields[5]}"
+    compareInstallSource="${latestSpanFields[6]}"
+    compareInstallCorroborated="${latestSpanFields[7]}"
+fi
+
+echo "| Field | Client log (last \`DDM update check:\`) | \`install.log\` (latest declaration span) |"
+echo "|---|---|---|"
+echo "| Logged | ${compareClientLogged} | ${compareInstallLogged} |"
+echo "| Version | $(escapeTableCell "${compareClientVersion}") | $(escapeTableCell "${compareInstallVersion}") |"
+echo "| Declared deadline | $(escapeTableCell "${compareClientDeadline}") | $(escapeTableCell "${compareInstallDeadline}") |"
+echo "| Resolver status | ${compareClientStatus} | n/a |"
+echo "| Source | $(escapeTableCell "${compareClientSource}") | $(escapeTableCell "${compareInstallSource}") |"
+echo "| Corroborated | n/a | ${compareInstallCorroborated} |"
+echo ""
 echo "<!-- agent: start with **Yes.**, **No.**, or **Not comparable.**, then up to three sentences. If they disagree, quote both. -->"
 echo ""
 
 echo "## 8. Likely cause and next steps"
 echo ""
+
+# Recorded evidence only; the agent writes the cause and next steps
+function causeEvidenceValue() {
+    local message="${1}"
+
+    if [[ -z "${message}" ]]; then
+        echo "none in the last run"
+        return 0
+    fi
+    message="$(redactSensitiveText "${message}")"
+    echo "\`${message//\`/}\`"
+}
+
+causeNoReminderMessage=""
+causeNextStepMessage=""
+causeUserActionMessage=""
+causeScheduleMessage=""
+for logLine in "${latestRunDecisionLines[@]}"; do
+    [[ "${logLine}" =~ ${clientLogLineRegex} ]] || continue
+    case "${match[5]}" in
+        "No reminder shown: "*)              causeNoReminderMessage="${match[5]#No reminder shown: }" ;;
+        "Next step: "*)                      causeNextStepMessage="${match[5]#Next step: }" ;;
+        "Scheduled next daemon reminder "*)  causeScheduleMessage="${match[5]}" ;;
+        *" clicked "*)                       causeUserActionMessage="${match[5]}" ;;
+    esac
+done
+
+echo "Recorded evidence (helper-filled from the last run; interpret it below):"
+echo ""
+if (( runHistoryTotal > 0 )); then
+    IFS=$'\t' read -r runStart runScript runStatus runOutcome <<< "${runHistoryRows[-1]}"
+    [[ "${runStatus}" == "no resolver line" ]] || runStatus="\`${runStatus}\`"
+    echo "- Last run: ${runStart} · \`${runScript}\` · resolver ${runStatus} · $(redactSensitiveText "${runOutcome}")"
+else
+    echo "- Last run: no runtime run in client log"
+fi
+echo "- No reminder shown: $(causeEvidenceValue "${causeNoReminderMessage}")"
+echo "- Next step: $(causeEvidenceValue "${causeNextStepMessage}")"
+echo "- User action: $(causeEvidenceValue "${causeUserActionMessage}")"
+echo "- Scheduling: $(causeEvidenceValue "${causeScheduleMessage}")"
+if [[ -n "${statePlistPath}" ]] && plistKeyExists "${statePlistPath}" "NextScheduledReminder"; then
+    echo "- \`NextScheduledReminder\`: \`$(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "NextScheduledReminder")")\`"
+elif [[ -n "${statePlistPath}" ]]; then
+    echo "- \`NextScheduledReminder\`: absent (starter may launch)"
+else
+    echo "- \`NextScheduledReminder\`: \`dor-state.plist\` $(inputStatusLabel "statePlist")"
+fi
+echo ""
+
 echo "### Likely cause"
 echo ""
 echo "<!-- agent: one short paragraph; mark inferences as inferences. -->"
@@ -2221,5 +2745,33 @@ echo ""
 
 echo "## 9. Redaction"
 echo ""
-echo "This report is redacted: usernames, first names, \`/Users\` paths, \`install.log\` computer names, and labeled serial numbers are removed. Keep the raw uploads and the helper fact sheet out of any public issue."
+if [[ "${redactionEnabled}" == "true" ]]; then
+    echo "This report is redacted: usernames, first names, \`/Users\` paths, \`install.log\` computer names, and labeled serial numbers are removed. Keep the raw client files and the helper fact sheet out of any public issue."
+else
+    echo "This report is not redacted (\`--no-redaction\`): usernames, first names, \`/Users\` paths, \`install.log\` computer names, and serial numbers appear as logged. Keep this report, the raw client files, and the helper fact sheet out of any public issue."
+fi
 echo "<!-- report-skeleton:end -->"
+
+} | writeFactSheetOutput
+typeset -a factSheetPipeStatus=("${pipestatus[@]}")
+
+
+
+####################################################################################################
+#
+# Save result
+#
+####################################################################################################
+
+(( factSheetPipeStatus[1] == 0 )) || exit "${factSheetPipeStatus[1]}"
+
+if [[ -n "${factSheetSavePath}" ]]; then
+    if (( factSheetPipeStatus[-1] != 0 )) || [[ ! -s "${factSheetSavePath}" ]]; then
+        echo "Error: could not save unredacted fact sheet: ${factSheetSavePath}" >&2
+        exit 73
+    fi
+    echo "Saved unredacted fact sheet: ${factSheetSavePath}" >&2
+elif [[ -n "${factSheetSaveError}" ]]; then
+    echo "Error: ${factSheetSaveError}; unredacted fact sheet was not saved" >&2
+    exit 73
+fi

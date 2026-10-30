@@ -43,7 +43,7 @@
 
 set -euo pipefail
 autoload -Uz is-at-least
-scriptVersion="5.3.0b7"
+scriptVersion="5.3.0"
 projectDir="$(cd "$(dirname "${0}")" && pwd)"
 resourcesDir="${projectDir}/Resources"
 artifactsDir="${projectDir}/Artifacts"
@@ -154,7 +154,7 @@ for argument in "$@"; do
   esac
 done
 
-# Changed in 5.3.0b3; fail closed on a missing or invalid --lane value so it is never re-parsed as a positional RDNN
+# Changed in 5.3.0; fail closed on a missing or invalid --lane value so it is never re-parsed as a positional RDNN
 for (( argumentIndex=1; argumentIndex <= $#; argumentIndex++ )); do
   if [[ "${@[argumentIndex]}" == "--lane" ]]; then
     laneArgument=""
@@ -744,7 +744,7 @@ function applyPriorPlistSelections() {
     fi
   fi
 
-  # Changed in 5.3.0b3; a valid --lane anywhere on the command line wins, so skip filename inference (and its log line) regardless of argument order
+  # Changed in 5.3.0; a valid --lane anywhere on the command line wins, so skip filename inference (and its log line) regardless of argument order
   if [[ "${skipModePrompt}" == false && "${validLaneArgumentProvided}" == false ]]; then
     inferredDeploymentMode="$(inferDeploymentModeFromPriorPlist "${priorConfigSourcePath}")"
     if [[ -n "${inferredDeploymentMode}" ]]; then
@@ -1150,7 +1150,7 @@ function extractPlistKeys() {
   sed -n 's/^[[:space:]]*<key>\([^<]*\)<\/key>[[:space:]]*$/\1/p' "${plistPath}"
 }
 
-# Added in 5.3.0b3; rewrite only assemble.zsh's own leading lane marker so imported dev / test copy matches the selected lane
+# Added in 5.3.0; rewrite only assemble.zsh's own leading lane marker so imported dev / test copy matches the selected lane
 function normalizeImportedLaneMarker() {
   local importedValue="${1}"
   local targetLane="${2}"

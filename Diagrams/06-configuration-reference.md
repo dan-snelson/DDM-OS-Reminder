@@ -583,7 +583,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 **Behavior**:
 - `2` = aggressive mode starts after two hours past the effective deadline (default)
 - `0` = eligible as soon as the effective deadline is past
-- Daemon runs schedule an exact `NextScheduledReminder` at the aggressive-mode start (effective deadline plus this value) when it comes before the next baseline slot or quiet-period time (`5.3.0b1`)
+- Daemon runs schedule an exact `NextScheduledReminder` at the aggressive-mode start (effective deadline plus this value) when it comes before the next baseline slot or quiet-period time (`5.3.0`)
 - High values such as `720` effectively suppress aggressive mode without changing post-deadline restart policy
 - Do not set this too low in production unless the organization intentionally wants near-immediate post-deadline escalation
 - `/Library/Management/<rdnn>/dor-aggressive-kill` suppresses aggressive mode for support assistance and returns to normal non-aggressive cadence
@@ -810,7 +810,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Runtime compares the calculated signature with the value already stored in `dor-state.plist`
 - When the signature matches, `PreDeadlineThresholdDelivered` and `PreDeadlineThresholdSkipped` remain associated with that declaration
 - When the version, build, or effective enforcement epoch changes, runtime writes the new signature and deletes both threshold lists
-- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`; starting with `5.3.0b1`, a threshold is recorded only after a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh, so a dialog that swiftDialog never showed (for example, `Return Code: 1` during shutdown) stays pending
+- `PreDeadlineThresholdDelivered` is a descending, de-duplicated CSV of configured minute thresholds already displayed, such as `45,30`; starting with `5.3.0`, a threshold is recorded only after a user-interaction return code (`0`, `2`, `3`, `4`, `10`) or an open-dialog refresh, so a dialog that swiftDialog never showed (for example, `Return Code: 1` during shutdown) stays pending
 - `PreDeadlineThresholdSkipped` is a descending, de-duplicated CSV of earlier thresholds crossed before the nearest due threshold could be displayed
 - Together, these values ensure each configured threshold is handled at most once for one resolved deadline/version signature
 
@@ -970,7 +970,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - ICNS
 - Local paths: `file:///path/to/icon.png`
 
-**Download Behavior** (`5.3.0b4` and later):
+**Download Behavior** (`5.3.0` and later):
 - Remote URLs download after a short network-reachability wait (up to 5 seconds, checked against the macOS icon host), with one retry; only image content counts as success. If that host never becomes reachable, the download is skipped and the cache is used
 - The last good download is cached as `/Library/Management/<rdnn>/dor-icon-overlay-light.png` (or `dor-icon-overlay-dark.png` for `organizationOverlayiconURLdark`) and used when a later download fails
 - With no download and no cache, or with an empty value, the dialog shows no overlay icon (earlier versions showed the Finder icon)
@@ -1061,7 +1061,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - `NO` / `false` / `0` = Default position
 - `YES` / `true` / `1` = Swapped position
 
-Starting with `5.3.0b4`, when no overlay icon is available (empty `OrganizationOverlayIconURL`, failed download with no cache, or a missing `file://` path), `YES` keeps the macOS icon as the primary icon instead of swapping in an empty value.
+Starting with `5.3.0`, when no overlay icon is available (empty `OrganizationOverlayIconURL`, failed download with no cache, or a missing `file://` path), `YES` keeps the macOS icon as the primary icon instead of swapping in an empty value.
 
 **Script Default**:
 ```bash

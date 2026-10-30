@@ -33,7 +33,7 @@ set -u
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 scriptVersion="1.6.5"
-checklistScriptVersion="5.3.0b6"
+checklistScriptVersion="5.3.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'
@@ -2311,7 +2311,7 @@ else
     echo ""
 fi
 
-echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0b2 and later). During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0b4 and later). A missing NextScheduledReminder key lets the starter launch."
+echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0 and later). During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0 and later). A missing NextScheduledReminder key lets the starter launch."
 echo ""
 
 if [[ -n "${fallbackPlistPath}" ]]; then

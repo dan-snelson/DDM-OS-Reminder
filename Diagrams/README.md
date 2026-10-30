@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.29 | 29-Oct-2026 | `5.3.0` release: 02, 04, and 06 cite `5.3.0` instead of beta versions; prose only, no PNG/SVG changes |
 | 1.0.28 | 27-Oct-2026 | `5.3.0b6`: 02 and 05 note that a `conflict` from a different offered update (`Available descriptor`), on a Mac that already meets the declaration, also skips DDM Emergency Fallback; prose only, no PNG/SVG changes |
 | 1.0.27 | 27-Oct-2026 | `5.3.0b5`: 02 and 05 note that a `conflict` from a leftover declaration the Mac already meets skips DDM Emergency Fallback; prose only, no PNG/SVG changes |
 | 1.0.26 | 26-Oct-2026 | `5.3.0b4` pre-release review: 02 notes the 60-second DarkWake retry applies to starter-launched runs only; 04 and 06 add the `dor-icon-*` cache to the files `All` / `Script` keep and `Uninstall` removes; 06 adds the `SwapOverlayAndLogo` no-overlay rule, notes the reachability wait checks the macOS icon host, and adds a `5.3.0b4` Version History row; prose only, no PNG/SVG changes |

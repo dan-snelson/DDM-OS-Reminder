@@ -848,6 +848,9 @@ function collectIdentityTokens() {
         if [[ "${logLine}" =~ '\][[:space:]]+([^[:space:]]+) clicked ' ]]; then
             rememberRedactedToken "${match[1]}"
         fi
+        if [[ "${logLine}" =~ "Console user '([^']+)' detected after boot" ]]; then
+            rememberRedactedToken "${match[1]}"
+        fi
         if [[ "${logLine}" =~ 'Serial Number: ([A-Za-z0-9]+)' ]]; then
             rememberRedactedToken "${match[1]}"
             identitySerialNumber="${match[1]}"
@@ -2307,8 +2310,10 @@ echo ""
 if [[ -n "${statePlistPath}" ]]; then
     echo "### dor-state.plist"
     echo ""
-    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered LastBootReevaluation PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
+    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered LastBootReevaluation PostBootConsoleUserSeen PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
         if plistKeyExists "${statePlistPath}" "${stateKey}"; then
+            # PostBootConsoleUserSeen is "<boot epoch>:<user>"; redact the user even when the log never named it
+            [[ "${stateKey}" == "PostBootConsoleUserSeen" ]] && rememberRedactedToken "$(plistKeyValue "${statePlistPath}" "${stateKey}" | sed 's/^[0-9]*://')"
             echo "- ${stateKey}: $(redactSensitiveText "$(plistKeyValue "${statePlistPath}" "${stateKey}")")"
         else
             echo "- ${stateKey}: absent"
@@ -2320,7 +2325,7 @@ else
     echo ""
 fi
 
-echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process. Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0 and later). During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0 and later). A missing NextScheduledReminder key lets the starter launch."
+echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process (5.4.0 and later: a live dor.zsh process, with dor.pid written after the current boot; otherwise the starter logs 'Removing stale PID file' and continues). Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0 and later). Starting with 5.4.0, the first heartbeat that sees that user only records '<boot epoch>:<user>' in PostBootConsoleUserSeen and logs 'Console user '<user>' detected after boot; deferring post-boot re-evaluation one heartbeat so login can settle.'; the next heartbeat with the same user launches. During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0 and later). A missing NextScheduledReminder key lets the starter launch."
 echo ""
 
 if [[ -n "${fallbackPlistPath}" ]]; then

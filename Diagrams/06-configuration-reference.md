@@ -702,7 +702,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
 - Deploy and manage `DailyReminderTimes` through managed preferences or local preferences
 - Do **not** deploy runtime scheduler state through preference payloads
 - Exact reschedules and daemon bookkeeping live in `/Library/Management/<rdnn>/dor-state.plist`
-- Runtime-only keys currently include `NextScheduledReminder`, `DaemonLastTriggered`, `LastBootReevaluation`, and `UpdateTonightSuppressionUntil`
+- Runtime-only keys currently include `NextScheduledReminder`, `DaemonLastTriggered`, `LastBootReevaluation`, `PostBootConsoleUserSeen`, and `UpdateTonightSuppressionUntil`
 - The aggressive-mode support kill switch is a runtime-only file at `/Library/Management/<rdnn>/dor-aggressive-kill`; `All` and `Script` redeployments keep it, and only `Uninstall` removes it
 - Cached branding icons (`/Library/Management/<rdnn>/dor-icon-*.png`) follow the same rule: `All` and `Script` keep them, and only `Uninstall` removes them
 - Direct/manual/demo runs do not mutate this daemon scheduler state
@@ -730,6 +730,7 @@ sudo defaults write /Library/Preferences/org.churchofjesuschrist.dorm \
   - NextScheduledReminder
   - DaemonLastTriggered
   - LastBootReevaluation
+  - PostBootConsoleUserSeen
   - PreDeadlineThresholdSignature
   - PreDeadlineThresholdDelivered
   - PreDeadlineThresholdSkipped

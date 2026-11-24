@@ -815,10 +815,14 @@ function writeStateValue() {
 
 function readStateValue() {
     local key="${1}"
+    local stateValue=""
 
     ensureStatePlist || return 1
 
-    "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null || true
+    # PlistBuddy prints "File Doesn't Exist, Will Create: …" on stdout when the plist vanishes; keep output only from a successful read
+    if stateValue="$( "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null )"; then
+        print -r -- "${stateValue}"
+    fi
 }
 
 function epochFromScheduleTimestamp() {
@@ -830,10 +834,44 @@ function epochFromScheduleTimestamp() {
 }
 
 function consoleUserReady() {
-    local consoleUser=""
-
-    consoleUser="$(stat -f %Su /dev/console 2>/dev/null)"
+    # Same source as the main script's currentLoggedInUser; /dev/console ownership changes seconds earlier during login
+    consoleUser="$( echo "show State:/Users/ConsoleUser" | scutil 2>/dev/null | awk '/Name :/ { print $3; exit }' )"
     [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]
+}
+
+function pidFileNamesActiveMainScript() {
+    local pidFileEpoch=""
+    local recordedPid=""
+    local processCommand=""
+
+    stalePidReason=""
+
+    # A PID file from before this boot can name an unrelated process that reused the PID
+    if [[ "${bootEpoch}" =~ ^[0-9]+$ ]]; then
+        pidFileEpoch="$(stat -f %m "${pidFilePath}" 2>/dev/null)"
+        if [[ ! "${pidFileEpoch}" =~ ^[0-9]+$ ]]; then
+            stalePidReason="modification time unreadable"
+            return 1
+        elif (( pidFileEpoch < bootEpoch )); then
+            stalePidReason="written before the current boot"
+            return 1
+        fi
+    fi
+
+    recordedPid="$(head -n 1 "${pidFilePath}" 2>/dev/null | tr -d '[:space:]')"
+    if [[ ! "${recordedPid}" =~ ^[0-9]+$ ]] || (( recordedPid <= 1 )); then
+        stalePidReason="no valid PID"
+        return 1
+    fi
+
+    processCommand="$(ps -p "${recordedPid}" -o command= 2>/dev/null || true)"
+    if [[ -z "${processCommand}" ]]; then
+        stalePidReason="PID ${recordedPid} is not running"
+        return 1
+    elif [[ "${processCommand}" != *"${mainScriptPath}"* ]]; then
+        stalePidReason="PID ${recordedPid} is not '${mainScriptPath}'"
+        return 1
+    fi
 }
 
 function systemInDarkWake() {
@@ -850,12 +888,14 @@ fi
 
 requirePlistBuddy
 
+bootEpoch="$( sysctl kern.boottime 2>/dev/null | awk -F'[ |,]' '{print $5}' )"
+
 if [[ -f "${pidFilePath}" ]]; then
-    if pgrep -F "${pidFilePath}" >/dev/null 2>&1; then
+    if pidFileNamesActiveMainScript; then
         exit 0
     fi
 
-    warning "Removing stale PID file '${pidFilePath}'."
+    warning "Removing stale PID file '${pidFilePath}' (${stalePidReason})."
     rm -f "${pidFilePath}" 2>/dev/null || true
 fi
 
@@ -871,9 +911,10 @@ if [[ "${nextScheduledReminder:l}" == "false" ]]; then
 fi
 
 launchReason="scheduled"
-bootEpoch="$( sysctl kern.boottime 2>/dev/null | awk -F'[ |,]' '{print $5}' )"
 postBootReevaluationReady="NO"
 [[ "${bootEpoch}" =~ ^[0-9]+$ ]] && consoleUserReady && postBootReevaluationReady="YES"
+postBootConsoleUserMarker="${bootEpoch}:${consoleUser}"
+postBootConsoleUserConfirmationPending="NO"
 
 if [[ -n "${nextScheduledReminder}" ]]; then
     nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
@@ -884,7 +925,12 @@ if [[ -n "${nextScheduledReminder}" ]]; then
             if [[ "${postBootReevaluationReady}" != "YES" || "$(readStateValue "LastBootReevaluation")" == "${bootEpoch}" ]]; then
                 exit 0
             fi
-            launchReason="postBoot"
+            # Require the same console user on two heartbeats so login (and managed preferences) can settle
+            if [[ "$(readStateValue "PostBootConsoleUserSeen")" == "${postBootConsoleUserMarker}" ]]; then
+                launchReason="postBoot"
+            else
+                postBootConsoleUserConfirmationPending="YES"
+            fi
         fi
     else
         warning "Invalid NextScheduledReminder '${nextScheduledReminder}'; launching main script now."
@@ -894,6 +940,15 @@ fi
 # Leave scheduler state untouched so the due reminder (and any post-boot re-evaluation) runs after a full wake
 if systemInDarkWake; then
     notice "DarkWake detected (system capabilities: ${systemCapabilities}); deferring reminder launch to the next heartbeat."
+    exit 0
+fi
+
+if [[ "${postBootConsoleUserConfirmationPending}" == "YES" ]]; then
+    if ! writeStateValue "PostBootConsoleUserSeen" "${postBootConsoleUserMarker}"; then
+        error "Unable to update post-boot console-user state; not launching main script."
+        exit 1
+    fi
+    notice "Console user '${consoleUser}' detected after boot; deferring post-boot re-evaluation one heartbeat so login can settle."
     exit 0
 fi
 

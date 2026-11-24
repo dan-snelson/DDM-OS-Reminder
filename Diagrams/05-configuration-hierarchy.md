@@ -150,6 +150,7 @@ Managed localized keys retain per-key priority over matching local localized key
 - `NextScheduledReminder`
 - `DaemonLastTriggered`
 - `LastBootReevaluation`
+- `PostBootConsoleUserSeen`
 - `PreDeadlineThresholdSignature`
 - delivered and skipped threshold ledgers
 

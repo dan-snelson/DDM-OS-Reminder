@@ -494,6 +494,7 @@ Created to augment the comprehensive DDM OS Reminder documentation.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.32 | 24-Nov-2026 | Documented the `5.4.0` starter fixes ([Issue #177](https://github.com/dan-snelson/DDM-OS-Reminder/issues/177)): 02 adds the starter's one-heartbeat console-user confirmation (`scutil` console user, runtime-only `PostBootConsoleUserSeen` written after the DarkWake check) before the post-boot re-evaluation, and notes the stale-`dor.pid` rule (written before the current boot, or the PID is not the deployed `dor.zsh`); 04 updates the stale-PID and future-schedule bullets; 05/06 list `PostBootConsoleUserSeen` as runtime-only scheduler state; re-rendered `02-runtime-decision-tree` PNG/SVG exports with `mmdc` 12.0.0 |
 | 1.0.31 | 30-Oct-2026 | `5.3.0` pre-release fixes: 02 notes that Force mode re-checks Maintenance DarkWake before each same-run redisplay and before a timer-driven restart (60-second retry, no restart); prose only, no PNG/SVG changes |
 | 1.0.30 | 30-Oct-2026 | `5.3.0` pre-release fixes: 02, 03, and 06 note that a threshold reminder without a user-interaction return code retries 60 seconds later when that retry still comes before the effective deadline (never for return code `9`), and that a reminder answered after the aggressive-mode start uses the aggressive cadence from that answer; 06 relabels its `5.3.0` Version History row; prose only, no PNG/SVG changes |
 | 1.0.29 | 30-Oct-2026 | `5.3.0` release: 02, 04, and 06 cite `5.3.0` instead of beta versions; prose only, no PNG/SVG changes |

@@ -122,6 +122,7 @@ preDeadlineThresholdSignature=""
 preDeadlineThresholdDeliveredCSV=""
 preDeadlineThresholdSkippedCSV=""
 ownsDorPidFile="NO"
+stalePidReason=""
 typeset -ga dailyReminderTimesResolved=()
 typeset -ga minutesBeforeDeadlineReminderScheduleResolved=()
 
@@ -141,6 +142,9 @@ deadlineFormatLanguageCode="en"
 relativeDeadlineTimeFormatHumanReadable="+%-l:%M %p"
 declare -A preferenceExplicitlySet=()
 declare -A dateFormatDeadlineHumanReadableLocalized=()
+typeset -ga dynamicLocalizedPreferenceVariables=()
+preferencePlistReadValue=""
+preferencePlistReadDisturbed="false"
 
 
 
@@ -744,6 +748,44 @@ function removeDorPidFile() {
     ownsDorPidFile="NO"
 }
 
+function dorPidFileNamesActiveRuntime() {
+    local pidFileEpoch=""
+    local recordedPid=""
+    local processCommand=""
+
+    stalePidReason=""
+
+    # A PID file from before this boot can name an unrelated process that reused the PID
+    if [[ "${lastBootTime}" =~ ^[0-9]+$ ]]; then
+        pidFileEpoch="$(stat -f %m "${dorPidFilePath}" 2>/dev/null)"
+        if [[ ! "${pidFileEpoch}" =~ ^[0-9]+$ ]]; then
+            stalePidReason="modification time unreadable"
+            return 1
+        elif (( pidFileEpoch < lastBootTime )); then
+            stalePidReason="written before the current boot"
+            return 1
+        fi
+    fi
+
+    recordedPid="$(head -n 1 "${dorPidFilePath}" 2>/dev/null | tr -d '[:space:]')"
+    if [[ ! "${recordedPid}" =~ ^[0-9]+$ ]] || (( recordedPid <= 1 )); then
+        stalePidReason="no valid PID"
+        return 1
+    elif [[ "${recordedPid}" == "$$" ]]; then
+        stalePidReason="PID ${recordedPid} is this run"
+        return 1
+    fi
+
+    processCommand="$(ps -p "${recordedPid}" -o command= 2>/dev/null || true)"
+    if [[ -z "${processCommand}" ]]; then
+        stalePidReason="PID ${recordedPid} is not running"
+        return 1
+    elif [[ "${processCommand}" != *"${dorScriptPath}"* ]]; then
+        stalePidReason="PID ${recordedPid} is not '${dorScriptPath}'"
+        return 1
+    fi
+}
+
 function initializeDorPidFile() {
     if ! shouldManageDaemonScheduling; then
         return 0
@@ -754,11 +796,11 @@ function initializeDorPidFile() {
     chmod 755 "${deploymentScriptDirectory}" 2>/dev/null || true
 
     if [[ -f "${dorPidFilePath}" ]]; then
-        if pgrep -F "${dorPidFilePath}" >/dev/null 2>&1; then
+        if dorPidFileNamesActiveRuntime; then
             fatal "No reminder shown: another ${humanReadableScriptName} process is already running. Next step: None; if this repeats, confirm the PID in '${dorPidFilePath}' belongs to a running ${humanReadableScriptName} process."
         fi
 
-        warning "Removing stale PID file '${dorPidFilePath}'."
+        warning "Removing stale PID file '${dorPidFilePath}' (${stalePidReason})."
         rm -f "${dorPidFilePath}" 2>/dev/null || true
     fi
 
@@ -893,6 +935,7 @@ function writeReminderStateKey() {
 
 function readReminderStateKey() {
     local stateKey="${1}"
+    local stateValue=""
 
     if shouldManageDaemonScheduling; then
         ensureReminderStatePlist || return 1
@@ -904,7 +947,10 @@ function readReminderStateKey() {
         fi
     fi
 
-    /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null || true
+    # PlistBuddy prints "File Doesn't Exist, Will Create: …" on stdout when the plist vanishes; keep output only from a successful read
+    if stateValue="$( /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null )"; then
+        print -r -- "${stateValue}"
+    fi
 }
 
 function deleteReminderStateKey() {
@@ -2013,6 +2059,71 @@ function loadDefaultPreferences() {
     done
 }
 
+# One PlistBuddy call per key: PlistBuddy prints "File Doesn't Exist, Will Create: <path>"
+# on stdout when the plist vanishes, so never store output from a failed read.
+# Returns 0 = found (value in preferencePlistReadValue), 1 = key absent, 2 = plist missing or unreadable.
+function readPreferencePlistValue() {
+    local plistPath="${1}"
+    local plistKey="${2}"
+    local readOutput=""
+    local readStatus=0
+
+    preferencePlistReadValue=""
+
+    readOutput=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${plistPath}" 2>/dev/null)
+    readStatus=$?
+
+    if (( readStatus == 0 )); then
+        preferencePlistReadValue="${readOutput}"
+        return 0
+    fi
+
+    if [[ ! -f "${plistPath}" || "${readOutput}" == "File Doesn't Exist"* || "${readOutput}" == "Error Reading File"* ]]; then
+        preferencePlistReadDisturbed="true"
+        return 2
+    fi
+
+    return 1
+}
+
+function preferencePlistFingerprint() {
+    [[ -f "${1}" ]] || return 0
+    stat -f '%i:%m:%z' "${1}" 2>/dev/null
+}
+
+# Ready = plist exists, passes plutil -lint, and fingerprint is stable across two checks 1 second apart
+function waitForPreferencePlistStable() {
+    local plistPath="${1}"
+    local deadlineSeconds="${2}"
+    local previousFingerprint=""
+    local currentFingerprint=""
+
+    while (( SECONDS < deadlineSeconds )); do
+        currentFingerprint="$(preferencePlistFingerprint "${plistPath}")"
+        if [[ -n "${currentFingerprint}" && "${currentFingerprint}" == "${previousFingerprint}" ]] && /usr/bin/plutil -lint "${plistPath}" >/dev/null 2>&1; then
+            return 0
+        fi
+        previousFingerprint="${currentFingerprint}"
+        sleep 1
+    done
+
+    return 1
+}
+
+function resetPreferenceLoadState() {
+    local dynamicVariable=""
+
+    for dynamicVariable in "${dynamicLocalizedPreferenceVariables[@]}"; do
+        unset "${dynamicVariable}"
+    done
+
+    dynamicLocalizedPreferenceVariables=()
+    preferenceExplicitlySet=()
+    dateFormatDeadlineHumanReadableLocalized=()
+    preferencePlistReadValue=""
+    preferencePlistReadDisturbed="false"
+}
+
 function isKnownPreferencePlistKey() {
     internalPreferenceKeyForPlistKey "${1}" >/dev/null 2>&1
 }
@@ -2076,7 +2187,9 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
         fi
 
         if [[ "${internalBase}" == "dateFormatDeadlineHumanReadable" ]]; then
-            dateFormatDeadlineHumanReadableLocalized[${languageCode}]=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
+            if readPreferencePlistValue "${plistPath}" "${rawKey}"; then
+                dateFormatDeadlineHumanReadableLocalized[${languageCode}]="${preferencePlistReadValue}"
+            fi
             continue
         fi
 
@@ -2087,17 +2200,17 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
             continue
         fi
 
-        dynamicValue=$(/usr/libexec/PlistBuddy -c "Print :${rawKey}" "${plistPath}" 2>/dev/null)
+        readPreferencePlistValue "${plistPath}" "${rawKey}" || continue
+        dynamicValue="${preferencePlistReadValue}"
 
         printf -v "${internalKey}" '%s' "${dynamicValue}"
         preferenceExplicitlySet["${internalKey}"]="true"
+        dynamicLocalizedPreferenceVariables+=("${internalKey}")
     done
 }
 
-function loadPreferenceOverrides() {
-    preferenceExplicitlySet=()
-    dateFormatDeadlineHumanReadableLocalized=()
-    
+# Returns 1 when neither managed nor local preferences exist (defaults loaded)
+function loadPreferenceOverridesOnce() {
     # Check if managed preferences exist
     local hasManagedPrefs=false
     if [[ -f ${managedPreferencesPlist}.plist ]]; then
@@ -2116,7 +2229,7 @@ function loadPreferenceOverrides() {
         preFlight "No client-side preferences found; using script-defined defaults"
         loadDefaultPreferences
         resolveDiskSpaceWarningThreshold
-        return
+        return 1
     fi
     
     # Load all preferences using the configuration map
@@ -2130,9 +2243,9 @@ function loadPreferenceOverrides() {
         local managedValue=""
         local managedKeyExists="false"
         if [[ "${hasManagedPrefs}" == "true" ]]; then
-            if /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
+            if readPreferencePlistValue "${managedPreferencesPlist}.plist" "${plistKey}"; then
                 managedKeyExists="true"
-                managedValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" 2>/dev/null)
+                managedValue="${preferencePlistReadValue}"
             fi
         fi
         
@@ -2140,9 +2253,9 @@ function loadPreferenceOverrides() {
         local localValue=""
         local localKeyExists="false"
         if [[ "${hasLocalPrefs}" == "true" ]]; then
-            if /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" >/dev/null 2>&1; then
+            if readPreferencePlistValue "${localPreferencesPlist}.plist" "${plistKey}"; then
                 localKeyExists="true"
-                localValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" 2>/dev/null)
+                localValue="${preferencePlistReadValue}"
             fi
         fi
         
@@ -2175,8 +2288,55 @@ function loadPreferenceOverrides() {
     resolveDateFormatDeadlineHumanReadable
     resolveDiskSpaceWarningThreshold
 
-    preFlight "Preferences loaded"
+    return 0
+}
 
+# macOS can rewrite the managed plist at login; reload once rather than silently mix managed values and defaults
+function loadPreferenceOverrides() {
+    local managedPlist="${managedPreferencesPlist}.plist"
+    local localPlist="${localPreferencesPlist}.plist"
+    local managedFingerprintBefore=""
+    local localFingerprintBefore=""
+    local managedFingerprintAfter=""
+    local localFingerprintAfter=""
+    local preferencesFound="true"
+    local waitDeadline=0
+
+    resetPreferenceLoadState
+    managedFingerprintBefore="$(preferencePlistFingerprint "${managedPlist}")"
+    localFingerprintBefore="$(preferencePlistFingerprint "${localPlist}")"
+
+    loadPreferenceOverridesOnce || preferencesFound="false"
+
+    managedFingerprintAfter="$(preferencePlistFingerprint "${managedPlist}")"
+    localFingerprintAfter="$(preferencePlistFingerprint "${localPlist}")"
+
+    if [[ "${preferencePlistReadDisturbed}" == "true" || "${managedFingerprintBefore}" != "${managedFingerprintAfter}" || "${localFingerprintBefore}" != "${localFingerprintAfter}" ]]; then
+        warning "Preference plist changed or became unreadable during load; waiting up to 10 seconds and reloading once."
+
+        waitDeadline=$(( SECONDS + 10 ))
+        if [[ -n "${managedFingerprintBefore}" || -n "${managedFingerprintAfter}" ]]; then
+            waitForPreferencePlistStable "${managedPlist}" "${waitDeadline}"
+        fi
+        if [[ -n "${localFingerprintBefore}" || -n "${localFingerprintAfter}" ]]; then
+            waitForPreferencePlistStable "${localPlist}" "${waitDeadline}"
+        fi
+
+        resetPreferenceLoadState
+        loadDefaultPreferences
+        preferencesFound="true"
+        loadPreferenceOverridesOnce || preferencesFound="false"
+
+        if [[ "${preferencePlistReadDisturbed}" == "true" ]]; then
+            warning "Preference plist still unreadable during reload; affected keys use local preferences or script-defined defaults."
+        elif [[ -n "${managedFingerprintBefore}" && ! -f "${managedPlist}" ]]; then
+            warning "Managed preferences '${managedPlist}' missing after reload; using local preferences and script-defined defaults."
+        fi
+    fi
+
+    if [[ "${preferencesFound}" == "true" ]]; then
+        preFlight "Preferences loaded"
+    fi
 }
 
 function resolveDateFormatDeadlineHumanReadable() {

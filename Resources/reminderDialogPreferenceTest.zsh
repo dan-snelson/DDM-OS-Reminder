@@ -382,12 +382,14 @@ function plistFileIsReadable() {
     /usr/bin/plutil -lint "${plistPath}" >/dev/null 2>&1
 }
 
+# One PlistBuddy call per key; on failure print nothing so PlistBuddy error text
+# (for example "File Doesn't Exist, Will Create: <path>") is never stored as a value
 function readPlistValue() {
     local plistPath="${1}"
     local plistKey="${2}"
     local plistValue=""
 
-    plistValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${plistPath}" 2>/dev/null)
+    plistValue=$(/usr/libexec/PlistBuddy -c "Print :${plistKey}" "${plistPath}" 2>/dev/null) || return 1
     echo "${plistValue}"
 }
 
@@ -609,7 +611,9 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
         fi
 
         if [[ "${internalBase}" == "dateFormatDeadlineHumanReadable" ]]; then
-            dateFormatDeadlineHumanReadableLocalized[${languageCode}]="$(readPlistValue "${plistPath}" "${rawKey}")"
+            if dynamicValue="$(readPlistValue "${plistPath}" "${rawKey}")"; then
+                dateFormatDeadlineHumanReadableLocalized[${languageCode}]="${dynamicValue}"
+            fi
             continue
         fi
 
@@ -620,7 +624,7 @@ function loadDynamicLocalizedPreferenceOverridesFromPlist() {
             continue
         fi
 
-        dynamicValue="$(readPlistValue "${plistPath}" "${rawKey}")"
+        dynamicValue="$(readPlistValue "${plistPath}" "${rawKey}")" || continue
 
         printf -v "${internalKey}" '%s' "${dynamicValue}"
         preferenceExplicitlySet["${internalKey}"]="true"
@@ -655,18 +659,15 @@ function loadPreferenceOverrides() {
         local prefConfig="${preferenceConfiguration[$prefKey]}"
         local prefType="${prefConfig%%|*}"
         local plistKey="${plistKeyMap[$prefKey]:-$prefKey}"
-        local sourcePlist=""
         local rawValue=""
 
-        if [[ "${foundManagedPreferences}" == "true" ]] && /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${managedPreferencesPlist}.plist" >/dev/null 2>&1; then
-            sourcePlist="${managedPreferencesPlist}.plist"
-        elif [[ "${foundLocalPreferences}" == "true" ]] && /usr/libexec/PlistBuddy -c "Print :${plistKey}" "${localPreferencesPlist}.plist" >/dev/null 2>&1; then
-            sourcePlist="${localPreferencesPlist}.plist"
+        if [[ "${foundManagedPreferences}" == "true" ]] && rawValue="$(readPlistValue "${managedPreferencesPlist}.plist" "${plistKey}")"; then
+            :
+        elif [[ "${foundLocalPreferences}" == "true" ]] && rawValue="$(readPlistValue "${localPreferencesPlist}.plist" "${plistKey}")"; then
+            :
         else
             continue
         fi
-
-        rawValue="$(readPlistValue "${sourcePlist}" "${plistKey}")"
 
         case "${prefType}" in
             numeric)

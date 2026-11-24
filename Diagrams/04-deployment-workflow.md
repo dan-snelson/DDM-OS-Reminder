@@ -211,9 +211,9 @@ zsh Resources/monitorRemoteSession.zsh --rdnn example.org --watch 5
 At load and approximately every 60 seconds, the LaunchDaemon runs `dor-starter.zsh`.
 
 - Active matching `dor.pid`: starter exits to prevent overlap.
-- Stale PID: starter removes it and continues.
+- Stale PID (written before the current boot, not running, or not the deployed `dor.zsh`): starter logs a `[WARNING]` with the reason, removes it, and continues.
 - `NextScheduledReminder=FALSE`: starter exits quietly.
-- Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`).
+- Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user (`scutil`) records `PostBootConsoleUserSeen` and exits (`Console user '<user>' detected after boot; deferring post-boot re-evaluation …`); the next heartbeat that finds the same user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`).
 - Due, empty, or invalid schedule: starter records `DaemonLastTriggered` (and, with a console user, `LastBootReevaluation`) and launches `dor.zsh`.
 - Maintenance DarkWake (`5.3.0` and later): when a launch would otherwise happen but `pmset -g systemstate` lists `CPU` without `Graphics`, the starter logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and exits without writing state. The reminder runs on the first heartbeat after a full wake.
 

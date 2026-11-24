@@ -16,7 +16,9 @@ flowchart TD
     PostBoot -->|Yes| StarterDarkWake
     Due -->|Due, empty, or invalid| StarterDarkWake{Maintenance DarkWake?<br/>pmset -g systemstate<br/>lacks Graphics}
     StarterDarkWake -->|Yes| StarterDefer[Log DarkWake NOTICE and exit<br/>scheduler state unchanged]
-    StarterDarkWake -->|No| Trigger[Write DaemonLastTriggered and,<br/>with a console user, LastBootReevaluation<br/>launch dor.zsh as starter]
+    StarterDarkWake -->|No| UserSeen{Post-boot run and<br/>PostBootConsoleUserSeen not<br/>this boot and scutil user?}
+    UserSeen -->|Yes| StarterConfirm[Write PostBootConsoleUserSeen<br/>log NOTICE and exit<br/>re-check next heartbeat]
+    UserSeen -->|No| Trigger[Write DaemonLastTriggered and,<br/>with a console user, LastBootReevaluation<br/>launch dor.zsh as starter]
 
     Trigger --> Root{Running as root?}
     Root -->|No| FatalRoot[Fatal error]
@@ -119,11 +121,11 @@ flowchart TD
 
 ## Scheduler Decisions
 
-- `dor.pid` prevents overlap. A stale or malformed PID is removed without terminating unrelated processes.
+- `dor.pid` prevents overlap. A stale or malformed PID is removed without terminating unrelated processes. The PID file counts as active only when it was written after the current boot (`kern.boottime`) and its PID runs the deployed `dor.zsh`; otherwise the starter logs `[WARNING] Removing stale PID file '…' (<reason>).` and continues.
 - `NextScheduledReminder=FALSE` disables daemon-driven reminders.
-- A future `NextScheduledReminder` produces an expected quiet no-op, with one exception: after each boot, the first heartbeat that finds a console user other than `loginwindow`, `_mbsetupuser`, or `root` launches `dor.zsh` once to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login. The starter records the boot in `LastBootReevaluation` (the `kern.boottime` epoch) and logs `[NOTICE] Starter launch after boot; re-evaluating deadline …`. That run shows a reminder only when a threshold, aggressive mode, or Force mode is due; otherwise it moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start (never later) and exits with `No reminder shown: post-boot re-evaluation found no reminder due`.
+- A future `NextScheduledReminder` produces an expected quiet no-op, with one exception: after each boot, once `scutil` (`State:/Users/ConsoleUser`) reports a console user other than `loginwindow`, `_mbsetupuser`, or `root`, the starter launches `dor.zsh` once to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login. The first heartbeat that sees that user records `<kern.boottime epoch>:<user>` in `PostBootConsoleUserSeen`, logs `[NOTICE] Console user '<user>' detected after boot; deferring post-boot re-evaluation one heartbeat so login can settle.`, and exits; the next heartbeat that sees the same user launches. The starter records the boot in `LastBootReevaluation` (the `kern.boottime` epoch) and logs `[NOTICE] Starter launch after boot; re-evaluating deadline …`. That run shows a reminder only when a threshold, aggressive mode, or Force mode is due; otherwise it moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start (never later) and exits with `No reminder shown: post-boot re-evaluation found no reminder due`.
 - Due, empty, missing, or invalid scheduler state causes the starter to run the full workflow so it can repair or advance scheduling.
-- Starting with `5.3.0`, a heartbeat during a Maintenance DarkWake (`pmset -g systemstate` lists `CPU` but not `Graphics`) does not launch `dor.zsh`, even when a reminder is due. The starter logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation`, so the due reminder (or post-boot re-evaluation) runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.
+- Starting with `5.3.0`, a heartbeat during a Maintenance DarkWake (`pmset -g systemstate` lists `CPU` but not `Graphics`) does not launch `dor.zsh`, even when a reminder is due. The starter logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation` and `PostBootConsoleUserSeen`, so the due reminder (or post-boot re-evaluation) runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.
 - Manual and demo runs bypass scheduler writes; only starter-launched runs own `dor.pid` and mutate `dor-state.plist`.
 
 ## DDM and Fallback Decisions

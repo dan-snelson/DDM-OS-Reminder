@@ -29,6 +29,7 @@
     - When the installed macOS version is valid and is at or above every ignored declaration's target version, the line is now `[NOTICE] Ignoring N install.log DDM declaration(s) absent from softwareupdate DDM state; macOS <installed version> already meets them; latest: …`.
     - The line stays `[WARNING]`, with the same text as before, when any ignored declaration targets a newer macOS version, when the installed or target version is missing or invalid, or when only some ignored declarations are met.
     - No changes to resolver status, candidate selection, DDM Emergency Fallback eligibility, scheduling, or the Extension Attributes; run `zsh assemble.zsh` before deploying.
+- **Docs:** clarify that the post-boot re-evaluation moves `NextScheduledReminder` earlier, never later, only while an update is still required; a compliant or suppressed post-boot run takes its normal outcome, such as the next baseline slot ([Issue #179](https://github.com/dan-snelson/DDM-OS-Reminder/issues/179))
 
 ### Version 5.3.0 (30-Oct-2026)
 - :new: A reminder that came due while the Mac slept could launch during a Maintenance DarkWake, before the network was ready. Both icon downloads then timed out (about 20 seconds), both icons fell back to the Finder icon, and the dialog waited on a sleeping or locked display until the user returned ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172); thanks, James Anzaldua!)

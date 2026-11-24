@@ -250,7 +250,7 @@ zsh Resources/monitorRemoteSession.zsh --rdnn example.org --watch 5
 Validate:
 
 - `DaemonLastTriggered` changes when the starter launches the main script.
-- A future schedule remains intact across heartbeat cycles and reboot; after reboot and login, one post-boot re-evaluation may move it earlier, never later.
+- A future schedule remains intact across heartbeat cycles and reboot; after reboot and login, while an update is still required, one post-boot re-evaluation may move it earlier, never later. A compliant or suppressed post-boot run takes its normal outcome, such as the next baseline slot.
 - `Remind Me Later` starts the quiet period from interaction time.
 - A pending final-minute threshold can schedule earlier than quiet-period expiry.
 - Aggressive mode uses exact redisplay scheduling after its configured post-deadline threshold.

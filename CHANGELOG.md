@@ -2,6 +2,13 @@
 
 ## Changelog
 
+### Version 5.4.0 (Unreleased)
+- :new: `Resources/diagnoseReminderState.zsh` (`1.7.0`) names `--no-redaction` output files by the Mac's serial number instead of its computer name, because the serial number is unique and is the stable key for an MDM inventory lookup ([Issue #176](https://github.com/dan-snelson/DDM-OS-Reminder/issues/176))
+    - The suggested report filename becomes `ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>.md`; with `--rdnn`, the saved fact sheet becomes `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md`.
+    - With `--rdnn`, the serial number comes from this Mac (`IOPlatformSerialNumber`); otherwise from a labeled `Serial Number:` client-log line. When no serial number is known, the computer name is used as before; when neither is known, the filename has no identity token.
+    - The serial number still identifies the Mac. Keep unredacted reports and saved fact sheets out of public issues.
+    - Redacted output, the identity rows, and the save rules (mode `0600`, no directory creation, exit `73`) are unchanged.
+
 ### Version 5.3.0 (30-Oct-2026)
 - :new: A reminder that came due while the Mac slept could launch during a Maintenance DarkWake, before the network was ready. Both icon downloads then timed out (about 20 seconds), both icons fell back to the Finder icon, and the dialog waited on a sleeping or locked display until the user returned ([Issue #172](https://github.com/dan-snelson/DDM-OS-Reminder/issues/172); thanks, James Anzaldua!)
     - **DarkWake deferral:** `dor-starter.zsh` no longer launches `dor.zsh` while `pmset -g systemstate` lists `CPU` without `Graphics`. It logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation`, so the due reminder runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.

@@ -32,7 +32,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.6.5"
+scriptVersion="1.7.0"
 checklistScriptVersion="5.3.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -882,6 +882,15 @@ function identityValueCell() {
         return 0
     fi
     echo "$(escapeTableCell "${value}") (${source})"
+}
+
+function sanitizeReportFileToken() {
+    local token="${1//[^A-Za-z0-9._-]/-}"
+
+    while [[ "${token}" == *--* ]]; do
+        token="${token//--/-}"
+    done
+    echo "${${token#-}%-}"
 }
 
 function factSheetSaveDirectoryProblem() {
@@ -1981,12 +1990,12 @@ fi
 runTimestamp="$(date +%Y-%m-%d-%H%M%S)"
 reportFileUnredacted=""
 if [[ "${redactionEnabled}" != "true" ]]; then
-    reportFileComputerName="${identityComputerName//[^A-Za-z0-9._-]/-}"
-    while [[ "${reportFileComputerName}" == *--* ]]; do
-        reportFileComputerName="${reportFileComputerName//--/-}"
-    done
-    reportFileComputerName="${${reportFileComputerName#-}%-}"
-    reportFileUnredacted="${reportFileComputerName:+-${reportFileComputerName}}-unredacted"
+    # Serial number is the stable MDM lookup key; fall back to computer name, then to none
+    reportFileIdentity="$(sanitizeReportFileToken "${identitySerialNumber}")"
+    if [[ -z "${reportFileIdentity}" ]]; then
+        reportFileIdentity="$(sanitizeReportFileToken "${identityComputerName}")"
+    fi
+    reportFileUnredacted="${reportFileIdentity:+-${reportFileIdentity}}-unredacted"
 fi
 reportFileName="ddm-os-reminder-${reportFileRdnn}${reportFileUnredacted}-${runTimestamp}.md"
 

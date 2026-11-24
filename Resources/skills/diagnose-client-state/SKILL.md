@@ -59,11 +59,11 @@ If the Mac Admin runs the helper on the affected Mac, `--rdnn` reads each input 
 sudo zsh Resources/diagnoseReminderState.zsh --rdnn <rdnn>
 ```
 
-To track several Macs internally, the Mac Admin may add `--no-redaction`. With `--rdnn`, the helper then also saves its fact sheet as `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md` (mode `0600`) and exits `73` if it cannot. That saved file is the helper's only write.
+To track several Macs internally, the Mac Admin may add `--no-redaction`. With `--rdnn`, the helper then also saves its fact sheet as `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md` (mode `0600`) and exits `73` if it cannot. That saved file is the helper's only write.
 
 Treat the resulting fact sheet exactly like one built from uploads. Uploads stay the default; do not ask for live access.
 
-The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.6.5 report skeleton.
+The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.7.0 report skeleton.
 
 If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
@@ -94,7 +94,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.6.5) · Checklist: `reminderDialog.zsh` 5.3.0
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.7.0) · Checklist: `reminderDialog.zsh` 5.3.0
 
 ## 1. Verdict
 
@@ -197,4 +197,4 @@ Style:
 - Quote log lines in `text` fenced blocks. Redact as the helper does.
 - In section 8, mark inferences as inferences. Number next steps; put read-only checks first and end each with `(read-only)`.
 
-After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest the helper's `Suggested report filename` (`ddm-os-reminder-<rdnn>-<YYYY-MM-DD-HHMMSS>.md`, for example `ddm-os-reminder-us.snelson-2026-10-15-201132.md`; with `--no-redaction`, `ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>.md`) next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.
+After that report, ask the user whether to save the findings as a Markdown file. Do not write the file until the user confirms a path. Suggest the helper's `Suggested report filename` (`ddm-os-reminder-<rdnn>-<YYYY-MM-DD-HHMMSS>.md`, for example `ddm-os-reminder-us.snelson-2026-10-15-201132.md`; with `--no-redaction`, `ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>.md`) next to the uploads, outside this repository. Save only the completed report. Do not save the raw uploads or the rest of the helper fact sheet.

@@ -760,26 +760,26 @@
             <key>PayloadDisplayName</key>
             <string>Custom Settings</string>
             <key>PayloadIdentifier</key>
-            <string>FBD8FBCD-E419-4826-A3DC-52614240F130</string>
+            <string>70614E65-50DC-403D-B425-0832B50BA6FF</string>
             <key>PayloadOrganization</key>
             <string>dorm</string>
             <key>PayloadType</key>
             <string>com.apple.ManagedClient.preferences</string>
             <key>PayloadUUID</key>
-            <string>FBD8FBCD-E419-4826-A3DC-52614240F130</string>
+            <string>70614E65-50DC-403D-B425-0832B50BA6FF</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
         </dict>
     </array>
 
     <key>PayloadDescription</key>
-    <string>Configures DDM OS Reminder (5.3.0) to org.churchofjesuschrist standards. Created: 2026-11-24-114644</string>
+    <string>Configures DDM OS Reminder (5.3.0) to org.churchofjesuschrist standards. Created: 2026-11-24-120556</string>
     <key>PayloadDisplayName</key>
     <string>DDM OS Reminder: org.churchofjesuschrist</string>
     <key>PayloadEnabled</key>
     <true/>
     <key>PayloadIdentifier</key>
-    <string>C94B42CB-55DE-4A6C-BEF4-60A01B98BDA1</string>
+    <string>02420DC9-AD69-402C-88C9-AB21D17FC9AF</string>
     <key>PayloadOrganization</key>
     <string>dorm</string>
     <key>PayloadRemovalDisallowed</key>
@@ -789,7 +789,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>C94B42CB-55DE-4A6C-BEF4-60A01B98BDA1</string>
+    <string>02420DC9-AD69-402C-88C9-AB21D17FC9AF</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

@@ -4010,6 +4010,9 @@ function resolveDDMEnforcementFromInstallLog() {
     local currentPriority=0
     local candidateEpoch=""
     local latestEpoch=0
+    local uncorroboratedKey=""
+    local uncorroboratedVersion=""
+    local allUncorroboratedMet=""
 
     local -a candidateSourceTypes=()
     local -a candidateFirstTimestamps=()
@@ -4099,7 +4102,24 @@ function resolveDDMEnforcementFromInstallLog() {
     done
 
     if (( ${#ddmUncorroboratedCandidates[@]} > 0 )); then
-        warning "Ignoring ${#ddmUncorroboratedCandidates[@]} install.log DDM declaration(s) absent from softwareupdate DDM state; latest: ${ddmResolverUncorroboratedSummary}"
+        # Leftover declarations the installed macOS already meets are expected; keep them out of [WARNING]
+        allUncorroboratedMet="NO"
+        if isValidDDMVersionString "${installedmacOSVersion}"; then
+            allUncorroboratedMet="YES"
+            for uncorroboratedKey in "${(@k)ddmUncorroboratedCandidates}"; do
+                uncorroboratedVersion="${${(@s:|:)uncorroboratedKey}[2]}"
+                if ! isValidDDMVersionString "${uncorroboratedVersion}" || ! is-at-least "${uncorroboratedVersion}" "${installedmacOSVersion}"; then
+                    allUncorroboratedMet="NO"
+                    break
+                fi
+            done
+        fi
+
+        if [[ "${allUncorroboratedMet}" == "YES" ]]; then
+            notice "Ignoring ${#ddmUncorroboratedCandidates[@]} install.log DDM declaration(s) absent from softwareupdate DDM state; macOS ${installedmacOSVersion} already meets them; latest: ${ddmResolverUncorroboratedSummary}"
+        else
+            warning "Ignoring ${#ddmUncorroboratedCandidates[@]} install.log DDM declaration(s) absent from softwareupdate DDM state; latest: ${ddmResolverUncorroboratedSummary}"
+        fi
     fi
 
     if [[ ${#candidateSourceTypes[@]} -eq 0 ]]; then

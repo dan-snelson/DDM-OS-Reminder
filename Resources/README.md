@@ -652,8 +652,8 @@ sudo zsh Resources/diagnoseReminderState.zsh --rdnn us.snelson --no-redaction
 
 - Usernames, first names, `/Users` paths, `install.log` computer names, and serial numbers appear as logged.
 - The fact sheet and report skeleton add **Computer name** and **Serial number** identity rows. With `--rdnn`, they come from this Mac (`scutil --get ComputerName`, `IOPlatformSerialNumber`); otherwise from the latest `install.log` computer name and a labeled `Serial Number:` client-log line, or `not logged`.
-- The suggested report filename becomes `ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>.md`, and report section 9 says the report is not redacted.
-- With `--rdnn`, the helper also saves its full output to `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<computer-name>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md` (mode `0600`). This is its only write. It never creates the directory, and it refuses a directory that is missing, a symbolic link, not owned by root, or not writable: the fact sheet still prints, and the helper exits `73`.
+- The suggested report filename becomes `ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>.md`, and report section 9 says the report is not redacted. The serial number (helper `1.7.0`) is the stable key for an MDM inventory lookup; when no serial number is known, the computer name is used instead, and when neither is known, the filename has no identity token (`ddm-os-reminder-<rdnn>-unredacted-<YYYY-MM-DD-HHMMSS>.md`).
+- With `--rdnn`, the helper also saves its full output to `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md` (mode `0600`). This is its only write. It never creates the directory, and it refuses a directory that is missing, a symbolic link, not owned by root, or not writable: the fact sheet still prints, and the helper exits `73`.
 - Without `--rdnn`, nothing is saved; the output prints to stdout only.
 - `Uninstall` removes only DDM OS Reminder runtime files, so saved fact sheets (and the `/Library/Management/<rdnn>/` directory) remain until you delete them.
 

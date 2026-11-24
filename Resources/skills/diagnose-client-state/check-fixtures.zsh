@@ -169,7 +169,8 @@ requireText "unredacted install.log computer name" "SecretHost softwareupdated" 
 requireText "unredacted dialog line" "Display Reminder Dialog to zzuniqueuser" "${unredacted}"
 requireText "unredacted computer name row" "| Computer name | SecretHost (install.log) |" "${unredacted}"
 requireText "unredacted serial number row" "| Serial number | ZZSERIAL123 (client log) |" "${unredacted}"
-requireText "unredacted report filename" "-SecretHost-unredacted-" "${unredacted}"
+requireText "unredacted report filename serial" "-ZZSERIAL123-unredacted-" "${unredacted}"
+rejectText "unredacted report filename computer name" "-SecretHost-unredacted-" "${unredacted}"
 requireText "unredacted section 9" "This report is not redacted (\`--no-redaction\`)" "${unredacted}"
 requireText "unredacted without --rdnn writes nothing" "- Read-only: no files were written" "${unredacted}"
 requireExitStatus "unredacted without --rdnn" 0 \
@@ -191,6 +192,28 @@ unsaved="$(runHelper \
     --no-redaction 2>/dev/null)"
 requireSkeletonHeadings "unsaved" "${unsaved}"
 requireText "unsaved writes nothing" "- Read-only: no files were written" "${unsaved}"
+
+grep -v 'Serial Number:' "${workDirectory}/runtime.log" > "${workDirectory}/runtime-no-serial.log"
+unredactedNoSerial="$(runHelper \
+    --client-log "${workDirectory}/runtime-no-serial.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --no-redaction 2>/dev/null)"
+requireText "unredacted no-serial serial row" "| Serial number | not logged |" "${unredactedNoSerial}"
+requireText "unredacted no-serial report filename" "-SecretHost-unredacted-" "${unredactedNoSerial}"
+
+cat > "${workDirectory}/no-identity.log" <<'EOF'
+dor  (5.0.0): 2026-10-15 12:22:02 - [PRE-FLIGHT]      Initiating …
+dor  (5.0.0): 2026-10-15 12:25:56 - [QUIT]            Completed us.snelson.dor LaunchDaemon
+EOF
+: > "${workDirectory}/no-host-install.log"
+unredactedNoIdentity="$(runHelper \
+    --client-log "${workDirectory}/no-identity.log" \
+    --install-log "${workDirectory}/no-host-install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --no-redaction 2>/dev/null)"
+requireText "unredacted no-identity computer name row" "| Computer name | not logged |" "${unredactedNoIdentity}"
+requireText "unredacted no-identity report filename" 'Suggested report filename: `ddm-os-reminder-rdnn-undetected-unredacted-' "${unredactedNoIdentity}"
 
 cat > "${workDirectory}/plain-language.log" <<'EOF'
 dorm (5.2.0): 2026-10-16 10:31:05 - [PRE-FLIGHT]      Initiating …

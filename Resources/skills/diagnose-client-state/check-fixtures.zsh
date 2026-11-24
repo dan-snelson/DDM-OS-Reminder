@@ -361,6 +361,7 @@ rejectText "deploy-only host" "SecretHost" "${deployOnly}"
 /usr/bin/plutil -insert NextScheduledReminder -string "FALSE" "${workDirectory}/state.plist"
 /usr/bin/plutil -insert PreDeadlineThresholdDelivered -string "45" "${workDirectory}/state.plist"
 /usr/bin/plutil -insert PreDeadlineThresholdSkipped -string "30" "${workDirectory}/state.plist"
+/usr/bin/plutil -insert LastDeclarationFingerprint -string "dbdbfecc9291eac20ee2b51e8d30eb81" "${workDirectory}/state.plist"
 stateSheet="$(runHelper \
     --client-log "${fixtureRoot}/missing/client.log" \
     --install-log "${fixtureRoot}/missing/install.log" \
@@ -369,6 +370,8 @@ stateSheet="$(runHelper \
 requireText "state false" "NextScheduledReminder: FALSE" "${stateSheet}"
 requireText "threshold delivered" "PreDeadlineThresholdDelivered: 45" "${stateSheet}"
 requireText "threshold skipped" "PreDeadlineThresholdSkipped: 30" "${stateSheet}"
+requireText "declaration fingerprint" "LastDeclarationFingerprint: dbdbfecc9291eac20ee2b51e8d30eb81" "${stateSheet}"
+requireText "starter declaration-change rule" "DDM declaration change detected; re-evaluating deadline" "${stateSheet}"
 requireText "starter rule" "Starter exits quietly" "${stateSheet}"
 requireText "skeleton state supplied" '| `dor-state.plist` | supplied | `NextScheduledReminder`: FALSE |' "${stateSheet}"
 requireText "cause state value" '- `NextScheduledReminder`: `FALSE`' "${stateSheet}"
@@ -506,5 +509,22 @@ requireText "post-boot runtime line" "Post-boot re-evaluation: reminder due now"
 requireText "runtime DarkWake line" "the Mac is in a Maintenance DarkWake" "${postBoot}"
 requireText "starter DarkWake line" "DarkWake detected (system capabilities: CPU Network Disk)" "${postBoot}"
 requireText "post-boot script name" "| Log script name | dorm |" "${postBoot}"
+
+cat > "${workDirectory}/declaration-change.log" <<'EOF'
+dorm (5.4.0): 2026-11-24 12:00:05 - [PRE-FLIGHT]      Initiating …
+dorm (5.4.0): 2026-11-24 12:00:06 - [QUIT]            Exiting …
+dor (5.4.0): 2026-11-24 13:30:00 - [NOTICE]          DDM declaration change detected; re-evaluating deadline (NextScheduledReminder: 2026-11-24:16:00:00).
+dorm (5.4.0): 2026-11-24 13:30:01 - [PRE-FLIGHT]      Initiating …
+dorm (5.4.0): 2026-11-24 13:30:02 - [NOTICE]          Scheduled next daemon reminder for 2026-11-24:14:15:00 (Declaration-change re-evaluation: 45-minute pre-deadline threshold).
+dorm (5.4.0): 2026-11-24 13:30:02 - [QUIT]            No reminder shown: declaration-change re-evaluation found no reminder due
+dorm (5.4.0): 2026-11-24 13:30:02 - [QUIT]            Exiting …
+EOF
+declarationChange="$(runHelper \
+    --client-log "${workDirectory}/declaration-change.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist")"
+requireText "declaration-change starter line" "DDM declaration change detected; re-evaluating deadline" "${declarationChange}"
+requireText "declaration-change runtime line" "declaration-change re-evaluation found no reminder due" "${declarationChange}"
+requireText "declaration-change script name" "| Log script name | dorm |" "${declarationChange}"
 
 echo "diagnose fixture checks passed"

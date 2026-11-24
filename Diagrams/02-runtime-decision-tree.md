@@ -12,13 +12,15 @@ flowchart TD
     ReadState --> Due{Schedule state}
     Due -->|FALSE| StarterNoop
     Due -->|Future| PostBoot{Console user logged in and<br/>no re-evaluation yet this boot?}
-    PostBoot -->|No| StarterNoop
+    PostBoot -->|No| DeclarationChange{Console user logged in and<br/>active DDM declarations differ from<br/>LastDeclarationFingerprint?}
+    DeclarationChange -->|No| StarterNoop
+    DeclarationChange -->|Yes| StarterDarkWake
     PostBoot -->|Yes| StarterDarkWake
     Due -->|Due, empty, or invalid| StarterDarkWake{Maintenance DarkWake?<br/>pmset -g systemstate<br/>lacks Graphics}
     StarterDarkWake -->|Yes| StarterDefer[Log DarkWake NOTICE and exit<br/>scheduler state unchanged]
     StarterDarkWake -->|No| UserSeen{Post-boot run and<br/>PostBootConsoleUserSeen not<br/>this boot and scutil user?}
     UserSeen -->|Yes| StarterConfirm[Write PostBootConsoleUserSeen<br/>log NOTICE and exit<br/>re-check next heartbeat]
-    UserSeen -->|No| Trigger[Write DaemonLastTriggered and,<br/>with a console user, LastBootReevaluation<br/>launch dor.zsh as starter]
+    UserSeen -->|No| Trigger[Write DaemonLastTriggered,<br/>LastDeclarationFingerprint when readable, and,<br/>with a console user, LastBootReevaluation<br/>launch dor.zsh as starter]
 
     Trigger --> Root{Running as root?}
     Root -->|No| FatalRoot[Fatal error]
@@ -43,7 +45,7 @@ flowchart TD
     RestartMode --> Threshold[Evaluate next pre-deadline<br/>minute threshold]
     Threshold --> Aggressive[Evaluate aggressive mode<br/>deadline + configured hours<br/>unless kill switch exists]
 
-    Aggressive --> PostBootRun{Post-boot<br/>re-evaluation run?}
+    Aggressive --> PostBootRun{Post-boot or<br/>declaration-change<br/>re-evaluation run?}
     PostBootRun -->|No| Force
     PostBootRun -->|Yes| PostBootDue{Force, aggressive, or threshold<br/>due now, or stored schedule due?}
     PostBootDue -->|Yes| Force
@@ -124,6 +126,7 @@ flowchart TD
 - `dor.pid` prevents overlap. A stale or malformed PID is removed without terminating unrelated processes. The PID file counts as active only when it was written after the current boot (`kern.boottime`) and its PID runs the deployed `dor.zsh`; otherwise the starter logs `[WARNING] Removing stale PID file '…' (<reason>).` and continues.
 - `NextScheduledReminder=FALSE` disables daemon-driven reminders.
 - A future `NextScheduledReminder` produces an expected quiet no-op, with one exception: after each boot, once `scutil` (`State:/Users/ConsoleUser`) reports a console user other than `loginwindow`, `_mbsetupuser`, or `root`, the starter launches `dor.zsh` once to re-evaluate the deadline, because macOS may re-pad a past-due deadline at login. The first heartbeat that sees that user records `<kern.boottime epoch>:<user>` in `PostBootConsoleUserSeen`, logs `[NOTICE] Console user '<user>' detected after boot; deferring post-boot re-evaluation one heartbeat so login can settle.`, and exits; the next heartbeat that sees the same user launches. The starter records the boot in `LastBootReevaluation` (the `kern.boottime` epoch) and logs `[NOTICE] Starter launch after boot; re-evaluating deadline …`. While an update is still required, that run shows a reminder only when a threshold, aggressive mode, or Force mode is due; otherwise it moves `NextScheduledReminder` earlier for a pending threshold or aggressive-mode start (never later) and exits with `No reminder shown: post-boot re-evaluation found no reminder due`. When the Mac is already compliant, or the reminder is suppressed, the run takes its normal outcome, such as the next baseline slot.
+- Starting with `5.4.0`, a future `NextScheduledReminder` also launches `dor.zsh` when a console user is logged in, no post-boot re-evaluation is pending, and the active DDM declarations in `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` no longer match the runtime-only `LastDeclarationFingerprint` (an `md5` of the sorted `TargetOSVersion|<TargetLocalDateTime digits>` pairs; zero declarations is a valid fingerprint). The starter logs `[NOTICE] DDM declaration change detected; re-evaluating deadline (NextScheduledReminder: …).` and launches with `DOR_LAUNCH_REASON=declarationChange`. The run follows the post-boot rules above, logging `Declaration-change re-evaluation: …` and `No reminder shown: declaration-change re-evaluation found no reminder due`. Every starter launch records the current fingerprint after the DarkWake check. An unreadable or unrecognized persistence plist leaves the stored value unchanged, and a missing stored value is seeded by the next launch, not treated as a change. If the fingerprint cannot be written, a declaration-change launch logs `[ERROR]` and does not launch; other launches log `[WARNING]` and launch. `FALSE` and a live `dor.pid` exit before this check.
 - Due, empty, missing, or invalid scheduler state causes the starter to run the full workflow so it can repair or advance scheduling.
 - Starting with `5.3.0`, a heartbeat during a Maintenance DarkWake (`pmset -g systemstate` lists `CPU` but not `Graphics`) does not launch `dor.zsh`, even when a reminder is due. The starter logs `[NOTICE] DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and leaves `dor-state.plist` unchanged, including `LastBootReevaluation` and `PostBootConsoleUserSeen`, so the due reminder (or post-boot re-evaluation) runs on the first heartbeat after a full wake. Unrecognized `pmset` output fails open and launches as before.
 - Manual and demo runs bypass scheduler writes; only starter-launched runs own `dor.pid` and mutate `dor-state.plist`.

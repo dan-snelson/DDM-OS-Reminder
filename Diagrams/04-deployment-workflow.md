@@ -213,8 +213,9 @@ At load and approximately every 60 seconds, the LaunchDaemon runs `dor-starter.z
 - Active matching `dor.pid`: starter exits to prevent overlap.
 - Stale PID (written before the current boot, not running, or not the deployed `dor.zsh`): starter logs a `[WARNING]` with the reason, removes it, and continues.
 - `NextScheduledReminder=FALSE`: starter exits quietly.
-- Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user (`scutil`) records `PostBootConsoleUserSeen` and exits (`Console user '<user>' detected after boot; deferring post-boot re-evaluation …`); the next heartbeat that finds the same user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`).
+- Future `NextScheduledReminder`: starter exits quietly, except once per boot: the first heartbeat that finds a console user (`scutil`) records `PostBootConsoleUserSeen` and exits (`Console user '<user>' detected after boot; deferring post-boot re-evaluation …`); the next heartbeat that finds the same user records `LastBootReevaluation` and launches `dor.zsh` to re-evaluate the deadline (`Starter launch after boot; re-evaluating deadline …`). Starting with `5.4.0`, it also launches, with a console user logged in, when the active DDM declarations in `SoftwareUpdateDDMStatePersistence.plist` no longer match `LastDeclarationFingerprint` (`DDM declaration change detected; re-evaluating deadline …`).
 - Due, empty, or invalid schedule: starter records `DaemonLastTriggered` (and, with a console user, `LastBootReevaluation`) and launches `dor.zsh`.
+- Every launch records `LastDeclarationFingerprint` when the persistence plist is readable. `All` and `Script` redeployments clear `NextScheduledReminder` but keep the fingerprint, so the first heartbeat after a redeployment launches and records it; `Uninstall` removes it.
 - Maintenance DarkWake (`5.3.0` and later): when a launch would otherwise happen but `pmset -g systemstate` lists `CPU` without `Graphics`, the starter logs `DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.` and exits without writing state. The reminder runs on the first heartbeat after a full wake.
 
 A quiet heartbeat is not evidence of failure. Inspect `dor-state.plist` before changing the LaunchDaemon or forcing another run.
@@ -251,6 +252,7 @@ Validate:
 
 - `DaemonLastTriggered` changes when the starter launches the main script.
 - A future schedule remains intact across heartbeat cycles and reboot; after reboot and login, while an update is still required, one post-boot re-evaluation may move it earlier, never later. A compliant or suppressed post-boot run takes its normal outcome, such as the next baseline slot.
+- A new or changed DDM declaration with a console user logged in launches one declaration-change re-evaluation on the next heartbeat; it follows the same earlier-never-later rule.
 - `Remind Me Later` starts the quiet period from interaction time.
 - A pending final-minute threshold can schedule earlier than quiet-period expiry.
 - Aggressive mode uses exact redisplay scheduling after its configured post-deadline threshold.

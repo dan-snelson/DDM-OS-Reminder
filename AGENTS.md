@@ -25,6 +25,7 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 - Review build and packaging workflow: `zsh assemble.zsh --help`
 - Preference/dialog validation helper: `zsh Resources/reminderDialogPreferenceTest.zsh --help`
 - Client-state diagnosis (uploaded logs/plist): `zsh Resources/diagnoseReminderState.zsh --help`
+- Pre-release test suite (root, test Mac, full clone): `sudo zsh Tests/runTests.zsh` (unit), `sudo zsh Tests/runTests.zsh --integration` (deploys `com.example.dortest` in `Script` mode only); see `Tests/README.md`
 
 ## Agent Workflow
 - Confirm this file is loaded before starting non-trivial work.
@@ -142,6 +143,7 @@ Out of scope:
 - `Resources/reminderDialogPreferenceTest.zsh`: preference-driven dialog validation helper
 - `Resources/diagnoseReminderState.zsh`: read-only, redacted fact sheet from uploaded client log, `install.log`, and plist, or from live paths on the affected Mac via `--rdnn`; opt-in `--no-redaction` with `--rdnn` also saves the unredacted fact sheet to `/Library/Management/<rdnn>/`
 - `Resources/skills/diagnose-client-state/SKILL.md`: agent instructions for client-state diagnosis
+- `Tests/runTests.zsh`, `Tests/lib/testHelpers.zsh`, `Tests/unit/`, `Tests/integration/`: pre-release test suite; tests extracted copies of the scripts in its own checkout and never edits production scripts or `Artifacts/`
 - `CHANGELOG.md`: release history and shipped behavior summary
 - `Artifacts/`: generated build outputs that may be tracked; do not refresh casually
 
@@ -234,6 +236,7 @@ For a pre-release review, follow [`Resources/skills/pre-release-review/SKILL.md`
 3. Rebuild artifacts only when release or packaging task explicitly requires it.
 4. Review RDNN-sensitive paths, plist/mobileconfig output names, and script log path behavior when touching assembly or deployment code.
 5. Verify no test-only, demo-only, or local fixture behavior leaked into production reminder flow.
+6. Run `sudo zsh Tests/runTests.zsh --integration --release <ver>` as root on a test Mac and keep the results log (`/var/tmp/dor-tests-<timestamp>.log`).
 
 ## Maintenance
 This file is versioned with project. When workflow rules, validation requirements, repo boundaries, or source-of-truth guidance change, update `AGENTS.md`. Keep file concise, directive, and focused on agent decision-making.

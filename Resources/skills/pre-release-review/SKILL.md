@@ -112,6 +112,10 @@ or other long-running operation returns.
   when stderr is discarded, so check the probe setup first. Run the same probes
   against the unfixed code (`git show <ref>:reminderDialog.zsh`) to show that
   they reproduce the defect.
+- Ask the maintainer for the results log from `Tests/runTests.zsh` run as root on
+  a test Mac (`sudo zsh Tests/runTests.zsh --integration --release <ver>`; path
+  `/var/tmp/dor-tests-<timestamp>.log`). Treat it as evidence to verify, not a
+  pass by itself; do not run the integration tier from an agent shell.
 - Inspect side effects before demo or build validation. Run only within existing
   authorization; avoid live deployment, installation, restart, or production-state
   changes. Report any required validation that could not be run.

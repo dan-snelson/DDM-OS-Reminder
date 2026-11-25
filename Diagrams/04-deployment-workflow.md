@@ -64,7 +64,7 @@ Use a non-production Mac that intentionally runs an older macOS version and is i
 Confirm:
 
 - An MDM can deploy a Configuration Profile or managed preference payload and execute a root-level Zsh script.
-- Apple DDM declares a required macOS version and timezone-bearing enforcement deadline for the test Mac.
+- Apple DDM declares a required macOS version and enforcement deadline for the test Mac.
 - The Mac has an interactive user session and network access to required update and branding resources.
 - Your deployment can install or update swiftDialog `3.1.0.4994` or later at `/Library/Application Support/Dialog/Dialog.app`; runtime invokes `Contents/MacOS/dialogcli` directly and does not use `/usr/local/bin/dialog`.
 - The expected DDM state appears in `/var/log/install.log` before troubleshooting reminder behavior.

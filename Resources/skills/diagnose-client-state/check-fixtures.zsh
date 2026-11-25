@@ -425,12 +425,28 @@ fallbackGood="$(runHelper \
 requireText "fallback accept" "Runtime fallback gate: would accept" "${fallbackGood}"
 
 /usr/bin/plutil -replace EnforcedInstallDate -string "2026-10-20T09:00:00" "${workDirectory}/fallback-good.plist"
+fallbackLocal="$(runHelper \
+    --client-log "${fixtureRoot}/missing/client.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/missing/managed.dorm.plist" \
+    --fallback-plist "${workDirectory}/fallback-good.plist")"
+requireText "fallback accept device-local" "Runtime fallback gate: would accept" "${fallbackLocal}"
+
+/usr/bin/plutil -replace EnforcedInstallDate -string "2026-02-30T09:00:00Z" "${workDirectory}/fallback-good.plist"
 fallbackBad="$(runHelper \
     --client-log "${fixtureRoot}/missing/client.log" \
     --install-log "${fixtureRoot}/missing/install.log" \
     --plist "${fixtureRoot}/missing/managed.dorm.plist" \
     --fallback-plist "${workDirectory}/fallback-good.plist")"
-requireText "fallback reject" "would reject: deadline is invalid or timezone-free" "${fallbackBad}"
+requireText "fallback reject" "would reject: deadline is invalid" "${fallbackBad}"
+
+/usr/bin/plutil -replace EnforcedInstallDate -string "2026-02-30T09:00:00" "${workDirectory}/fallback-good.plist"
+fallbackBadLocal="$(runHelper \
+    --client-log "${fixtureRoot}/missing/client.log" \
+    --install-log "${fixtureRoot}/missing/install.log" \
+    --plist "${fixtureRoot}/missing/managed.dorm.plist" \
+    --fallback-plist "${workDirectory}/fallback-good.plist")"
+requireText "fallback reject device-local" "would reject: deadline is invalid" "${fallbackBadLocal}"
 
 writePlist "${workDirectory}/managed-empty-bool.plist" '    <key>DisableButton2InsteadOfHide</key>
     <string></string>'

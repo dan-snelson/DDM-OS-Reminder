@@ -725,6 +725,7 @@ mainScriptPath="__MAIN_SCRIPT_PATH__"
 statePlistPath="__STATE_PLIST_PATH__"
 pidFilePath="__PID_FILE_PATH__"
 plistBuddyPath="/usr/libexec/PlistBuddy"
+ddmStatePersistencePlistPath="/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist"
 
 function updateScriptLog() {
     echo "dor (${scriptVersion}): $( date +%Y-%m-%d\ %H:%M:%S ) - ${1}" >> "${scriptLog}"
@@ -839,6 +840,67 @@ function consoleUserReady() {
     [[ -n "${consoleUser}" && "${consoleUser}" != "loginwindow" && "${consoleUser}" != "_mbsetupuser" && "${consoleUser}" != "root" ]]
 }
 
+function currentDeclarationFingerprint() {
+    local persistenceOutput=""
+    local persistenceLine=""
+    local trimmedLine=""
+    local dictionaryDepth=0
+    local insideDeclarations="NO"
+    local targetOSVersion=""
+    local targetLocalDateTime=""
+    local -a declarationSignatures=()
+
+    declarationFingerprint=""
+
+    # Same signature as the main script's loadDDMStatePersistenceSignatures: TargetOSVersion|<TargetLocalDateTime digits>
+    [[ -r "${ddmStatePersistencePlistPath}" ]] || return 1
+    persistenceOutput="$( "${plistBuddyPath}" -c "Print :SUCorePersistedStatePolicyFields" "${ddmStatePersistencePlistPath}" 2>/dev/null )" || return 1
+
+    for persistenceLine in "${(@f)persistenceOutput}"; do
+        trimmedLine="${persistenceLine#"${persistenceLine%%[![:space:]]*}"}"
+
+        case "${trimmedLine}" in
+            *"Dict {"|*"Array {")
+                dictionaryDepth=$(( dictionaryDepth + 1 ))
+                if (( dictionaryDepth == 2 )); then
+                    insideDeclarations="NO"
+                    [[ "${trimmedLine}" == "Declarations = Dict {" ]] && insideDeclarations="YES"
+                elif (( dictionaryDepth == 3 )); then
+                    targetOSVersion=""
+                    targetLocalDateTime=""
+                fi
+                ;;
+            "}")
+                if [[ "${insideDeclarations}" == "YES" ]] && (( dictionaryDepth == 3 )) && [[ -n "${targetOSVersion}" && -n "${targetLocalDateTime}" ]]; then
+                    declarationSignatures+=( "${targetOSVersion}|${targetLocalDateTime//[^0-9]/}" )
+                fi
+                (( dictionaryDepth == 2 )) && insideDeclarations="NO"
+                dictionaryDepth=$(( dictionaryDepth - 1 ))
+                ;;
+            "TargetOSVersion = "*)
+                [[ "${insideDeclarations}" == "YES" ]] && (( dictionaryDepth == 3 )) && targetOSVersion="${trimmedLine#TargetOSVersion = }"
+                ;;
+            "TargetLocalDateTime = "*)
+                [[ "${insideDeclarations}" == "YES" ]] && (( dictionaryDepth == 3 )) && targetLocalDateTime="${trimmedLine#TargetLocalDateTime = }"
+                ;;
+        esac
+    done
+
+    # Zero active declarations is a real state (hash of empty input), distinct from an unreadable plist
+    declarationFingerprint="$( md5 -q -s "${(j:;:)${(ou)declarationSignatures[@]}}" 2>/dev/null )"
+    [[ "${declarationFingerprint}" =~ ^[0-9a-f]{32}$ ]]
+}
+
+function declarationChangeDetected() {
+    local storedDeclarationFingerprint=""
+
+    # A missing stored fingerprint is seeded by the next launch, not treated as a change
+    [[ "${declarationFingerprintReady}" == "YES" ]] || return 1
+    storedDeclarationFingerprint="$(readStateValue "LastDeclarationFingerprint")"
+    [[ -n "${storedDeclarationFingerprint}" && "${storedDeclarationFingerprint}" != "${declarationFingerprint}" ]] || return 1
+    consoleUserReady
+}
+
 function pidFileNamesActiveMainScript() {
     local pidFileEpoch=""
     local recordedPid=""
@@ -916,20 +978,28 @@ postBootReevaluationReady="NO"
 postBootConsoleUserMarker="${bootEpoch}:${consoleUser}"
 postBootConsoleUserConfirmationPending="NO"
 
+# An unreadable or unrecognized persistence plist leaves the stored fingerprint untouched
+declarationFingerprintReady="NO"
+currentDeclarationFingerprint && declarationFingerprintReady="YES"
+
 if [[ -n "${nextScheduledReminder}" ]]; then
     nextScheduledReminderEpoch="$(epochFromScheduleTimestamp "${nextScheduledReminder}")"
     if [[ -n "${nextScheduledReminderEpoch}" ]]; then
         nowEpoch="$(date +%s)"
         if (( nextScheduledReminderEpoch > nowEpoch )); then
             # macOS may re-pad a past-due deadline at login; re-evaluate once per boot after a user logs in
-            if [[ "${postBootReevaluationReady}" != "YES" || "$(readStateValue "LastBootReevaluation")" == "${bootEpoch}" ]]; then
-                exit 0
-            fi
-            # Require the same console user on two heartbeats so login (and managed preferences) can settle
-            if [[ "$(readStateValue "PostBootConsoleUserSeen")" == "${postBootConsoleUserMarker}" ]]; then
-                launchReason="postBoot"
+            if [[ "${postBootReevaluationReady}" == "YES" && "$(readStateValue "LastBootReevaluation")" != "${bootEpoch}" ]]; then
+                # Require the same console user on two heartbeats so login (and managed preferences) can settle
+                if [[ "$(readStateValue "PostBootConsoleUserSeen")" == "${postBootConsoleUserMarker}" ]]; then
+                    launchReason="postBoot"
+                else
+                    postBootConsoleUserConfirmationPending="YES"
+                fi
+            # A new or changed DDM declaration may set a deadline before the stored schedule
+            elif declarationChangeDetected; then
+                launchReason="declarationChange"
             else
-                postBootConsoleUserConfirmationPending="YES"
+                exit 0
             fi
         fi
     else
@@ -957,6 +1027,15 @@ if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootR
     exit 1
 fi
 
+# A declaration-change launch that cannot record its fingerprint would relaunch on every heartbeat
+if [[ "${declarationFingerprintReady}" == "YES" ]] && ! writeStateValue "LastDeclarationFingerprint" "${declarationFingerprint}"; then
+    if [[ "${launchReason}" == "declarationChange" ]]; then
+        error "Unable to update DDM declaration fingerprint state; not launching main script."
+        exit 1
+    fi
+    warning "Unable to update DDM declaration fingerprint state; launching main script anyway."
+fi
+
 if ! writeStateValue "DaemonLastTriggered" "$(date '+%Y-%m-%d:%H:%M:%S')"; then
     error "Unable to update scheduler trigger state; not launching main script."
     exit 1
@@ -964,6 +1043,8 @@ fi
 
 if [[ "${launchReason}" == "postBoot" ]]; then
     notice "Starter launch after boot; re-evaluating deadline (NextScheduledReminder: ${nextScheduledReminder})."
+elif [[ "${launchReason}" == "declarationChange" ]]; then
+    notice "DDM declaration change detected; re-evaluating deadline (NextScheduledReminder: ${nextScheduledReminder})."
 else
     notice "Heartbeat launch triggered '${mainScriptPath}'."
 fi

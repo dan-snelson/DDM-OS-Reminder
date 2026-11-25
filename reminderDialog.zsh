@@ -102,8 +102,14 @@ isDemoModeRequested="NO"
 schedulerEnabledForCurrentRun="NO"
 [[ "${launchSource}" == "starter" && "${isDemoModeRequested}" != "YES" ]] && schedulerEnabledForCurrentRun="YES"
 launchReason="${DOR_LAUNCH_REASON:-}"
-postBootReevaluationRun="NO"
-[[ "${schedulerEnabledForCurrentRun}" == "YES" && "${launchReason}" == "postBoot" ]] && postBootReevaluationRun="YES"
+reevaluationRun="NO"
+reevaluationLabel=""
+if [[ "${schedulerEnabledForCurrentRun}" == "YES" ]]; then
+    case "${launchReason}" in
+        postBoot          ) reevaluationRun="YES"; reevaluationLabel="Post-boot" ;;
+        declarationChange ) reevaluationRun="YES"; reevaluationLabel="Declaration-change" ;;
+    esac
+fi
 activeDialogPid=""
 activeDialogMonitorPid=""
 dialogRuntimeDirectory=""
@@ -1305,7 +1311,7 @@ function setNextReminderScheduleForPendingThresholdOrBaseline() {
     fi
 }
 
-function setNextReminderScheduleForPostBootReevaluation() {
+function setNextReminderScheduleForReevaluation() {
     local nowEpoch="$(date +%s)"
     local storedSchedule=""
     local storedEpoch=""
@@ -1330,11 +1336,11 @@ function setNextReminderScheduleForPostBootReevaluation() {
 
     # Pull the stored schedule earlier when the re-resolved deadline needs it; never push it later
     if [[ -n "${thresholdEpoch}" ]] && (( thresholdEpoch < storedEpoch )); then
-        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "Post-boot re-evaluation: ${thresholdMinutes}-minute pre-deadline threshold"
+        setNextReminderScheduleExactEpoch "${thresholdEpoch}" "${reevaluationLabel} re-evaluation: ${thresholdMinutes}-minute pre-deadline threshold"
     elif [[ -n "${aggressiveStartEpoch}" ]] && (( aggressiveStartEpoch < storedEpoch )); then
-        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "Post-boot re-evaluation: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
+        setNextReminderScheduleExactEpoch "${aggressiveStartEpoch}" "${reevaluationLabel} re-evaluation: aggressive-mode start (${aggressiveModePastDeadlineHours} hour(s) past effective deadline)"
     else
-        setNextReminderScheduleExactEpoch "${storedEpoch}" "Post-boot re-evaluation kept existing schedule"
+        setNextReminderScheduleExactEpoch "${storedEpoch}" "${reevaluationLabel} re-evaluation kept existing schedule"
     fi
 }
 
@@ -5921,17 +5927,17 @@ reconcileUpdateTonightSuppressionState
 if [[ "${versionComparisonResult}" == "Update Required" ]]; then
 
     # -------------------------------------------------------------------------
-    # Post-boot re-evaluation: reschedule only, unless a reminder is due now
+    # Post-boot or declaration-change re-evaluation: reschedule only, unless a reminder is due now
     # -------------------------------------------------------------------------
 
-    if [[ "${postBootReevaluationRun}" == "YES" ]]; then
+    if [[ "${reevaluationRun}" == "YES" ]]; then
         if isPastDeadlineForceMode || isAggressiveModeActive || isPreDeadlineThresholdReminderMode; then
-            notice "Post-boot re-evaluation: reminder due now; continuing normal reminder flow."
-        elif setNextReminderScheduleForPostBootReevaluation; then
-            logNoReminder "post-boot re-evaluation found no reminder due" "None; the next reminder appears at the scheduled time."
+            notice "${reevaluationLabel} re-evaluation: reminder due now; continuing normal reminder flow."
+        elif setNextReminderScheduleForReevaluation; then
+            logNoReminder "${(L)reevaluationLabel} re-evaluation found no reminder due" "None; the next reminder appears at the scheduled time."
             quitScript "0"
         else
-            notice "Post-boot re-evaluation: stored schedule is now due; continuing normal reminder flow."
+            notice "${reevaluationLabel} re-evaluation: stored schedule is now due; continuing normal reminder flow."
         fi
     fi
 

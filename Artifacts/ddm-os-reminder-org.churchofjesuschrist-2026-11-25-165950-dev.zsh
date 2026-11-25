@@ -1626,6 +1626,7 @@ function ensureReminderStatePlist() {
 function writeReminderStateKey() {
     local stateKey="${1}"
     local stateValue="${2}"
+    local storedValue=""
 
     ensureReminderStatePlist || return 1
 
@@ -1639,6 +1640,12 @@ function writeReminderStateKey() {
             warning "Unable to add scheduler state key '${stateKey}' in '${dorStatePlistPath}'."
             return 1
         fi
+    fi
+
+    # PlistBuddy exits 0 even when it cannot save the plist (for example, a uchg flag); confirm the stored value
+    if ! storedValue="$( /usr/libexec/PlistBuddy -c "Print :${stateKey}" "${dorStatePlistPath}" 2>/dev/null )" || [[ "${storedValue}" != "${stateValue}" ]]; then
+        warning "Unable to save scheduler state key '${stateKey}' in '${dorStatePlistPath}'."
+        return 1
     fi
 }
 
@@ -6918,6 +6925,7 @@ function ensureStatePlist() {
 function writeStateValue() {
     local key="${1}"
     local value="${2}"
+    local storedValue=""
 
     ensureStatePlist || return 1
 
@@ -6931,6 +6939,12 @@ function writeStateValue() {
             error "Unable to add scheduler state key '${key}' in '${statePlistPath}'."
             return 1
         fi
+    fi
+
+    # PlistBuddy exits 0 even when it cannot save the plist (for example, a uchg flag); confirm the stored value
+    if ! storedValue="$( "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null )" || [[ "${storedValue}" != "${value}" ]]; then
+        error "Unable to save scheduler state key '${key}' in '${statePlistPath}'."
+        return 1
     fi
 }
 

@@ -114,7 +114,7 @@ or other long-running operation returns.
   they reproduce the defect.
 - Ask the maintainer for the results log from `Tests/runTests.zsh` run as root on
   a test Mac (`sudo zsh Tests/runTests.zsh --integration --release <ver>`; path
-  `/var/tmp/dor-tests-<timestamp>.log`). Treat it as evidence to verify, not a
+  `/var/tmp/dor-tests-<serial>-<timestamp>.log`). Treat it as evidence to verify, not a
   pass by itself; do not run the integration tier from an agent shell.
 - Inspect side effects before demo or build validation. Run only within existing
   authorization; avoid live deployment, installation, restart, or production-state

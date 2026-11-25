@@ -826,6 +826,7 @@ function ensureStatePlist() {
 function writeStateValue() {
     local key="${1}"
     local value="${2}"
+    local storedValue=""
 
     ensureStatePlist || return 1
 
@@ -839,6 +840,12 @@ function writeStateValue() {
             error "Unable to add scheduler state key '${key}' in '${statePlistPath}'."
             return 1
         fi
+    fi
+
+    # PlistBuddy exits 0 even when it cannot save the plist (for example, a uchg flag); confirm the stored value
+    if ! storedValue="$( "${plistBuddyPath}" -c "Print :${key}" "${statePlistPath}" 2>/dev/null )" || [[ "${storedValue}" != "${value}" ]]; then
+        error "Unable to save scheduler state key '${key}' in '${statePlistPath}'."
+        return 1
     fi
 }
 

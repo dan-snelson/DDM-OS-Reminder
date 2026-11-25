@@ -57,8 +57,10 @@ SKIP  [unit/syntax-versions] --release or --prerelease version matches every scr
 The run ends with `N passed, N failed, N skipped`, an "Attention" block that repeats every warning and note, and a final banner. The last line printed is always the results log path:
 
 ```text
-Results log: /var/tmp/dor-tests-2026-11-25-140350.log
+Results log: /var/tmp/dor-tests-C02XK1ABCD12-2026-11-25-140350.log
 ```
+
+The file name starts with the Mac's serial number, so you can tell which Mac produced each log. If the serial number cannot be read, the name is `dor-tests-<timestamp>.log`. Keep these logs out of public issues, or rename them first.
 
 The exit status is `0` only when nothing failed. Bring that log back after every run.
 
@@ -140,7 +142,7 @@ What the tier touches:
 - `/Library/Management/com.example.dortest/` (scripts, state, kill switch, fallback plist)
 - `/Library/LaunchDaemons/com.example.dortest.dor.plist` and the loaded `com.example.dortest.dor` label
 - `/Library/Preferences/com.example.dortest.dorm.plist`, which holds only `MeetingDelay` = `0`, so a display-sleep assertion cannot hold a test run for up to 75 minutes
-- `/var/log/com.example.dortest.log`, which is kept and copied next to the results log as `dor-tests-<timestamp>-com.example.dortest.log`
+- `/var/log/com.example.dortest.log`, which is kept and copied next to the results log as `dor-tests-<serial>-<timestamp>-com.example.dortest.log`
 - swiftDialog, which `launchDaemonManagement.zsh` installs system-wide if it is missing
 
 Teardown, after the tier and on any exit:

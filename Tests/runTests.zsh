@@ -38,7 +38,10 @@ repositoryURL="https://github.com/dan-snelson/DDM-OS-Reminder.git"
 repositoryZipURL="https://github.com/dan-snelson/DDM-OS-Reminder/archive/refs/heads/development.zip"
 
 runTimestamp="$( date '+%Y-%m-%d-%H%M%S' )"
-resultsLog="/var/tmp/dor-tests-${runTimestamp}.log"
+# Serial number in the file name tells a Mac Admin which Mac produced the log; omitted when unreadable
+serialNumber="$( /usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice 2>/dev/null | /usr/bin/awk -F'"' '/IOPlatformSerialNumber/ { print $4; exit }' )"
+serialNumber="${serialNumber//[^A-Za-z0-9]/}"
+resultsLog="/var/tmp/dor-tests-${serialNumber:+${serialNumber}-}${runTimestamp}.log"
 workDir=""
 stubDir=""
 extractDir=""
@@ -95,7 +98,7 @@ Options:
                      a parenthetical, such as (Unreleased) or a date
   --help, -h         Show this help
 
-Results are written to /var/tmp/dor-tests-<YYYY-MM-DD-HHMMSS>.log (path printed last).
+Results are written to /var/tmp/dor-tests-<serial>-<YYYY-MM-DD-HHMMSS>.log (path printed last).
 See Tests/README.md for tiers, safety notes, and the pre-release workflow.
 ENDOFUSAGE
 }

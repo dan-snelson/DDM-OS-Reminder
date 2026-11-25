@@ -919,13 +919,17 @@ function currentDeclarationFingerprint() {
     [[ "${declarationFingerprint}" =~ ^[0-9a-f]{32}$ ]]
 }
 
-function declarationChangeDetected() {
+function declarationFingerprintChanged() {
     local storedDeclarationFingerprint=""
 
     # A missing stored fingerprint is seeded by the next launch, not treated as a change
     [[ "${declarationFingerprintReady}" == "YES" ]] || return 1
     storedDeclarationFingerprint="$(readStateValue "LastDeclarationFingerprint")"
-    [[ -n "${storedDeclarationFingerprint}" && "${storedDeclarationFingerprint}" != "${declarationFingerprint}" ]] || return 1
+    [[ -n "${storedDeclarationFingerprint}" && "${storedDeclarationFingerprint}" != "${declarationFingerprint}" ]]
+}
+
+function declarationChangeDetected() {
+    declarationFingerprintChanged || return 1
     consoleUserReady
 }
 
@@ -1055,8 +1059,25 @@ if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootR
     exit 1
 fi
 
+# Record the change time on every launch path so the main script can scope outside-window interaction history to the current declarations
+declarationFingerprintWriteReady="${declarationFingerprintReady}"
+if declarationFingerprintChanged; then
+    declarationChangeTimestamp="$(date '+%Y-%m-%d:%H:%M:%S')"
+    if ! writeStateValue "LastDeclarationChangeDetected" "${declarationChangeTimestamp}"; then
+        # Leave the stored fingerprint stale so the next heartbeat retries the change time
+        if [[ "${launchReason}" == "declarationChange" ]]; then
+            error "Unable to record DDM declaration change time; not launching main script."
+            exit 1
+        fi
+        warning "Unable to record DDM declaration change time; launching main script anyway."
+        declarationFingerprintWriteReady="NO"
+    elif [[ "${launchReason}" != "declarationChange" ]]; then
+        notice "DDM declaration change recorded at ${declarationChangeTimestamp} (LastDeclarationChangeDetected)."
+    fi
+fi
+
 # A declaration-change launch that cannot record its fingerprint would relaunch on every heartbeat
-if [[ "${declarationFingerprintReady}" == "YES" ]] && ! writeStateValue "LastDeclarationFingerprint" "${declarationFingerprint}"; then
+if [[ "${declarationFingerprintWriteReady}" == "YES" ]] && ! writeStateValue "LastDeclarationFingerprint" "${declarationFingerprint}"; then
     if [[ "${launchReason}" == "declarationChange" ]]; then
         error "Unable to update DDM declaration fingerprint state; not launching main script."
         exit 1

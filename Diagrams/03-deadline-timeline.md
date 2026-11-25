@@ -77,7 +77,7 @@ Scheduler rules:
 **Timeline**: More than 60 days before deadline (configurable)
 
 **Behavior**:
-- ❌ No regular reminders displayed (one initial reminder if the client log has no recorded interaction)
+- ❌ No regular reminders displayed (one initial reminder if the client log has no recorded interaction, or, starting with `5.4.0`, none since `LastDeclarationChangeDetected`, the time the starter saw the active DDM declarations change)
 - Mac operates normally
 - DDM enforcement date exists but deadline is far away
 - ℹ️ A periodic reminder can still appear every `OutsideDisplayWindowPeriodicReminderDays` (default: `28`) days after the last interaction
@@ -314,7 +314,7 @@ Here, `26.6` is the target `VersionString`, `(null)` means Apple did not supply 
 
 | Window / Condition | Primary UX | Button 2 | Meeting Deferral | Trigger Behavior |
 |--------------------|------------|----------|------------------|------------------|
-| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (initial reminder if no recorded interaction; then periodic via `OutsideDisplayWindowPeriodicReminderDays`) | N/A when no dialog | N/A when no dialog | Heartbeat daemon + `dor-starter` due check |
+| `> DaysBeforeDeadlineDisplayReminder` (default: `>60`) | No regular dialog (initial reminder if no recorded interaction since the current DDM declaration was detected; then periodic via `OutsideDisplayWindowPeriodicReminderDays`) | N/A when no dialog | N/A when no dialog | Heartbeat daemon + `dor-starter` due check |
 | `60` to `45` days before deadline (default) | Standard reminder | ✅ Enabled | ✅ Yes (if ≥36h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `44` to `22` days before deadline (default) | Blurscreen reminder | ✅ Enabled | ✅ Yes (if ≥36h to deadline) | Heartbeat daemon + `dor-starter` due check |
 | `21` to `2` days before deadline (default) | Urgent reminder | ❌ Disabled/hidden | ✅ Yes (if ≥36h to deadline) | Heartbeat daemon + `dor-starter` due check |

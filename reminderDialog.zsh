@@ -6018,19 +6018,40 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         notice "Pre-deadline threshold reminder active; bypassing day-window and periodic reminder suppression."
     elif (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
         # Outside the deadline window; check if we should display initial/periodic reminder
-        
-        if [[ -z "${lastInteraction}" ]]; then
-            # No interaction history; display the initial reminder dialog
-            notice "No reminder interaction history found; displaying initial reminder dialog"
+
+        # Scope this check to the current DDM declaration; quiet-period suppression keeps using lastInteraction
+        lastDeclarationInteraction="${lastInteraction}"
+        lastDeclarationInteractionIgnored="NO"
+        lastDeclarationChangeDetected="$(readReminderStateKey "LastDeclarationChangeDetected")"
+        if [[ -n "${lastDeclarationChangeDetected}" ]]; then
+            lastDeclarationChangeEpoch="$(epochFromScheduleTimestamp "${lastDeclarationChangeDetected}")"
+            if [[ ! "${lastDeclarationChangeEpoch}" =~ ^[0-9]+$ ]]; then
+                warning "Invalid LastDeclarationChangeDetected '${lastDeclarationChangeDetected}'; using all reminder interaction history."
+            elif (( lastDeclarationChangeEpoch > $(date +%s) )); then
+                # A future change time would ignore every interaction and show an initial reminder at each baseline slot
+                warning "LastDeclarationChangeDetected '${lastDeclarationChangeDetected}' is in the future; using all reminder interaction history."
+            elif [[ -n "${lastDeclarationInteraction}" ]]; then
+                lastDeclarationInteractionEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDeclarationInteraction}" +"%s" 2>/dev/null )
+                if [[ "${lastDeclarationInteractionEpoch}" =~ ^[0-9]+$ ]] && (( lastDeclarationInteractionEpoch < lastDeclarationChangeEpoch )); then
+                    notice "Ignoring reminder interaction from ${lastDeclarationInteraction}, before the current DDM declaration was detected (${lastDeclarationChangeDetected}); displaying initial reminder dialog"
+                    lastDeclarationInteraction=""
+                    lastDeclarationInteractionIgnored="YES"
+                fi
+            fi
+        fi
+
+        if [[ -z "${lastDeclarationInteraction}" ]]; then
+            # No interaction history for the current declaration; display the initial reminder dialog
+            [[ "${lastDeclarationInteractionIgnored}" == "YES" ]] || notice "No reminder interaction history found; displaying initial reminder dialog"
         elif (( periodicReminderDays <= 0 )); then
             setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminders disabled"
             logNoReminder "deadline is ${ddmVersionStringDaysRemaining} days away, beyond DaysBeforeDeadlineDisplayReminder (${daysBeforeDeadlineDisplayReminder}), and OutsideDisplayWindowPeriodicReminderDays is 0" "None; reminders start ${daysBeforeDeadlineDisplayReminder} days before the deadline."
             quitScript "0"
         else
             # Validate the extracted timestamp matches expected format
-            if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            if [[ "${lastDeclarationInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
                 nowEpoch=$(date +%s)
-                lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
+                lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDeclarationInteraction}" +"%s" 2>/dev/null )
                 if [[ -n "${lastEpoch}" ]]; then
                     delta=$(( nowEpoch - lastEpoch ))
                     if (( delta >= periodicReminderSeconds )); then

@@ -63,7 +63,7 @@ To track several Macs internally, the Mac Admin may add `--no-redaction`. With `
 
 Treat the resulting fact sheet exactly like one built from uploads. Uploads stay the default; do not ask for live access.
 
-The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.8.0 report skeleton.
+The helper is read-only, apart from that opt-in save. It prints a fact sheet that ends with a `## Report skeleton`. Preference ranges, plist key names, and `install.log` source-type markers live in the helper; do not restate them here. This skill matches the `diagnoseReminderState.zsh` 1.9.0 report skeleton.
 
 If the helper cannot run, read the three files and build the report from the template below by hand. Treat `reminderDialog.zsh` `validatePreferenceLoad` / `resolveDDMEnforcementFromInstallLog` as the runtime source of truth.
 
@@ -94,7 +94,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.8.0) · Checklist: `reminderDialog.zsh` 5.3.0
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.9.0) · Checklist: `reminderDialog.zsh` 5.3.0
 
 ## 1. Verdict
 

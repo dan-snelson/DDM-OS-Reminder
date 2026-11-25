@@ -32,7 +32,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.8.0"
+scriptVersion="1.9.0"
 checklistScriptVersion="5.3.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -1024,7 +1024,7 @@ function redactInstallLogLine() {
 
 function isValidFallbackEnforcementDate() {
     local value="${1}"
-    local timestampRegex='^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})$'
+    local timestampRegex='^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})?$'
     local year=0
     local month=0
     local day=0
@@ -2344,7 +2344,7 @@ if [[ -n "${fallbackPlistPath}" ]]; then
     elif [[ ! "${fallbackVersion}" =~ ${ddmVersionRegex} ]]; then
         fallbackGate="would reject: version is invalid"
     elif ! isValidFallbackEnforcementDate "${fallbackDeadline}"; then
-        fallbackGate="would reject: deadline is invalid or timezone-free"
+        fallbackGate="would reject: deadline is invalid"
     fi
     echo "- SchemaVersion: ${fallbackSchemaVersion:-missing}"
     echo "- VersionString: ${fallbackVersion:-missing}"

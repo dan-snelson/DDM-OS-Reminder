@@ -227,9 +227,16 @@ The assembled deployment script supports these Jamf Pro parameters:
 |---|---|---|
 | 4 | Reset Configuration | `All` |
 | 5 | Fallback Required macOS Version | `26.6` |
-| 6 | Fallback Enforcement Deadline | `2026-08-04T22:00:00Z` |
+| 6 | Fallback Enforcement Deadline | `2026-11-10T18:00:00` |
 
-Parameter 5 accepts `X.Y` or `X.Y.Z`, with one to three digits per component. Parameter 6 requires `YYYY-MM-DDTHH:MM:SSZ` or an explicit offset such as `2026-08-05T03:30:00+05:30`. Timezone-free timestamps are rejected.
+Parameter 5 accepts `X.Y` or `X.Y.Z`, with one to three digits per component. Parameter 6 accepts `YYYY-MM-DDTHH:MM:SS` with no timezone, `YYYY-MM-DDTHH:MM:SSZ`, or an explicit offset such as `2026-08-05T03:30:00+05:30`. Impossible dates and times (for example `2026-02-30` or `24:00:00`) are rejected.
+
+- **No timezone (recommended, `5.4.0` and later):** each Mac reads the deadline in its own local time, every run, the same way Apple's DDM `EnforcedInstallDate` is read. The value is stored verbatim, so Macs in different time zones, or a Mac that travels, each use their local time. Deployment logs `[INFO] DDM Emergency Fallback deadline has no timezone; each Mac reads it in its own local time (this Mac: UTC<offset>).`
+- **`Z`:** UTC. Copying a declaration's `EnforcedInstallDate` and appending `Z` shifts the deadline by the Mac's UTC offset.
+- **`±HH:MM`:** that fixed offset on every Mac.
+- **Daylight saving time:** a local time that does not exist on a spring-forward day (for example `02:30`) moves forward one hour (`03:30`), as macOS does for Apple's own local deadlines.
+
+When the deadline is already in the past at deployment, the plist is still written, and deployment logs `[WARNING] DDM Emergency Fallback deadline '<Parameter 6>' is already in the past (<local time> on this Mac); if selected, it starts in past-deadline mode.` followed by a `Next step:` line.
 
 When both values are valid, deployment atomically creates or replaces `/Library/Management/<rdnn>/dor-fallback-declaration.plist` as `root:wheel` mode `0644` in the mode `0755` management directory:
 
@@ -249,7 +256,7 @@ Before `All`, `Script`, or `Uninstall` removes runtime assets, deployment unload
 
 Normal DDM declaration resolution always runs first. Runtime evaluates fallback when normal resolution returns `missing`, `conflict`, `noMatch`, or `invalidVersion`. Confirmed DDM supersedes persisted fallback. A `conflict` caused only by a leftover declaration the Mac already meets (`softwareupdated` logged `No updates found for DDM to enforce`), or by `softwareupdated` offering a different macOS than the declaration the Mac already meets, skips fallback and logs the Mac as up to date. Unknown resolver states never select fallback. Missing, corrupt, incomplete, wrong-type, or invalid fallback plists preserve the original suppression state and are never repaired by runtime.
 
-Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs the `DDM update check:` status and DDM Emergency Fallback decision at `[NOTICE]`, whether fallback changes the update-required decision, and `[WARNING]` activation only when fallback actually reaches reminder display. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
+Deployment logs the validated fallback version, deadline, and source after atomic creation or replacement. Runtime logs the `DDM update check:` status and DDM Emergency Fallback decision at `[NOTICE]`, whether fallback changes the update-required decision, and `[WARNING]` activation when fallback actually reaches reminder display. When a confirmed DDM declaration supersedes a configured fallback, runtime also checks the fallback plist (starting with `5.4.0`): an invalid plist logs `[WARNING] DDM Emergency Fallback would be ignored if needed: <reason>`, and a fallback whose macOS version differs from the declaration (either direction) or whose deadline resolves to a different time logs `[WARNING] DDM Emergency Fallback is stale: macOS <fallback version> by <fallback deadline> vs DDM-enforced macOS <version> by <deadline>; …` followed by a `Next step:` line. A matching fallback keeps the `[NOTICE]` precedence line. These checks never change the resolver outcome. Past-deadline direct timestamp use remains `[WARNING]`. The plist is deployment configuration, not a managed/local preference and not scheduler state; do not place its keys in `Resources/sample.plist` or `dor-state.plist`.
 
 `JamfEA-Pending_OS_Update_Date.zsh` and `JamfEA-Pending_OS_Update_Version.zsh` continue reporting native Apple DDM resolver health, not the runtime's effective fallback requirement. A `conflict`, `noMatch`, `missing`, or `invalidVersion` EA result can therefore coexist with an active DDM Emergency Fallback reminder. Like the runtime, they only trust `install.log` declarations that match an active declaration in the root-owned `/var/db/softwareupdate/SoftwareUpdateDDMStatePersistence.plist` when that file is readable; when it is not, they keep the previous `install.log`-only behavior. See `SECURITY.md` for this accepted residual risk.
 

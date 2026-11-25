@@ -56,7 +56,7 @@ resetConfiguration="${4:-"All"}"
 # Parameter 5: Fallback Required macOS Version (i.e., 26.6)
 fallbackVersionString="${5:-}"
 
-# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T22:00:00Z)
+# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T18:00:00 in each Mac's local time, like DDM's EnforcedInstallDate; 2026-08-04T22:00:00Z is UTC)
 fallbackEnforcedInstallDate="${6:-}"
 
 
@@ -294,7 +294,7 @@ function isValidCivilDate() {
 
 function isValidFallbackEnforcementDate() {
     local value="${1}"
-    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))?$'
     local year=0
     local month=0
     local day=0
@@ -327,6 +327,23 @@ function isValidFallbackEnforcementDate() {
     return 0
 }
 
+function fallbackEnforcementEpoch() {
+    local value="${1}"
+    local normalizedValue=""
+
+    # Zone-less values are device-local, matching Apple's DDM EnforcedInstallDate
+    if [[ "${value}" == *Z ]]; then
+        normalizedValue="${value%Z}+0000"
+    elif [[ "${value}" =~ '^(.*T[0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2}):([0-9]{2})$' ]]; then
+        normalizedValue="${match[1]}${match[2]}${match[3]}"
+    else
+        date -jf '%Y-%m-%dT%H:%M:%S' "${value}" '+%s' 2>/dev/null
+        return
+    fi
+
+    date -jf '%Y-%m-%dT%H:%M:%S%z' "${normalizedValue}" '+%s' 2>/dev/null
+}
+
 function removeFallbackDeclarationPlist() {
     local removalReason="${1}"
 
@@ -349,6 +366,7 @@ function writeFallbackDeclarationPlist() {
     local plistValidationOutput=""
     local plistPermissions=""
     local writeAction="Created"
+    local fallbackEpoch=""
 
     [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]] && writeAction="Replaced"
 
@@ -390,6 +408,16 @@ function writeFallbackDeclarationPlist() {
 
     notice "${writeAction} DDM Emergency Fallback plist: '${dorFallbackDeclarationPlistPath}'"
     info "DDM Emergency Fallback configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
+
+    if [[ ! "${fallbackEnforcedInstallDate}" =~ '(Z|[+-][0-9]{2}:[0-9]{2})$' ]]; then
+        info "DDM Emergency Fallback deadline has no timezone; each Mac reads it in its own local time (this Mac: UTC$(date +%z))."
+    fi
+
+    fallbackEpoch="$(fallbackEnforcementEpoch "${fallbackEnforcedInstallDate}")"
+    if [[ "${fallbackEpoch}" == <-> ]] && (( fallbackEpoch <= $(date +%s) )); then
+        warning "DDM Emergency Fallback deadline '${fallbackEnforcedInstallDate}' is already in the past ($(date -r "${fallbackEpoch}" '+%Y-%m-%d %H:%M:%S %z') on this Mac); if selected, it starts in past-deadline mode."
+        notice "Next step: confirm Parameter 6. A deadline without a timezone is each Mac's local time, like DDM's EnforcedInstallDate; a trailing 'Z' means UTC."
+    fi
 }
 
 function applyFallbackDeclarationParameters() {
@@ -414,8 +442,8 @@ function applyFallbackDeclarationParameters() {
 
     if ! isValidFallbackEnforcementDate "${fallbackEnforcedInstallDate}"; then
         warning "Rejected malformed DDM Emergency Fallback deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
-        notice "Next step: set Parameter 6 to an ISO 8601 deadline with a timezone, such as '2026-11-02T17:00:00-05:00' or '2026-11-02T22:00:00Z'."
-        removeFallbackDeclarationPlist "malformed or timezone-free deadline rejected"
+        notice "Next step: set Parameter 6 to an ISO 8601 deadline, such as '2026-11-02T17:00:00' (each Mac's local time, like DDM's EnforcedInstallDate), '2026-11-02T22:00:00Z' (UTC), or '2026-11-02T17:00:00-05:00'."
+        removeFallbackDeclarationPlist "malformed deadline rejected"
         return
     fi
 
@@ -1179,48 +1207,61 @@ function isValidCivilDate() {
 
 function isValidFallbackEnforcementDate() {
     local value="${1}"
-    local timestampRegex='^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})$'
+    local timestampRegex='^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(Z|[+-][0-9]{2}:[0-9]{2})?$'
 
     [[ "${value}" =~ ${timestampRegex} ]] || return 1
     epochFromISO8601Timestamp "${value}" >/dev/null 2>&1
 }
 
+# Sets fallbackDeclarationVersion, fallbackDeclarationBuild, and fallbackDeclarationDeadline; on failure, fallbackDeclarationReason
+function readFallbackDeclaration() {
+    local schemaVersion=""
+    local fallbackSource=""
+
+    fallbackDeclarationVersion=""
+    fallbackDeclarationBuild=""
+    fallbackDeclarationDeadline=""
+    fallbackDeclarationReason=""
+
+    if ! /usr/bin/plutil -lint "${dorFallbackDeclarationPlistPath}" >/dev/null 2>&1; then
+        fallbackDeclarationReason="'${dorFallbackDeclarationPlistPath}' is unreadable or corrupt; redeploy with Parameters 5 and 6"
+        return 1
+    fi
+
+    schemaVersion="$(/usr/bin/plutil -extract SchemaVersion raw -expect integer "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || schemaVersion=""
+    fallbackDeclarationVersion="$(/usr/bin/plutil -extract VersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackDeclarationVersion=""
+    fallbackDeclarationBuild="$(/usr/bin/plutil -extract BuildVersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackDeclarationBuild=""
+    fallbackDeclarationDeadline="$(/usr/bin/plutil -extract EnforcedInstallDate raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackDeclarationDeadline=""
+    fallbackSource="$(/usr/bin/plutil -extract Source raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackSource=""
+
+    if [[ "${schemaVersion}" != "1" || "${fallbackDeclarationBuild}" != "(null)" || "${fallbackSource}" != "JamfProScriptParameters" ]]; then
+        fallbackDeclarationReason="'${dorFallbackDeclarationPlistPath}' has an unexpected schema; redeploy with Parameters 5 and 6"
+        return 1
+    fi
+
+    if ! isValidDDMVersionString "${fallbackDeclarationVersion}"; then
+        fallbackDeclarationReason="macOS version '${fallbackDeclarationVersion:-missing}' is invalid; redeploy with a valid Parameter 5"
+        return 1
+    fi
+
+    if ! isValidFallbackEnforcementDate "${fallbackDeclarationDeadline}"; then
+        fallbackDeclarationReason="deadline '${fallbackDeclarationDeadline:-missing}' is invalid; redeploy with a valid Parameter 6"
+        return 1
+    fi
+
+    return 0
+}
+
 function selectMDMFallbackRequirement() {
     local normalResolverStatus="${1:-${normalDDMResolverStatus:-unknown}}"
-    local schemaVersion=""
-    local fallbackVersion=""
-    local fallbackBuild=""
-    local fallbackDeadline=""
-    local fallbackSource=""
 
     if [[ ! -f "${dorFallbackDeclarationPlistPath}" ]]; then
         notice "DDM Emergency Fallback not configured (${dorFallbackDeclarationPlistPath:t} absent); nothing to fall back to (DDM status=${normalResolverStatus})"
         return 1
     fi
 
-    if ! /usr/bin/plutil -lint "${dorFallbackDeclarationPlistPath}" >/dev/null 2>&1; then
-        warning "DDM Emergency Fallback ignored: '${dorFallbackDeclarationPlistPath}' is unreadable or corrupt; redeploy with Parameters 5 and 6 (DDM status=${normalResolverStatus})"
-        return 1
-    fi
-
-    schemaVersion="$(/usr/bin/plutil -extract SchemaVersion raw -expect integer "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || schemaVersion=""
-    fallbackVersion="$(/usr/bin/plutil -extract VersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackVersion=""
-    fallbackBuild="$(/usr/bin/plutil -extract BuildVersionString raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackBuild=""
-    fallbackDeadline="$(/usr/bin/plutil -extract EnforcedInstallDate raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackDeadline=""
-    fallbackSource="$(/usr/bin/plutil -extract Source raw -expect string "${dorFallbackDeclarationPlistPath}" 2>/dev/null)" || fallbackSource=""
-
-    if [[ "${schemaVersion}" != "1" || "${fallbackBuild}" != "(null)" || "${fallbackSource}" != "JamfProScriptParameters" ]]; then
-        warning "DDM Emergency Fallback ignored: '${dorFallbackDeclarationPlistPath}' has an unexpected schema; redeploy with Parameters 5 and 6 (DDM status=${normalResolverStatus})"
-        return 1
-    fi
-
-    if ! isValidDDMVersionString "${fallbackVersion}"; then
-        warning "DDM Emergency Fallback ignored: macOS version '${fallbackVersion:-missing}' is invalid; redeploy with a valid Parameter 5 (DDM status=${normalResolverStatus})"
-        return 1
-    fi
-
-    if ! isValidFallbackEnforcementDate "${fallbackDeadline}"; then
-        warning "DDM Emergency Fallback ignored: deadline '${fallbackDeadline:-missing}' is invalid or lacks a timezone; redeploy with a valid Parameter 6 (DDM status=${normalResolverStatus})"
+    if ! readFallbackDeclaration; then
+        warning "DDM Emergency Fallback ignored: ${fallbackDeclarationReason} (DDM status=${normalResolverStatus})"
         return 1
     fi
 
@@ -1228,9 +1269,9 @@ function selectMDMFallbackRequirement() {
     ddmResolverSource="mdmFallback"
     ddmResolverSuppressionType=""
     ddmResolverReason="DDM update check returned ${normalResolverStatus}; DDM Emergency Fallback selected"
-    ddmVersionString="${fallbackVersion}"
-    ddmBuildVersionString="${fallbackBuild}"
-    ddmEnforcedInstallDate="${fallbackDeadline}"
+    ddmVersionString="${fallbackDeclarationVersion}"
+    ddmBuildVersionString="${fallbackDeclarationBuild}"
+    ddmEnforcedInstallDate="${fallbackDeclarationDeadline}"
     ddmDeclarationLogTimestamp=""
     ddmDeclarationRawLine=""
 
@@ -2445,8 +2486,18 @@ function epochFromISO8601Timestamp() {
         offsetSign="${match[7]}"
         offsetHours=$(( 10#${match[8]} ))
         offsetMinutes=$(( 10#${match[9]} ))
-    elif [[ "${sourceTimestamp}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$' ]]; then
+    elif [[ "${sourceTimestamp}" =~ '^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})$' ]]; then
+        # Device-local (no zone); date -jf silently rolls impossible values forward (02-30 becomes 03-02), so range-check first
+        year=$(( 10#${match[1]} ))
+        month=$(( 10#${match[2]} ))
+        day=$(( 10#${match[3]} ))
+        hour=$(( 10#${match[4]} ))
+        minute=$(( 10#${match[5]} ))
+        second=$(( 10#${match[6]} ))
+        isValidCivilDate "${year}" "${month}" "${day}" || return 1
+        (( hour <= 23 && minute <= 59 && second <= 59 )) || return 1
         parsedEpoch=$(date -jf "%Y-%m-%dT%H:%M:%S" "${sourceTimestamp}" "+%s" 2>/dev/null)
+        [[ -n "${parsedEpoch}" ]] || return 1
         echo "${parsedEpoch}"
         return 0
     else
@@ -5113,7 +5164,22 @@ installedOSvsDDMenforcedOS() {
     case "${normalDDMResolverStatus}" in
         resolved)
             if [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]]; then
-                notice "DDM-enforced update found in install.log takes precedence over configured DDM Emergency Fallback."
+                # Confirmed DDM still wins; flag fallback data that would mislead if DDM resolution later fails
+                local fallbackDeclarationEpoch=""
+                local declaredDeadlineEpoch=""
+                if ! readFallbackDeclaration; then
+                    warning "DDM Emergency Fallback would be ignored if needed: ${fallbackDeclarationReason}"
+                else
+                    fallbackDeclarationEpoch="$(epochFromISO8601Timestamp "${fallbackDeclarationDeadline}")"
+                    declaredDeadlineEpoch="$(epochFromISO8601Timestamp "${ddmEnforcedInstallDate}")"
+                    if ! { is-at-least "${fallbackDeclarationVersion}" "${ddmVersionString}" && is-at-least "${ddmVersionString}" "${fallbackDeclarationVersion}"; } \
+                        || [[ -n "${declaredDeadlineEpoch}" && "${fallbackDeclarationEpoch}" != "${declaredDeadlineEpoch}" ]]; then
+                        warning "DDM Emergency Fallback is stale: macOS ${fallbackDeclarationVersion} by ${fallbackDeclarationDeadline} vs DDM-enforced macOS ${ddmVersionString} by ${ddmEnforcedInstallDate}; the DDM declaration takes precedence, but this fallback would be used if DDM resolution later fails."
+                        notice "Next step: update Parameters 5 and 6 to match the DDM declaration (a Parameter 6 without a timezone is each Mac's local time, like EnforcedInstallDate), or leave both blank to remove the fallback."
+                    else
+                        notice "DDM-enforced update found in install.log takes precedence over configured DDM Emergency Fallback."
+                    fi
+                fi
             fi
             ;;
         missing|conflict|noMatch|invalidVersion)
@@ -5184,7 +5250,7 @@ installedOSvsDDMenforcedOS() {
     ddmVersionStringDeadline="${ddmEnforcedInstallDate%%T*}"
     deadlineEpoch=$(epochFromISO8601Timestamp "${ddmEnforcedInstallDate}")
     if [[ -z "${deadlineEpoch}" ]] || ! [[ "${deadlineEpoch}" =~ ^[0-9]+$ ]]; then
-        fatal "Unable to parse $(requirementLogLabel) deadline: ${ddmEnforcedInstallDate}"
+        fatal "Unable to parse $(requirementLogLabel) deadline: ${ddmEnforcedInstallDate} (not a valid calendar date and time)"
     fi
     ddmEnforcedInstallDateEpoch="${deadlineEpoch}"
     ddmVersionStringDeadlineHumanReadable=$( formatDeadlineFromISO8601 "${ddmEnforcedInstallDate}" "${dateFormatDeadlineHumanReadable}" )

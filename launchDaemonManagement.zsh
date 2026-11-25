@@ -56,7 +56,7 @@ resetConfiguration="${4:-"All"}"
 # Parameter 5: Fallback Required macOS Version (i.e., 26.6)
 fallbackVersionString="${5:-}"
 
-# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T22:00:00Z)
+# Parameter 6: Fallback Enforcement Deadline (i.e., 2026-08-04T18:00:00 in each Mac's local time, like DDM's EnforcedInstallDate; 2026-08-04T22:00:00Z is UTC)
 fallbackEnforcedInstallDate="${6:-}"
 
 
@@ -294,7 +294,7 @@ function isValidCivilDate() {
 
 function isValidFallbackEnforcementDate() {
     local value="${1}"
-    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))$'
+    local timestampRegex='^(([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2}))(Z|[+-]([0-9]{2}):([0-9]{2}))?$'
     local year=0
     local month=0
     local day=0
@@ -327,6 +327,23 @@ function isValidFallbackEnforcementDate() {
     return 0
 }
 
+function fallbackEnforcementEpoch() {
+    local value="${1}"
+    local normalizedValue=""
+
+    # Zone-less values are device-local, matching Apple's DDM EnforcedInstallDate
+    if [[ "${value}" == *Z ]]; then
+        normalizedValue="${value%Z}+0000"
+    elif [[ "${value}" =~ '^(.*T[0-9]{2}:[0-9]{2}:[0-9]{2})([+-][0-9]{2}):([0-9]{2})$' ]]; then
+        normalizedValue="${match[1]}${match[2]}${match[3]}"
+    else
+        date -jf '%Y-%m-%dT%H:%M:%S' "${value}" '+%s' 2>/dev/null
+        return
+    fi
+
+    date -jf '%Y-%m-%dT%H:%M:%S%z' "${normalizedValue}" '+%s' 2>/dev/null
+}
+
 function removeFallbackDeclarationPlist() {
     local removalReason="${1}"
 
@@ -349,6 +366,7 @@ function writeFallbackDeclarationPlist() {
     local plistValidationOutput=""
     local plistPermissions=""
     local writeAction="Created"
+    local fallbackEpoch=""
 
     [[ -e "${dorFallbackDeclarationPlistPath}" || -L "${dorFallbackDeclarationPlistPath}" ]] && writeAction="Replaced"
 
@@ -390,6 +408,16 @@ function writeFallbackDeclarationPlist() {
 
     notice "${writeAction} DDM Emergency Fallback plist: '${dorFallbackDeclarationPlistPath}'"
     info "DDM Emergency Fallback configuration: VersionString=${fallbackVersionString}; EnforcedInstallDate=${fallbackEnforcedInstallDate}; Source=JamfProScriptParameters"
+
+    if [[ ! "${fallbackEnforcedInstallDate}" =~ '(Z|[+-][0-9]{2}:[0-9]{2})$' ]]; then
+        info "DDM Emergency Fallback deadline has no timezone; each Mac reads it in its own local time (this Mac: UTC$(date +%z))."
+    fi
+
+    fallbackEpoch="$(fallbackEnforcementEpoch "${fallbackEnforcedInstallDate}")"
+    if [[ "${fallbackEpoch}" == <-> ]] && (( fallbackEpoch <= $(date +%s) )); then
+        warning "DDM Emergency Fallback deadline '${fallbackEnforcedInstallDate}' is already in the past ($(date -r "${fallbackEpoch}" '+%Y-%m-%d %H:%M:%S %z') on this Mac); if selected, it starts in past-deadline mode."
+        notice "Next step: confirm Parameter 6. A deadline without a timezone is each Mac's local time, like DDM's EnforcedInstallDate; a trailing 'Z' means UTC."
+    fi
 }
 
 function applyFallbackDeclarationParameters() {
@@ -414,8 +442,8 @@ function applyFallbackDeclarationParameters() {
 
     if ! isValidFallbackEnforcementDate "${fallbackEnforcedInstallDate}"; then
         warning "Rejected malformed DDM Emergency Fallback deadline from Parameter 6: '${fallbackEnforcedInstallDate}'"
-        notice "Next step: set Parameter 6 to an ISO 8601 deadline with a timezone, such as '2026-11-02T17:00:00-05:00' or '2026-11-02T22:00:00Z'."
-        removeFallbackDeclarationPlist "malformed or timezone-free deadline rejected"
+        notice "Next step: set Parameter 6 to an ISO 8601 deadline, such as '2026-11-02T17:00:00' (each Mac's local time, like DDM's EnforcedInstallDate), '2026-11-02T22:00:00Z' (UTC), or '2026-11-02T17:00:00-05:00'."
+        removeFallbackDeclarationPlist "malformed deadline rejected"
         return
     fi
 

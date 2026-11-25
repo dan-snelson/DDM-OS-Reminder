@@ -1,14 +1,31 @@
 # DDM OS Reminder: pre-release test suite
 
-`Tests/` checks a `development` checkout before a pre-release. Run it as `root` on a test Mac, from a full `git clone` of the repository.
+`Tests/` checks a `development` checkout before a pre-release. Run it as `root` on a test Mac, from a full checkout of the repository: a ZIP download (no `git` needed) or a `git clone`.
 
 The suite tests the scripts in the checkout it lives in (`reminderDialog.zsh`, `launchDaemonManagement.zsh`, `assemble.zsh`, and `Resources/`). It does not test the copy deployed on the Mac. It never edits production scripts and never writes into the checkout or `Artifacts/`.
 
 ## Run it
 
+Download the `development` branch as a ZIP. This needs no `git` and no Command Line Tools:
+
+```zsh
+curl -L -o DDM-OS-Reminder.zip https://github.com/dan-snelson/DDM-OS-Reminder/archive/refs/heads/development.zip
+ditto -x -k DDM-OS-Reminder.zip .
+cd DDM-OS-Reminder-development
+```
+
+Or clone it with `git`:
+
 ```zsh
 git clone -b development https://github.com/dan-snelson/DDM-OS-Reminder.git
 cd DDM-OS-Reminder
+```
+
+> **Over SSH, do not run from `~/Downloads` or `~/Desktop`.** TCC blocks `root` there unless Remote Login has "Allow full disk access for remote users" turned on. Move the folder first, for example to `/Users/Shared/`.
+
+Then, from the top of the checkout:
+
+```zsh
 sudo zsh Tests/runTests.zsh                          # unit tier (default)
 sudo zsh Tests/runTests.zsh --integration            # unit tier, then the integration tier
 sudo zsh Tests/runTests.zsh --integration --prerelease 5.4.0b1
@@ -48,7 +65,7 @@ The exit status is `0` only when nothing failed. Bring that log back after every
 ## Pre-release workflow
 
 1. Optional: an outdated Mac in scope of a DDM declaration from the MDM, running production 5.3.0.
-2. `git clone` or `git pull` the `development` branch.
+2. Download the `development` ZIP (or `git clone` / `git pull` the `development` branch).
 3. `sudo zsh Tests/runTests.zsh`
 4. `sudo zsh Tests/runTests.zsh --integration`
 5. Bring the results log back, fix, and repeat from step 2.
@@ -67,7 +84,7 @@ The runner checks the workflow before it tests anything. Each check prints a ful
 |---|---|
 | Not root | STOP 64 |
 | `reminderDialog.zsh`, `launchDaemonManagement.zsh`, `assemble.zsh`, `Resources/`, or `CHANGELOG.md` missing next to `Tests/` (only `Tests/` was copied) | STOP 69 |
-| Not a git checkout (no commit in the log; repo-clean guard skipped) | WARNING |
+| Not a git checkout (ZIP download or no git: script SHA-256 hashes logged; repo-clean guard uses a file manifest) | NOTE |
 | Branch is not `development` | WARNING |
 | Behind `origin/<branch>` at the last fetch (no automatic fetch; the age of `.git/FETCH_HEAD` is shown) | WARNING |
 | Uncommitted changes to tracked files | WARNING |
@@ -85,9 +102,9 @@ The runner checks the workflow before it tests anything. Each check prints a ful
 | End of run: any FAIL | STOP-style banner, exit `1` |
 | End of run: unit tier passed, or both tiers passed (with or without `--release` or `--prerelease`) | NOTE naming the next workflow step |
 
-The results log header records the date, the macOS version and build, `scriptVersion`, the git branch and commit (or "not a git checkout"), the flags, and whether the production daemon is loaded.
+The results log header records the date, the macOS version and build, the source (`git checkout` or `ZIP download (no .git)`), `scriptVersion`, the git branch and commit (or "not a git checkout"), the SHA-256 hashes of `reminderDialog.zsh`, `launchDaemonManagement.zsh`, and `assemble.zsh`, the flags, and whether the production daemon is loaded. To tie a ZIP run to code, compare those hashes with `shasum -a 256 reminderDialog.zsh launchDaemonManagement.zsh assemble.zsh` in a known checkout.
 
-The repo-clean guard compares `git status --porcelain --ignored` and the `Artifacts/` listing before and after the run. Any difference is a FAIL.
+The repo-clean guard compares `git status --porcelain --ignored` and the `Artifacts/` listing before and after the run. Without a usable git checkout (for example, a ZIP download), it compares a file manifest instead: the SHA-256 hash of every file (including dotfiles, but not `.DS_Store`), every directory path, and the `Artifacts/` listing. Any difference is a FAIL.
 
 ## Unit tier
 

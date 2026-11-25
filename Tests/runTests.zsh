@@ -35,6 +35,7 @@ testRdnn="com.example.dortest"
 productionRdnn="org.churchofjesuschrist"
 productionDaemonLabel="${productionRdnn}.dor"
 repositoryURL="https://github.com/dan-snelson/DDM-OS-Reminder.git"
+repositoryZipURL="https://github.com/dan-snelson/DDM-OS-Reminder/archive/refs/heads/development.zip"
 
 runTimestamp="$( date '+%Y-%m-%d-%H%M%S' )"
 resultsLog="/var/tmp/dor-tests-${runTimestamp}.log"
@@ -143,10 +144,30 @@ function gitRun() {
     "${gitBinary}" -c safe.directory="${repoRoot}" -C "${repoRoot}" "$@" 2>/dev/null
 }
 
+# Without git, a SHA-256 file manifest plus the directory list stands in for git status;
+# .DS_Store is left out so Finder browsing during a run cannot cause a false FAIL
 function repositorySnapshot() {
-    [[ "${gitCheckout}" == "YES" ]] || return 0
-    gitRun status --porcelain --ignored
+    local -a repoFiles=()
+    local -a repoDirectories=()
+
+    if [[ "${gitCheckout}" == "YES" ]]; then
+        gitRun status --porcelain --ignored
+    else
+        repoFiles=( "${repoRoot}"/**/*(DN.on) )
+        repoFiles=( "${(@)repoFiles:#*/.DS_Store}" )
+        repoDirectories=( "${repoRoot}"/**/*(DN/on) )
+        if (( ${#repoFiles[@]} > 0 )); then
+            ( cd "${repoRoot}" && print -rN -- "${(@)repoFiles#${repoRoot}/}" | xargs -0 shasum -a 256 -- )
+        fi
+        (( ${#repoDirectories[@]} > 0 )) && print -rl -- "${(@)repoDirectories#${repoRoot}/}"
+    fi
     ls -lT "${repoRoot}/Artifacts" 2>/dev/null
+}
+
+function scriptSha256() {
+    local scriptHash="$(shasum -a 256 "${1}" 2>/dev/null)"
+
+    print -r -- "${${scriptHash%% *}:-unavailable}"
 }
 
 function parseArguments() {
@@ -208,7 +229,7 @@ function preflightCheckout() {
     done
 
     if (( ${#missingPaths[@]} > 0 )); then
-        banner STOP "Not a full DDM OS Reminder checkout" "Missing next to Tests/: ${(j:, :)missingPaths} (in ${repoRoot})." "The suite tests the scripts in the checkout it lives in; copying only Tests/ leaves nothing to test." "git clone -b development ${repositoryURL} && sudo zsh DDM-OS-Reminder/Tests/runTests.zsh" 69
+        banner STOP "Not a full DDM OS Reminder checkout" "Missing next to Tests/: ${(j:, :)missingPaths} (in ${repoRoot})." "The suite tests the scripts in the checkout it lives in; copying only Tests/ leaves nothing to test." "curl -L -o DDM-OS-Reminder.zip ${repositoryZipURL} && ditto -x -k DDM-OS-Reminder.zip . && sudo zsh DDM-OS-Reminder-development/Tests/runTests.zsh (or git clone -b development ${repositoryURL})" 69
     fi
 }
 
@@ -225,7 +246,7 @@ function preflightGit() {
 
     if [[ -z "${gitBinary}" || ! -e "${repoRoot}/.git" ]] || ! gitRun rev-parse --git-dir >/dev/null; then
         gitCheckout="NO"
-        banner WARN "Not a git checkout" "'${repoRoot}' is not a usable git checkout (or git is unavailable)." "Results can't be tied to a commit, and the repo-clean guard is skipped." "Use a git clone: git clone -b development ${repositoryURL}"
+        banner INFO "Not a git checkout" "'${repoRoot}' has no usable .git (ZIP download, or git is not installed)." "Branch, upstream, and uncommitted-change checks are skipped; the results log records SHA-256 hashes of the scripts, and the repo-clean guard compares a file manifest." "None (ZIP downloads are supported)"
         return
     fi
 
@@ -324,6 +345,7 @@ function preflightIntegration() {
 function writeLogHeader() {
     local macOSVersion="$(sw_vers -productVersion 2>/dev/null) ($(sw_vers -buildVersion 2>/dev/null))"
     local preflightLog="${workDir}/preflight.log"
+    local scriptPath=""
 
     # Preflight banners were logged before the header existed; keep them after it
     mv "${resultsLog}" "${preflightLog}" 2>/dev/null || : > "${preflightLog}"
@@ -333,12 +355,20 @@ function writeLogHeader() {
     logOnly "Date:               $(date '+%Y-%m-%d %H:%M:%S %z')"
     logOnly "macOS:              ${macOSVersion}"
     logOnly "Checkout:           ${repoRoot}"
+    if [[ "${gitCheckout}" == "YES" ]]; then
+        logOnly "Source:             git checkout"
+    else
+        logOnly "Source:             ZIP download (no .git)"
+    fi
     logOnly "scriptVersion:      $(scriptVersionOf "${rdPath}")"
     if [[ "${gitCheckout}" == "YES" ]]; then
         logOnly "Git:                ${gitBranch} @ ${gitCommit}"
     else
         logOnly "Git:                not a git checkout"
     fi
+    for scriptPath in "${rdPath}" "${ldmPath}" "${asmPath}"; do
+        logOnly "SHA-256:            $(scriptSha256 "${scriptPath}")  ${scriptPath:t}"
+    done
     logOnly "Flags:              ${originalArguments}"
     logOnly "Production daemon:  ${productionDaemonLabel} loaded=${productionDaemonLoaded}"
     logOnly "Work directory:     ${workDir}"
@@ -412,12 +442,9 @@ function runTier() {
 
 function runRepositoryGuard() {
     local repoStatusAfter=""
+    local snapshotSource="git status --porcelain --ignored (or Artifacts/)"
 
-    if [[ "${gitCheckout}" != "YES" ]]; then
-        say "SKIP  [guard] repository unchanged by the run (not a git checkout)"
-        (( skipCount++ ))
-        return
-    fi
+    [[ "${gitCheckout}" == "YES" ]] || snapshotSource="file manifest (SHA-256) or Artifacts/"
 
     repoStatusAfter="$(repositorySnapshot)"
     if [[ "${repoStatusAfter}" == "${repoStatusBefore}" ]]; then
@@ -425,7 +452,7 @@ function runRepositoryGuard() {
         (( passCount++ ))
     else
         say "FAIL  [guard] repository unchanged by the run"
-        say "        git status --porcelain --ignored (or Artifacts/) changed during the run; the suite must never write into the checkout"
+        say "        ${snapshotSource} changed during the run; the suite must never write into the checkout"
         diff <(print -r -- "${repoStatusBefore}") <(print -r -- "${repoStatusAfter}") | sed 's/^/        /' | while IFS= read -r detailLine; do say "${detailLine}"; done
         (( failCount++ ))
     fi
@@ -475,7 +502,7 @@ createStubs
 repoStatusBefore="$(repositorySnapshot)"
 
 writeLogHeader
-say "Testing checkout: ${repoRoot} ($( [[ "${gitCheckout}" == "YES" ]] && print -r -- "${gitBranch} @ ${gitCommit}" || print -r -- "not a git checkout" ))"
+say "Testing checkout: ${repoRoot} ($( [[ "${gitCheckout}" == "YES" ]] && print -r -- "${gitBranch} @ ${gitCommit}" || print -r -- "ZIP download (no .git)" ))"
 say ""
 
 # Unit tier

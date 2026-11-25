@@ -25,7 +25,7 @@ DDM OS Reminder is macOS-only, MDM-agnostic reminder system for DDM-enforced mac
 - Review build and packaging workflow: `zsh assemble.zsh --help`
 - Preference/dialog validation helper: `zsh Resources/reminderDialogPreferenceTest.zsh --help`
 - Client-state diagnosis (uploaded logs/plist): `zsh Resources/diagnoseReminderState.zsh --help`
-- Pre-release test suite (root, test Mac, full clone): `sudo zsh Tests/runTests.zsh` (unit), `sudo zsh Tests/runTests.zsh --integration` (deploys `com.example.dortest` in `Script` mode only); see `Tests/README.md`
+- Pre-release test suite (root, test Mac, full checkout: ZIP or clone): `sudo zsh Tests/runTests.zsh` (unit), `sudo zsh Tests/runTests.zsh --integration` (deploys `com.example.dortest` in `Script` mode only); see `Tests/README.md`
 
 ## Agent Workflow
 - Confirm this file is loaded before starting non-trivial work.

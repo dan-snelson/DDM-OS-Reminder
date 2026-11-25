@@ -1111,26 +1111,29 @@ function kickstartTestDaemon() {
     launchctl kickstart -k "system/${testLaunchDaemonLabel}" >/dev/null 2>&1
 }
 
-# Independent fingerprint of a persistence plist: enumerate Declarations keys from XML, read each pair
+# Independent fingerprint of a persistence plist: read each declaration's pair from XML, not from PlistBuddy text.
+# Real declaration keys contain ':' and '.', so neither PlistBuddy nor plutil key paths can address them.
 function persistencePlistFingerprint() {
     local plistPath="${1}"
-    local declarationKey=""
-    local targetVersion=""
-    local targetDateTime=""
     local -a declarations=()
 
     [[ -r "${plistPath}" ]] || return 1
     /usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields" "${plistPath}" >/dev/null 2>&1 || return 1
 
-    for declarationKey in ${(f)"$(/usr/bin/plutil -extract SUCorePersistedStatePolicyFields.Declarations xml1 -o - "${plistPath}" 2>/dev/null | /usr/bin/awk '
-        /<dict>/ { depth++; next }
-        /<\/dict>/ { depth--; next }
-        depth == 1 && /<key>/ { line = $0; sub(/.*<key>/, "", line); sub(/<\/key>.*/, "", line); print line }
-    ')"}; do
-        targetVersion="$(/usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields:Declarations:${declarationKey}:TargetOSVersion" "${plistPath}" 2>/dev/null)"
-        targetDateTime="$(/usr/libexec/PlistBuddy -c "Print :SUCorePersistedStatePolicyFields:Declarations:${declarationKey}:TargetLocalDateTime" "${plistPath}" 2>/dev/null)"
-        [[ -n "${targetVersion}" && -n "${targetDateTime}" ]] && declarations+=( "${targetVersion}|${targetDateTime}" )
-    done
+    declarations=( ${(f)"$(/usr/bin/plutil -extract SUCorePersistedStatePolicyFields.Declarations xml1 -o - "${plistPath}" 2>/dev/null | /usr/bin/awk '
+        /<dict>/ { depth++; pending = ""; if (depth == 2) { version = ""; dateTime = "" } next }
+        /<\/dict>/ { if (depth == 2 && version != "" && dateTime != "") print version "|" dateTime; depth--; pending = ""; next }
+        depth == 2 && /<key>TargetOSVersion<\/key>/ { pending = "version"; next }
+        depth == 2 && /<key>TargetLocalDateTime<\/key>/ { pending = "dateTime"; next }
+        depth == 2 && /<key>/ { pending = ""; next }
+        pending != "" {
+            value = $0
+            sub(/^[[:space:]]*<[^>]*>/, "", value)
+            sub(/<\/[^>]*>[[:space:]]*$/, "", value)
+            if (pending == "version") version = value; else dateTime = value
+            pending = ""
+        }
+    ')"} )
 
     expectedFingerprint "${declarations[@]}"
 }

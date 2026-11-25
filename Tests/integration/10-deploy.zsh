@@ -95,8 +95,11 @@ function testDeployBlankPair() {
     deployTestArtifact "${testDir}/deploy-valid.out" "99.0" "${deployFutureDeadline}"
     assertFileExists "fallback plist present before the blank pair" "${testFallbackPlist}"
 
+    # Script-mode redeploy removes the fallback plist before Parameters 5 and 6 are applied, so the blank pair finds none
     deployTestArtifact "${testDir}/deploy.out" "" ""
-    assertContains "blank pair removal" "intentionally disabled by blank Parameters 5 and 6" "${testDir}/deploy.out"
+    assertContains "redeploy removes the fallback plist" "Removed '${testFallbackPlist}'" "${testDir}/deploy.out"
+    assertContains "blank pair finds no plist to remove" "DDM Emergency Fallback plist not present: '${testFallbackPlist}'" "${testDir}/deploy.out"
+    assertNotContains "blank pair writes no plist" "DDM Emergency Fallback plist: '${testFallbackPlist}'" "${testDir}/deploy.out"
     assertFileAbsent "fallback plist removed" "${testFallbackPlist}"
 }
 

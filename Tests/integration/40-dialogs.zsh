@@ -67,10 +67,16 @@ function prepareDemoCopy() {
             -e "s|^reverseDomainNameNotation=\"org.churchofjesuschrist\"\$|reverseDomainNameNotation=\"${testRdnn}\"|" \
             -e "s|^scriptLog=\"/var/log/org.churchofjesuschrist.log\"\$|scriptLog=\"/var/log/${testRdnn}.log\"|" \
             -e "s|\[\"scriptLog\"\]=\"string\|/var/log/org.churchofjesuschrist.log\"|[\"scriptLog\"]=\"string\|/var/log/${testRdnn}.log\"|" \
+            -e "s|^aggressiveModeKillSwitchPath=\"\${deploymentScriptDirectory}/dor-aggressive-kill\"\$|aggressiveModeKillSwitchPath=\"${demoCopy:h}/dor-aggressive-kill\"|" \
             "${rdPath}" > "${demoCopy}"
     fi
     if grep -q 'org\.churchofjesuschrist' "${demoCopy}"; then
         recordFailure "demo copy still references org.churchofjesuschrist: $(grep -n -m 3 'org\.churchofjesuschrist' "${demoCopy}" | tr '\n' ' ')"
+        return 1
+    fi
+    # The tier keeps the test-RDNN kill switch in place for live heartbeats; it would turn 'demo aggressive' into a normal reminder
+    if ! grep -qF "aggressiveModeKillSwitchPath=\"${demoCopy:h}/dor-aggressive-kill\"" "${demoCopy}"; then
+        recordFailure "demo copy still reads the test-RDNN aggressive-mode kill switch: $(grep -n -m 1 '^aggressiveModeKillSwitchPath=' "${demoCopy}")"
         return 1
     fi
 }
@@ -112,6 +118,9 @@ function testDemoDialog() {
     runWithTimeout 900 "${testDir}/demo.out" /bin/zsh "${demoCopy}" demo ${=demoArgument}
 
     assertContains "demo mode ran" "Demo mode enabled" "${testDir}/demo.out"
+    if [[ "${demoArgument}" == "aggressive" ]]; then
+        assertContains "aggressive mode active" "Aggressive mode active (" "${testDir}/demo.out"
+    fi
     assertInteractionReturnCode "${testDir}/demo.out"
     confirmDialog "Did the '${demoLabel}' demo dialog appear and look correct?"
 }

@@ -6,7 +6,7 @@
 # DDM OS Reminder pre-release test suite
 #
 #   sudo zsh Tests/runTests.zsh [--unit | --integration] [--skip-dialogs] [--filter <text>]
-#                               [--keep] [--release <x.y.z>] [--help]
+#                               [--keep] [--release <x.y.z> | --prerelease <x.y.zbN>] [--help]
 #
 # Tests the scripts in the checkout this file lives in (not the copy deployed on the Mac).
 # Unit tier: hermetic; writes only under /var/tmp/dor-tests.XXXXXX.
@@ -46,6 +46,7 @@ integrationRequested="NO"
 skipDialogs="NO"
 keepWork="NO"
 releaseVersion=""
+releaseKind=""
 testFilter=""
 runArguments="${*}"
 originalArguments="${runArguments:-(none)}"
@@ -79,7 +80,7 @@ function printUsage() {
     cat <<'ENDOFUSAGE'
 Usage:
   sudo zsh Tests/runTests.zsh [--unit | --integration] [--skip-dialogs] [--filter <text>]
-                              [--keep] [--release <x.y.z>] [--help]
+                              [--keep] [--release <x.y.z> | --prerelease <x.y.zbN>] [--help]
 
 Options:
   --unit             Run the hermetic unit tier only (default)
@@ -88,6 +89,9 @@ Options:
   --filter <text>    Run only tests whose "[group] description" contains <text>
   --keep             Keep the work directory and the com.example.dortest deployment after the run
   --release <x.y.z>  Require every scriptVersion and the top CHANGELOG heading to equal <x.y.z>
+  --prerelease <x.y.zbN>
+                     Same check for a beta such as 5.4.0b1; the CHANGELOG heading may add
+                     a parenthetical, such as (Unreleased) or a date
   --help, -h         Show this help
 
 Results are written to /var/tmp/dor-tests-<YYYY-MM-DD-HHMMSS>.log (path printed last).
@@ -127,6 +131,14 @@ function changelogTopHeading() {
     grep -m 1 -E '^### Version ' "${changelogPath}" 2>/dev/null
 }
 
+# --release needs the exact heading; a --prerelease heading may add " (Unreleased)" or a date
+function changelogHeadingMatchesRelease() {
+    local topHeading="${1}"
+
+    [[ "${topHeading}" == "### Version ${releaseVersion}" ]] && return 0
+    [[ "${releaseKind}" == "prerelease" && "${topHeading}" == "### Version ${releaseVersion} ("*")" ]]
+}
+
 function gitRun() {
     "${gitBinary}" -c safe.directory="${repoRoot}" -C "${repoRoot}" "$@" 2>/dev/null
 }
@@ -151,7 +163,16 @@ function parseArguments() {
                 ;;
             --release )
                 [[ "${2:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || banner STOP "Invalid --release value" "--release needs a version such as 5.4.0 (got '${2:-}')." "The release check compares every scriptVersion and the CHANGELOG heading to this value." "sudo zsh Tests/runTests.zsh --integration --release 5.4.0" 64
+                [[ -z "${releaseKind}" ]] || banner STOP "Both --release and --prerelease given" "Only one version check can run per invocation." "Each flag accepts a different version form and CHANGELOG heading." "Pick one: --release <x.y.z> or --prerelease <x.y.zbN>" 64
                 releaseVersion="${2}"
+                releaseKind="release"
+                shift
+                ;;
+            --prerelease )
+                [[ "${2:-}" =~ ^[0-9]+\.[0-9]+\.[0-9]+b[0-9]+$ ]] || banner STOP "Invalid --prerelease value" "--prerelease needs a beta version such as 5.4.0b1 (got '${2:-}')." "The prerelease check compares every scriptVersion and the CHANGELOG heading to this value." "sudo zsh Tests/runTests.zsh --integration --prerelease 5.4.0b1" 64
+                [[ -z "${releaseKind}" ]] || banner STOP "Both --release and --prerelease given" "Only one version check can run per invocation." "Each flag accepts a different version form and CHANGELOG heading." "Pick one: --release <x.y.z> or --prerelease <x.y.zbN>" 64
+                releaseVersion="${2}"
+                releaseKind="prerelease"
                 shift
                 ;;
             --help|-h )
@@ -249,12 +270,16 @@ function preflightVersions() {
         [[ "${asmVersion}" == "${releaseVersion}" ]] || mismatches+=( "assemble.zsh scriptVersion=${asmVersion}" )
         [[ "${ldmVersion}" == "${releaseVersion}" ]] || mismatches+=( "launchDaemonManagement.zsh scriptVersion=${ldmVersion}" )
         [[ "${rdVersion}" == "${releaseVersion}" ]] || mismatches+=( "reminderDialog.zsh scriptVersion=${rdVersion}" )
-        [[ "${topHeading}" == "### Version ${releaseVersion}" ]] || mismatches+=( "CHANGELOG.md top heading='${topHeading}'" )
+        changelogHeadingMatchesRelease "${topHeading}" || mismatches+=( "CHANGELOG.md top heading='${topHeading}'" )
         if (( ${#mismatches[@]} > 0 )); then
-            banner STOP "Release ${releaseVersion} does not match the checkout" "${(j:; :)mismatches}." "A release run must test exactly the versions being shipped (the version test is skipped, not reported as a FAIL)." "Set each file listed above to ${releaseVersion} (CHANGELOG heading '### Version ${releaseVersion}', no '(Unreleased)'), then rerun with --release ${releaseVersion}" 69
+            if [[ "${releaseKind}" == "prerelease" ]]; then
+                banner STOP "Prerelease ${releaseVersion} does not match the checkout" "${(j:; :)mismatches}." "A prerelease run must test exactly the beta being deployed (the version test is skipped, not reported as a FAIL)." "Set each file listed above to ${releaseVersion} (CHANGELOG heading '### Version ${releaseVersion}', optionally followed by ' (Unreleased)' or a date), then rerun with --prerelease ${releaseVersion}" 69
+            else
+                banner STOP "Release ${releaseVersion} does not match the checkout" "${(j:; :)mismatches}." "A release run must test exactly the versions being shipped (the version test is skipped, not reported as a FAIL)." "Set each file listed above to ${releaseVersion} (CHANGELOG heading '### Version ${releaseVersion}', no '(Unreleased)'), then rerun with --release ${releaseVersion}" 69
+            fi
         fi
     elif [[ "${topHeading}" == *"(Unreleased)"* ]]; then
-        banner INFO "Pre-release build" "CHANGELOG top heading is '${topHeading#\#\#\# }'; scripts are ${rdVersion}." "The final pre-release check (workflow step 6) has not run yet." "Bump scriptVersion and the CHANGELOG heading, then: sudo zsh Tests/runTests.zsh --integration --release <version>"
+        banner INFO "Pre-release build" "CHANGELOG top heading is '${topHeading#\#\#\# }'; scripts are ${rdVersion}." "The final pre-release check (workflow step 6) has not run yet." "Bump scriptVersion and the CHANGELOG heading, then: sudo zsh Tests/runTests.zsh --integration --release <version> (a beta such as 5.4.0b1: --prerelease <version>)"
     fi
 }
 
@@ -485,6 +510,8 @@ if [[ "${integrationRequested}" != "YES" ]]; then
     banner INFO "Unit tier passed" "All unit tests passed." "The integration tier still has to run on this Mac." "sudo zsh Tests/runTests.zsh --integration"
 elif [[ -z "${releaseVersion}" ]]; then
     banner INFO "Unit and integration tiers passed" "All tests passed without --release." "Workflow steps 6 and 7 remain." "Step 6: bump scriptVersion, then sudo zsh Tests/runTests.zsh --integration --release <version>; step 7: deploy through the MDM over 5.3.0"
+elif [[ "${releaseKind}" == "prerelease" ]]; then
+    banner INFO "Prerelease ${releaseVersion} passed" "All tests passed with --integration --prerelease ${releaseVersion}." "A beta pass is not the final release check." "Deploy the ${releaseVersion} artifact to test Macs through the MDM over 5.3.0; before shipping, bump to the final version and rerun with --release"
 else
     banner INFO "Release ${releaseVersion} passed" "All tests passed with --integration --release ${releaseVersion}." "Only the upgrade-path check remains." "Step 7: deploy the ${releaseVersion} artifact through the MDM over 5.3.0 and confirm the first heartbeat seeds LastDeclarationFingerprint"
 fi

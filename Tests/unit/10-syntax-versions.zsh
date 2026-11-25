@@ -3,7 +3,7 @@
 
 ####################################################################################################
 #
-# Unit: syntax, scriptVersion alignment, release versions, and the extraction count checks
+# Unit: syntax, scriptVersion alignment, release and prerelease versions, and the extraction count checks
 #
 ####################################################################################################
 
@@ -28,14 +28,24 @@ function testScriptVersionAlignment() {
 
 function testReleaseVersions() {
     if [[ -z "${releaseVersion}" ]]; then
-        skipTest "no --release given; scripts $(scriptVersionOf "${rdPath}"), CHANGELOG '$(changelogTopHeading)'"
+        skipTest "no --release or --prerelease given; scripts $(scriptVersionOf "${rdPath}"), CHANGELOG '$(changelogTopHeading)'"
         return 0
     fi
+
+    local topHeading="$(changelogTopHeading)"
 
     assertEquals "assemble.zsh scriptVersion" "${releaseVersion}" "$(scriptVersionOf "${asmPath}")"
     assertEquals "launchDaemonManagement.zsh scriptVersion" "${releaseVersion}" "$(scriptVersionOf "${ldmPath}")"
     assertEquals "reminderDialog.zsh scriptVersion" "${releaseVersion}" "$(scriptVersionOf "${rdPath}")"
-    assertEquals "CHANGELOG.md top heading" "### Version ${releaseVersion}" "$(changelogTopHeading)"
+    if [[ "${releaseKind}" == "prerelease" ]]; then
+        if ! changelogHeadingMatchesRelease "${topHeading}"; then
+            recordFailure "CHANGELOG.md top heading"
+            recordFailure "  expected: ### Version ${releaseVersion} (optionally followed by ' (…)')"
+            recordFailure "  actual:   ${topHeading}"
+        fi
+    else
+        assertEquals "CHANGELOG.md top heading" "### Version ${releaseVersion}" "${topHeading}"
+    fi
 }
 
 function testDiagnoseHelperVersion() {
@@ -81,7 +91,7 @@ for syntaxTarget in "${repoRoot}"/Resources/*.zsh(N) "${repoRoot}"/Resources/ski
 done
 unset syntaxTarget
 registerTest "scriptVersion is equal in assemble.zsh, launchDaemonManagement.zsh, and reminderDialog.zsh" testScriptVersionAlignment
-registerTest "--release version matches every scriptVersion and the CHANGELOG heading" testReleaseVersions
+registerTest "--release or --prerelease version matches every scriptVersion and the CHANGELOG heading" testReleaseVersions
 registerTest "diagnoseReminderState.zsh scriptVersion matches the highest helper version in CHANGELOG" testDiagnoseHelperVersion
 registerTest "extractFunctions reminderDialog.zsh: count check and zsh -n" testExtractionCounts rd
 registerTest "extractFunctions launchDaemonManagement.zsh: count check and zsh -n (starter heredoc skipped)" testExtractionCounts ldm

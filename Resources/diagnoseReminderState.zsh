@@ -33,7 +33,7 @@ set -u
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 scriptVersion="1.10.0"
-checklistScriptVersion="5.3.0"
+checklistScriptVersion="5.4.0b1"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
 ddmVersionRegex='^[0-9]{1,3}\.[0-9]{1,3}(\.[0-9]{1,3})?$'

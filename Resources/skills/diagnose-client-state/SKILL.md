@@ -78,7 +78,7 @@ If the helper cannot run, read the three files and build the report from the tem
 - Outside the `DaysBeforeDeadlineDisplayReminder` window (`5.4.0b1` and later), a `Return Code` logged before `LastDeclarationChangeDetected` does not count toward the initial or periodic reminder; the run logs `Ignoring reminder interaction from …, before the current DDM declaration was detected (…); displaying initial reminder dialog`, and the helper adds an identity note. The quiet period still counts that `Return Code`.
 - `--aggressive-kill yes`, or a `present` row checked on the Mac with `--rdnn`, means `/Library/Management/<rdnn>/dor-aggressive-kill` existed, so aggressive mode uses the normal cadence until that file is removed.
 - Files-table statuses: `supplied` (named on the command line), `not in upload`, and with `--rdnn` also `inferred (--rdnn)`, `not present on this Mac`, and `unreadable on this Mac`. Report an `unreadable on this Mac` file as missing evidence, not as absent.
-- Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.3.0. If the version differs, say the checklist is best-effort. A shared `ScriptLog` can also hold other scripts' runs in the same `<name> (<version>): … Initiating` format; the helper (`1.6.4` and later) excludes them from run detection and names them in an identity note.
+- Read `dorm (<version>):` from the log. A later `dor  (` line (two spaces) is deployment, not the runtime run. This skill matches `reminderDialog.zsh` 5.4.0b1. If the version differs, say the checklist is best-effort. A shared `ScriptLog` can also hold other scripts' runs in the same `<name> (<version>): … Initiating` format; the helper (`1.6.4` and later) excludes them from run detection and names them in an identity note.
 - The helper redacts usernames, first names, `/Users/…` paths, install.log computer names, and labeled serial numbers in the fact sheet. Keep RDNN, versions, deadlines, and preference keys. Attach the redacted report. Keep raw client files and the fact sheet out of public issues.
 - With `--no-redaction`, the fact sheet says `Redaction is off`, values appear as logged, section 3 adds `Computer name` and `Serial number` rows, section 9 says the report is not redacted, and the suggested report filename carries the computer name and `-unredacted`. Do not redact such a report by hand. Never attach an unredacted report to a public issue.
 
@@ -95,7 +95,7 @@ Template (helper-filled parts shown as `…`):
 ````markdown
 # [DDM OS Reminder](https://snelson.us/ddm) diagnosis: `<rdnn>`
 
-Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.10.0) · Checklist: `reminderDialog.zsh` 5.3.0
+Analysis date: YYYY-MM-DD · Helper: `Resources/diagnoseReminderState.zsh` (1.10.0) · Checklist: `reminderDialog.zsh` 5.4.0b1
 
 ## 1. Verdict
 

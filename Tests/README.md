@@ -11,6 +11,7 @@ git clone -b development https://github.com/dan-snelson/DDM-OS-Reminder.git
 cd DDM-OS-Reminder
 sudo zsh Tests/runTests.zsh                          # unit tier (default)
 sudo zsh Tests/runTests.zsh --integration            # unit tier, then the integration tier
+sudo zsh Tests/runTests.zsh --integration --prerelease 5.4.0b1
 sudo zsh Tests/runTests.zsh --integration --release 5.4.0
 ```
 
@@ -22,6 +23,7 @@ sudo zsh Tests/runTests.zsh --integration --release 5.4.0
 | `--filter <text>` | Run only tests whose `[group] description` contains `<text>`, for example `--filter unit/starter`. |
 | `--keep` | Keep the work directory and the `com.example.dortest` deployment after the run. |
 | `--release <x.y.z>` | Require `scriptVersion` in `assemble.zsh`, `launchDaemonManagement.zsh`, and `reminderDialog.zsh`, and the top `CHANGELOG.md` heading, to equal `<x.y.z>`. |
+| `--prerelease <x.y.zbN>` | Same check for a beta such as `5.4.0b1`. The top `CHANGELOG.md` heading may add a parenthetical, such as `### Version 5.4.0b1 (Unreleased)` or a date. Cannot be combined with `--release`. |
 | `--help` | Show usage. |
 
 Each test prints one line:
@@ -32,7 +34,7 @@ FAIL  [unit/starter] state write failure (uchg) blocks a declarationChange launc
         [ERROR] for a declaration-change launch
           expected to contain: [ERROR]
           in file: /var/tmp/dor-tests.Ab12Cd/t/093/starter/starter.log (last 8 lines)
-SKIP  [unit/syntax-versions] --release version matches every scriptVersion and the CHANGELOG heading (no --release given; …)
+SKIP  [unit/syntax-versions] --release or --prerelease version matches every scriptVersion and the CHANGELOG heading (no --release or --prerelease given; …)
 ```
 
 The run ends with `N passed, N failed, N skipped`, an "Attention" block that repeats every warning and note, and a final banner. The last line printed is always the results log path:
@@ -50,6 +52,7 @@ The exit status is `0` only when nothing failed. Bring that log back after every
 3. `sudo zsh Tests/runTests.zsh`
 4. `sudo zsh Tests/runTests.zsh --integration`
 5. Bring the results log back, fix, and repeat from step 2.
+   For a beta, bump `scriptVersion` and the `CHANGELOG.md` heading to the beta version (for example `5.4.0b1`), then run `sudo zsh Tests/runTests.zsh --integration --prerelease 5.4.0b1` before you deploy it to test Macs.
 6. Bump `scriptVersion` and the `CHANGELOG.md` heading, then run `sudo zsh Tests/runTests.zsh --integration --release 5.4.0`. Until the bump, `--release 5.4.0` stops on purpose, because the scripts are still `5.3.0`.
 7. Deploy 5.4.0 through the MDM over 5.3.0, and confirm the first heartbeat seeds `LastDeclarationFingerprint`.
 
@@ -71,6 +74,8 @@ The runner checks the workflow before it tests anything. Each check prints a ful
 | `scriptVersion` differs between `assemble.zsh`, `launchDaemonManagement.zsh`, and `reminderDialog.zsh` | STOP 69 |
 | No `--release`, and the `CHANGELOG.md` top heading says "(Unreleased)" | NOTE |
 | `--release X`, but a `scriptVersion` or the `CHANGELOG.md` heading is not X | STOP 69 |
+| `--prerelease X`, but a `scriptVersion` is not X or the `CHANGELOG.md` heading is not `### Version X`, optionally followed by ` (…)` | STOP 69 |
+| `--release` and `--prerelease` both given, or a `--prerelease` value not shaped like `x.y.zbN` | STOP 64 |
 | `--integration` and a unit test failed | STOP (integration not run) |
 | `--integration` with no console user | STOP 69; with `--skip-dialogs`, a WARNING, and console-dependent scenarios are skipped |
 | `--integration` and swiftDialog is not installed | WARNING (the test deploy installs it system-wide) |
@@ -78,7 +83,7 @@ The runner checks the workflow before it tests anything. Each check prints a ful
 | Live `SoftwareUpdateDDMStatePersistence.plist` unreadable or with zero declarations | WARNING |
 | Production `org.churchofjesuschrist.dor` loaded or not loaded | NOTE |
 | End of run: any FAIL | STOP-style banner, exit `1` |
-| End of run: unit tier passed, or both tiers passed (with or without `--release`) | NOTE naming the next workflow step |
+| End of run: unit tier passed, or both tiers passed (with or without `--release` or `--prerelease`) | NOTE naming the next workflow step |
 
 The results log header records the date, the macOS version and build, `scriptVersion`, the git branch and commit (or "not a git checkout"), the flags, and whether the production daemon is loaded.
 
@@ -96,7 +101,7 @@ The tests do not run whole scripts. `lib/testHelpers.zsh` copies what it needs i
 
 | File | Covers |
 |---|---|
-| `10-syntax-versions.zsh` | `/bin/zsh -n` on every script and test file; `scriptVersion` alignment; `--release` versions; `diagnoseReminderState.zsh` version against `CHANGELOG.md`; extraction count checks |
+| `10-syntax-versions.zsh` | `/bin/zsh -n` on every script and test file; `scriptVersion` alignment; `--release` and `--prerelease` versions; `diagnoseReminderState.zsh` version against `CHANGELOG.md`; extraction count checks |
 | `20-assemble.zsh` | `assemble.zsh com.example.dortest --lane test` in a work-directory copy: three artifacts, no production RDNN, `reverseDomainNameNotation=` and `scriptLog` rewrites, starter placeholders intact, Demo Mode stripped, `plutil -lint`, `zsh -n`, `--lane bogus`, `--help` |
 | `30-timestamps.zsh` | `epochFromISO8601Timestamp` and the deployment fallback date checks agree: `Z`, offsets, zone-less in two zones, impossible dates, spring-forward gap |
 | `40-preferences.zsh` | `readPreferencePlistValue` statuses; precedence; the mid-load reload and its two warnings |

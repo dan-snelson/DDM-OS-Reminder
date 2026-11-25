@@ -77,7 +77,7 @@ Scheduler rules:
 **Timeline**: More than 60 days before deadline (configurable)
 
 **Behavior**:
-- ❌ No regular reminders displayed (one initial reminder if the client log has no recorded interaction, or, starting with `5.4.0`, none since `LastDeclarationChangeDetected`, the time the starter saw the active DDM declarations change)
+- ❌ No regular reminders displayed (one initial reminder if the client log has no recorded interaction, or, starting with `5.4.0b1`, none since `LastDeclarationChangeDetected`, the time the starter saw the active DDM declarations change)
 - Mac operates normally
 - DDM enforcement date exists but deadline is far away
 - ℹ️ A periodic reminder can still appear every `OutsideDisplayWindowPeriodicReminderDays` (default: `28`) days after the last interaction

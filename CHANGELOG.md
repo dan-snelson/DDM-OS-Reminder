@@ -2,7 +2,7 @@
 
 ## Changelog
 
-### Version 5.4.0 (Unreleased)
+### Version 5.4.0b1 (Unreleased)
 - :new: `Resources/diagnoseReminderState.zsh` (`1.7.0`) names `--no-redaction` output files by the Mac's serial number instead of its computer name, because the serial number is unique and is the stable key for an MDM inventory lookup ([Issue #176](https://github.com/dan-snelson/DDM-OS-Reminder/issues/176))
     - The suggested report filename becomes `ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>.md`; with `--rdnn`, the saved fact sheet becomes `/Library/Management/<rdnn>/ddm-os-reminder-<rdnn>-<serial-number>-unredacted-<YYYY-MM-DD-HHMMSS>-fact-sheet.md`.
     - With `--rdnn`, the serial number comes from this Mac (`IOPlatformSerialNumber`); otherwise from a labeled `Serial Number:` client-log line. When no serial number is known, the computer name is used as before; when neither is known, the filename has no identity token.

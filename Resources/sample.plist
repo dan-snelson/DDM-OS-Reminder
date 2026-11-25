@@ -24,9 +24,10 @@
          quiet-period suppression. -->
     <key>QuietPeriodMinutes</key>
     <integer>76</integer>
-    <!-- Periodic reminders outside DaysBeforeDeadlineDisplayReminder after a
-         prior interaction. Set 0 to disable repeat reminders outside the
-         display window. -->
+    <!-- Outside DaysBeforeDeadlineDisplayReminder: one initial reminder when
+         no interaction is recorded, then repeats every N days after the last
+         interaction. Set 0 to disable repeats; the initial reminder still
+         appears. -->
     <key>OutsideDisplayWindowPeriodicReminderDays</key>
     <integer>28</integer>
     <!-- Past-deadline restart behavior:

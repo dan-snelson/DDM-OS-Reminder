@@ -32,7 +32,7 @@ set -u
 
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
-scriptVersion="1.9.0"
+scriptVersion="1.10.0"
 checklistScriptVersion="5.3.0"
 scriptRelativePath="Resources/diagnoseReminderState.zsh"
 ddmResolverLookbackLines=4000
@@ -1726,7 +1726,7 @@ while IFS= read -r logLine; do
 done < <(tail -n +"${latestRunStart}" "${clientLogPath}")
 latestRunLineCount="${#latestRunLines[@]}"
 
-decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|starter launch after boot|post-boot re-evaluation|ddm declaration change detected|declaration-change re-evaluation|darkwake|return code:| clicked )'
+decisionPattern='(ddm update check|no reminder shown|next step|currently installed macos|ddm declaration logged|opening software update|normal ddm resolver result|resolver suppression summary|resolved ddm declaration|installed macos|already satisfies|emergency fallback|mdm fallback|softwareupdate ddm state|ignoring .* install\.log ddm declaration|conflicting|update tonight|battery: |disk space: |quiet period|quietperiodminutes|pre-deadline threshold|aggressive mode|past deadline|do not disturb|meeting|display window|periodic reminder|swiftdialog|resolved dailyremindertimes|resolved minutesbeforedeadlinereminderschedule|no client-side preferences|reading preference overrides|preferences loaded|invalid |ignoring invalid|ignored invalid|display reminder dialog|scheduled next daemon reminder|accepted padded enforcement date|heartbeat launch triggered|starter launch after boot|post-boot re-evaluation|ddm declaration change detected|declaration-change re-evaluation|ignoring reminder interaction|darkwake|return code:| clicked )'
 clientLogLineRegex='^([^ ]+) \(([^)]+)\): ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) - \[([A-Z -]+)\][[:space:]]+(.*)$'
 
 for logLine in "${latestRunLines[@]}"; do
@@ -1780,6 +1780,16 @@ if [[ -n "${lastQuietPeriodReturnCodeRecord}" ]]; then
             latestRunDecisionLines=("${quietPeriodReturnCodeLine}")
         fi
         identityNotes+=("Last quiet-period Return Code is from an earlier run. Quiet period uses that line from the whole client log.")
+    fi
+    # 5.4.0+ ignores interactions before LastDeclarationChangeDetected for the outside-display-window check only
+    if plistKeyExists "${statePlistPath}" "LastDeclarationChangeDetected" && [[ "${quietPeriodReturnCodeLine}" =~ ${clientLogLineRegex} ]]; then
+        quietPeriodReturnCodeTimestamp="${match[3]}"
+        quietPeriodReturnCodeEpoch="$(date -j -f "%Y-%m-%d %H:%M:%S" "${quietPeriodReturnCodeTimestamp}" "+%s" 2>/dev/null)"
+        lastDeclarationChangeDetected="$(plistKeyValue "${statePlistPath}" "LastDeclarationChangeDetected")"
+        lastDeclarationChangeEpoch="$(date -j -f "%Y-%m-%d:%H:%M:%S" "${lastDeclarationChangeDetected}" "+%s" 2>/dev/null)"
+        if [[ "${quietPeriodReturnCodeEpoch}" =~ ^[0-9]+$ && "${lastDeclarationChangeEpoch}" =~ ^[0-9]+$ ]] && (( quietPeriodReturnCodeEpoch < lastDeclarationChangeEpoch )); then
+            identityNotes+=("Last Return Code (${quietPeriodReturnCodeTimestamp}) is before LastDeclarationChangeDetected (${lastDeclarationChangeDetected}). 5.4.0 and later ignore it for the outside-display-window check (initial reminder); quiet period still uses it.")
+        fi
     fi
 fi
 
@@ -2310,7 +2320,7 @@ echo ""
 if [[ -n "${statePlistPath}" ]]; then
     echo "### dor-state.plist"
     echo ""
-    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered LastBootReevaluation PostBootConsoleUserSeen LastDeclarationFingerprint PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
+    for stateKey in NextScheduledReminder UpdateTonightSuppressionUntil DaemonLastTriggered LastBootReevaluation PostBootConsoleUserSeen LastDeclarationFingerprint LastDeclarationChangeDetected PreDeadlineThresholdSignature PreDeadlineThresholdDelivered PreDeadlineThresholdSkipped; do
         if plistKeyExists "${statePlistPath}" "${stateKey}"; then
             # PostBootConsoleUserSeen is "<boot epoch>:<user>"; redact the user even when the log never named it
             [[ "${stateKey}" == "PostBootConsoleUserSeen" ]] && rememberRedactedToken "$(plistKeyValue "${statePlistPath}" "${stateKey}" | sed 's/^[0-9]*://')"
@@ -2325,7 +2335,7 @@ else
     echo ""
 fi
 
-echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process (5.4.0 and later: a live dor.zsh process, with dor.pid written after the current boot; otherwise the starter logs 'Removing stale PID file' and continues). Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0 and later). Starting with 5.4.0, the first heartbeat that sees that user only records '<boot epoch>:<user>' in PostBootConsoleUserSeen and logs 'Console user '<user>' detected after boot; deferring post-boot re-evaluation one heartbeat so login can settle.'; the next heartbeat with the same user launches. Starting with 5.4.0, a future NextScheduledReminder also launches when a console user is present and the active DDM declarations in SoftwareUpdateDDMStatePersistence.plist no longer match LastDeclarationFingerprint; the starter logs 'DDM declaration change detected; re-evaluating deadline (NextScheduledReminder: …).' A missing LastDeclarationFingerprint is not a change; the next launch records it. An unreadable or unrecognized persistence plist leaves it unchanged. During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0 and later). A missing NextScheduledReminder key lets the starter launch."
+echo "Starter exits quietly, with no new dorm run and no new log line, when NextScheduledReminder is FALSE, when that value is YYYY-MM-DD:HH:MM:SS and still in the future, or when dor.pid names a live process (5.4.0 and later: a live dor.zsh process, with dor.pid written after the current boot; otherwise the starter logs 'Removing stale PID file' and continues). Exception: once per boot, the first heartbeat with a console user launches a post-boot re-evaluation even for a future NextScheduledReminder and records the boot epoch (kern.boottime) in LastBootReevaluation (5.3.0 and later). Starting with 5.4.0, the first heartbeat that sees that user only records '<boot epoch>:<user>' in PostBootConsoleUserSeen and logs 'Console user '<user>' detected after boot; deferring post-boot re-evaluation one heartbeat so login can settle.'; the next heartbeat with the same user launches. Starting with 5.4.0, a future NextScheduledReminder also launches when a console user is present and the active DDM declarations in SoftwareUpdateDDMStatePersistence.plist no longer match LastDeclarationFingerprint; the starter logs 'DDM declaration change detected; re-evaluating deadline (NextScheduledReminder: …).' A missing LastDeclarationFingerprint is not a change; the next launch records it. An unreadable or unrecognized persistence plist leaves it unchanged. Starting with 5.4.0, any launch that sees a changed fingerprint first records the time in LastDeclarationChangeDetected (non-declaration-change launches log 'DDM declaration change recorded at … (LastDeclarationChangeDetected).'); if that write fails, LastDeclarationFingerprint stays unchanged so the next heartbeat retries. During a Maintenance DarkWake, a due starter logs 'DarkWake detected (system capabilities: …); deferring reminder launch to the next heartbeat.' and exits with no new dorm run and no state change (5.3.0 and later). A missing NextScheduledReminder key lets the starter launch."
 echo ""
 
 if [[ -n "${fallbackPlistPath}" ]]; then

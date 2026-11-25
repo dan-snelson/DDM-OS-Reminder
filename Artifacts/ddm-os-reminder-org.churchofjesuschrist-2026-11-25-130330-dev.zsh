@@ -6575,19 +6575,40 @@ if [[ "${versionComparisonResult}" == "Update Required" ]]; then
         notice "Pre-deadline threshold reminder active; bypassing day-window and periodic reminder suppression."
     elif (( ddmVersionStringDaysRemaining > daysBeforeDeadlineDisplayReminder )); then
         # Outside the deadline window; check if we should display initial/periodic reminder
-        
-        if [[ -z "${lastInteraction}" ]]; then
-            # No interaction history; display the initial reminder dialog
-            notice "No reminder interaction history found; displaying initial reminder dialog"
+
+        # Scope this check to the current DDM declaration; quiet-period suppression keeps using lastInteraction
+        lastDeclarationInteraction="${lastInteraction}"
+        lastDeclarationInteractionIgnored="NO"
+        lastDeclarationChangeDetected="$(readReminderStateKey "LastDeclarationChangeDetected")"
+        if [[ -n "${lastDeclarationChangeDetected}" ]]; then
+            lastDeclarationChangeEpoch="$(epochFromScheduleTimestamp "${lastDeclarationChangeDetected}")"
+            if [[ ! "${lastDeclarationChangeEpoch}" =~ ^[0-9]+$ ]]; then
+                warning "Invalid LastDeclarationChangeDetected '${lastDeclarationChangeDetected}'; using all reminder interaction history."
+            elif (( lastDeclarationChangeEpoch > $(date +%s) )); then
+                # A future change time would ignore every interaction and show an initial reminder at each baseline slot
+                warning "LastDeclarationChangeDetected '${lastDeclarationChangeDetected}' is in the future; using all reminder interaction history."
+            elif [[ -n "${lastDeclarationInteraction}" ]]; then
+                lastDeclarationInteractionEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDeclarationInteraction}" +"%s" 2>/dev/null )
+                if [[ "${lastDeclarationInteractionEpoch}" =~ ^[0-9]+$ ]] && (( lastDeclarationInteractionEpoch < lastDeclarationChangeEpoch )); then
+                    notice "Ignoring reminder interaction from ${lastDeclarationInteraction}, before the current DDM declaration was detected (${lastDeclarationChangeDetected}); displaying initial reminder dialog"
+                    lastDeclarationInteraction=""
+                    lastDeclarationInteractionIgnored="YES"
+                fi
+            fi
+        fi
+
+        if [[ -z "${lastDeclarationInteraction}" ]]; then
+            # No interaction history for the current declaration; display the initial reminder dialog
+            [[ "${lastDeclarationInteractionIgnored}" == "YES" ]] || notice "No reminder interaction history found; displaying initial reminder dialog"
         elif (( periodicReminderDays <= 0 )); then
             setNextReminderScheduleForPendingThresholdOrBaseline "Deadline outside display window and periodic reminders disabled"
             logNoReminder "deadline is ${ddmVersionStringDaysRemaining} days away, beyond DaysBeforeDeadlineDisplayReminder (${daysBeforeDeadlineDisplayReminder}), and OutsideDisplayWindowPeriodicReminderDays is 0" "None; reminders start ${daysBeforeDeadlineDisplayReminder} days before the deadline."
             quitScript "0"
         else
             # Validate the extracted timestamp matches expected format
-            if [[ "${lastInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+            if [[ "${lastDeclarationInteraction}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
                 nowEpoch=$(date +%s)
-                lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastInteraction}" +"%s" 2>/dev/null )
+                lastEpoch=$( date -j -f "%Y-%m-%d %H:%M:%S" "${lastDeclarationInteraction}" +"%s" 2>/dev/null )
                 if [[ -n "${lastEpoch}" ]]; then
                     delta=$(( nowEpoch - lastEpoch ))
                     if (( delta >= periodicReminderSeconds )); then
@@ -6990,13 +7011,17 @@ function currentDeclarationFingerprint() {
     [[ "${declarationFingerprint}" =~ ^[0-9a-f]{32}$ ]]
 }
 
-function declarationChangeDetected() {
+function declarationFingerprintChanged() {
     local storedDeclarationFingerprint=""
 
     # A missing stored fingerprint is seeded by the next launch, not treated as a change
     [[ "${declarationFingerprintReady}" == "YES" ]] || return 1
     storedDeclarationFingerprint="$(readStateValue "LastDeclarationFingerprint")"
-    [[ -n "${storedDeclarationFingerprint}" && "${storedDeclarationFingerprint}" != "${declarationFingerprint}" ]] || return 1
+    [[ -n "${storedDeclarationFingerprint}" && "${storedDeclarationFingerprint}" != "${declarationFingerprint}" ]]
+}
+
+function declarationChangeDetected() {
+    declarationFingerprintChanged || return 1
     consoleUserReady
 }
 
@@ -7126,8 +7151,25 @@ if [[ "${postBootReevaluationReady}" == "YES" ]] && ! writeStateValue "LastBootR
     exit 1
 fi
 
+# Record the change time on every launch path so the main script can scope outside-window interaction history to the current declarations
+declarationFingerprintWriteReady="${declarationFingerprintReady}"
+if declarationFingerprintChanged; then
+    declarationChangeTimestamp="$(date '+%Y-%m-%d:%H:%M:%S')"
+    if ! writeStateValue "LastDeclarationChangeDetected" "${declarationChangeTimestamp}"; then
+        # Leave the stored fingerprint stale so the next heartbeat retries the change time
+        if [[ "${launchReason}" == "declarationChange" ]]; then
+            error "Unable to record DDM declaration change time; not launching main script."
+            exit 1
+        fi
+        warning "Unable to record DDM declaration change time; launching main script anyway."
+        declarationFingerprintWriteReady="NO"
+    elif [[ "${launchReason}" != "declarationChange" ]]; then
+        notice "DDM declaration change recorded at ${declarationChangeTimestamp} (LastDeclarationChangeDetected)."
+    fi
+fi
+
 # A declaration-change launch that cannot record its fingerprint would relaunch on every heartbeat
-if [[ "${declarationFingerprintReady}" == "YES" ]] && ! writeStateValue "LastDeclarationFingerprint" "${declarationFingerprint}"; then
+if [[ "${declarationFingerprintWriteReady}" == "YES" ]] && ! writeStateValue "LastDeclarationFingerprint" "${declarationFingerprint}"; then
     if [[ "${launchReason}" == "declarationChange" ]]; then
         error "Unable to update DDM declaration fingerprint state; not launching main script."
         exit 1

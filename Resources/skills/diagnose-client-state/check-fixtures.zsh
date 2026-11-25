@@ -362,6 +362,7 @@ rejectText "deploy-only host" "SecretHost" "${deployOnly}"
 /usr/bin/plutil -insert PreDeadlineThresholdDelivered -string "45" "${workDirectory}/state.plist"
 /usr/bin/plutil -insert PreDeadlineThresholdSkipped -string "30" "${workDirectory}/state.plist"
 /usr/bin/plutil -insert LastDeclarationFingerprint -string "dbdbfecc9291eac20ee2b51e8d30eb81" "${workDirectory}/state.plist"
+/usr/bin/plutil -insert LastDeclarationChangeDetected -string "2026-10-12:10:05:00" "${workDirectory}/state.plist"
 stateSheet="$(runHelper \
     --client-log "${fixtureRoot}/missing/client.log" \
     --install-log "${fixtureRoot}/missing/install.log" \
@@ -371,11 +372,28 @@ requireText "state false" "NextScheduledReminder: FALSE" "${stateSheet}"
 requireText "threshold delivered" "PreDeadlineThresholdDelivered: 45" "${stateSheet}"
 requireText "threshold skipped" "PreDeadlineThresholdSkipped: 30" "${stateSheet}"
 requireText "declaration fingerprint" "LastDeclarationFingerprint: dbdbfecc9291eac20ee2b51e8d30eb81" "${stateSheet}"
+requireText "declaration change time" "LastDeclarationChangeDetected: 2026-10-12:10:05:00" "${stateSheet}"
+requireText "starter change-time rule" "DDM declaration change recorded at" "${stateSheet}"
 requireText "starter declaration-change rule" "DDM declaration change detected; re-evaluating deadline" "${stateSheet}"
 requireText "starter rule" "Starter exits quietly" "${stateSheet}"
 requireText "skeleton state supplied" '| `dor-state.plist` | supplied | `NextScheduledReminder`: FALSE |' "${stateSheet}"
 requireText "cause state value" '- `NextScheduledReminder`: `FALSE`' "${stateSheet}"
 requireText "cause schedule line" '- Scheduling: `Scheduled next daemon reminder for 2026-10-12:16:00:00 (baseline).`' "${offsetAndDeploy}"
+
+# Return Code at 10:00:00 predates the 10:05:00 change time; a 09:00:00 change time keeps it
+declarationChangeSheet="$(runHelper \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --state-plist "${workDirectory}/state.plist")"
+requireText "interaction before declaration change" "Last Return Code (2026-10-12 10:00:00) is before LastDeclarationChangeDetected (2026-10-12:10:05:00)." "${declarationChangeSheet}"
+/usr/bin/plutil -replace LastDeclarationChangeDetected -string "2026-10-12:09:00:00" "${workDirectory}/state.plist"
+declarationChangeSheet="$(runHelper \
+    --client-log "${workDirectory}/runtime.log" \
+    --install-log "${workDirectory}/offsets.log" \
+    --plist "${fixtureRoot}/compliant/managed.dorm.plist" \
+    --state-plist "${workDirectory}/state.plist")"
+rejectText "interaction after declaration change" "is before LastDeclarationChangeDetected" "${declarationChangeSheet}"
 
 # --rdnn reads live paths; this RDNN must never be deployed, so inferred inputs stay "not present on this Mac"
 fixtureRdnn="com.example.diagnosefixture"
